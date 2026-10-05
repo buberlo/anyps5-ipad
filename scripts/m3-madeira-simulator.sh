@@ -64,15 +64,23 @@ cmake -S "$root/upstreams/FEX" -B "$fex_build" \
     -DENABLE_CCACHE=OFF
 cmake --build "$fex_build" --target FEXCore FEXCore_Base --parallel
 
-# Device SDK matches fex-ios (iphoneos). Signing stays off. The project
-# still references libdxmt_combined.a and x86_64-vcruntime, which are not
-# in the clone.
-if [ ! -f "$root/upstreams/Madeira/app/Madeira/libdxmt_combined.a" ]; then
-    echo "missing libdxmt_combined.a (needs the llvm-ios toolchain in Madeira BUILDING.md)"
-fi
-if [ ! -d "$root/upstreams/Madeira/app/Madeira/x86_64-vcruntime" ]; then
-    echo "missing x86_64-vcruntime (not in the clone)"
-fi
+# Slim path: do not build DXMT or madeira-d3d12. The app target links
+# libdxmt_combined.a for present-count and canary symbols. A no-op
+# archive satisfies that link. It is not the llvm-ios DXMT library.
+app_dir="$root/upstreams/Madeira/app/Madeira"
+stub_o="$root/build/slim-dxmt-stub.o"
+mkdir -p "$root/build"
+xcrun -sdk iphoneos clang \
+    -arch arm64 -isysroot "$sdk" -miphoneos-version-min=17.0 \
+    -c "$root/scripts/slim-dxmt-stub.c" -o "$stub_o"
+xcrun -sdk iphoneos libtool -static -o "$app_dir/libdxmt_combined.a" "$stub_o"
+echo "slim libdxmt_combined.a (no-op, not DXMT)"
+
+# tools/fetch-vcruntime.md extracts Microsoft's VC_redist.x64.exe. Nothing
+# in the Madeira scripts builds those DLLs, and the slim PE does not import
+# them. The Xcode project copies this folder into the app. Leave it empty.
+mkdir -p "$app_dir/x86_64-vcruntime"
+echo "x86_64-vcruntime left empty (Microsoft redistributable, not fetched)"
 
 xcodebuild \
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj" \

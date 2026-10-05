@@ -292,8 +292,11 @@ path at the pinned tree and ran CMake. CMake identified AppleClang
 17 and `/usr/bin/cc`, then failed: `string no output variable
 specified` and `Unsupported processor type` (empty
 `CMAKE_SYSTEM_PROCESSOR`). The script now passes `arm64`, the
-iphoneos SDK path, and `xcrun` clang. `libdxmt_combined.a` and
-`x86_64-vcruntime` are still not in the clone.
+iphoneos SDK path, and `xcrun` clang. `libdxmt_combined.a` is not built from llvm-ios. The simulator script
+compiles `scripts/slim-dxmt-stub.c` into that archive (no-op symbols).
+`x86_64-vcruntime` is Microsoft's redistributable
+(`tools/fetch-vcruntime.md`); no Madeira script builds it, and the
+slim path leaves the folder empty.
 
 `fex-wine` on `c161948` (`ubuntu-24.04-arm`) linked native FEX, the
 nostdlib guest exited 42, and `wine64` 9.0 was installed. The PE

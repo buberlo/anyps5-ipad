@@ -108,6 +108,19 @@ default. Do not delete them from a tree that still launches D3D games.
 VM cannot execute. That is a device check, not a reason to keep
 building DXMT for this chain.
 
+`scripts/m3-madeira-simulator.sh` does not run `build/dxmt-ios/build.sh`.
+It compiles `scripts/slim-dxmt-stub.c` into `libdxmt_combined.a` so the
+app link has the present-count, GPU-meter, vsync, fence, and
+`madeira_d3d12_canary_*` symbols the Swift UI calls. Those functions
+return empty results. `madeira_set_eco` stays in ntdll, not in this
+stub.
+
+`x86_64-vcruntime` is not built by any Madeira script.
+`tools/fetch-vcruntime.md` tells the user to extract Microsoft's
+`VC_redist.x64.exe`. The slim PE imports `kernel32` only, so the
+simulator script creates that folder and does not download the
+redistributable.
+
 ### Other Wine subsystems
 
 Wine has about 730 `dlls/` directories. The slim host configure

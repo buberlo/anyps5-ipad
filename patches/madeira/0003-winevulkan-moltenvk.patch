@@ -1,0 +1,400 @@
+diff --git a/build/win32u-unix/build.sh b/build/win32u-unix/build.sh
+index 949675e..5912998 100755
+--- a/build/win32u-unix/build.sh
++++ b/build/win32u-unix/build.sh
+@@ -121,6 +121,15 @@ for src in $WINE_SRC/dlls/win32u/*.c $WINE_SRC/dlls/win32u/dibdrv/*.c; do
+                 -I"$REPO_ROOT/research/freetype/include"
+             continue
+             ;;
++        vulkan)
++            # Default tree still compiles upstream vulkan.c with SONAME_LIBVULKAN
++            # undefined (config_ios.h). MADEIRA_WITH_VULKAN=1 swaps in the
++            # MoltenVK static-link wrapper. See vulkan_ios.c.
++            if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then
++                compile_one "$BUILD_DIR/vulkan_ios.c" "vulkan" -DMADEIRA_WITH_VULKAN=1
++                continue
++            fi
++            ;;
+     esac
+ 
+     compile_one "$src" "$name"
+@@ -138,6 +147,11 @@ if [ $FAILED -gt 0 ]; then
+     exit 1
+ fi
+ 
++if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then
++    compile_one "$BUILD_DIR/vulkan_metal_ios.c" "vulkan_metal_ios" -DMADEIRA_WITH_VULKAN=1
++    compile_one "$BUILD_DIR/moltenvk_static_loader.c" "moltenvk_static_loader" -DMADEIRA_WITH_VULKAN=1
++fi
++
+ echo ""
+ echo "=== Building libwin32u_unix.a ==="
+ ar rcs "$OBJ_DIR/libwin32u_unix.a" "$OBJ_DIR"/*.o
+diff --git a/build/win32u-unix/config_ios.h b/build/win32u-unix/config_ios.h
+index a7927f2..b9436e8 100644
+--- a/build/win32u-unix/config_ios.h
++++ b/build/win32u-unix/config_ios.h
+@@ -4,6 +4,11 @@
+  *
+  * The stripped macros gate code paths we compile out for the initial
+  * iOS port (no freetype, fontconfig, egl, vulkan, gnutls on device).
++ *
++ * Vulkan is opt-in: build/win32u-unix/vulkan_ios.c re-defines
++ * SONAME_LIBVULKAN to "MoltenVK" after this header's #undef when
++ * MADEIRA_WITH_VULKAN=1. Leaving the #undef here keeps every other
++ * translation unit on the stub path.
+  */
+ #ifndef WIN32U_IOS_CONFIG_H
+ #define WIN32U_IOS_CONFIG_H
+diff --git a/build/win32u-unix/driver_ios.c b/build/win32u-unix/driver_ios.c
+index e1d5605..75fb196 100644
+--- a/build/win32u-unix/driver_ios.c
++++ b/build/win32u-unix/driver_ios.c
+@@ -59,6 +59,7 @@ extern void winios_pDestroyWindow( HWND hwnd ) __attribute__((weak));
+ extern UINT winios_pShowWindow( HWND hwnd, INT cmd, RECT *rect, UINT swp ) __attribute__((weak));
+ extern void winios_pWindowPosChanged( HWND hwnd, HWND insert_after, HWND owner_hint, UINT swp_flags,
+                                       const struct window_rects *new_rects, struct window_surface *surface ) __attribute__((weak));
++extern UINT winios_pVulkanInit( UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs ) __attribute__((weak));
+ 
+ static struct user_driver_funcs winios_user_driver;
+ 
+@@ -1872,6 +1873,11 @@ static void load_display_driver(void)
+                         "(MADEIRA_GAME_WINDOWS=0 hides them)\n" );
+         }
+         winios_user_driver.pUpdateDisplayDevices = winios_UpdateDisplayDevices;
++        /* MoltenVK surface creation. NULL (MADEIRA_WITH_VULKAN unset, or the
++         * TU not linked) leaves SET_USER_FUNC on nulldrv_VulkanInit, which
++         * reports STATUS_NOT_IMPLEMENTED and win32u falls back to a headless
++         * surface. AnyPS5 needs a real VK_EXT_metal_surface. */
++        if (winios_pVulkanInit) winios_user_driver.pVulkanInit = winios_pVulkanInit;
+         __wine_set_user_driver( &winios_user_driver, WINE_GDI_DRIVER_VERSION );
+ #else
+         __wine_set_user_driver( &null_user_driver, WINE_GDI_DRIVER_VERSION );
+diff --git a/build/win32u-unix/moltenvk_static_loader.c b/build/win32u-unix/moltenvk_static_loader.c
+new file mode 100644
+index 0000000..ec2b231
+--- /dev/null
++++ b/build/win32u-unix/moltenvk_static_loader.c
+@@ -0,0 +1,49 @@
++#include "moltenvk_static_loader.h"
++
++#include <dlfcn.h>
++#include <string.h>
++
++static int g_static_icd_sentinel;
++
++int madeira_vk_path_is_icd(const char *path)
++{
++    if (!path) return 0;
++    return strstr(path, "MoltenVK") != NULL
++        || strstr(path, "libvulkan") != NULL
++        || strstr(path, "vulkan.framework") != NULL;
++}
++
++void *madeira_vk_static_sentinel(void)
++{
++    return &g_static_icd_sentinel;
++}
++
++void *madeira_vk_dlopen(const char *path, int mode)
++{
++    void *handle = dlopen(path, mode);
++    if (handle) return handle;
++    if (!madeira_vk_path_is_icd(path)) return NULL;
++    /* Static MoltenVK: the two entry points Wine resolves are already in
++     * this process. Any other ICD path that failed to dlopen stays a miss. */
++    if (dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr")) return madeira_vk_static_sentinel();
++    return NULL;
++}
++
++void *madeira_vk_dlsym(void *handle, const char *symbol)
++{
++    if (!handle || !symbol) return NULL;
++    if (handle == madeira_vk_static_sentinel())
++    {
++        /* Wine's vulkan_init_once only looks these two up on the ICD. */
++        if (strcmp(symbol, "vkGetInstanceProcAddr") != 0 && strcmp(symbol, "vkGetDeviceProcAddr") != 0)
++            return NULL;
++        return dlsym(RTLD_DEFAULT, symbol);
++    }
++    return dlsym(handle, symbol);
++}
++
++int madeira_vk_dlclose(void *handle)
++{
++    if (!handle || handle == madeira_vk_static_sentinel()) return 0;
++    return dlclose(handle);
++}
+diff --git a/build/win32u-unix/moltenvk_static_loader.h b/build/win32u-unix/moltenvk_static_loader.h
+new file mode 100644
+index 0000000..1ec4c24
+--- /dev/null
++++ b/build/win32u-unix/moltenvk_static_loader.h
+@@ -0,0 +1,22 @@
++/* MoltenVK load path for Madeira's single-process Wine.
++ *
++ * win32u's unix vulkan.c does dlopen(SONAME_LIBVULKAN) and then dlsym's
++ * vkGetInstanceProcAddr / vkGetDeviceProcAddr. On iOS those two symbols are
++ * linked into the same Mach-O (MoltenVK.a merged into the app, same pattern
++ * as freetype). dlopen of a dylib still wins when one is embedded; otherwise
++ * the loader binds the process-global symbols.
++ *
++ * This file does not include Wine headers so it can be compile-checked on
++ * Linux. vulkan_ios.c renames dlopen/dlsym/dlclose to the functions here
++ * before including Wine's vulkan.c.
++ */
++#ifndef MADEIRA_MOLTENVK_STATIC_LOADER_H
++#define MADEIRA_MOLTENVK_STATIC_LOADER_H
++
++int madeira_vk_path_is_icd(const char *path);
++void *madeira_vk_static_sentinel(void);
++void *madeira_vk_dlopen(const char *path, int mode);
++void *madeira_vk_dlsym(void *handle, const char *symbol);
++int madeira_vk_dlclose(void *handle);
++
++#endif
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+new file mode 100644
+index 0000000..646e2e8
+--- /dev/null
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -0,0 +1,26 @@
++/* iOS translation unit for dlls/win32u/vulkan.c.
++ *
++ * config_ios.h (passed with -include) #undefs SONAME_LIBVULKAN so the rest
++ * of the unix library keeps the "built without Vulkan" stubs. This file
++ * puts the macro back, then redirects dlopen/dlsym/dlclose onto
++ * moltenvk_static_loader.c before compiling upstream vulkan.c unchanged.
++ *
++ * SONAME is the literal "MoltenVK". madeira_vk_dlopen tries that name first
++ * (an embedded MoltenVK dylib or framework) and, on failure, binds
++ * vkGetInstanceProcAddr from the static archive linked into Madeira.app.
++ * Do not pass -USONAME_LIBVULKAN for this TU.
++ */
++
++#define SONAME_LIBVULKAN "MoltenVK"
++
++#include "moltenvk_static_loader.h"
++
++#define dlopen  madeira_vk_dlopen
++#define dlsym   madeira_vk_dlsym
++#define dlclose madeira_vk_dlclose
++
++#include "vulkan.c"
++
++#undef dlopen
++#undef dlsym
++#undef dlclose
+diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_metal_ios.c
+new file mode 100644
+index 0000000..3bfd0cd
+--- /dev/null
++++ b/build/win32u-unix/vulkan_metal_ios.c
+@@ -0,0 +1,131 @@
++/* winios Vulkan user-driver: VK_KHR_win32_surface -> VK_EXT_metal_surface.
++ *
++ * Madeira is one Mach-O. Wine's PE winevulkan.dll calls
++ * __wine_get_vulkan_driver, which dlopens the ICD (see vulkan_ios.c) and
++ * then asks the user driver for a surface. There is no winemac.drv unix
++ * library on iOS. This TU is linked into libwin32u_unix.a and registered
++ * from driver_ios.c as winios_pVulkanInit when the symbol is present.
++ *
++ * The CAMetalLayer is the one Winios.m already owns for the HWND
++ * (winios_metal_layer_for_hwnd). MoltenVK presents that layer.
++ *
++ * Not compile-checked on Linux: it includes Wine's unix headers and is
++ * built by build/win32u-unix/build.sh with the iOS SDK. The loader beside
++ * it (moltenvk_static_loader.c) is compile-checked on Linux.
++ */
++
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++
++#include <dlfcn.h>
++#include <string.h>
++
++#include "ntstatus.h"
++#define WIN32_NO_STATUS
++#include "windef.h"
++#include "winbase.h"
++#include "wine/gdi_driver.h"
++#include "wine/vulkan_driver.h"
++
++extern void *winios_metal_layer_for_hwnd(void *hwnd);
++
++static int g_use_metal_surface;
++
++static void ios_surface_destroy(struct client_surface *surface)
++{
++    (void)surface;
++}
++
++static void ios_surface_detach(struct client_surface *surface)
++{
++    (void)surface;
++}
++
++static void ios_surface_update(struct client_surface *surface)
++{
++    (void)surface;
++}
++
++static void ios_surface_present(struct client_surface *surface, HDC hdc)
++{
++    (void)surface;
++    (void)hdc;
++}
++
++static const struct client_surface_funcs ios_surface_funcs =
++{
++    .destroy = ios_surface_destroy,
++    .detach = ios_surface_detach,
++    .update = ios_surface_update,
++    .present = ios_surface_present,
++};
++
++static VkResult ios_vulkan_surface_create(HWND hwnd, const struct vulkan_instance *instance, VkSurfaceKHR *handle,
++                                          struct client_surface **client)
++{
++    VkMetalSurfaceCreateInfoEXT info;
++    VkResult res;
++    void *layer;
++    struct client_surface *surface;
++
++    if (!g_use_metal_surface || !instance || !instance->p_vkCreateMetalSurfaceEXT)
++        return VK_ERROR_EXTENSION_NOT_PRESENT;
++    layer = winios_metal_layer_for_hwnd(hwnd);
++    if (!layer) return VK_ERROR_INCOMPATIBLE_DRIVER;
++    surface = client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
++    if (!surface) return VK_ERROR_OUT_OF_HOST_MEMORY;
++
++    memset(&info, 0, sizeof(info));
++    info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
++    info.pLayer = layer;
++    res = instance->p_vkCreateMetalSurfaceEXT(instance->host.instance, &info, NULL, handle);
++    if (res != VK_SUCCESS)
++    {
++        client_surface_release(surface);
++        return res;
++    }
++    *client = surface;
++    return VK_SUCCESS;
++}
++
++static VkBool32 ios_get_physical_device_presentation_support(struct vulkan_physical_device *physical_device, uint32_t index)
++{
++    (void)physical_device;
++    (void)index;
++    return g_use_metal_surface ? VK_TRUE : VK_FALSE;
++}
++
++static void ios_map_instance_extensions(struct vulkan_instance_extensions *extensions)
++{
++    if (!g_use_metal_surface) return;
++    /* Guest code asks for VK_KHR_win32_surface. The host ICD has
++     * VK_EXT_metal_surface. Wine's map is symmetric so a client that
++     * enabled the metal extension directly still sees win32. */
++    if (extensions->has_VK_KHR_win32_surface) extensions->has_VK_EXT_metal_surface = 1;
++    if (extensions->has_VK_EXT_metal_surface) extensions->has_VK_KHR_win32_surface = 1;
++}
++
++static void ios_map_device_extensions(struct vulkan_device_extensions *extensions)
++{
++    (void)extensions;
++}
++
++static const struct vulkan_driver_funcs ios_vulkan_driver_funcs =
++{
++    .p_vulkan_surface_create = ios_vulkan_surface_create,
++    .p_get_physical_device_presentation_support = ios_get_physical_device_presentation_support,
++    .p_map_instance_extensions = ios_map_instance_extensions,
++    .p_map_device_extensions = ios_map_device_extensions,
++};
++
++UINT winios_pVulkanInit(UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs)
++{
++    if (version != WINE_VULKAN_DRIVER_VERSION) return STATUS_INVALID_PARAMETER;
++    g_use_metal_surface = vulkan_handle && dlsym(vulkan_handle, "vkCreateMetalSurfaceEXT") != NULL;
++    if (!g_use_metal_surface) return STATUS_NOT_IMPLEMENTED;
++    *driver_funcs = &ios_vulkan_driver_funcs;
++    return STATUS_SUCCESS;
++}
+diff --git a/build/wine-i386/build.sh b/build/wine-i386/build.sh
+index 52d9045..5a36f6d 100755
+--- a/build/wine-i386/build.sh
++++ b/build/wine-i386/build.sh
+@@ -46,7 +46,12 @@ if [ ! -f "$B/config.status" ]; then
+     mkdir -p "$B"
+     # --enable-winegstreamer: the PE half never touches GStreamer, but configure
+     # drops the module without GStreamer's development files (docs/MEDIA.md).
+-    (cd "$B" && ../configure --enable-archs=i386 --without-x --without-vulkan \
++    # MADEIRA_WITH_VULKAN=1 keeps winevulkan/vulkan-1 in the i386 farm.
++    # AnyPS5's Windows PE is x86-64, so the arm64ec farm (build/wine-pe) is
++    # the one that has to ship vulkan-1.dll; this switch is the 32-bit twin.
++    vulkan_args=(--without-vulkan)
++    if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then vulkan_args=(); fi
++    (cd "$B" && ../configure --enable-archs=i386 --without-x "${vulkan_args[@]}" \
+                              --without-freetype --without-gnutls --disable-tests \
+                              --enable-winegstreamer)
+ fi
+@@ -60,7 +65,7 @@ SKIP_REASON=(
+   "xtajit.dll|xtajit64.dll|wow64.dll|wow64win.dll|wow64cpu.dll=64-bit side of WoW64, never i386"
+   "winemac.drv=macOS display driver; the display goes through win32u + Winios"
+   "wineps.drv=PostScript/CUPS; no CUPS unix side on iOS"
+-  "winevulkan.dll|vulkan-1.dll=tree is --without-vulkan; graphics go through DXMT"
++  "winevulkan.dll|vulkan-1.dll=skipped unless MADEIRA_WITH_VULKAN=1; DXMT remains the D3D path"
+   "opencl.dll|wpcap.dll=wrappers over host unix libraries that are not built for iOS"
+   "wow32.dll|winevdm.exe|vga.dll|hal.dll|w32skrnl.dll=16-bit layer; no 16-bit modules in a WoW64 tree"
+   "winemenubuilder.exe=writes host desktop menu entries; there is no host desktop"
+@@ -72,7 +77,14 @@ SKIP_REASON=(
+   "d3d9.dll=DXMT-owned: the shim and the emulated frontend are installed below"
+ )
+ SKIP=()
+-for e in "${SKIP_REASON[@]}"; do IFS='|' read -r -a n <<< "${e%%=*}"; SKIP+=("${n[@]}"); done
++for e in "${SKIP_REASON[@]}"; do
++    names="${e%%=*}"
++    if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ] && [ "$names" = "winevulkan.dll|vulkan-1.dll" ]; then
++        continue
++    fi
++    IFS='|' read -r -a n <<< "$names"
++    SKIP+=("${n[@]}")
++done
+ is_in() { local x="$1"; shift; for y in "$@"; do [ "$x" = "$y" ] && return 0; done; return 1; }
+ 
+ TARGETS=()
+diff --git a/build/wine-pe/build-modules.sh b/build/wine-pe/build-modules.sh
+index b874b29..b41b93c 100755
+--- a/build/wine-pe/build-modules.sh
++++ b/build/wine-pe/build-modules.sh
+@@ -40,7 +40,16 @@ STRIP="$TC/arm64ec-w64-mingw32-strip"
+ case "${1:-}" in
+     -h|--help) sed -n '2,/^set -eu/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+ esac
+-[ $# -gt 0 ] || set -- cryptsp d3dx11_43 msvcp110 msvcr110 xaudio2_7
++default_modules=0
++[ $# -gt 0 ] || { default_modules=1; set -- cryptsp d3dx11_43 msvcp110 msvcr110 xaudio2_7; }
++# AnyPS5 loads vulkan-1.dll. The arm64ec configure does not pass
++# --without-vulkan; these two PE modules are the ICD the guest imports.
++# The unix side is the iOS static MoltenVK link (build/win32u-unix), not
++# this configure's dlopen. Pass the names explicitly, or set
++# MADEIRA_WITH_VULKAN=1 to append them to the default list.
++if [ "$default_modules" = 1 ] && [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then
++    set -- "$@" winevulkan vulkan-1
++fi
+ [ -x "$STRIP" ] || { echo "llvm-mingw not found at $TC (docs/BUILDING.md)" >&2; exit 1; }
+ 
+ targets=()
+@@ -53,7 +62,9 @@ for m in "$@"; do
+         */*|.*|"") echo "$m: name a module directory under wine/dlls" >&2; exit 1 ;;
+     esac
+     [ -f "$R/wine/dlls/$m/Makefile.in" ] || { echo "$m: no wine/dlls/$m/Makefile.in" >&2; exit 1; }
+-    case "$m" in *.*) f="$m" ;; *) f="$m.dll" ;; esac
++    # vulkan-1 is a directory whose product is vulkan-1.dll. The '*.*' rule
++    # exists for modules that already include their extension (winecoreaudio.drv).
++    case "$m" in vulkan-1) f="vulkan-1.dll" ;; *.*) f="$m" ;; *) f="$m.dll" ;; esac
+     targets+=("dlls/$m/arm64ec-windows/$f")
+ done
+ 

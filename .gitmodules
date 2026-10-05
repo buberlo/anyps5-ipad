@@ -1,0 +1,17 @@
+[submodule "upstreams/AnyPS5"]
+	path = upstreams/AnyPS5
+	url = https://github.com/boykopovar/AnyPS5.git
+[submodule "upstreams/Madeira"]
+	path = upstreams/Madeira
+	url = https://github.com/willfaust/Madeira.git
+[submodule "upstreams/FEX"]
+	path = upstreams/FEX
+	url = https://github.com/willfaust/FEX.git
+	branch = ios-port-2607
+[submodule "upstreams/wine"]
+	path = upstreams/wine
+	url = https://github.com/willfaust/wine.git
+	branch = madeira-lgpl
+[submodule "upstreams/MoltenVK"]
+	path = upstreams/MoltenVK
+	url = https://github.com/KhronosGroup/MoltenVK.git

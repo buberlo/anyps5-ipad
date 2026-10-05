@@ -1,0 +1,106 @@
+# Milestones
+
+Acceptance is observational. A milestone is done when the check below has
+been run and the result recorded, including a failure with a log. Guessing
+that a later stage will pass does not close an earlier one.
+
+This foundation run closed none of M0–M5 end to end. It added the repo, the
+capability tool (run on lavapipe, `hard_fail=0`), a Linux AnyPS5 build, and
+the M4 patch drafts. Per-item status is in [PATCHES.md](PATCHES.md).
+
+## M0 — AnyPS5 on x86-64
+
+Build AnyPS5 on x86-64 and produce a Windows PE with `--windows --to-intel`.
+Run that PE natively on Windows, or run the project's own tests on Linux.
+
+**Acceptance**
+
+- `scripts/m0-build-anyps5.sh` finishes, or the log shows the first failing
+  target.
+- `cmake --build build/anyps5 --target libs` produces the HLE libraries.
+- A relink of a user-supplied ELF is not required to close M0. If no ELF is
+  available, an upstream test binary under `core/` is enough.
+- No title, firmware, or key is downloaded to make the build pass.
+
+**This run.** `scripts/m0-build-anyps5.sh` finished on this x86-64 Linux VM
+(gcc/g++ 13.3, CMake 3.28, Ninja, Release). It produced:
+
+- `build/anyps5/core/relinker/relinker`, a 3.5 MiB statically linked x86-64 ELF
+- `libc.prx` (includes `GuestArena.cpp` with patch 0001 applied)
+- `libkernel.prx`
+- `libSceAgcDriver.prx` (includes `VulkanDevice.cpp` with patch 0002 applied)
+
+`libSceAgcDriver` is `EXCLUDE_FROM_ALL`, so the default build did not emit
+it. A follow-up `cmake --build build/anyps5 --target libSceAgcDriver` did.
+The 17 synthetic Python tests under
+`core/relinker/relinker/tests/` were run against that relinker and all
+printed `PASS` (`failed=0`). They do not load a title. No Windows PE was
+produced: the CMake target here is the Linux host. No user ELF was relinked.
+
+## M1 — The same PE under Wine + FEX on ARM64 Linux
+
+**Acceptance**
+
+- An ARM64 Linux machine, FEX, and Wine.
+- The PE from M0 starts under `FEXInterpreter wine64` far enough to reach
+  guest entry without a Vulkan ICD.
+- `APS5_GUEST_ARENA_LAZY=1` is set so startup does not reserve 448 GiB.
+- A missing game is an acceptable stop. A crash inside GuestArena or FEX
+  before any guest instruction is not.
+
+**This run.** `scripts/m1-wine-fex-arm64.sh` refuses to run on a non-ARM
+host and prints the command. It was not executed against a PE.
+
+## M2 — Vulkan under Wine + FEX on ARM64 Linux
+
+**Acceptance**
+
+- M1, plus a real ICD (`VK_DRIVER_FILES` pointing at lavapipe or hardware).
+- `tools/vk-requirements/vk-requirements` inside that environment reports
+  `hard_fail=0`, or the log names the first hard feature the ICD lacks.
+- The PE creates a `VkDevice` (AnyPS5 log line `Vulkan device ready`) or
+  fails on a feature this tool already reported.
+
+## M3 — winevulkan + MoltenVK on macOS
+
+**Acceptance**
+
+- Apple Silicon Mac, MoltenVK, Wine built with Vulkan.
+- The capability tool against MoltenVK. Record `stock-anyps5-device-count`
+  versus `portability-device-count`, and every `HARD` line.
+- Expected risks, not yet measured: `textureCompressionBC`,
+  `shaderInt64`, buffer-device address, 8-bit storage, and the portability
+  subset. A missing hard feature ends M3 with a written gap, not a silent
+  skip.
+
+## M4 — Madeira patches on iOS
+
+**Acceptance**
+
+- Wine's iOS unix build defines `SONAME_LIBVULKAN` and `dlsym` returns
+  MoltenVK's `vkGetInstanceProcAddr` from inside the app process.
+- `winios_pVulkanInit` creates a `VkSurfaceKHR` from the HWND's
+  `CAMetalLayer` (`VK_EXT_metal_surface`).
+- `MADEIRA_FEX_AVX=1` is set for the title, and a VEX instruction executes
+  under FEX instead of raising SIGILL. `=0` still disables AVX.
+- GuestArena comes up with `APS5_GUEST_ARENA_LAZY=1` and a size that
+  `VirtualQuery`/`VirtualAlloc` accepts. The default 448 GiB eager reserve
+  is not the iPad configuration.
+- `Madeira.entitlements` contains
+  `com.apple.developer.kernel.extended-virtual-addressing`, and a signed
+  build's profile grants it (`EntitlementChecker` already prints
+  `profile-extended-va`). The address map is the 512 GB one, not the 63 GB
+  one.
+- iOS builds are not run from the Linux VM. Device logs are the evidence.
+
+## M5 — First menu on an iPad
+
+**Acceptance**
+
+- An M-series iPad, ideally 16 GB of RAM, sideloaded Madeira with the M4
+  patches, StikDebug providing JIT.
+- One legally obtained title that AnyPS5 already runs (the only title named
+  in AnyPS5's `docs/user/COMPATIBILITY.md` at the pinned commit is Dreaming
+  Sarah) reaches its menu.
+- Frame time, missing Vulkan features, and FEX faults are written down.
+  Reaching the menu once is the bar, not playability.

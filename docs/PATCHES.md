@@ -145,13 +145,10 @@ upstream commits; the patches are the delta.
   PRX files.
 - Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
   that returned 42. Host Wine segfaults in qemu before the PE prints
-  anything. On GitHub `ubuntu-24.04-arm` native FEX and FEXServer linked
-  again on `2d7c2b8` (Ubuntu clang 18.1.3). ubuntu-base 24.04.5
-  extracted. `apt-get update` inside that rootfs then failed: the image
-  keyrings in `trusted.gpg.d` are an unsupported filetype, and noble was
-  `NO_PUBKEY 871920D1991BC93C`. The nostdlib guest and the PE were not
-  run. The script now copies the host archive keyring and points apt at
-  it with `Signed-By`. That install has not been recorded yet.
+  anything. On GitHub `ubuntu-24.04-arm` (`a54b497`) native FEX ran that
+  same nostdlib guest to exit 42, and `wine64` 9.0 was installed from
+  ubuntu-base. The synthetic PE did not start: Wine exited 1 because
+  `/tmp` was not owned by the runner user.
 
 ## Untested, and not claimed
 
@@ -248,11 +245,18 @@ and failed in Swift: `BGContinuedProcessingTask` is not in that SDK
 selects Xcode 26 or later on `macos-15`. That build is not recorded yet.
 
 `linux` and `winlibs` on `2d7c2b8` and `a54b497` were cancelled before
-a runner was assigned (`The job was not acquired by Runner of type
-hosted even after multiple attempts`). `libc.prx` and
-`libSceAgcDriver.prx` still do not exist. The `54e5815` Windows failure
-was curl error 60 from WinLibs' cmake; the script calls GitHub's CMake
-when that file exists. That path has not been recorded.
+a runner was assigned. The check annotation is `The job was not acquired
+by Runner of type hosted even after multiple attempts`, at 15 minutes,
+and the next push had not happened yet. Each workflow had one
+`pull_request` run. `cancel-in-progress` did not fire those two
+cancels. The concurrency group was still `*-${{ github.ref }}`, which is
+`refs/pull/1/merge` for every push to this PR, so a newer push cancels
+a workflow that is still pending in that group. The group is now the
+commit SHA. If `windows-latest` is cancelled before it starts, the same
+steps run on `windows-2022`. `libc.prx` and `libSceAgcDriver.prx` still
+do not exist. The `54e5815` Windows failure was curl error 60 from
+WinLibs' cmake; the script calls GitHub's CMake when that file exists.
+That path has not been recorded.
 
 ## Left for Konrad
 

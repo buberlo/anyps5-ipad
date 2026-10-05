@@ -8,15 +8,17 @@ on:
 permissions:
   contents: read
 
+# Per commit, not per pull request ref. A shared refs/pull/N/merge
+# group cancels a run that is still waiting for a hosted runner.
 concurrency:
-  group: linux-${{ github.ref }}
-  cancel-in-progress: true
+  group: linux-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    steps:
+    steps: &linux-steps
       - uses: actions/checkout@v4
 
       - name: Install compilers, lavapipe, and MinGW
@@ -50,6 +52,13 @@ jobs:
 
       - name: Run the synthetic PE under Wine
         run: scripts/m0-synthetic-pe-wine.sh
+
+  linux-fallback:
+    needs: linux
+    if: always() && needs.linux.result == 'cancelled'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps: *linux-steps
 
   winevulkan:
     runs-on: ubuntu-24.04

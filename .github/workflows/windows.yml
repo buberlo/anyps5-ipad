@@ -8,15 +8,20 @@ on:
 permissions:
   contents: read
 
+# One group per commit. github.ref on a pull_request is
+# refs/pull/N/merge for every push, and a newer run cancels a workflow
+# that is still pending in that group. The 15-minute
+# "not acquired by Runner" cancel is a separate hosted-runner timeout;
+# the fallback job covers it.
 concurrency:
-  group: windows-${{ github.ref }}
-  cancel-in-progress: true
+  group: windows-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   winlibs:
     runs-on: windows-latest
     timeout-minutes: 180
-    steps:
+    steps: &winlibs-steps
       - uses: actions/checkout@v4
 
       - name: Fetch AnyPS5
@@ -28,3 +33,10 @@ jobs:
       - name: Build libc.prx and libSceAgcDriver.prx with WinLibs GCC 15.2
         shell: bash
         run: scripts/m0-build-anyps5-winlibs.sh
+
+  winlibs-fallback:
+    needs: winlibs
+    if: always() && needs.winlibs.result == 'cancelled'
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps: *winlibs-steps

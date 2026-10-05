@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-${{ github.ref }}
-  cancel-in-progress: true
+  group: macos-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   moltenvk:

@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: arm64-${{ github.ref }}
-  cancel-in-progress: true
+  group: arm64-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   synthetic-pe:

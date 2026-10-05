@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config python3 \
+            build-essential g++-12 cmake ninja-build pkg-config python3 \
             libvulkan-dev mesa-vulkan-drivers \
             g++-mingw-w64-x86-64 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \

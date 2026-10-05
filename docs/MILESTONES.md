@@ -73,14 +73,14 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` (`a54b497`, `c161948`, `4b6d5a4`,
-`dba67bd`, and `2e74b7d`) native FEX linked, ubuntu-base 24.04.5
-supplied `wine64` 9.0, and a nostdlib x86-64 guest exited 42 under
-FEX. On `2e74b7d` the host prefix was visible inside the guest,
-`kernel32.dll` was on disk, `WINEDLLPATH` was
-`/usr/lib/x86_64-linux-gnu/wine`, and the PE still exited 53:
-`wine: could not load kernel32.dll, status c0000135`. M1 is not
-closed.
+On GitHub `ubuntu-24.04-arm` (`15978d4`) native FEX linked,
+ubuntu-base 24.04.5 supplied `wine64` 9.0, and a nostdlib x86-64
+guest exited 42 under FEX. After the Wine library directory was
+bind-mounted onto the host, the synthetic PE exited 42 under
+`FEX` plus `wine64`. The module trace mapped `kernel32.dll` from
+`Z:\usr\lib\x86_64-linux-gnu\wine\x86_64-windows\kernel32.dll`.
+`APS5_GUEST_ARENA_LAZY=1` was set. The fixture does not call Vulkan
+and does not exercise GuestArena. A title was not run.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 

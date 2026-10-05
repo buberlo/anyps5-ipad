@@ -425,6 +425,28 @@ archives, and `libmadeira_rppairing.a` are still absent.
 `build/wineserver/build.sh` exits with `No base libwineserver.a
 found` on a clean tree. That `xcodebuild` is not recorded yet.
 
+On `15978d4` the MinGW probe let `linux-ubuntu-22` continue. The
+capability tool had already passed. The job then failed compiling
+`libSceAgcDriver`: g++ 11's libstdc++ rejects
+`std::atomic<std::shared_ptr<VulkanDevice>>` in `DeviceAccess.hpp`
+(`static assertion failed: std::atomic requires a trivially copyable
+type`). The `ubuntu-24.04` `linux` job, whose g++ is 13, passed.
+The Linux build now uses `g++-12` when the default compiler fails
+that probe. That 22.04 compile is not a hosted-runner result yet.
+
+`fex-wine` on `15978d4` (`ubuntu-24.04-arm`) bind-mounted
+`/usr/lib/x86_64-linux-gnu/wine` and `/usr/share/wine` onto the host,
+unregistered qemu's x86 binfmt handlers, and ran with
+`WINEDEBUG=+module,+file`. The nostdlib guest exited 42. A guest
+`ls` of `kernel32.dll` exited 0. Wine mapped
+`Z:\usr\lib\x86_64-linux-gnu\wine\x86_64-windows\kernel32.dll` and
+`sample.exe` exited 42. The trace default is `-all` again. The PE
+does not call Vulkan.
+
+`madeira-simulator` on `15978d4` was still running when this note
+was written. The unsigned build omits `MadeiraJITHelper`. That log
+is not recorded yet.
+
 ## Left for Konrad
 
 Sign a build, install it with StikDebug on a real iPad, and boot a tiny

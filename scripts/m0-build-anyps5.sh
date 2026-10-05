@@ -23,6 +23,29 @@ if [ "$(uname -m)" != "x86_64" ]; then
 fi
 
 git -C "$root/upstreams/AnyPS5" submodule update --init --depth 1
+
+# Ubuntu 22.04's default g++ is 11. libstdc++ 11 rejects
+# std::atomic<std::shared_ptr<T>> (DevicePointer in libSceAgcDriver).
+# g++ 12 and newer accept it. ubuntu-24.04's default g++ already does.
+mkdir -p "$root/build"
+cc="${CC:-gcc}"
+cxx="${CXX:-g++}"
+cat > "$root/build/atomic-shared-ptr.cpp" << 'EOF'
+#include <atomic>
+#include <memory>
+std::atomic<std::shared_ptr<int>> probe{std::shared_ptr<int>{}};
+EOF
+if ! "$cxx" -std=c++20 -c "$root/build/atomic-shared-ptr.cpp" -o "$root/build/atomic-shared-ptr.o"; then
+    if [ -z "${CXX:-}" ] && command -v g++-12 >/dev/null 2>&1; then
+        cc=gcc-12
+        cxx=g++-12
+        "$cxx" -std=c++20 -c "$root/build/atomic-shared-ptr.cpp" -o "$root/build/atomic-shared-ptr.o"
+    else
+        echo "this C++ compiler cannot build std::atomic<std::shared_ptr<T>>" >&2
+        exit 1
+    fi
+fi
+echo "AnyPS5 compiler: $cc / $cxx ($("$cxx" -dumpversion))"
 # APS5_SLIM=1 loads vulkan-1.dll / libvulkan.so.1 with LoadLibrary/dlopen
 # and does not link SDL2 into libSceAgcDriver. libSceVideoOut and libfmod
 # still use SDL. Default (unset) keeps the upstream SDL loader.
@@ -32,8 +55,8 @@ if [ "${APS5_SLIM:-}" = 1 ]; then
 fi
 cmake -S "$root/upstreams/AnyPS5" -B "$root/build/anyps5" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=gcc \
-    -DCMAKE_CXX_COMPILER=g++ \
+    -DCMAKE_C_COMPILER="$cc" \
+    -DCMAKE_CXX_COMPILER="$cxx" \
     -DBUILD_TESTING="${BUILD_TESTING:-OFF}" \
     -DAPS5_SLIM="$slim_flag"
 if [ -n "${APS5_TARGETS:-}" ]; then

@@ -206,7 +206,9 @@ if [ -d /proc/sys/fs/binfmt_misc ]; then
     done
 fi
 export WINEPREFIX="$prefix"
-export WINEDEBUG="${WINEDEBUG:-+module,+file}"
+# 15978d4 ran with +module,+file. kernel32.dll mapped from the host
+# bind mount and sample.exe exited 42. The default is quiet again.
+export WINEDEBUG="${WINEDEBUG:--all}"
 set +e
 "$fex" "$wine_guest" "$HOME/sample.exe"
 pe_status=$?

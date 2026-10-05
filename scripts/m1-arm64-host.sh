@@ -123,8 +123,10 @@ test -f "$sample"
 # Wine refuses to create a prefix under a directory it does not own.
 # /tmp in the ubuntu-base rootfs is root-owned, which produced
 # "wine: '/tmp' is not owned by you" and exit 1 before the PE ran.
-sudo mkdir -p "$rootfs/home/fex"
-sudo chown "$(id -u):$(id -g)" "$rootfs/home/fex"
+# Wine 9 also chdirs into WINEPREFIX before creating it
+# ("chdir to /home/fex/prefix : No such file or directory").
+sudo mkdir -p "$rootfs/home/fex/prefix"
+sudo chown -R "$(id -u):$(id -g)" "$rootfs/home/fex"
 sudo cp "$sample" "$rootfs/home/fex/sample.exe"
 sudo chmod 755 "$rootfs/home/fex/sample.exe"
 

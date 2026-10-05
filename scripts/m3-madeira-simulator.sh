@@ -31,9 +31,38 @@ fi
 if ! command -v cmake >/dev/null 2>&1; then
     brew install cmake ninja
 fi
-# Generates FEXCore headers (ConfigValues.inl) and the static libraries
-# the app project links. This does not build llvm-ios or fetch vcruntime.
-"$root/upstreams/Madeira/build/fex-ios/build.sh"
+# Drop the symlink before checkout's post step. git submodule foreach
+# refuses a submodule path that is a symbolic link.
+cleanup_fex_link() {
+    if [ -L "$fex_at" ]; then
+        rm -f "$fex_at"
+    fi
+}
+trap cleanup_fex_link EXIT
+
+# Madeira's build/fex-ios/build.sh passes CMAKE_OSX_SYSROOT=iphoneos and
+# does not set CMAKE_SYSTEM_PROCESSOR. On the macos-15 runner that
+# configure used /usr/bin/cc and failed with "Unsupported processor type".
+sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
+fex_build="$root/upstreams/FEX/build-ios"
+cmake -S "$root/upstreams/FEX" -B "$fex_build" \
+    -DCMAKE_SYSTEM_NAME=iOS \
+    -DCMAKE_SYSTEM_PROCESSOR=arm64 \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_SYSROOT="$sdk" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+    -DCMAKE_C_COMPILER="$(xcrun -sdk iphoneos -f clang)" \
+    -DCMAKE_CXX_COMPILER="$(xcrun -sdk iphoneos -f clang++)" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_THUNKS=OFF \
+    -DBUILD_FEXCONFIG=OFF \
+    -DBUILD_FEX_LINUX_TESTS=OFF \
+    -DENABLE_FEX_ALLOCATOR=OFF \
+    -DENABLE_ASSERTIONS=OFF \
+    -DENABLE_CLANG_THUNKS=ON \
+    -DENABLE_CCACHE=OFF
+cmake --build "$fex_build" --target FEXCore FEXCore_Base --parallel
 
 # Device SDK matches fex-ios (iphoneos). Signing stays off. The project
 # still references libdxmt_combined.a and x86_64-vcruntime, which are not

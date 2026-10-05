@@ -160,45 +160,60 @@ index 4d0fd0e..9021b2b 100644
              {
                  unsigned long long st = ios_alert_stamp[ios_alert_slot( futex )];
 diff --git a/dlls/win32u/dibdrv/bitblt.c b/dlls/win32u/dibdrv/bitblt.c
-index fa1f842..bdee06b 100644
+index fa1f842..b785ff9 100644
 --- a/dlls/win32u/dibdrv/bitblt.c
 +++ b/dlls/win32u/dibdrv/bitblt.c
-@@ -32,6 +32,16 @@
+@@ -32,6 +32,30 @@
  
  WINE_DEFAULT_DEBUG_CHANNEL(dib);
  
 +/* Madeira defines these in signal_arm64_ios.c and Winios.m, which this
-+ * unix library does not link. GNU ld turns a missing weak symbol into
-+ * NULL. Apple ld still errors on a missing weak symbol; weak_import is
-+ * the form that resolves to NULL. */
-+#if defined(__APPLE__)
-+#define MADEIRA_OPTIONAL __attribute__((weak_import))
-+#else
-+#define MADEIRA_OPTIONAL __attribute__((weak))
-+#endif
++ * unix library does not link. A weak declaration is not enough: Apple ld
++ * reports a missing weak or weak_import symbol as undefined. A weak
++ * definition in this file satisfies both linkers, and a strong
++ * definition elsewhere still wins. */
++__attribute__((weak))
++void winios_dump_srcbits( const void *bits, int w, int h, int stride )
++{
++    (void)bits; (void)w; (void)h; (void)stride;
++}
++
++__attribute__((weak))
++void ios_srcwatch_arm_geom( const void *bits, unsigned long len,
++                            unsigned w, unsigned h, unsigned stride )
++{
++    (void)bits; (void)len; (void)w; (void)h; (void)stride;
++}
++
++__attribute__((weak))
++void ios_srcwatch_arm( const void *bits, unsigned long len )
++{
++    (void)bits; (void)len;
++}
 +
  #define DST 0   /* Destination dib */
  #define SRC 1   /* Source dib */
  #define TMP 2   /* Temporary dib */
-@@ -1036,7 +1046,7 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
+@@ -1035,8 +1059,6 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
+          *
           * One variable, one comparison, no runs wasted on either answer. */
          {
-             extern void winios_dump_srcbits( const void *bits, int w, int h, int stride )
+-            extern void winios_dump_srcbits( const void *bits, int w, int h, int stride )
 -                __attribute__((weak));
-+                MADEIRA_OPTIONAL;
              if (winios_dump_srcbits)
                  winios_dump_srcbits( bits->ptr,
                                       dst->visrect.right - dst->visrect.left,
-@@ -1050,7 +1060,7 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
+@@ -1048,9 +1070,6 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
+          * watch to a row band via MADEIRA_SRCWATCH_ROWS and (b) report faults as
+          * (x,y,tile_col) instead of raw byte offsets. Falls back to the whole
           * buffer when the env var is unset. */
-         extern void ios_srcwatch_arm_geom( const void *bits, unsigned long len,
-                                            unsigned w, unsigned h, unsigned stride )
+-        extern void ios_srcwatch_arm_geom( const void *bits, unsigned long len,
+-                                           unsigned w, unsigned h, unsigned stride )
 -            __attribute__((weak));
-+            MADEIRA_OPTIONAL;
          if (ios_srcwatch_arm_geom)
          {
              unsigned gw = dst->visrect.right - dst->visrect.left;
-@@ -1062,12 +1072,16 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
+@@ -1062,12 +1081,12 @@ DWORD dibdrv_PutImage( PHYSDEV dev, HRGN clip, BITMAPINFO *info,
                                     gw, gh, gw * 4 );
          }
          else {
@@ -208,10 +223,6 @@ index fa1f842..bdee06b 100644
 -                              (unsigned long)info->bmiHeader.biSizeImage :
 -                              (unsigned long)((dst->visrect.right - dst->visrect.left) * 4 *
 -                                              (dst->visrect.bottom - dst->visrect.top)) );
-+        /* Defined in Madeira's signal_arm64_ios.c, which is not in the
-+         * Linux ntdll.so. A weak miss skips the watch. */
-+        extern void ios_srcwatch_arm( const void *bits, unsigned long len )
-+            MADEIRA_OPTIONAL;
 +        if (ios_srcwatch_arm)
 +            ios_srcwatch_arm( bits->ptr,
 +                              (unsigned long)info->bmiHeader.biSizeImage ?

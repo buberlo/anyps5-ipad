@@ -34,9 +34,24 @@ jobs:
         shell: bash
         run: scripts/m0-build-anyps5-winlibs.sh
 
+  # A runner that dies mid-build is conclusion failure, not cancelled
+  # ("lost communication with the server" on c161948). Retry that too.
+  # The job is skipped when the primary succeeded, so a green build
+  # does not queue a second Windows runner.
   winlibs-fallback:
     needs: winlibs
-    if: always() && needs.winlibs.result == 'cancelled'
+    if: always() && needs.winlibs.result != 'success'
     runs-on: windows-2022
     timeout-minutes: 180
-    steps: *winlibs-steps
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch AnyPS5
+        shell: bash
+        run: |
+          git submodule update --init --depth 1 upstreams/AnyPS5
+          git -C upstreams/AnyPS5 submodule update --init --depth 1
+
+      - name: Build libc.prx and libSceAgcDriver.prx with WinLibs GCC 15.2
+        shell: bash
+        run: scripts/m0-build-anyps5-winlibs.sh

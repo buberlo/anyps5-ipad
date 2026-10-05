@@ -73,11 +73,11 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` (`a54b497`) native FEX linked, ubuntu-base
-24.04.5 supplied `wine64` 9.0, and a nostdlib x86-64 guest exited 42
-under FEX. Wine then exited 1 because `/tmp` in that rootfs is not
-owned by the runner user, before the synthetic PE started. M1 is not
-closed.
+On GitHub `ubuntu-24.04-arm` (`a54b497` and `c161948`) native FEX
+linked, ubuntu-base 24.04.5 supplied `wine64` 9.0, and a nostdlib
+x86-64 guest exited 42 under FEX. On `c161948` the PE exited 1:
+`wine: chdir to /home/fex/prefix : No such file or directory`. M1 is
+not closed.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 

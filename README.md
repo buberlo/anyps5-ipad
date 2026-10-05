@@ -22,10 +22,10 @@ is a foundation and the first patch drafts, not a title running on a device.
 | M4 patch drafts (Vulkan, AVX, GuestArena, entitlement) | in `patches/`; see [docs/PATCHES.md](docs/PATCHES.md) for what was compiled |
 | iOS build or device run | not done; this environment is a Linux VM |
 | M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. Ubuntu GCC 13 does not link `libc.prx`. WinLibs GCC 15.2 on `windows-latest` (`f1d3f06`) linked `libc.prx` and `libSceAgcDriver.prx` (`APS5_SLIM=ON`). Sizes were not printed |
-| M1 Wine+FEX on ARM64 Linux | On `ubuntu-24.04-arm`, native FEX ran a nostdlib x86-64 guest to exit 42. Wine exited 1 before the synthetic PE because the prefix directory was not owned by the user |
+| M1 Wine+FEX on ARM64 Linux | On `ubuntu-24.04-arm`, native FEX ran a nostdlib x86-64 guest to exit 42 (`c161948` again). The PE exited 1: Wine could not `chdir` to `/home/fex/prefix` because that directory did not exist |
 | Linux winevulkan | `ntdll.so`, `win32u.so`, and `winevulkan.so` linked on this VM and on GitHub `ubuntu-24.04`. Not executed. iOS drafts are not compiled here |
 | MoltenVK on macOS | `macos-15` runner, portability instance: `hard_fail=0` on Apple Paravirtual device (API 1.1.357). Stock instance sees 0 devices. Not an iPad GPU |
-| CI | `linux`, `winevulkan`, and WinLibs PRX passed on `f1d3f06`. MoltenVK `macos-15` passed. `synthetic-pe` was cancelled before a runner, so the FEX+Wine PE is not recorded. iOS draft compile and the unsigned Madeira app are not green yet. See [docs/PATCHES.md](docs/PATCHES.md) |
+| CI | `linux`, `winevulkan`, and WinLibs PRX passed on `f1d3f06`. MoltenVK `macos-15` passed again on `c161948`. That commit's Linux jobs were cancelled before a runner, WinLibs lost the runner mid-build, and the iOS draft and simulator jobs failed as recorded in [docs/PATCHES.md](docs/PATCHES.md) |
 | Slim Vulkan path | [docs/SLIM.md](docs/SLIM.md). `APS5_SLIM=1` drops SDL from `libSceAgcDriver` (8.87 MB → 6.74 MB on Linux). DXMT and D3D are not in this build |
 
 What to leave out of a Vulkan-only iPad build: [docs/SLIM.md](docs/SLIM.md).

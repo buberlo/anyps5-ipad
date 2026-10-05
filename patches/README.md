@@ -10,7 +10,7 @@ submodule by hand and forget to refresh the patch.
 | `anyps5` | GuestArena size/base/lazy reserve; MoltenVK portability bits; `GetThreadDescription` prototype for mingw-w64 11; `APS5_SLIM` Vulkan loader without SDL |
 | `madeira` | FEXBridge AVX switch; extended-virtual-addressing; winevulkan + MoltenVK |
 | `fex` | rpmalloc POSIX `write` log; declare `InitializeAllocator`; keep iOS compile-block logs under `FEX_IOS_HOST`; `VirtualQuery` only on Windows |
-| `wine` | Linux guards so `ntdll.so` / `win32u.so` / `winevulkan.so` link: monotonic clock instead of mach time, QoS calls kept on Apple, optional `ios_srcwatch_arm` (`weak` on Linux, `weak_import` on Apple) |
+| `wine` | Linux guards so `ntdll.so` / `win32u.so` / `winevulkan.so` link: monotonic clock instead of mach time, QoS calls kept on Apple, weak definitions for the Madeira srcwatch symbols |
 | `moltenvk` | empty. No MoltenVK source change in this round. |
 
 Status, including what was compiled and what was not: [../docs/PATCHES.md](../docs/PATCHES.md).

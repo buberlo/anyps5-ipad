@@ -73,10 +73,10 @@ if [ ! -f "$build/Makefile" ]; then
 fi
 
 # patches/wine/0001 guards the Apple QoS and mach time calls in ntdll
-# unix/sync.c, and makes the Madeira srcwatch symbols optional in
-# win32u (weak on Linux, weak_import on Apple). With that applied, the
-# unix libraries link on Linux. The .so dlopens libvulkan.so.1 through
-# win32u; it does not create a device.
+# unix/sync.c, and defines the Madeira srcwatch symbols as weak in
+# win32u. Apple ld rejects a missing weak reference; a weak definition
+# links. With that applied, the unix libraries link on Linux. The .so
+# dlopens libvulkan.so.1 through win32u; it does not create a device.
 make -C "$build" -j"${JOBS:-$(nproc)}" \
     dlls/ntdll/ntdll.so \
     dlls/win32u/win32u.so \

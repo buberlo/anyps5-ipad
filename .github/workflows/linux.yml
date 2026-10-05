@@ -53,9 +53,9 @@ jobs:
       - name: Run the synthetic PE under Wine
         run: scripts/m0-synthetic-pe-wine.sh
 
-  linux-fallback:
-    needs: linux
-    if: always() && needs.linux.result == 'cancelled'
+  # Starts with the primary. A needs: fallback was skipped on c161948
+  # when ubuntu-24.04 was cancelled before a runner was assigned.
+  linux-ubuntu-22:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps: *linux-steps
@@ -63,7 +63,7 @@ jobs:
   winevulkan:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    steps:
+    steps: &winevulkan-steps
       - uses: actions/checkout@v4
 
       - name: Install Wine build dependencies
@@ -86,3 +86,8 @@ jobs:
             build/wine-linux/dlls/winevulkan/winevulkan.so
           objdump -p build/wine-linux/dlls/win32u/win32u.so | grep NEEDED
           strings build/wine-linux/dlls/win32u/vulkan.o | grep libvulkan.so.1
+
+  winevulkan-ubuntu-22:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps: *winevulkan-steps

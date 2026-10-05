@@ -102,6 +102,16 @@ echo "slim libdxmt_combined.a (no-op, not DXMT)"
 mkdir -p "$app_dir/x86_64-vcruntime"
 echo "x86_64-vcruntime left empty (Microsoft redistributable, not fetched)"
 
+# StikJIT's .swiftinterface was emitted by Swift 6.4 and spells types as
+# Swift::Sendable. Xcode 26.3 (the newest Xcode on the macos-15 image)
+# stops at that colon: "expected '{' in struct". The dotted spelling is
+# what that compiler accepts. This does not rebuild the xcframework.
+while IFS= read -r iface; do
+    perl -i.bak -pe 's/::/./g' "$iface"
+    rm -f "$iface.bak"
+    echo "rewrote Swift 6.4 qualifiers in ${iface#"$root/"}"
+done < <(find "$root/upstreams/Madeira/app/Frameworks/StikJIT.xcframework" -name '*.swiftinterface')
+
 xcodebuild \
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj" \
     -scheme Madeira \

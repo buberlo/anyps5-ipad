@@ -75,11 +75,17 @@ new file mode 100644
 index 0000000..ec2b231
 --- /dev/null
 +++ b/build/win32u-unix/moltenvk_static_loader.c
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,55 @@
 +#include "moltenvk_static_loader.h"
 +
 +#include <dlfcn.h>
 +#include <string.h>
++
++/* glibc 2.35 (Ubuntu 22.04) hides RTLD_DEFAULT unless _GNU_SOURCE.
++ * The value is the same one current glibc publishes by default. */
++#ifndef RTLD_DEFAULT
++#define RTLD_DEFAULT ((void *)0)
++#endif
 +
 +static int g_static_icd_sentinel;
 +

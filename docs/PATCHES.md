@@ -366,6 +366,33 @@ configure is not recorded yet. The app target still lists
 `libavformat.a`, and `libmadeira_rppairing.a`, which this script does
 not build.
 
+On `dba67bd` the Ubuntu 22.04 capability tool compiled and ran.
+lavapipe (LLVM 15.0.7) API 1.3.255, `hard_fail=0`,
+`optional_missing=5` (mesh shader, fragment shader barycentric,
+`VK_EXT_image_view_min_lod`, `VK_KHR_maintenance8`, `depthBounds`).
+`VK_KHR_portability_enumeration` was absent. The same step then
+failed to compile `moltenvk_static_loader.c`: `RTLD_DEFAULT` is
+undeclared in that glibc unless `_GNU_SOURCE` is set. The loader
+now defines `RTLD_DEFAULT` as `((void *)0)` when the header does
+not. That compile is not a hosted-runner result yet.
+
+`fex-wine` on `dba67bd` ran the nostdlib guest to exit 42. The host
+prefix `/home/runner/fex-prefix` existed, and a guest `ls` of it
+exited 0. `wine64` then printed `wine: could not load kernel32.dll,
+status c0000135` and exited 53. Ubuntu stores that DLL at
+`/usr/lib/x86_64-linux-gnu/wine/x86_64-windows/kernel32.dll`. The
+script now sets `WINEDLLPATH` from that file. That run is not
+recorded yet.
+
+`madeira-simulator` on `dba67bd` configured and built the iOS FEX
+archives (`libFEXCore.a` 4,867,464 bytes, `libFEXCore_Base.a`
+238,360 bytes) and compiled the slim `libdxmt_combined.a`.
+`xcodebuild` then failed in `MadeiraJITHelper`: StikJIT's
+`arm64-apple-ios.private.swiftinterface` was emitted by Swift 6.4
+(`Swift::Sendable`), and Xcode 26.3 reports `expected '{' in struct`
+at that colon. The script rewrites those `::` qualifiers to `.`
+before `xcodebuild`. That build is not recorded yet.
+
 ## Left for Konrad
 
 Sign a build, install it with StikDebug on a real iPad, and boot a tiny

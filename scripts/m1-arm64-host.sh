@@ -156,6 +156,17 @@ if [ -z "$wine_guest" ]; then
     exit 1
 fi
 echo "wine ELF guest path: $wine_guest"
+# Ubuntu's wine64 keeps kernel32.dll beside ntdll.so under
+# /usr/lib/x86_64-linux-gnu/wine, not next to /usr/lib/wine/wine64.
+# On dba67bd Wine got past chdir and then exited 53:
+# "could not load kernel32.dll, status c0000135". WINEDLLPATH is the
+# directory that contains x86_64-windows/.
+k32="$(sudo find "$rootfs/usr" -name kernel32.dll -path '*x86_64-windows*' -print -quit)"
+echo "kernel32.dll ${k32:-missing}"
+if [ -n "$k32" ]; then
+    export WINEDLLPATH="$(dirname "$(dirname "${k32#"$rootfs"}")")"
+    echo "WINEDLLPATH=$WINEDLLPATH"
+fi
 export WINEPREFIX="$prefix"
 export WINEDEBUG="${WINEDEBUG:--all}"
 set +e

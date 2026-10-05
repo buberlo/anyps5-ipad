@@ -115,9 +115,10 @@ app link has the present-count, GPU-meter, vsync, fence, and
 return empty results. `madeira_set_eco` stays in ntdll, not in this
 stub.
 
-On `4b6d5a4` the simulator job stopped in FEX cmake, before this stub
-was compiled. The missing pieces were FEX's `fmt`, `xxhash`,
-`range-v3`, and `unordered_dense` checkouts.
+On `dba67bd` the simulator job compiled this stub (`slim
+libdxmt_combined.a`) after the iOS FEX archives linked.
+`xcodebuild` then failed while parsing StikJIT's Swift 6.4
+interface, before the app link.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's

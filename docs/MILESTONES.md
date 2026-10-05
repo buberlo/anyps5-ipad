@@ -69,12 +69,12 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` (commit `54e5815`) the native FEX build
-linked `Bin/FEX` and `Bin/FEXServer` with Ubuntu clang 18.1.3. The
-amd64 `debootstrap` then failed while configuring packages, so neither
-the nostdlib guest nor the synthetic PE ran under FEX on that host.
-`scripts/m1-arm64-host.sh` now unpacks ubuntu-base 24.04.5 instead.
-That rootfs has not been installed yet. M1 is not closed.
+On GitHub `ubuntu-24.04-arm` the native FEX build linked `Bin/FEX` and
+`Bin/FEXServer` with Ubuntu clang 18.1.3 (`54e5815` and again
+`2d7c2b8`). `debootstrap` failed on the first of those. ubuntu-base
+24.04.5 extracted on the second, then `apt-get update` rejected the
+image keyring (`NO_PUBKEY 871920D1991BC93C`). Neither the nostdlib guest
+nor the synthetic PE has run under FEX on that host. M1 is not closed.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 

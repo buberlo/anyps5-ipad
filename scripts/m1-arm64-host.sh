@@ -45,13 +45,29 @@ if ! mountpoint -q "$rootfs/dev"; then
     sudo mount --bind /dev "$rootfs/dev"
 fi
 sudo cp /etc/resolv.conf "$rootfs/etc/resolv.conf"
-sudo tee "$rootfs/etc/apt/sources.list" >/dev/null << 'EOF'
-deb http://archive.ubuntu.com/ubuntu noble main universe
-deb http://archive.ubuntu.com/ubuntu noble-updates main universe
-deb http://security.ubuntu.com/ubuntu noble-security main universe
+# ubuntu-base's trusted.gpg.d keyrings are a filetype apt ignores, so a
+# sources.list without Signed-By fails with NO_PUBKEY. The host keyring
+# already verified archive.ubuntu.com (this script's own apt-get).
+if [ ! -s /usr/share/keyrings/ubuntu-archive-keyring.gpg ]; then
+    echo "host ubuntu archive keyring is missing" >&2
+    exit 1
+fi
+sudo mkdir -p "$rootfs/usr/share/keyrings"
+sudo cp /usr/share/keyrings/ubuntu-archive-keyring.gpg "$rootfs/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+sudo rm -f "$rootfs/etc/apt/sources.list" "$rootfs/etc/apt/sources.list.d/"*.sources "$rootfs/etc/apt/sources.list.d/"*.list
+sudo tee "$rootfs/etc/apt/sources.list.d/ubuntu.sources" >/dev/null << 'EOF'
+Types: deb
+URIs: http://archive.ubuntu.com/ubuntu
+Suites: noble noble-updates
+Components: main universe
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+Types: deb
+URIs: http://security.ubuntu.com/ubuntu
+Suites: noble-security
+Components: main universe
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 EOF
-# 24.04.5 ubuntu-base may also ship a deb822 list limited to main.
-sudo rm -f "$rootfs/etc/apt/sources.list.d/"*.sources "$rootfs/etc/apt/sources.list.d/"*.list
 printf '%s\n' 'APT::Sandbox::User "root";' | sudo tee "$rootfs/etc/apt/apt.conf.d/99sandbox" >/dev/null
 printf '%s\n' '#!/bin/sh' 'exit 101' | sudo tee "$rootfs/usr/sbin/policy-rc.d" >/dev/null
 sudo chmod 755 "$rootfs/usr/sbin/policy-rc.d"

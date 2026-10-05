@@ -145,13 +145,13 @@ upstream commits; the patches are the delta.
   PRX files.
 - Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
   that returned 42. Host Wine segfaults in qemu before the PE prints
-  anything. On GitHub `ubuntu-24.04-arm` (commit `54e5815`) native FEX
-  and FEXServer linked with Ubuntu clang 18.1.3. The amd64 rootfs did
-  not: `debootstrap` failed while configuring required packages (the log
-  named `passwd`). The nostdlib guest and the PE were not run on that
-  host. `scripts/m1-arm64-host.sh` now unpacks ubuntu-base 24.04.5 and
-  installs `wine64` with qemu-user only for that chroot. That install
-  has not been recorded yet.
+  anything. On GitHub `ubuntu-24.04-arm` native FEX and FEXServer linked
+  again on `2d7c2b8` (Ubuntu clang 18.1.3). ubuntu-base 24.04.5
+  extracted. `apt-get update` inside that rootfs then failed: the image
+  keyrings in `trusted.gpg.d` are an unsupported filetype, and noble was
+  `NO_PUBKEY 871920D1991BC93C`. The nostdlib guest and the PE were not
+  run. The script now copies the host archive keyring and points apt at
+  it with `Signed-By`. That install has not been recorded yet.
 
 ## Untested, and not claimed
 
@@ -186,28 +186,41 @@ the `.so` measured above is the default tree.
 SDL remains in `libSceVideoOut` and FMOD. DXMT and `madeira-d3d12` are
 not built.
 
-## Hosted runners (read from commit 54e5815)
+## Hosted runners
 
-The Linux job in `.github/workflows/linux.yml` passed: patches, lavapipe
-`hard_fail=0`, the Linux AnyPS5 build including `libSceAgcDriver`, the
-17 relinker tests, and the synthetic PE under Wine. The `synthetic-pe`
-job in `arm64.yml` also passed and uploaded `sample.exe`.
+On `54e5815` the Linux job passed: patches, lavapipe `hard_fail=0`, the
+Linux AnyPS5 build including `libSceAgcDriver`, the 17 relinker tests,
+and the synthetic PE under Wine. The `synthetic-pe` job passed again on
+`2d7c2b8` and uploaded `sample.exe`.
 
-The other jobs on that commit failed before the measurement they exist
+On `2d7c2b8` the `winevulkan` job passed. A fresh configure (FreeType
+and fontconfig off) found `-lvulkan` as `libvulkan.so.1` and linked
+`ntdll.so`, `win32u.so`, and `winevulkan.so`, each an x86-64 ELF.
+`win32u.so` NEEDs `ntdll.so`, `libm.so.6`, and `libc.so.6`.
+`win32u/vulkan.o` contains `libvulkan.so.1`. The libraries were not
+executed. Sizes were not printed on that runner; the byte sizes above
+are still the local VM link.
+
+`fex-wine` on `2d7c2b8` linked native FEX, then failed in the rootfs
+apt signature check described above. `linux`, `winlibs`, and every
+macOS job on that commit were cancelled before a runner was assigned
+(no steps). That is not a build result.
+
+The other jobs on `54e5815` failed before the measurement they exist
 for:
 
-- `winevulkan` on `ubuntu-24.04` stopped in `configure` because FreeType
-  64-bit headers were missing. The base configure in
-  `scripts/build-wine-vulkan-linux.sh` now passes `--without-freetype`
-  and `--without-fontconfig`. The `.so` sizes above are still the local
-  VM link, whose Makefile already existed and was not reconfigured.
-- `winlibs` reached GCC and SDL, then AnyPS5's FFmpeg `file(DOWNLOAD)`
-  failed with curl error 60. WinLibs' own `cmake` was first on `PATH`.
-  The script now calls `C:/Program Files/CMake/bin/cmake.exe` when that
-  file exists. `libc.prx` and `libSceAgcDriver.prx` still do not exist.
-- `fex-wine` on `ubuntu-24.04-arm` linked native `Bin/FEX` and
-  `Bin/FEXServer`, then `debootstrap` failed as noted above. No guest
-  exit code.
+- `winevulkan` on `54e5815` stopped in `configure` because FreeType
+  headers were missing. `2d7c2b8` passed that job with
+  `--without-freetype` and `--without-fontconfig`.
+- `winlibs` on `54e5815` reached GCC and SDL, then AnyPS5's FFmpeg
+  `file(DOWNLOAD)` failed with curl error 60. WinLibs' own `cmake` was
+  first on `PATH`. The script now calls
+  `C:/Program Files/CMake/bin/cmake.exe` when that file exists.
+  `libc.prx` and `libSceAgcDriver.prx` still do not exist. The `2d7c2b8`
+  Windows job was cancelled before it started.
+- `fex-wine` on `54e5815` linked native FEX, then `debootstrap` failed.
+  `2d7c2b8` linked FEX again and failed on the ubuntu-base apt key, as
+  noted above. No guest exit code.
 - `moltenvk` on `macos-14` and `macos-15` produced
   `libMoltenVK.dylib` and `MoltenVK_icd.json`. `vk-requirements` then
   exited 2 at stock `vkCreateInstance` and printed no `HARD` lines.

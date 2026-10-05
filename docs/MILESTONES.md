@@ -144,7 +144,9 @@ link. MoltenVK was not loaded from the app process. Madeira does not
 publish those static archives (the v0.1.3 release is an IPA). The
 follow-up compiles `libntdll_unix.a`, `libwin32u_unix.a`, and
 `libwineserver.a` from the pinned Wine fork, plus the tracked FFmpeg
-tarball, and stubs on-device pairing. That link is not measured yet.
+tarball, and stubs on-device pairing. On `3a947d5` GnuTLS, FFmpeg,
+and FreeType built, and `ntdll-unix` failed three files before the
+link.
 
 ## M5 — First menu on an iPad
 

@@ -47,7 +47,11 @@ WinLibs GCC 15.2. It linked `build/anyps5-mingw/core/relinker/relinker.exe`.
 That PE, run under Wine, relinked the same fixture, and the result exited
 42. `libc.prx` did not link: the MINGW unwind flag selects SjLj and this
 libgcc only has SEH. llvm-mingw Clang stops on `__builtin_sysv_va_list`.
-HLE libraries remain a WinLibs (or equivalent) build.
+
+On GitHub `windows-latest` (`f1d3f06`) WinLibs GCC 15.2.0 posix-seh
+linked `build/anyps5-winlibs/core/libs/libs/unpatched/libc.prx` and
+`libSceAgcDriver.prx` with `APS5_SLIM=ON`. Byte sizes were not printed.
+The PRX files were not executed.
 
 ## M1 — The same PE under Wine + FEX on ARM64 Linux
 

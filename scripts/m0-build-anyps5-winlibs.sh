@@ -82,9 +82,10 @@ fi
 found=0
 while IFS= read -r prx; do
     echo "PRX $prx"
-    found=1
-done < <(find "$build" -name 'libc.prx' -o -name 'libSceAgcDriver.prx')
-if [ "$found" -ne 1 ]; then
+    wc -c "$prx"
+    found=$((found + 1))
+done < <(find "$build" -name 'libc.prx' -o -name 'libSceAgcDriver.prx' | sort)
+if [ "$found" -ne 2 ]; then
     echo "libc.prx and libSceAgcDriver.prx were not both produced" >&2
     exit 1
 fi

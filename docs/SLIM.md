@@ -32,8 +32,9 @@ HLE libraries. On Windows, `libc` / `libkernel` also call `VirtualAlloc2`,
 A shim that implements only those 22 exports will load the stub and then
 fail inside the first PRX.
 
-Linux PRX `NEEDED` entries (the Windows PRX did not link on this GCC;
-see [PATCHES.md](PATCHES.md)):
+Linux PRX `NEEDED` entries. Ubuntu GCC 13 did not link the Windows
+PRX. WinLibs on `f1d3f06` linked `libc.prx` and `libSceAgcDriver.prx`;
+that log did not print sizes or `NEEDED` (see [PATCHES.md](PATCHES.md)):
 
 | File | Size | NEEDED |
 | --- | --- | --- |

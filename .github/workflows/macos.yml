@@ -49,7 +49,7 @@ jobs:
 
   madeira-simulator:
     runs-on: macos-15
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 

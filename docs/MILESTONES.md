@@ -139,10 +139,12 @@ before any hard line, on that image's paravirtual Metal device. No
 
 **This run.** On GitHub `macos-15` (`15978d4`, Xcode 26.3, iPhoneOS 26.2)
 the unsigned Madeira app compiled after `MadeiraJITHelper` was omitted.
-`ld` stopped with `library 'wineserver' not found`.
-`app/Madeira/libwineserver.a` is not in the clone, and
-`build/wineserver/build.sh` only copies that archive. The app did not
-link. MoltenVK was not loaded from the app process.
+`ld` stopped with `library 'wineserver' not found`. The app did not
+link. MoltenVK was not loaded from the app process. Madeira does not
+publish those static archives (the v0.1.3 release is an IPA). The
+follow-up compiles `libntdll_unix.a`, `libwin32u_unix.a`, and
+`libwineserver.a` from the pinned Wine fork, plus the tracked FFmpeg
+tarball, and stubs on-device pairing. That link is not measured yet.
 
 ## M5 — First menu on an iPad
 

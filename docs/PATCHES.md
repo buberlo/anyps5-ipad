@@ -453,10 +453,22 @@ Swift and Objective-C compiled. `ld` then reported
 `library 'wineserver' not found` and stopped. The app did not link.
 `build/wineserver/build.sh` copies a prebuilt
 `app/Madeira/libwineserver.a` and cannot create that archive from a
-clean clone. The script keeps running `xcodebuild`. It exits 0 only
-when that archive is absent and the log contains that linker line.
-Any other `xcodebuild` failure still fails the job. No stand-in
-archive is written.
+clean clone.
+
+Madeira v0.1.3's GitHub release is `Madeira-0.1.3.ipa` plus a sha256
+file. The pin has no GitHub Actions, no git-lfs filter, and no
+dependency submodule that carries the archives. `docs/BUILDING.md`
+builds `libntdll_unix.a` and `libwin32u_unix.a` from the Wine fork,
+FFmpeg 7.1.1 from the tracked tarball, and the GnuTLS stack from the
+tracked tarballs. `libmadeira_rppairing.a` is on-device remote pairing
+for Built-in StikJIT (`docs/JIT.md`), not remote play. The slim link
+uses `scripts/slim-rppairing.c` for those symbols.
+`scripts/m3-madeira-unix-libs.sh` compiles every `server/*.c` with the
+iOS replacements instead of swapping objects into a missing base
+archive, and runs Madeira's ntdll, win32u, FFmpeg, GnuTLS, and
+FreeType scripts for `iphoneos` and `iphonesimulator`. The unsigned
+`xcodebuild` no longer treats a missing `libwineserver.a` as success.
+That link has not been measured on a hosted runner yet.
 
 ## Left for Konrad
 

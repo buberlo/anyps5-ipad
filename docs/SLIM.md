@@ -122,11 +122,12 @@ interface, before the app link. On `2e74b7d` rewriting `::` to `.`
 still failed: Xcode 26.3 is Swift 6.2.4 and the framework was built
 with Swift 6.4. The unsigned job now builds the Madeira app without
 `MadeiraJITHelper`. On `15978d4` that compile succeeded and `ld`
-stopped with `library 'wineserver' not found`. The base
-`libwineserver.a` is not in the clone, and
-`build/wineserver/build.sh` will not create one. The job treats that
-specific miss as a hard stop and still fails on any other
-`xcodebuild` error. The app did not link.
+stopped with `library 'wineserver' not found`. The follow-up compiles
+`libntdll_unix.a`, `libwin32u_unix.a`, and `libwineserver.a` from the
+pinned Wine fork, and the four FFmpeg archives from the tracked
+7.1.1 tarball. `libmadeira_rppairing.a` is iOS 27 on-device pairing
+for Built-in StikJIT. The slim app links a stub that refuses to pair.
+That link has not been measured on a hosted runner yet.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's
@@ -161,8 +162,9 @@ the iOS unix link (`sync.c` calls Mach).
 
 Madeira's docs still build `wineserver` and also say the app does not
 use the desktop wineserver model. The archive stays until a device run
-shows it is unused. The unsigned CI link stops before that question:
-`libwineserver.a` is not in the clone.
+shows it is unused. The unsigned CI build compiles it from
+`wine/server` plus the iOS replacements, because the clone has no
+prebuilt `libwineserver.a`.
 
 ### FEX
 

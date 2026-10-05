@@ -73,10 +73,12 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` (`a54b497`, `c161948`, `4b6d5a4`, and
-`dba67bd`) native FEX linked, ubuntu-base 24.04.5 supplied `wine64`
-9.0, and a nostdlib x86-64 guest exited 42 under FEX. On `dba67bd`
-the host prefix was visible inside the guest, and the PE exited 53:
+On GitHub `ubuntu-24.04-arm` (`a54b497`, `c161948`, `4b6d5a4`,
+`dba67bd`, and `2e74b7d`) native FEX linked, ubuntu-base 24.04.5
+supplied `wine64` 9.0, and a nostdlib x86-64 guest exited 42 under
+FEX. On `2e74b7d` the host prefix was visible inside the guest,
+`kernel32.dll` was on disk, `WINEDLLPATH` was
+`/usr/lib/x86_64-linux-gnu/wine`, and the PE still exited 53:
 `wine: could not load kernel32.dll, status c0000135`. M1 is not
 closed.
 

@@ -102,15 +102,39 @@ echo "slim libdxmt_combined.a (no-op, not DXMT)"
 mkdir -p "$app_dir/x86_64-vcruntime"
 echo "x86_64-vcruntime left empty (Microsoft redistributable, not fetched)"
 
-# StikJIT's .swiftinterface was emitted by Swift 6.4 and spells types as
-# Swift::Sendable. Xcode 26.3 (the newest Xcode on the macos-15 image)
-# stops at that colon: "expected '{' in struct". The dotted spelling is
-# what that compiler accepts. This does not rebuild the xcframework.
-while IFS= read -r iface; do
-    perl -i.bak -pe 's/::/./g' "$iface"
-    rm -f "$iface.bak"
-    echo "rewrote Swift 6.4 qualifiers in ${iface#"$root/"}"
-done < <(find "$root/upstreams/Madeira/app/Frameworks/StikJIT.xcframework" -name '*.swiftinterface')
+# StikJIT.xcframework was built with Swift 6.4. Xcode 26.3 on macos-15
+# is Swift 6.2.4 and refuses the module ("this SDK is not supported by
+# the compiler"). Rewriting :: to . produced
+# "'StikJIT' is not a member type of enum 'StikJIT.StikJIT'" and the
+# same SDK error. MadeiraJITHelper is the only target that imports
+# StikJIT. This unsigned CI build drops that dependency and does not
+# embed the appex. Device JIT still needs the helper; Konrad's signed
+# boot is unchanged.
+pbx="$root/upstreams/Madeira/app/Madeira.xcodeproj/project.pbxproj"
+python3 - "$pbx" << 'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+old_dep = "\t\t\tdependencies = (\n\t\t\t\tB3000006 /* PBXTargetDependency */,\n\t\t\t);"
+new_dep = "\t\t\tdependencies = (\n\t\t\t);"
+old_embed = "\t\t\tfiles = (\n\t\t\t\tB1000016 /* MadeiraJITHelper.appex in Embed JIT Helper */,\n\t\t\t);\n\t\t\tname = \"Embed JIT Helper\";"
+new_embed = "\t\t\tfiles = (\n\t\t\t);\n\t\t\tname = \"Embed JIT Helper\";"
+if old_dep not in text or old_embed not in text:
+    raise SystemExit("MadeiraJITHelper dependency was not in the project")
+path.write_text(text.replace(old_dep, new_dep, 1).replace(old_embed, new_embed, 1))
+print("unsigned build omits MadeiraJITHelper")
+PY
+for archive in \
+    libntdll_unix.a libwin32u_unix.a libwineserver.a \
+    libmadeira_rppairing.a libavformat.a libavcodec.a \
+    libswresample.a libavutil.a libgnutls.a libgmp.a
+do
+    if [ -f "$app_dir/$archive" ]; then
+        echo "present $archive"
+    else
+        echo "missing $archive"
+    fi
+done
 
 xcodebuild \
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj" \

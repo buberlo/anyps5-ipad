@@ -118,7 +118,10 @@ stub.
 On `dba67bd` the simulator job compiled this stub (`slim
 libdxmt_combined.a`) after the iOS FEX archives linked.
 `xcodebuild` then failed while parsing StikJIT's Swift 6.4
-interface, before the app link.
+interface, before the app link. On `2e74b7d` rewriting `::` to `.`
+still failed: Xcode 26.3 is Swift 6.2.4 and the framework was built
+with Swift 6.4. The unsigned job now builds the Madeira app without
+`MadeiraJITHelper`. That link is not recorded yet.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's

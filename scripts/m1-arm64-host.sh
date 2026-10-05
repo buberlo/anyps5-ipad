@@ -166,9 +166,47 @@ echo "kernel32.dll ${k32:-missing}"
 if [ -n "$k32" ]; then
     export WINEDLLPATH="$(dirname "$(dirname "${k32#"$rootfs"}")")"
     echo "WINEDLLPATH=$WINEDLLPATH"
+    # On 2e74b7d this path was set and the DLL was in the rootfs, and
+    # Wine still exited 53 with status c0000135. wineserver is a second
+    # process. Its open of that guest path does not see the rootfs, so
+    # the same directory has to exist on the host.
+    host_wine="$WINEDLLPATH"
+    if [ ! -d "$host_wine/x86_64-windows" ]; then
+        sudo mkdir -p "$host_wine"
+        if sudo mount --bind "$rootfs$WINEDLLPATH" "$host_wine"; then
+            echo "bind-mounted $WINEDLLPATH onto the host"
+        else
+            sudo cp -a "$rootfs$WINEDLLPATH/." "$host_wine/"
+            echo "copied $WINEDLLPATH onto the host"
+        fi
+    fi
+    ls -l "$host_wine/x86_64-windows/kernel32.dll"
+    set +e
+    "$fex" /usr/bin/ls -l "$WINEDLLPATH/x86_64-windows/kernel32.dll"
+    echo "guest kernel32 ls exit=$?"
+    set -e
+fi
+if [ -d "$rootfs/usr/share/wine" ] && [ ! -d /usr/share/wine/nls ]; then
+    sudo mkdir -p /usr/share/wine
+    if sudo mount --bind "$rootfs/usr/share/wine" /usr/share/wine; then
+        echo "bind-mounted /usr/share/wine onto the host"
+    else
+        sudo cp -a "$rootfs/usr/share/wine/." /usr/share/wine/
+        echo "copied /usr/share/wine onto the host"
+    fi
+fi
+# qemu-user-static was only for the chroot apt. Leave its binfmt
+# handlers unregistered so an x86 exec stays with this FEX process.
+if [ -d /proc/sys/fs/binfmt_misc ]; then
+    for name in qemu-x86_64 qemu-i386; do
+        if [ -f "/proc/sys/fs/binfmt_misc/$name" ]; then
+            echo -1 | sudo tee "/proc/sys/fs/binfmt_misc/$name" >/dev/null || true
+            echo "unregistered binfmt $name"
+        fi
+    done
 fi
 export WINEPREFIX="$prefix"
-export WINEDEBUG="${WINEDEBUG:--all}"
+export WINEDEBUG="${WINEDEBUG:-+module,+file}"
 set +e
 "$fex" "$wine_guest" "$HOME/sample.exe"
 pe_status=$?

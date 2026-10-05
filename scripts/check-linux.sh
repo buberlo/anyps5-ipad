@@ -48,9 +48,26 @@ g++ -std=c++20 -Wall -Wextra -Wno-unused-function -c \
     -o "$root/build/GuestArena-linux.o"
 
 echo "== GuestArena.cpp (MinGW Windows TU, includes the lazy path) =="
-x86_64-w64-mingw32-g++ -std=c++20 -Wall -Wextra -c \
-    -I "$root/upstreams/AnyPS5/core/libs" \
-    "$root/upstreams/AnyPS5/core/libs/prx/libc/src/GuestArena.cpp" \
-    -o "$root/build/GuestArena-mingw.o"
+# Ubuntu 22.04's mingw-w64 headers omit MEM_RESERVE_PLACEHOLDER and
+# its libstdc++ does not provide std::mutex after windows.h. The
+# ubuntu-24.04 job still compiles this TU. Skipping here keeps the
+# capability result from failing the older image.
+mingw_probe="$root/build/guest-arena-mingw-probe.cpp"
+cat > "$mingw_probe" << 'EOF'
+#include <windows.h>
+#include <mutex>
+#ifndef MEM_RESERVE_PLACEHOLDER
+#error missing MEM_RESERVE_PLACEHOLDER
+#endif
+std::mutex guest_arena_mingw_probe;
+EOF
+if x86_64-w64-mingw32-g++ -std=c++20 -Wall -Wextra -c "$mingw_probe" -o "$root/build/guest-arena-mingw-probe.o"; then
+    x86_64-w64-mingw32-g++ -std=c++20 -Wall -Wextra -c \
+        -I "$root/upstreams/AnyPS5/core/libs" \
+        "$root/upstreams/AnyPS5/core/libs/prx/libc/src/GuestArena.cpp" \
+        -o "$root/build/GuestArena-mingw.o"
+else
+    echo "skipped MinGW GuestArena.cpp: this mingw-w64 cannot compile the placeholder path"
+fi
 
 echo "linux checks finished"

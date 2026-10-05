@@ -374,15 +374,35 @@ lavapipe (LLVM 15.0.7) API 1.3.255, `hard_fail=0`,
 failed to compile `moltenvk_static_loader.c`: `RTLD_DEFAULT` is
 undeclared in that glibc unless `_GNU_SOURCE` is set. The loader
 now defines `RTLD_DEFAULT` as `((void *)0)` when the header does
-not. That compile is not a hosted-runner result yet.
+not.
+
+On `2e74b7d` that loader compiled. `linux-ubuntu-22` then failed in
+the MinGW `GuestArena.cpp` step. Ubuntu 22.04's mingw-w64 reports
+`std::mutex` does not name a type in `WindowsMappings.hpp`, and
+`MEM_RESERVE_PLACEHOLDER`, `MEM_REPLACE_PLACEHOLDER`,
+`MEM_PRESERVE_PLACEHOLDER`, and `MEM_COALESCE_PLACEHOLDERS` are
+undeclared. The `ubuntu-24.04` job compiles the same TU and passes.
+`scripts/check-linux.sh` now compiles a probe with `<windows.h>` and
+`<mutex>` and skips the MinGW TU when that probe fails. That skip is
+not a hosted-runner result yet. The rest of the 22.04 AnyPS5 build
+has not been reached.
 
 `fex-wine` on `dba67bd` ran the nostdlib guest to exit 42. The host
 prefix `/home/runner/fex-prefix` existed, and a guest `ls` of it
 exited 0. `wine64` then printed `wine: could not load kernel32.dll,
 status c0000135` and exited 53. Ubuntu stores that DLL at
-`/usr/lib/x86_64-linux-gnu/wine/x86_64-windows/kernel32.dll`. The
-script now sets `WINEDLLPATH` from that file. That run is not
-recorded yet.
+`/usr/lib/x86_64-linux-gnu/wine/x86_64-windows/kernel32.dll`.
+
+On `2e74b7d` the script found that file under the rootfs and set
+`WINEDLLPATH=/usr/lib/x86_64-linux-gnu/wine`. The nostdlib guest
+still exited 42, the guest `ls` of the host prefix still exited 0,
+and Wine still printed `could not load kernel32.dll, status
+c0000135` twice and exited 53. `WINEDEBUG=-all` hid the search.
+wineserver opens that path from a second process. The script now
+bind-mounts that Wine directory and `/usr/share/wine` onto the host
+at the same paths, unregisters qemu's x86 binfmt handlers after the
+chroot install, and runs Wine with `WINEDEBUG=+module,+file`. That
+run is not recorded yet.
 
 `madeira-simulator` on `dba67bd` configured and built the iOS FEX
 archives (`libFEXCore.a` 4,867,464 bytes, `libFEXCore_Base.a`
@@ -390,8 +410,20 @@ archives (`libFEXCore.a` 4,867,464 bytes, `libFEXCore_Base.a`
 `xcodebuild` then failed in `MadeiraJITHelper`: StikJIT's
 `arm64-apple-ios.private.swiftinterface` was emitted by Swift 6.4
 (`Swift::Sendable`), and Xcode 26.3 reports `expected '{' in struct`
-at that colon. The script rewrites those `::` qualifiers to `.`
-before `xcodebuild`. That build is not recorded yet.
+at that colon.
+
+On `2e74b7d` the script rewrote those `::` qualifiers to `.`.
+`xcodebuild` then reported `'StikJIT' is not a member type of enum
+'StikJIT.StikJIT'` and `failed to build module 'StikJIT'`: the SDK
+was built with Apple Swift 6.4 (swiftlang-6.4.0.34.1) and the
+compiler is Apple Swift 6.2.4 (swiftlang-6.2.4.1.4). The unsigned
+CI build now drops the Madeira target's dependency on
+`MadeiraJITHelper` and leaves the appex out of the embed phase.
+`StikJITHelper.swift` in the app does not import that module.
+`libntdll_unix.a`, `libwin32u_unix.a`, `libwineserver.a`, the FFmpeg
+archives, and `libmadeira_rppairing.a` are still absent.
+`build/wineserver/build.sh` exits with `No base libwineserver.a
+found` on a clean tree. That `xcodebuild` is not recorded yet.
 
 ## Left for Konrad
 

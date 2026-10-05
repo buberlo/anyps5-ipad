@@ -1,0 +1,101 @@
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+index b373847..1aaf483 100644
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -193,10 +193,19 @@ add_shader_recompiler(shader_recompiler_agc_driver libc
+ 
+ target_link_libraries(libSceAgcDriver PRIVATE
+         shader_recompiler_agc_driver
+-        SDL2-static
+         libc
+         libkernel
+ )
++# APS5_SLIM: the Vulkan ICD is loaded with LoadLibrary/dlopen. SDL stays
++# linked into libSceVideoOut, libfmod, and the Agc tests.
++if(APS5_SLIM)
++    target_compile_definitions(libSceAgcDriver PRIVATE APS5_SLIM=1)
++    if(NOT WIN32)
++        target_link_libraries(libSceAgcDriver PRIVATE dl)
++    endif()
++else()
++    target_link_libraries(libSceAgcDriver PRIVATE SDL2-static)
++endif()
+ 
+ set_target_properties(libSceAgcDriver PROPERTIES CXX_EXTENSIONS OFF)
+ configure_windows_unwind(libSceAgcDriver)
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+index 98d526c..7ebe8e1 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -21,6 +21,14 @@
+ #ifdef _WIN32
+ #include <windows.h>
+ #endif
++#ifdef APS5_SLIM
++#ifndef _WIN32
++#include <dlfcn.h>
++#endif
++#else
++#include <SDL_loadso.h>
++#include <SDL_error.h>
++#endif
+ #include <atomic>
+ #include <chrono>
+ #include <charconv>
+@@ -28,8 +36,6 @@
+ #include <fstream>
+ #include <cstdlib>
+ #include <mutex>
+-#include <SDL_loadso.h>
+-#include <SDL_error.h>
+ #include <spirv/unified1/spirv.hpp>
+ #include <array>
+ #include <optional>
+@@ -548,13 +554,36 @@ struct VulkanDevice::State {
+             reinterpret_cast<PFN_vkDestroyInstance>(instanceProc(instance, "vkDestroyInstance"))(instance, nullptr);
+         }
+         if (library != nullptr) {
++#ifdef APS5_SLIM
++#ifdef _WIN32
++            FreeLibrary(static_cast<HMODULE>(library));
++#else
++            dlclose(library);
++#endif
++#else
+             SDL_UnloadObject(library);
++#endif
+         }
+     }
+ };
+ 
+ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_unique<State>()), serial([] { static std::atomic<std::uint64_t> serials{0}; return serials.fetch_add(1, std::memory_order_relaxed) + 1; }()) {
+     APS5_LOG_OUT("VulkanDevice constructor window=%p", static_cast<const void*>(window));
++#ifdef APS5_SLIM
++#ifdef _WIN32
++    state->library = LoadLibraryA("vulkan-1.dll");
++#else
++    state->library = dlopen("libvulkan.so.1", RTLD_NOW);
++#endif
++    if (state->library == nullptr) {
++        throw std::runtime_error("Vulkan loader: failed to open the ICD library");
++    }
++#ifdef _WIN32
++    state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(GetProcAddress(static_cast<HMODULE>(state->library), "vkGetInstanceProcAddr"));
++#else
++    state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(state->library, "vkGetInstanceProcAddr"));
++#endif
++#else
+ #ifdef _WIN32
+     state->library = SDL_LoadObject("vulkan-1.dll");
+ #else
+@@ -563,8 +592,9 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+     if (state->library == nullptr) {
+         throw std::runtime_error(std::string("Vulkan loader: ") + SDL_GetError());
+     }
+-    APS5_LOG_OUT("Vulkan loader loaded library=%p", state->library);
+     state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_LoadFunction(state->library, "vkGetInstanceProcAddr"));
++#endif
++    APS5_LOG_OUT("Vulkan loader loaded library=%p", state->library);
+     if (state->instanceProc == nullptr) {
+         throw std::runtime_error("Vulkan loader: vkGetInstanceProcAddr missing");
+     }

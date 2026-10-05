@@ -1,0 +1,18 @@
+# Linux-hosted llvm-mingw (Clang, UCRT). LLVM_MINGW is the extracted prefix.
+if(NOT DEFINED ENV{LLVM_MINGW})
+    message(FATAL_ERROR "Set LLVM_MINGW to the llvm-mingw prefix")
+endif()
+set(LLVM_MINGW "$ENV{LLVM_MINGW}")
+
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_C_COMPILER "${LLVM_MINGW}/bin/x86_64-w64-mingw32-clang")
+set(CMAKE_CXX_COMPILER "${LLVM_MINGW}/bin/x86_64-w64-mingw32-clang++")
+set(CMAKE_RC_COMPILER "${LLVM_MINGW}/bin/x86_64-w64-mingw32-windres")
+set(CMAKE_AR "${LLVM_MINGW}/bin/llvm-ar" CACHE FILEPATH "" FORCE)
+set(CMAKE_RANLIB "${LLVM_MINGW}/bin/llvm-ranlib" CACHE FILEPATH "" FORCE)
+
+set(CMAKE_FIND_ROOT_PATH "${LLVM_MINGW}/x86_64-w64-mingw32" "${LLVM_MINGW}")
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)

@@ -1,0 +1,41 @@
+diff --git a/app/Madeira/FEXBridge.mm b/app/Madeira/FEXBridge.mm
+index 63192b5..ba732da 100644
+--- a/app/Madeira/FEXBridge.mm
++++ b/app/Madeira/FEXBridge.mm
+@@ -32,6 +32,7 @@
+ #include <atomic>
+ #include <csetjmp>
+ #include <cstdio>
++#include <cstdlib>
+ #include <cstring>
+ #include <mutex>
+ #include <stdexcept>
+@@ -443,9 +444,27 @@ bool fex_initialize(void) {
+     Features.SupportsFCMA = true;
+     Features.SupportsFlagM = true;
+     Features.SupportsFlagM2 = true;
+-    Features.SupportsAVX = false;     // No SVE on A15
++    // Apple ARM cores (A-series and M-series) have NEON and do not implement
++    // SVE. FEX does not need SVE to emulate AVX: SupportsAVX selects the
++    // 128-bit AVX/AVX2 path (OpcodeDispatcher::GetGuestVectorLength stays
++    // i128Bit unless SupportsSVE256 is also set). YMM ops are split across
++    // 128-bit IR. SVE256 is only the native 256-bit fast path.
++    //
++    // MADEIRA_FEX_AVX=0 restores the old hard off switch. Any other value,
++    // including an unset variable, enables AVX in this in-process FEXCore.
++    // PS5 titles emit AVX2 without a CPUID check, so a default of off is a
++    // SIGILL on the first VEX instruction. The ARM64EC copy inside xtajit64
++    // (FEX/Source/Windows/Common/CPUFeatures.cpp) still defaults off and turns
++    // on only for MADEIRA_FEX_AVX=1; set that for a game session.
++    {
++        const char *avx = std::getenv("MADEIRA_FEX_AVX");
++        Features.SupportsAVX = !(avx && avx[0] == '0' && avx[1] == '\0');
++    }
+     Features.SupportsSVE128 = false;
+     Features.SupportsSVE256 = false;
++    if (Features.SupportsAVX && Features.SupportsAES) Features.SupportsAES256 = true;
++    fex_log("  Host AVX/AVX2=%s (128-bit emulation, SVE not required; MADEIRA_FEX_AVX=%s)",
++            Features.SupportsAVX ? "on" : "off", std::getenv("MADEIRA_FEX_AVX") ? std::getenv("MADEIRA_FEX_AVX") : "unset");
+     // A15 has 6 performance + 2 efficiency cores
+     Features.CPUMIDRs.resize(8, 0x611F0250); // A15 Firestorm MIDR (approximate)
+ 

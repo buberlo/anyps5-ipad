@@ -1,0 +1,206 @@
+diff --git a/core/libs/prx/libc/src/GuestArena.cpp b/core/libs/prx/libc/src/GuestArena.cpp
+index b534505..50df664 100644
+--- a/core/libs/prx/libc/src/GuestArena.cpp
++++ b/core/libs/prx/libc/src/GuestArena.cpp
+@@ -1,11 +1,16 @@
+ #include "prx/libc/include/GuestArena.hpp"
+ #include "prx/libc/include/WindowsMappings.hpp"
+ #include <algorithm>
++#include <cerrno>
+ #include <cstdint>
+ #include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <iterator>
++#include <limits>
+ #include <map>
+ #include <mutex>
++#include <set>
+ #include <stdexcept>
+ #include <system_error>
+ #include <utility>
+@@ -18,15 +23,60 @@
+ namespace GuestArena {
+ namespace {
+ 
+-constexpr std::uintptr_t ArenaStart = 0x0000000200000000ull;
++constexpr std::uintptr_t DefaultArenaStart = 0x0000000200000000ull;
++constexpr std::size_t DefaultArenaSize = 0x0000007000000000ull;
++constexpr std::size_t DefaultChunk = 0x0000000010000000ull;
+ constexpr std::uintptr_t SystemReservedStart = 0x00000007FFFFC000ull;
+ constexpr std::uintptr_t SystemReservedEnd = 0x0000001000000000ull;
+-constexpr std::size_t ArenaSize = 0x0000007000000000ull;
+ 
+ std::uintptr_t alignUp(std::uintptr_t value, std::size_t alignment) {
+     return (value + alignment - 1) & ~(static_cast<std::uintptr_t>(alignment) - 1);
+ }
+ 
++std::uint64_t parseUnsigned(const char* text, const char* what) {
++    if (!text || !*text) throw std::invalid_argument(what);
++    errno = 0;
++    char* end = nullptr;
++    const unsigned long long value = std::strtoull(text, &end, 0);
++    if (end == text || *end || errno == ERANGE) throw std::invalid_argument(what);
++    return static_cast<std::uint64_t>(value);
++}
++
++struct ArenaLimits {
++    std::uintptr_t base;
++    std::size_t size;
++    std::size_t chunk;
++    bool lazy;
++};
++
++// APS5_GUEST_ARENA_BASE / _SIZE / _CHUNK override the 8 GiB base and 448 GiB
++// reservation. APS5_GUEST_ARENA_LAZY=1 reserves host VA in chunks on first use
++// instead of the whole span at startup (the 448 GiB span does not fit a 63 GB
++// iOS map, and is tight even with extended-virtual-addressing).
++ArenaLimits ReadArenaLimits() {
++    ArenaLimits limits{DefaultArenaStart, DefaultArenaSize, DefaultChunk, false};
++    if (const char* base = std::getenv("APS5_GUEST_ARENA_BASE")) {
++        const auto value = parseUnsigned(base, "invalid APS5_GUEST_ARENA_BASE");
++        if (value == 0) throw std::invalid_argument("invalid APS5_GUEST_ARENA_BASE");
++        limits.base = static_cast<std::uintptr_t>(value);
++    }
++    if (const char* size = std::getenv("APS5_GUEST_ARENA_SIZE")) {
++        const auto value = parseUnsigned(size, "invalid APS5_GUEST_ARENA_SIZE");
++        if (value == 0) throw std::invalid_argument("invalid APS5_GUEST_ARENA_SIZE");
++        limits.size = static_cast<std::size_t>(value);
++    }
++    if (const char* chunk = std::getenv("APS5_GUEST_ARENA_CHUNK")) {
++        const auto value = parseUnsigned(chunk, "invalid APS5_GUEST_ARENA_CHUNK");
++        if (value < 0x10000 || (value & (value - 1)) != 0) throw std::invalid_argument("APS5_GUEST_ARENA_CHUNK must be a power of two and at least 64 KiB");
++        limits.chunk = static_cast<std::size_t>(value);
++    }
++    if (const char* lazy = std::getenv("APS5_GUEST_ARENA_LAZY")) limits.lazy = std::strcmp(lazy, "1") == 0;
++    if ((limits.base & (limits.chunk - 1)) != 0 || (limits.size & (limits.chunk - 1)) != 0)
++        throw std::invalid_argument("guest arena base and size must be multiples of the chunk");
++    if (limits.size > std::numeric_limits<std::uintptr_t>::max() - limits.base) throw std::invalid_argument("guest arena range overflows");
++    return limits;
++}
++
+ class Arena {
+ public:
+     static Arena& Get() {
+@@ -62,6 +112,7 @@ public:
+         }
+         if (candidate > _end || bytes > _end - candidate) throw std::runtime_error("guest address space arena exhausted");
+         _used.emplace(candidate, candidate + bytes);
++        ensureReservedLocked(candidate, bytes);
+         return reinterpret_cast<void*>(candidate);
+     }
+ 
+@@ -96,29 +147,56 @@ public:
+         }
+     }
+ 
++    void ensureReservedLocked(std::uintptr_t address, std::size_t bytes) {
++#ifdef _WIN32
++        if (!_lazy || bytes == 0) return;
++        if (address < _base || bytes > _end - address) throw std::invalid_argument("lazy guest reservation outside the arena");
++        auto cursor = address & ~(_chunk - 1);
++        const auto last = address + bytes;
++        for (; cursor < last; cursor += _chunk) {
++            if (_reserved.count(cursor) != 0) continue;
++            const auto size = std::min(_chunk, static_cast<std::size_t>(_end - cursor));
++            if (WindowsMappings::Get().Reserve(reinterpret_cast<void*>(cursor), size) == nullptr)
++                throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), "reserve a guest arena chunk");
++            _reserved.insert(cursor);
++        }
++#else
++        (void)address;
++        (void)bytes;
++#endif
++    }
++
+ private:
+     Arena() {
+ #ifdef _WIN32
++        const ArenaLimits limits = ReadArenaLimits();
++        _lazy = limits.lazy;
++        _chunk = limits.chunk;
+         _writeWatched = std::getenv("APS5_NO_WRITE_WATCH") == nullptr;
+-        SYSTEM_INFO system{};
+-        GetSystemInfo(&system);
+-        const std::uintptr_t granularity = system.dwAllocationGranularity;
+-        const std::uintptr_t end = ArenaStart + ArenaSize;
+-        for (std::uintptr_t cursor = ArenaStart; cursor < end;) {
+-            MEMORY_BASIC_INFORMATION info{};
+-            if (VirtualQuery(reinterpret_cast<const void*>(cursor), &info, sizeof(info)) == 0) throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), "query the guest arena range");
+-            const auto regionEnd = std::min(end, reinterpret_cast<std::uintptr_t>(info.BaseAddress) + info.RegionSize);
+-            const auto first = info.State == MEM_FREE ? std::min(regionEnd, alignUp(cursor, granularity)) : regionEnd;
+-            const auto last = std::max(first, regionEnd & ~(granularity - 1));
+-            if (first < last && WindowsMappings::Get().Reserve(reinterpret_cast<void*>(first), last - first) == nullptr) throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), "reserve the guest arena range");
+-            if (cursor < first) _holes.emplace_back(cursor, first);
+-            if (last < regionEnd) _holes.emplace_back(last, regionEnd);
+-            cursor = regionEnd;
++        const std::uintptr_t arenaStart = limits.base;
++        const std::uintptr_t end = arenaStart + limits.size;
++        if (!_lazy) {
++            SYSTEM_INFO system{};
++            GetSystemInfo(&system);
++            const std::uintptr_t granularity = system.dwAllocationGranularity;
++            for (std::uintptr_t cursor = arenaStart; cursor < end;) {
++                MEMORY_BASIC_INFORMATION info{};
++                if (VirtualQuery(reinterpret_cast<const void*>(cursor), &info, sizeof(info)) == 0) throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), "query the guest arena range");
++                const auto regionEnd = std::min(end, reinterpret_cast<std::uintptr_t>(info.BaseAddress) + info.RegionSize);
++                const auto first = info.State == MEM_FREE ? std::min(regionEnd, alignUp(cursor, granularity)) : regionEnd;
++                const auto last = std::max(first, regionEnd & ~(granularity - 1));
++                if (first < last && WindowsMappings::Get().Reserve(reinterpret_cast<void*>(first), last - first) == nullptr) throw std::system_error(static_cast<int>(GetLastError()), std::system_category(), "reserve the guest arena range");
++                if (cursor < first) _holes.emplace_back(cursor, first);
++                if (last < regionEnd) _holes.emplace_back(last, regionEnd);
++                cursor = regionEnd;
++            }
++            _hostRegions = _holes;
+         }
+-        _hostRegions = _holes;
+-        _holes.emplace_back(SystemReservedStart, SystemReservedEnd);
+-        for (const auto& [holeStart, holeEnd] : _holes) _used.emplace(holeStart, holeEnd);
+-        _base = ArenaStart;
++        const auto holeStart = std::max(SystemReservedStart, arenaStart);
++        const auto holeEnd = std::min(SystemReservedEnd, end);
++        if (holeStart < holeEnd) _holes.emplace_back(holeStart, holeEnd);
++        for (const auto& [usedStart, usedEnd] : _holes) _used.emplace(usedStart, usedEnd);
++        _base = arenaStart;
+         _end = end;
+ #endif
+     }
+@@ -129,7 +207,10 @@ private:
+     std::vector<std::pair<std::uintptr_t, std::uintptr_t>> _hostRegions;
+     std::uintptr_t _base = 0;
+     std::uintptr_t _end = 0;
++    std::size_t _chunk = DefaultChunk;
++    bool _lazy = false;
+     bool _writeWatched = false;
++    std::set<std::uintptr_t> _reserved;
+ 
+ public:
+     std::uintptr_t Base() const { return _base; }
+@@ -141,6 +222,11 @@ public:
+         }
+         return false;
+     }
++
++    void EnsureReserved(std::uintptr_t address, std::size_t bytes) {
++        std::lock_guard lock(_lock);
++        ensureReservedLocked(address, bytes);
++    }
+ };
+ 
+ const bool g_reserved = (Arena::Get(), true);
+@@ -199,6 +285,7 @@ bool GuestArenaHostRegionOverlaps_nid_postfix(std::uintptr_t address, std::size_
+ 
+ void GuestArenaCommit_nid_postfix(void* pointer, std::size_t bytes, std::uint32_t protection, std::size_t granule) {
+     if (!Arena::Get().Contains(pointer, bytes)) throw std::invalid_argument("commit outside the guest arena");
++    Arena::Get().EnsureReserved(reinterpret_cast<std::uintptr_t>(pointer), bytes);
+     WindowsMappings::Get().Commit(pointer, bytes, protection, granule, Arena::Get().WriteWatched());
+ }
+ 
+@@ -209,6 +296,7 @@ void GuestArenaReset_nid_postfix(void* pointer, std::size_t bytes) {
+ 
+ void GuestArenaMap_nid_postfix(void* pointer, std::size_t bytes, void* section, std::uint64_t offset, std::uint32_t protection) {
+     if (!Arena::Get().Contains(pointer, bytes)) throw std::invalid_argument("shared mapping outside the guest arena");
++    Arena::Get().EnsureReserved(reinterpret_cast<std::uintptr_t>(pointer), bytes);
+     WindowsMappings::Get().Map(pointer, bytes, section, offset, protection);
+ }
+ 

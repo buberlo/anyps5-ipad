@@ -1,0 +1,105 @@
+name: ARM64 FEX and Wine
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic-pe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps: &synthetic-pe-steps
+      - uses: actions/checkout@v4
+
+      - name: Install the AnyPS5 host packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 \
+            libvulkan-dev mesa-vulkan-drivers \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxrender-dev libxxf86vm-dev \
+            libdrm-dev libudev-dev libdbus-1-dev libgl1-mesa-dev libegl1-mesa-dev
+
+      - name: Fetch AnyPS5
+        run: |
+          git submodule update --init --depth 1 upstreams/AnyPS5
+          git -C upstreams/AnyPS5 submodule update --init --depth 1
+
+      - name: Build the relinker and the synthetic PE
+        run: |
+          APS5_TARGETS=relinker scripts/m0-build-anyps5.sh
+          SKIP_WINE=1 scripts/m0-synthetic-pe-wine.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-pe
+          path: build/synthetic-pe/sample.exe
+
+  # ubuntu-24.04 has been cancelled with "not acquired by Runner"
+  # before the job started. A second label is a different pool.
+  synthetic-pe-fallback:
+    needs: synthetic-pe
+    if: always() && needs.synthetic-pe.result == 'cancelled'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps: *synthetic-pe-steps
+
+  fex-wine:
+    runs-on: ubuntu-24.04-arm
+    needs: [synthetic-pe, synthetic-pe-fallback]
+    if: always() && (needs.synthetic-pe.result == 'success' || needs.synthetic-pe-fallback.result == 'success')
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: synthetic-pe
+          path: build/synthetic-pe
+
+      - name: Install the native FEX toolchain
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential clang cmake ninja-build pkg-config python3 \
+            gcc-x86-64-linux-gnu file \
+            libvulkan-dev mesa-vulkan-drivers || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential clang cmake ninja-build pkg-config python3 \
+            gcc-x86-64-linux-gnu file
+
+      - name: Fetch FEX
+        run: git submodule update --init --depth 1 upstreams/FEX
+
+      - name: Lavapipe capability check when the ICD exists
+        run: |
+          icd=""
+          for candidate in /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/lvp_icd.aarch64.json; do
+            if [ -f "$candidate" ]; then icd="$candidate"; break; fi
+          done
+          if [ -z "$icd" ]; then
+            echo "no lavapipe ICD on this ARM runner"
+            exit 0
+          fi
+          sudo apt-get install -y --no-install-recommends libvulkan-dev mesa-vulkan-drivers pkg-config
+          export VK_DRIVER_FILES="$icd"
+          export VK_LOADER_LAYERS_DISABLE='~all~'
+          make -C tools/vk-requirements
+          set +e
+          tools/vk-requirements/vk-requirements
+          status=$?
+          set -e
+          echo "LAVAPIPE_ARM_REQUIREMENTS_EXIT=$status"
+          if [ "$status" -ge 2 ]; then exit "$status"; fi
+
+      - name: Run FEX and the synthetic PE under x86-64 Wine
+        run: SAMPLE_EXE="$GITHUB_WORKSPACE/build/synthetic-pe/sample.exe" scripts/m1-arm64-host.sh

@@ -1,0 +1,57 @@
+name: macOS MoltenVK and iOS drafts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  moltenvk:
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-14's paravirtual Metal device aborts inside MoltenVK
+        # (AppleParavirtDevice lacks newArgumentEncoderWithLayout:).
+        # The capability log is the macos-15 run.
+        os: [macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build MoltenVK and run vk-requirements
+        run: |
+          set -o pipefail
+          scripts/m3-moltenvk-macos.sh 2>&1 | tee "$RUNNER_TEMP/moltenvk-requirements.txt"
+
+      - name: Upload the capability log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moltenvk-requirements-${{ matrix.os }}
+          path: ${{ runner.temp }}/moltenvk-requirements.txt
+
+  winevulkan-ios:
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Link winevulkan.so and compile the iOS drafts
+        run: scripts/m3-ios-drafts.sh
+
+  madeira-simulator:
+    runs-on: macos-15
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Madeira for the iOS Simulator, unsigned
+        run: scripts/m3-madeira-simulator.sh

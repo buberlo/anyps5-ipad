@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Apply or reverse the patch series in patches/<upstream>/.
+# Each series is applied in lexical order inside the matching submodule.
+# macOS bash is 3.2: no associative arrays and no mapfile.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Patch series touch these checkouts. rpmalloc is nested inside FEX.
+git -C "$root" submodule update --init --depth 1 \
+    upstreams/AnyPS5 upstreams/Madeira upstreams/FEX upstreams/wine
+git -C "$root/upstreams/FEX" submodule update --init --depth 1 External/rpmalloc
+mode="apply"
+if [ "${1:-}" = "--reverse" ]; then
+    mode="reverse"
+    shift
+fi
+
+repo_for() {
+    case "$1" in
+        anyps5) printf '%s\n' "$root/upstreams/AnyPS5" ;;
+        madeira) printf '%s\n' "$root/upstreams/Madeira" ;;
+        fex) printf '%s\n' "$root/upstreams/FEX" ;;
+        wine) printf '%s\n' "$root/upstreams/wine" ;;
+        moltenvk) printf '%s\n' "$root/upstreams/MoltenVK" ;;
+        *)
+            echo "unknown patch series: $1" >&2
+            exit 1
+            ;;
+    esac
+}
+
+shopt -s nullglob
+for name in anyps5 madeira fex wine moltenvk; do
+    dir="$root/patches/$name"
+    [ -d "$dir" ] || continue
+    files=("$dir"/*.patch)
+    [ "${#files[@]}" -gt 0 ] || continue
+    repo="$(repo_for "$name")"
+    if [ ! -d "$repo/.git" ] && [ ! -f "$repo/.git" ]; then
+        echo "missing submodule: $repo" >&2
+        exit 1
+    fi
+    ordered=()
+    if [ "$mode" = "reverse" ]; then
+        while IFS= read -r patch; do
+            ordered[${#ordered[@]}]="$patch"
+        done < <(printf '%s\n' "${files[@]}" | sort -r)
+    else
+        while IFS= read -r patch; do
+            ordered[${#ordered[@]}]="$patch"
+        done < <(printf '%s\n' "${files[@]}" | sort)
+    fi
+    for patch in "${ordered[@]}"; do
+        if [ "$mode" = "reverse" ]; then
+            if git -C "$repo" apply --reverse --check "$patch" 2>/dev/null; then
+                git -C "$repo" apply --reverse "$patch"
+                echo "reversed ${name}/$(basename "$patch")"
+            else
+                echo "skip reverse (not applied): ${name}/$(basename "$patch")"
+            fi
+        else
+            if git -C "$repo" apply --check "$patch" 2>/dev/null; then
+                git -C "$repo" apply "$patch"
+                echo "applied ${name}/$(basename "$patch")"
+            elif git -C "$repo" apply --reverse --check "$patch" 2>/dev/null; then
+                echo "already applied: ${name}/$(basename "$patch")"
+            else
+                echo "patch does not apply: $patch" >&2
+                exit 1
+            fi
+        fi
+    done
+done

@@ -1,0 +1,6 @@
+/build/
+/upstreams/build/
+tools/vk-requirements/vk-requirements
+tools/checks/test_moltenvk_loader
+*.o
+*.obj

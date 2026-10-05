@@ -137,6 +137,13 @@ before any hard line, on that image's paravirtual Metal device. No
   one.
 - iOS builds are not run from the Linux VM. Device logs are the evidence.
 
+**This run.** On GitHub `macos-15` (`15978d4`, Xcode 26.3, iPhoneOS 26.2)
+the unsigned Madeira app compiled after `MadeiraJITHelper` was omitted.
+`ld` stopped with `library 'wineserver' not found`.
+`app/Madeira/libwineserver.a` is not in the clone, and
+`build/wineserver/build.sh` only copies that archive. The app did not
+link. MoltenVK was not loaded from the app process.
+
 ## M5 — First menu on an iPad
 
 **Acceptance**

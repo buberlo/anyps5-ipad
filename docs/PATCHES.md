@@ -423,7 +423,7 @@ CI build now drops the Madeira target's dependency on
 `libntdll_unix.a`, `libwin32u_unix.a`, `libwineserver.a`, the FFmpeg
 archives, and `libmadeira_rppairing.a` are still absent.
 `build/wineserver/build.sh` exits with `No base libwineserver.a
-found` on a clean tree. That `xcodebuild` is not recorded yet.
+found` on a clean tree. The `15978d4` run below recorded that link.
 
 On `15978d4` the MinGW probe let `linux-ubuntu-22` continue. The
 capability tool had already passed. The job then failed compiling
@@ -443,9 +443,20 @@ unregistered qemu's x86 binfmt handlers, and ran with
 `sample.exe` exited 42. The trace default is `-all` again. The PE
 does not call Vulkan.
 
-`madeira-simulator` on `15978d4` was still running when this note
-was written. The unsigned build omits `MadeiraJITHelper`. That log
-is not recorded yet.
+`madeira-simulator` on `15978d4` (`macos-15`, Xcode 26.3, iPhoneOS
+26.2 SDK, `arm64-apple-ios17.0`) printed `unsigned build omits
+MadeiraJITHelper` and `slim libdxmt_combined.a (no-op, not DXMT)`.
+Present: `libgnutls.a`, `libgmp.a`. Missing: `libntdll_unix.a`,
+`libwin32u_unix.a`, `libwineserver.a`, `libmadeira_rppairing.a`,
+`libavformat.a`, `libavcodec.a`, `libswresample.a`, `libavutil.a`.
+Swift and Objective-C compiled. `ld` then reported
+`library 'wineserver' not found` and stopped. The app did not link.
+`build/wineserver/build.sh` copies a prebuilt
+`app/Madeira/libwineserver.a` and cannot create that archive from a
+clean clone. The script keeps running `xcodebuild`. It exits 0 only
+when that archive is absent and the log contains that linker line.
+Any other `xcodebuild` failure still fails the job. No stand-in
+archive is written.
 
 ## Left for Konrad
 

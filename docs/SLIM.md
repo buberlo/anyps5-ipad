@@ -121,7 +121,12 @@ libdxmt_combined.a`) after the iOS FEX archives linked.
 interface, before the app link. On `2e74b7d` rewriting `::` to `.`
 still failed: Xcode 26.3 is Swift 6.2.4 and the framework was built
 with Swift 6.4. The unsigned job now builds the Madeira app without
-`MadeiraJITHelper`. That link is not recorded yet.
+`MadeiraJITHelper`. On `15978d4` that compile succeeded and `ld`
+stopped with `library 'wineserver' not found`. The base
+`libwineserver.a` is not in the clone, and
+`build/wineserver/build.sh` will not create one. The job treats that
+specific miss as a hard stop and still fails on any other
+`xcodebuild` error. The app did not link.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's
@@ -156,7 +161,8 @@ the iOS unix link (`sync.c` calls Mach).
 
 Madeira's docs still build `wineserver` and also say the app does not
 use the desktop wineserver model. The archive stays until a device run
-shows it is unused.
+shows it is unused. The unsigned CI link stops before that question:
+`libwineserver.a` is not in the clone.
 
 ### FEX
 

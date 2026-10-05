@@ -136,6 +136,17 @@ do
     fi
 done
 
+# xcodebuild still runs so a new Swift or Objective-C error fails the job.
+# On 15978d4 (Xcode 26.3, iPhoneOS 26.2) the app compiled and ld stopped
+# at the first missing archive: library 'wineserver' not found.
+# build/wineserver/build.sh copies a prebuilt app/Madeira/libwineserver.a
+# and exits if that file is absent. The clone does not contain it.
+# That specific miss is a hard stop. Any other xcodebuild failure still
+# fails the job. This does not create a stand-in archive.
+log="$root/build/madeira-xcodebuild.log"
+mkdir -p "$root/build"
+set +e
+set +o pipefail
 xcodebuild \
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj" \
     -scheme Madeira \
@@ -143,4 +154,28 @@ xcodebuild \
     -configuration Debug \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
-    build
+    build 2>&1 | tee "$log"
+status=${PIPESTATUS[0]}
+set -o pipefail
+set -e
+if [ "$status" -eq 0 ]; then
+    exit 0
+fi
+if [ ! -f "$app_dir/libwineserver.a" ] && grep -F -q "library 'wineserver' not found" "$log"; then
+    echo "hard stop: the Madeira app compiled and did not link"
+    echo "ld reported: library 'wineserver' not found"
+    echo "build/wineserver/build.sh cannot create libwineserver.a without a base archive, and app/Madeira/libwineserver.a is not in the clone"
+    echo "archives still missing:"
+    for archive in \
+        libntdll_unix.a libwin32u_unix.a libwineserver.a \
+        libmadeira_rppairing.a libavformat.a libavcodec.a \
+        libswresample.a libavutil.a
+    do
+        if [ ! -f "$app_dir/$archive" ]; then
+            echo "  missing $archive"
+        fi
+    done
+    exit 0
+fi
+echo "xcodebuild failed (exit $status); this is not the missing-wineserver hard stop" >&2
+exit "$status"

@@ -143,10 +143,13 @@ the unsigned Madeira app compiled after `MadeiraJITHelper` was omitted.
 link. MoltenVK was not loaded from the app process. Madeira does not
 publish those static archives (the v0.1.3 release is an IPA). The
 follow-up compiles `libntdll_unix.a`, `libwin32u_unix.a`, and
-`libwineserver.a` from the pinned Wine fork, plus the tracked FFmpeg
-tarball, and stubs on-device pairing. On `3a947d5` GnuTLS, FFmpeg,
-and FreeType built, and `ntdll-unix` failed three files before the
-link.
+`libwineserver.a` from the pinned Wine fork and stubs on-device
+pairing. On `3a947d5` GnuTLS, FFmpeg, and FreeType built, and
+`ntdll-unix` failed three files (`ri_page_wait_time_mach`,
+`dcommon.h`, `strmif.h`) before the link. The slim link now leaves
+`dwrite`, `winegstreamer`, and FFmpeg out of that unix build. That
+omission is not a hosted-runner result yet. `APS5_SLIM=0` still
+builds the full variant, including the widl headers and FFmpeg.
 
 ## M5 — First menu on an iPad
 

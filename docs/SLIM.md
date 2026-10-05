@@ -124,11 +124,21 @@ with Swift 6.4. The unsigned job now builds the Madeira app without
 `MadeiraJITHelper`. On `15978d4` that compile succeeded and `ld`
 stopped with `library 'wineserver' not found`. The follow-up compiles
 `libntdll_unix.a`, `libwin32u_unix.a`, and `libwineserver.a` from the
-pinned Wine fork, and the four FFmpeg archives from the tracked
-7.1.1 tarball. `libmadeira_rppairing.a` is iOS 27 on-device pairing
+pinned Wine fork. `libmadeira_rppairing.a` is iOS 27 on-device pairing
 for Built-in StikJIT. The slim app links a stub that refuses to pair.
-On `3a947d5` those three dependency builds finished and `ntdll-unix`
-failed three files, so the app still did not link.
+On `3a947d5` GnuTLS, FFmpeg 7.1.1, and FreeType 2.13.3 finished, and
+`ntdll-unix` failed `server_ios.c`, `dwrite`, and `winegstreamer`, so
+the app still did not link. The AnyPS5 PE does not call `dwrite` or
+`winegstreamer`. Under `APS5_SLIM=1` (the default of
+`scripts/m3-madeira-unix-libs.sh`) those two unixlibs are not
+compiled, FFmpeg is not built, and the four `libav*.a` files are
+archives with one unused static symbol so the existing `-l` flags
+resolve. FreeType stays, because `win32u` still uses it. GnuTLS stays,
+because bcrypt, secur32, and crypt32 still compile.
+`patches/madeira/0005-slim-omit-dwrite-winegstreamer.patch` is that
+cut. `APS5_SLIM=0` keeps the full ntdll unix build, the widl headers,
+and `build/ffmpeg/build.sh`. This slim link is not a hosted-runner
+result yet.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's

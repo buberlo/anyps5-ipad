@@ -465,8 +465,9 @@ for Built-in StikJIT (`docs/JIT.md`), not remote play. The slim link
 uses `scripts/slim-rppairing.c` for those symbols.
 `scripts/m3-madeira-unix-libs.sh` compiles every `server/*.c` with the
 iOS replacements instead of swapping objects into a missing base
-archive, and runs Madeira's ntdll, win32u, FFmpeg, GnuTLS, and
-FreeType scripts for `iphoneos` and `iphonesimulator`. The unsigned
+archive, and runs Madeira's ntdll, win32u, GnuTLS, and
+FreeType scripts for `iphoneos` and `iphonesimulator`. FFmpeg runs
+when `APS5_SLIM=0`. The unsigned
 `xcodebuild` no longer treats a missing `libwineserver.a` as success.
 
 On `3a947d5` (`macos-15`, Xcode 26.3, iPhoneOS 26.2) GnuTLS, FFmpeg
@@ -475,8 +476,18 @@ failed three: `server_ios.c` reads `ri_page_wait_time_mach`, which
 `struct rusage_info_v6` does not have in that SDK; `dwrite` stopped
 at a missing `dcommon.h`; `winegstreamer` stopped at a missing
 `strmif.h`. The job did not reach `libwineserver.a` or `xcodebuild`.
-The xp log now passes 0 for that page-wait field, and the Wine build
-generates those widl headers before the unix compile.
+`patches/madeira/0004-ios-rusage-page-wait.patch` passes 0 for that
+page-wait field. `server_ios.c` is still in the slim archive.
+`patches/madeira/0005-slim-omit-dwrite-winegstreamer.patch` leaves
+`dwrite`, `winegstreamer`, and `wg_parser_apple` out of
+`libntdll_unix.a` when `APS5_SLIM=1`, and `virtual_ios.c` then falls
+through to the generic unix-call stub for those DLLs. The unix script
+defaults to that slim build: it skips the widl headers and
+`build/ffmpeg/build.sh`, and writes `libavformat.a`, `libavcodec.a`,
+`libswresample.a`, and `libavutil.a` with one unused static symbol so
+the Xcode `-l` line still resolves. `APS5_SLIM=0` generates the widl
+headers and runs the FFmpeg script. That slim link is not a
+hosted-runner result yet.
 
 `linux-ubuntu-22` on `3a947d5` selected `g++-12` (12.3.0) and linked
 `libSceAgcDriver.prx`. The PRX was not executed.

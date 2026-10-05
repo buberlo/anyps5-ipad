@@ -1,0 +1,147 @@
+diff --git a/build/ntdll-unix/build.sh b/build/ntdll-unix/build.sh
+index e02a173..1888ef1 100755
+--- a/build/ntdll-unix/build.sh
++++ b/build/ntdll-unix/build.sh
+@@ -14,6 +14,16 @@ mkdir -p "$OBJ_DIR"
+ SUCCEEDED=0
+ FAILED=0
+ FAILED_FILES=""
++# APS5_SLIM=1 leaves out dwrite and winegstreamer. The AnyPS5 PE does not
++# call them, and they need widl headers plus FFmpeg. Unset or 0 keeps
++# Madeira's full unix build.
++SLIM_CFLAGS=""
++SLIM_OBJS="$OBJ_DIR/dwrite_unixlib.o $OBJ_DIR/winegstreamer_unixlib.o $OBJ_DIR/wg_parser_apple_ios.o"
++if [ "${APS5_SLIM:-}" = 1 ]; then
++    SLIM_CFLAGS="-DAPS5_SLIM=1"
++    SLIM_OBJS=""
++    echo "APS5_SLIM=1: not compiling dwrite, winegstreamer, or wg_parser_apple"
++fi
+ 
+ compile_one() {
+     local src=$1
+@@ -34,6 +44,7 @@ compile_one() {
+         -DBINDIR=\"/usr/local/bin\" -DLIBDIR=\"/usr/local/lib\" \
+         -DDATADIR=\"/usr/local/share\" -DSYSTEMDLLPATH=\"\" \
+         -DWINE_UNIX_LIB -DWINE_IOS=1 \
++        $SLIM_CFLAGS \
+         -Dget_thread_context=ntdll_get_thread_context \
+         -Dset_thread_context=ntdll_set_thread_context \
+         -c "$src" -o "$OBJ_DIR/$name.o" 2>"$OBJ_DIR/$name.err"; then
+@@ -68,6 +79,7 @@ compile_unixlib() {
+         -I"$WINE_BUILD/include" -I"$WINE_SRC/include" \
+         -D__WINESRC__ -D_NTSYSTEM_ -D_ACRTIMP= -DWINBASEAPI= \
+         -DWINE_UNIX_LIB -DWINE_IOS=1 \
++        $SLIM_CFLAGS \
+         -D__wine_unix_call_funcs=${prefix}_unix_call_funcs \
+         -D__wine_unix_call_wow64_funcs=${prefix}_unix_call_wow64_funcs \
+         "$@" \
+@@ -107,9 +119,11 @@ compile_unixlib "$WINE_SRC/dlls/secur32/schannel_gnutls.c" "secur32_unixlib" "se
+ # freetype is static here, so dwrite_freetype_ios.c rewrites dlopen/dlsym.
+ # dwrite.h/dwrite_3.h are widl-generated and only exist in the arm64ec
+ # build tree, so that include dir is named explicitly here.
++if [ "${APS5_SLIM:-}" != 1 ]; then
+ compile_unixlib "$BUILD_DIR/dwrite_freetype_ios.c" "dwrite_unixlib" "dwrite" \
+     -I"$WINE_SRC/dlls/dwrite" -I"$REPO_ROOT/research/freetype/include" \
+     -I"$REPO_ROOT/wine/build-arm64ec/include"
++fi
+ compile_unixlib "$CRYPTO_DIR/crypt32_unixlib_ios.c" "crypt32_unixlib" "crypt32" \
+     -I"$WINE_SRC/dlls/crypt32" -I"$GNUTLS_PREFIX/include" \
+     -include "$CRYPTO_DIR/ios_gnutls_shim.h"
+@@ -141,6 +155,7 @@ compile_unixlib "$BUILD_DIR/dnsapi_unixlib_ios.c" "dnsapi_unixlib" "dnsapi" \
+ # libavformat.  FFmpeg comes from build/ffmpeg/build.sh (LGPL configuration).
+ # The widl-generated mfobjects.h/mftransform.h that unixlib.h pulls in only
+ # exist in a configured build tree's include dir, which $WINE_BUILD already is.
++if [ "${APS5_SLIM:-}" != 1 ]; then
+ FFMPEG_PREFIX="$REPO_ROOT/toolchains/ffmpeg-ios"
+ compile_unixlib "$BUILD_DIR/winegstreamer_unixlib_ios.c" "winegstreamer_unixlib" "winegstreamer" \
+     -I"$WINE_SRC/dlls/winegstreamer" -I"$FFMPEG_PREFIX/include"
+@@ -162,6 +177,7 @@ else
+     FAILED=$((FAILED + 1))
+     FAILED_FILES="$FAILED_FILES wg_parser_apple_ios"
+ fi
++fi
+ 
+ for src in $WINE_SRC/dlls/ntdll/unix/*.c; do
+     name=$(basename "$src" .c)
+@@ -211,8 +227,7 @@ ar rcs "$OBJ_DIR/libntdll_unix.a" \
+     "$OBJ_DIR/nsi_network_ios.o" "$OBJ_DIR/nsi_ndis.o" "$OBJ_DIR/nsi_ip.o" \
+     "$OBJ_DIR/gnutls_symtab_ios.o" "$OBJ_DIR/ws2_32_unixlib.o" \
+     "$OBJ_DIR/bcrypt_unixlib.o" "$OBJ_DIR/secur32_unixlib.o" "$OBJ_DIR/crypt32_unixlib.o" \
+-    "$OBJ_DIR/dwrite_unixlib.o" "$OBJ_DIR/dnsapi_unixlib.o" \
+-    "$OBJ_DIR/winegstreamer_unixlib.o" "$OBJ_DIR/wg_parser_apple_ios.o" \
++    $SLIM_OBJS "$OBJ_DIR/dnsapi_unixlib.o" \
+     "$OBJ_DIR/cdrom.o" "$OBJ_DIR/debug.o" "$OBJ_DIR/env.o" "$OBJ_DIR/file.o" \
+     "$OBJ_DIR/loader.o" "$OBJ_DIR/loadorder.o" "$OBJ_DIR/process.o" "$OBJ_DIR/registry.o" \
+     "$OBJ_DIR/security.o" "$OBJ_DIR/serial.o" "$OBJ_DIR/server.o" \
+diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+index ee9fa72..3763316 100644
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -9052,7 +9052,9 @@ extern const void *dnsapi_unix_call_funcs[];
+  * so get_glyph_bbox never ran and every glyph run reported an EMPTY bbox —
+  * ml494 measured exactly that (12/12 [dwrite-bounds] EMPTY, [dwrite-ink]
+  * never called). Chromium drew no text anywhere as a result. */
++#ifndef APS5_SLIM
+ extern const void *dwrite_unix_call_funcs[];
++#endif
+ 
+ /* MADEIRA 2026-09-19: winegstreamer's unix side, which upstream implements
+  * with GStreamer (dlls/winegstreamer/wg_transform.c, wg_parser.c) and this
+@@ -9066,7 +9068,9 @@ extern const void *dwrite_unix_call_funcs[];
+  * uses (WMA family only) and the wg_parser behind quartz's MP3/WAV splitters
+  * and Media Foundation's MP4 source; the wg_muxer entries return
+  * STATUS_NOT_IMPLEMENTED. */
++#ifndef APS5_SLIM
+ extern const void *winegstreamer_unix_call_funcs[];
++#endif
+ 
+ /* win32u's unix init, statically linked via libwin32u_unix.a. Renamed
+  * from __wine_unix_lib_init in build/win32u-unix/build.sh so future
+@@ -9090,7 +9094,9 @@ extern const void *ws2_32_unix_call_wow64_funcs[];
+ extern const void *bcrypt_unix_call_wow64_funcs[];
+ extern const void *secur32_unix_call_wow64_funcs[];
+ extern const void *crypt32_unix_call_wow64_funcs[];
++#ifndef APS5_SLIM
+ extern const void *dwrite_unix_call_wow64_funcs[];
++#endif
+ extern const void *audio_null_ios_unix_call_wow64_funcs[];
+ extern const void *nsi_unix_call_wow64_funcs[];
+ extern const void *dnsapi_unix_call_wow64_funcs[];
+@@ -9104,17 +9110,21 @@ extern const void *const dxmt_d3d9_unix_call_wow64_funcs[];
+  * so the struct is 24 bytes and not 32) and the two that hold a
+  * struct wg_sample * -- including the guest pointer inside wg_sample->data,
+  * which is where the caller's compressed input and PCM output actually live. */
++#ifndef APS5_SLIM
+ extern const void *winegstreamer_unix_call_wow64_funcs[];
++#endif
+ 
+ /* MADEIRA: winegstreamer's unix side is bound for 32-bit (wow64) callers.
+  * A 64-bit (ARM64EC) caller gets it only with MADEIRA_WG_64BIT=1 (env, or
+  * env.MADEIRA_WG_64BIT = 1 in madeira.cfg); by default it keeps the generic
+  * stub table, as upstream. */
++#ifndef APS5_SLIM
+ static BOOL ios_wg_64bit_opted_in(void)
+ {
+     const char *e = getenv( "MADEIRA_WG_64BIT" );
+     return e && e[0] == '1';
+ }
++#endif
+ 
+ /* dnsapi's unix side is bound unless MADEIRA_DNSAPI_UNIXLIB=0, which keeps the
+  * stub table (every dnsapi unix call STATUS_NOT_SUPPORTED) as before. */
+@@ -9359,6 +9369,7 @@ static NTSTATUS load_builtin_unixlib( void *module, BOOL wow, const void **funcs
+             libname = "crypt32";
+             funcs64 = (const void *)crypt32_unix_call_funcs;
+             funcs_wow64 = (const void *)crypt32_unix_call_wow64_funcs;
++#ifndef APS5_SLIM
+         } else if (match && (strstr(match, "dwrite") || strstr(match, "DWrite"))) {
+             /* case-insensitive on purpose: the PE export name is "DWrite.dll"
+              * while the unix_path is "dwrite.so" — matching only one spelling
+@@ -9390,6 +9401,7 @@ static NTSTATUS load_builtin_unixlib( void *module, BOOL wow, const void **funcs
+                           : "winegstreamer (wma + wg_parser, libav*; 64-bit opted in)";
+             funcs64 = (const void *)winegstreamer_unix_call_funcs;
+             funcs_wow64 = (const void *)winegstreamer_unix_call_wow64_funcs;
++#endif
+         } else if (match && strstr(match, "nsi.dll")) {
+             libname = "nsi (rev=ml472)";
+             funcs64 = (const void *)nsi_unix_call_funcs;

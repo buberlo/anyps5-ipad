@@ -183,5 +183,7 @@ link_one() {
 
 # iphoneos is the SDK the 15978d4 link used. The simulator SDK is the
 # same sources with the simulator sysroot. A link failure fails the job.
+# Slim omits dwrite, winegstreamer, and FFmpeg. APS5_SLIM=0 keeps them.
+export APS5_SLIM="${APS5_SLIM:-1}"
 link_one iphoneos 'generic/platform=iOS' -miphoneos-version-min=17.0
 link_one iphonesimulator 'generic/platform=iOS Simulator' -mios-simulator-version-min=17.0

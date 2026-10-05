@@ -13,6 +13,12 @@
 # libmadeira_rppairing.a is on-device remote pairing for Built-in StikJIT
 # (docs/JIT.md), not remote play. The slim app gets scripts/slim-rppairing.c.
 #
+# APS5_SLIM defaults to 1. That omits dwrite, winegstreamer, the widl
+# headers those two include, and the FFmpeg static build (it only feeds
+# winegstreamer). The four libav archives are still written, empty of
+# needed symbols, because the Xcode link line names them. APS5_SLIM=0
+# keeps Madeira's full ntdll unix build, the widl headers, and FFmpeg.
+#
 # Usage: scripts/m3-madeira-unix-libs.sh iphoneos|iphonesimulator
 # The Madeira/FEX and Madeira/wine symlinks are the caller's.
 set -euo pipefail
@@ -32,6 +38,15 @@ case "$sdkname" in
         exit 2
         ;;
 esac
+
+# The unsigned CI job does not set this. 0 is the full Madeira unix
+# build (dwrite, winegstreamer, widl, FFmpeg). Anything else is slim.
+if [ "${APS5_SLIM:-1}" = 0 ]; then
+    export APS5_SLIM=0
+else
+    export APS5_SLIM=1
+fi
+echo "APS5_SLIM=$APS5_SLIM"
 
 "$root/scripts/macos-select-xcode.sh"
 madeira="$root/upstreams/Madeira"
@@ -56,48 +71,51 @@ ln -sfn "$root/build/wine-macos/include" "$wine/build-arm64ec/include"
 
 # dwrite and winegstreamer include widl headers that a unix ntdll.so
 # build does not generate. On 3a947d5 dwrite.h existed and the compile
-# stopped at dcommon.h; winegstreamer stopped at strmif.h.
-widl_headers=(
-    include/unknwn.h
-    include/wtypes.h
-    include/objidl.h
-    include/oaidl.h
-    include/dxgiformat.h
-    include/dcommon.h
-    include/d2d1.h
-    include/dwrite.h
-    include/dwrite_1.h
-    include/dwrite_2.h
-    include/dwrite_3.h
-    include/devenum.h
-    include/axcore.h
-    include/axextend.h
-    include/dyngraph.h
-    include/vmrender.h
-    include/dvdif.h
-    include/strmif.h
-    include/amvideo.h
-    include/control.h
-    include/mfobjects.h
-)
-missing_widl=0
-for header in "${widl_headers[@]}"; do
-    if [ ! -f "$root/build/wine-macos/$header" ]; then
-        missing_widl=1
-        break
-    fi
-done
-if [ "$missing_widl" -eq 1 ]; then
-    echo "=== generating widl headers ==="
-    set +e
-    make -C "$root/build/wine-macos" -k -j"$(sysctl -n hw.ncpu)" "${widl_headers[@]}"
-    set -e
+# stopped at dcommon.h; winegstreamer stopped at strmif.h. The slim
+# archive does not compile those two unixlibs, so it skips widl.
+if [ "$APS5_SLIM" = 0 ]; then
+    widl_headers=(
+        include/unknwn.h
+        include/wtypes.h
+        include/objidl.h
+        include/oaidl.h
+        include/dxgiformat.h
+        include/dcommon.h
+        include/d2d1.h
+        include/dwrite.h
+        include/dwrite_1.h
+        include/dwrite_2.h
+        include/dwrite_3.h
+        include/devenum.h
+        include/axcore.h
+        include/axextend.h
+        include/dyngraph.h
+        include/vmrender.h
+        include/dvdif.h
+        include/strmif.h
+        include/amvideo.h
+        include/control.h
+        include/mfobjects.h
+    )
+    missing_widl=0
     for header in "${widl_headers[@]}"; do
         if [ ! -f "$root/build/wine-macos/$header" ]; then
-            echo "missing $header after widl" >&2
-            exit 1
+            missing_widl=1
+            break
         fi
     done
+    if [ "$missing_widl" -eq 1 ]; then
+        echo "=== generating widl headers ==="
+        set +e
+        make -C "$root/build/wine-macos" -k -j"$(sysctl -n hw.ncpu)" "${widl_headers[@]}"
+        set -e
+        for header in "${widl_headers[@]}"; do
+            if [ ! -f "$root/build/wine-macos/$header" ]; then
+                echo "missing $header after widl" >&2
+                exit 1
+            fi
+        done
+    fi
 fi
 
 ft_src="$madeira/research/freetype"
@@ -150,12 +168,33 @@ for lib in libgmp.a libnettle.a libhogweed.a libgnutls.a; do
     echo "installed $lib ($sdkname) $(wc -c < "$app_dir/$lib" | tr -d ' ') bytes"
 done
 
-echo "=== ffmpeg ($sdkname) ==="
-rm -rf "$madeira/build/ffmpeg/obj" "$madeira/toolchains/ffmpeg-ios"
-if ! bash "$madeira/build/ffmpeg/build.sh"; then
-    echo "ffmpeg failed; logs:" >&2
-    find "$madeira/build/ffmpeg/obj" -name '*.log' -print -exec tail -n 80 {} \; >&2 || true
-    exit 1
+if [ "$APS5_SLIM" = 0 ]; then
+    echo "=== ffmpeg ($sdkname) ==="
+    rm -rf "$madeira/build/ffmpeg/obj" "$madeira/toolchains/ffmpeg-ios"
+    if ! bash "$madeira/build/ffmpeg/build.sh"; then
+        echo "ffmpeg failed; logs:" >&2
+        find "$madeira/build/ffmpeg/obj" -name '*.log' -print -exec tail -n 80 {} \; >&2 || true
+        exit 1
+    fi
+else
+    # The app link names -lavformat -lavcodec -lswresample -lavutil and
+    # does not -force_load them. A static unused symbol lets ld open the
+    # archive and pull nothing.
+    echo "=== slim ffmpeg archives ($sdkname) ==="
+    mkdir -p "$root/build"
+    stub_c="$root/build/slim-ffmpeg-unused.c"
+    stub_o="$root/build/slim-ffmpeg-unused-$sdkname.o"
+    cat > "$stub_c" << 'EOF'
+static int aps5_slim_ffmpeg_unused __attribute__((used));
+EOF
+    xcrun -sdk "$sdkname" clang \
+        -arch arm64 -isysroot "$sdk" "$minflag" \
+        -c "$stub_c" -o "$stub_o"
+    for lib in libavformat libavcodec libswresample libavutil; do
+        rm -f "$app_dir/$lib.a"
+        xcrun -sdk "$sdkname" libtool -static -o "$app_dir/$lib.a" "$stub_o"
+        echo "slim $lib.a (no FFmpeg)"
+    done
 fi
 
 echo "=== freetype ($sdkname) ==="

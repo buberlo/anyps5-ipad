@@ -232,7 +232,9 @@ APS5_SLIM=1 scripts/build-wine-vulkan-linux.sh
 ```
 
 Output is `build/wine-linux-slim`. The default script still uses
-`build/wine-linux`. Neither tree builds `winevulkan.so` on Linux.
+`build/wine-linux`. The default tree now links `winevulkan.so` (see
+[PATCHES.md](PATCHES.md)). The slim tree has not been rebuilt since
+that link started working.
 
 iOS farm, when a Mac is available: build `ntdll`, `kernel32`,
 `kernelbase`, `user32`, `win32u`, `winevulkan`, `vulkan-1`, `xtajit64`,

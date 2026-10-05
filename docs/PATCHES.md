@@ -83,15 +83,20 @@ upstream commits; the patches are the delta.
 
 - Madeira's Wine fork (`scripts/build-wine-vulkan-linux.sh`), configured
   `--enable-archs=x86_64` out of tree. `SONAME_LIBVULKAN` is
-  `libvulkan.so.1`. These targets compiled and linked:
-  `dlls/winevulkan/vulkan.o`, `dlls/winevulkan/vulkan_thunks.o`,
-  `dlls/win32u/vulkan.o` (that object references `libvulkan.so.1`),
-  `dlls/winevulkan/x86_64-windows/winevulkan.dll`, and
-  `dlls/vulkan-1/x86_64-windows/vulkan-1.dll` (both PE32+).
-  `winevulkan.so` and the unix `ntdll` build were not produced. `sync.c`
-  uses `qos_class_t`, `pthread_set_qos_class_self_np`, `mach/mach_time.h`,
-  and `clock_gettime_nsec_np` with no Linux guard. The iOS files
-  `vulkan_ios.c` and `vulkan_metal_ios.c` were not compiled.
+  `libvulkan.so.1`. Linked on this VM: `dlls/ntdll/ntdll.so` (4,130,936
+  bytes), `dlls/win32u/win32u.so` (12,068,824 bytes), and
+  `dlls/winevulkan/winevulkan.so` (6,997,864 bytes). `winevulkan.so`
+  NEEDs `ntdll.so`, `win32u.so`, and `libc.so.6`. `win32u/vulkan.o`
+  contains the string `libvulkan.so.1` (dlopen, not a DT_NEEDED). The PE
+  `winevulkan.dll` and `vulkan-1.dll` still link. The unix libraries were
+  not executed and did not create a `VkDevice`.
+  `patches/wine/0001-linux-winevulkan-guards.patch` keeps the Apple
+  `clock_gettime_nsec_np` / `mach_absolute_time` / QoS path under
+  `#ifdef __APPLE__` and uses `CLOCK_MONOTONIC` plus a no-op eco apply
+  on Linux. `ios_srcwatch_arm` in `dibdrv/bitblt.c` is a weak symbol so
+  the Linux `win32u.so` link does not require Madeira's
+  `signal_arm64_ios.c`. The `#ifdef __APPLE__` side was not compiled
+  here. `vulkan_ios.c` and `vulkan_metal_ios.c` were not compiled.
 - `patches/anyps5/0001-guest-arena-lazy.patch` inside the MinGW libc
   objects: `GuestArena.cpp.obj` contains `APS5_GUEST_ARENA_BASE`,
   `APS5_GUEST_ARENA_SIZE`, `APS5_GUEST_ARENA_CHUNK`, and
@@ -130,18 +135,19 @@ upstream commits; the patches are the delta.
 
 ## Blocked on this Linux VM
 
-- Windows HLE libraries (`libc.prx`, and `libSceAgcDriver.prx` which links
-  them). Ubuntu GCC 13 posix plus AnyPS5's
+- Windows HLE libraries (`libc.prx`, `libSceAgcDriver.prx`) with the
+  compilers installed here. Ubuntu GCC 13 posix plus AnyPS5's
   `-fno-asynchronous-unwind-tables` emits SjLj, and this libgcc has no
-  SjLj runtime. Removing the flag makes the assembler reject
-  `Filesystem.cpp` (`.seh_handlerdata` outside `.seh_proc`). llvm-mingw
-  Clang cannot compile `__builtin_sysv_va_list`. Upstream's compiler is
-  WinLibs GCC 15.2.0 posix-seh. `relinker.exe` is the PE that did link.
-- `winevulkan.so` / unix `ntdll`, until the Apple QoS and mach time calls
-  in `sync.c` are guarded or the build is the iOS SDK one.
+  SjLj runtime. llvm-mingw Clang cannot compile `__builtin_sysv_va_list`.
+  `scripts/m0-build-anyps5-winlibs.sh` downloads WinLibs GCC 15.2.0
+  posix-seh (`15.2.0posix-14.0.0-ucrt-r7`) and is what
+  `.github/workflows/windows.yml` runs. This VM has not produced those
+  PRX files.
 - Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
   that returned 42. Host Wine segfaults in qemu before the PE prints
-  anything.
+  anything. `.github/workflows/arm64.yml` is the real `ubuntu-24.04-arm`
+  run (native FEX, x86-64 wine from a debootstrap rootfs). Its result is
+  not in this note until that job's log is recorded.
 
 ## Untested, and not claimed
 
@@ -171,28 +177,33 @@ created. `APS5_SLIM=1 scripts/build-wine-vulkan-linux.sh` configures a
 separate tree with OpenGL, Wayland, FreeType, GnuTLS, and the other
 host libraries in that script turned off. `SONAME_LIBVULKAN` stays
 `libvulkan.so.1`. `winevulkan.dll` is the same size as the default tree.
+The slim tree was not rebuilt after `winevulkan.so` started linking;
+the `.so` measured above is the default tree.
 SDL remains in `libSceVideoOut` and FMOD. DXMT and `madeira-d3d12` are
 not built.
 
-## Left for a Mac (M3 and the iOS half of M4)
+## Hosted runners, not yet a recorded result
 
-1. Build MoltenVK, point `vk-requirements` at it, and write down every
-   `HARD` failure. Record `stock-anyps5-device-count` versus
-   `portability-device-count`. Expected risks, not yet measured:
-   `textureCompressionBC`, `shaderInt64`, buffer-device address, 8-bit
-   storage, and the portability subset.
-2. With the iOS SDK, `MADEIRA_WITH_VULKAN=1 build/win32u-unix/build.sh`
-   and fix the first compile error in `vulkan_metal_ios.c`. Link a
-   MoltenVK archive and confirm
-   `dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr")` in the app.
-3. Sign a profile that grants extended virtual addressing and read
-   `EntitlementChecker`'s `address-map` line (512 GB with the entitlement,
-   63 GB without). The plist key in patch 0002 is necessary and not
-   sufficient.
-4. Boot a tiny AnyPS5 PE (no title assets) with `MADEIRA_FEX_AVX=1` and
-   `APS5_GUEST_ARENA_LAZY=1` and capture the first exception.
+These workflows are in the tree. A green or red log from them is not
+copied into this file until that run has been read.
 
-Still also open, and not a Mac-only item: link `libc.prx` with WinLibs
-GCC 15.2 posix-seh (or another libgcc that actually contains SjLj), and
-run Wine+FEX on a real ARM64 Linux host. qemu-user on this VM is not that
-host.
+- `.github/workflows/macos.yml` on `macos-14` and `macos-15`: MoltenVK
+  `make macos`, then `vk-requirements` (exit 1 is kept as a hard-miss
+  log). `macos-14` also links `winevulkan.so` and compiles
+  `vulkan_metal_ios.c`, `vulkan_ios.c`, and `moltenvk_static_loader.c`
+  with the iPhoneOS SDK, and tries Madeira's app for the iOS Simulator
+  with signing turned off.
+- `.github/workflows/arm64.yml` on `ubuntu-24.04-arm`: native FEX, an
+  amd64 debootstrap rootfs (qemu-user only for that install), then FEX
+  plus that rootfs's wine on the synthetic PE.
+- `.github/workflows/windows.yml`: WinLibs GCC 15.2.0 posix-seh,
+  `libc.prx` and `libSceAgcDriver.prx` with `APS5_SLIM=ON`.
+
+## Left for Konrad
+
+Sign a build, install it with StikDebug on a real iPad, and boot a tiny
+AnyPS5 PE (`MADEIRA_FEX_AVX=1`, `APS5_GUEST_ARENA_LAZY=1`). Read
+`EntitlementChecker`'s `address-map` line (512 GB with the extended
+virtual-addressing entitlement, 63 GB without). The plist key in
+`patches/madeira/0002` does not grant the entitlement by itself. No
+game dump.

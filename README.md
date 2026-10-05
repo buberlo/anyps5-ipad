@@ -23,8 +23,8 @@ is a foundation and the first patch drafts, not a title running on a device.
 | iOS build or device run | not done; this environment is a Linux VM |
 | M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. `libc.prx` does not link with Ubuntu GCC 13 |
 | M1 Wine+FEX on ARM64 Linux | aarch64 FEX runs a nostdlib x86-64 guest under qemu-user (exit 42). Wine+FEX segfaults in qemu. Not a real ARM64 host |
-| Linux winevulkan | PE `winevulkan.dll` and `vulkan-1.dll` plus unix `vulkan.o` compiled. `winevulkan.so` blocked on iOS calls in `ntdll` unix |
-| CI | `.github/workflows/linux.yml` applies patches, runs lavapipe `vk-requirements`, builds AnyPS5 Linux, runs the synthetic relinker tests and the Wine PE smoke |
+| Linux winevulkan | `ntdll.so`, `win32u.so`, and `winevulkan.so` linked on Linux. Not executed. iOS drafts are not compiled here |
+| CI | Linux lavapipe/AnyPS5/Wine PE job, plus workflows for macOS MoltenVK, `ubuntu-24.04-arm` FEX, and WinLibs. Runner logs are the record of those three; this VM has not seen them |
 | Slim Vulkan path | [docs/SLIM.md](docs/SLIM.md). `APS5_SLIM=1` drops SDL from `libSceAgcDriver` (8.87 MB → 6.74 MB on Linux). DXMT and D3D are not in this build |
 
 What to leave out of a Vulkan-only iPad build: [docs/SLIM.md](docs/SLIM.md).
@@ -66,7 +66,7 @@ scripts/m0-synthetic-pe-wine.sh     # fixture PE under Wine; expect exit 42
 scripts/m0-build-anyps5-windows.sh  # MinGW relinker.exe; libc.prx link fails on Ubuntu GCC 13
 scripts/m1-build-fex-aarch64.sh     # aarch64 FEX + FEXServer
 scripts/m1-wine-fex-arm64.sh        # qemu-user smoke; nostdlib guest exits 42
-scripts/build-wine-vulkan-linux.sh  # PE winevulkan / vulkan-1, not winevulkan.so
+scripts/build-wine-vulkan-linux.sh  # ntdll.so, win32u.so, winevulkan.so, PE ICD
 scripts/check-fexbridge-avx.sh
 ```
 

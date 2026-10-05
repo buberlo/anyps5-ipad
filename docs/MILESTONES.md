@@ -69,6 +69,9 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
+`.github/workflows/arm64.yml` runs this on a GitHub `ubuntu-24.04-arm`
+host. The qemu-user result above is not that host.
+
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 
 **Acceptance**
@@ -90,6 +93,10 @@ no ARM64 machine here, and the PE never reached guest entry under FEX.
   `shaderInt64`, buffer-device address, 8-bit storage, and the portability
   subset. A missing hard feature ends M3 with a written gap, not a silent
   skip.
+
+`.github/workflows/macos.yml` builds MoltenVK and runs the capability
+tool on `macos-14` and `macos-15`. The hard-miss log from those jobs is
+the measurement. It is not recorded here until the log has been read.
 
 ## M4 — Madeira patches on iOS
 

@@ -9,7 +9,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 relinker="${RELINKER:-$root/build/anyps5/core/relinker/relinker}"
 wine_bin="${WINE:-}"
-if [ -z "$wine_bin" ]; then
+if [ "${SKIP_WINE:-}" != 1 ] && [ -z "$wine_bin" ]; then
     if command -v wine64 >/dev/null 2>&1; then
         wine_bin=wine64
     elif command -v wine >/dev/null 2>&1; then
@@ -59,6 +59,11 @@ for path in sys.argv[1:]:
     if sub != 3:
         raise SystemExit(f"{path}: expected IMAGE_SUBSYSTEM_WINDOWS_CUI (3)")
 PY
+
+if [ "${SKIP_WINE:-}" = 1 ]; then
+    echo "SKIP_WINE=1; PE files are in $work"
+    exit 0
+fi
 
 icd=""
 for candidate in /usr/share/vulkan/icd.d/lvp_icd.json /usr/share/vulkan/icd.d/lvp_icd.x86_64.json; do

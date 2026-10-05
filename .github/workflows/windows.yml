@@ -1,0 +1,30 @@
+name: Windows WinLibs PRX
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  winlibs:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch AnyPS5
+        shell: bash
+        run: |
+          git submodule update --init --depth 1 upstreams/AnyPS5
+          git -C upstreams/AnyPS5 submodule update --init --depth 1
+
+      - name: Build libc.prx and libSceAgcDriver.prx with WinLibs GCC 15.2
+        shell: bash
+        run: scripts/m0-build-anyps5-winlibs.sh

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Configure Madeira's Wine fork (madeira-lgpl, Wine 11) for an x86-64 Linux
-# host with Vulkan left enabled, then build winevulkan and the unix win32u
-# pieces that load it. This compile-checks the shared Wine Vulkan code that
-# patches/madeira/0003 wraps for iOS. It does not compile vulkan_ios.c or
-# vulkan_metal_ios.c; those stay iOS drafts.
+# host with Vulkan left enabled, then build ntdll.so, win32u.so, and
+# winevulkan.so. patches/wine/0001 supplies the Linux side of the Apple
+# sync calls. This does not compile vulkan_ios.c or vulkan_metal_ios.c;
+# those stay iOS drafts. The .so is not executed here.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/apply-patches.sh"
 src="$root/upstreams/wine"
 build="$root/build/wine-linux"
 # APS5_SLIM=1 is the same Vulkan targets in a separate tree, with the host
@@ -65,15 +66,19 @@ if [ ! -f "$build/Makefile" ]; then
     )
 fi
 
-# winevulkan.so links ntdll.so. Madeira's ntdll unix (sync.c) calls Apple
-# QoS and mach_absolute_time without a Linux guard, so the full .so does
-# not link on this host. These targets compile the shared Vulkan code and
-# the PE ICD without that unix library.
+# patches/wine/0001 guards the Apple QoS and mach time calls in ntdll
+# unix/sync.c, and makes ios_srcwatch_arm a weak miss in win32u. With
+# that applied, the unix libraries link on Linux. The .so dlopens
+# libvulkan.so.1 through win32u; it does not create a device.
 make -C "$build" -j"${JOBS:-$(nproc)}" \
+    dlls/ntdll/ntdll.so \
+    dlls/win32u/win32u.so \
+    dlls/winevulkan/winevulkan.so \
     dlls/winevulkan/vulkan.o \
     dlls/winevulkan/vulkan_thunks.o \
     dlls/winevulkan/x86_64-windows/winevulkan.dll \
     dlls/vulkan-1/x86_64-windows/vulkan-1.dll \
     dlls/win32u/vulkan.o
+test -f "$build/dlls/winevulkan/winevulkan.so"
 echo "winevulkan build tree: $build"
-find "$build/dlls" -path '*winevulkan*' -o -path '*vulkan-1*' | head -40
+find "$build/dlls" -path '*winevulkan*' -o -path '*vulkan-1*' -o -name 'ntdll.so' -o -name 'win32u.so' | head -40

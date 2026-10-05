@@ -36,8 +36,13 @@ cmake -S "$root/upstreams/AnyPS5" -B "$root/build/anyps5" -G Ninja \
     -DCMAKE_CXX_COMPILER=g++ \
     -DBUILD_TESTING="${BUILD_TESTING:-OFF}" \
     -DAPS5_SLIM="$slim_flag"
-cmake --build "$root/build/anyps5" --parallel "${JOBS:-$(nproc)}"
-if [ "$slim_flag" = ON ]; then
+if [ -n "${APS5_TARGETS:-}" ]; then
+    # shellcheck disable=SC2086
+    cmake --build "$root/build/anyps5" --parallel "${JOBS:-$(nproc)}" --target ${APS5_TARGETS}
+else
+    cmake --build "$root/build/anyps5" --parallel "${JOBS:-$(nproc)}"
+fi
+if [ "$slim_flag" = ON ] && [ -z "${APS5_TARGETS:-}" ]; then
     cmake --build "$root/build/anyps5" --target libSceAgcDriver --parallel "${JOBS:-$(nproc)}"
 fi
 echo "M0 build tree: $root/build/anyps5 (APS5_SLIM=$slim_flag)"

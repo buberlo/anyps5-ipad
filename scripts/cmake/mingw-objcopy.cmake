@@ -2,6 +2,11 @@
 # filled CMAKE_OBJCOPY with a bare name. AnyPS5's EXISTS check needs a path.
 if(DEFINED ENV{LLVM_MINGW} AND EXISTS "$ENV{LLVM_MINGW}/bin/llvm-objcopy")
     set(CMAKE_OBJCOPY "$ENV{LLVM_MINGW}/bin/llvm-objcopy" CACHE FILEPATH "MinGW objcopy" FORCE)
+elseif(EXISTS "/usr/bin/x86_64-w64-mingw32-objcopy")
+    set(CMAKE_OBJCOPY "/usr/bin/x86_64-w64-mingw32-objcopy" CACHE FILEPATH "MinGW objcopy" FORCE)
 else()
-    set(CMAKE_OBJCOPY /usr/bin/x86_64-w64-mingw32-objcopy CACHE FILEPATH "MinGW objcopy" FORCE)
+    find_program(APS5_OBJCOPY NAMES objcopy objcopy.exe)
+    if(APS5_OBJCOPY)
+        set(CMAKE_OBJCOPY "${APS5_OBJCOPY}" CACHE FILEPATH "MinGW objcopy" FORCE)
+    endif()
 endif()

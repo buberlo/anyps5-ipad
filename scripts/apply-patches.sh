@@ -4,6 +4,10 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Patch series touch these checkouts. rpmalloc is nested inside FEX.
+git -C "$root" submodule update --init --depth 1 \
+    upstreams/AnyPS5 upstreams/Madeira upstreams/FEX upstreams/wine
+git -C "$root/upstreams/FEX" submodule update --init --depth 1 External/rpmalloc
 mode="apply"
 if [ "${1:-}" = "--reverse" ]; then
     mode="reverse"

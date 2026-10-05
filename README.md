@@ -21,8 +21,10 @@ is a foundation and the first patch drafts, not a title running on a device.
 | Vulkan capability tool | lavapipe (Mesa 25.2.8, LLVM 20.1.2): `hard_fail=0`, exit 0 |
 | M4 patch drafts (Vulkan, AVX, GuestArena, entitlement) | in `patches/`; see [docs/PATCHES.md](docs/PATCHES.md) for what was compiled |
 | iOS build or device run | not done; this environment is a Linux VM |
-| M0 AnyPS5 build | Linux x86-64 Release finished. Relinker, `libc`, `libkernel`, and `libSceAgcDriver` built. No Windows PE and no title ELF |
-| M1 Wine+FEX on ARM64 Linux | script only; this host is not ARM64 |
+| M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. `libc.prx` does not link with Ubuntu GCC 13 |
+| M1 Wine+FEX on ARM64 Linux | aarch64 FEX runs a nostdlib x86-64 guest under qemu-user (exit 42). Wine+FEX segfaults in qemu. Not a real ARM64 host |
+| Linux winevulkan | PE `winevulkan.dll` and `vulkan-1.dll` plus unix `vulkan.o` compiled. `winevulkan.so` blocked on iOS calls in `ntdll` unix |
+| CI | `.github/workflows/linux.yml` applies patches, runs lavapipe `vk-requirements`, builds AnyPS5 Linux, runs the synthetic relinker tests and the Wine PE smoke |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 [docs/MILESTONES.md](docs/MILESTONES.md),
@@ -56,7 +58,13 @@ ICD failed one or more; that is still a successful run of the tool.
 M0, when you want the full AnyPS5 build:
 
 ```sh
-scripts/m0-build-anyps5.sh
+scripts/m0-build-anyps5.sh          # Linux relinker and HLE libraries
+scripts/m0-synthetic-pe-wine.sh     # fixture PE under Wine; expect exit 42
+scripts/m0-build-anyps5-windows.sh  # MinGW relinker.exe; libc.prx link fails on Ubuntu GCC 13
+scripts/m1-build-fex-aarch64.sh     # aarch64 FEX + FEXServer
+scripts/m1-wine-fex-arm64.sh        # qemu-user smoke; nostdlib guest exits 42
+scripts/build-wine-vulkan-linux.sh  # PE winevulkan / vulkan-1, not winevulkan.so
+scripts/check-fexbridge-avx.sh
 ```
 
 That script needs the X11 and GL development packages AnyPS5's SDL2 check

@@ -34,8 +34,20 @@ Run that PE natively on Windows, or run the project's own tests on Linux.
 it. A follow-up `cmake --build build/anyps5 --target libSceAgcDriver` did.
 The 17 synthetic Python tests under
 `core/relinker/relinker/tests/` were run against that relinker and all
-printed `PASS` (`failed=0`). They do not load a title. No Windows PE was
-produced: the CMake target here is the Linux host. No user ELF was relinked.
+printed `PASS` (`failed=0`). They do not load a title. No user ELF was
+relinked.
+
+The Linux relinker also wrote a Windows PE from the `test_optional_plt.py`
+fixture (`scripts/m0-synthetic-pe-wine.sh`). Under Ubuntu Wine 9, with
+lavapipe selected, both the `--windows` PE and the `--to-intel` PE exited
+42. The fixture does not call Vulkan.
+
+`scripts/m0-build-anyps5-windows.sh` uses Ubuntu MinGW GCC 13 posix, not
+WinLibs GCC 15.2. It linked `build/anyps5-mingw/core/relinker/relinker.exe`.
+That PE, run under Wine, relinked the same fixture, and the result exited
+42. `libc.prx` did not link: the MINGW unwind flag selects SjLj and this
+libgcc only has SEH. llvm-mingw Clang stops on `__builtin_sysv_va_list`.
+HLE libraries remain a WinLibs (or equivalent) build.
 
 ## M1 — The same PE under Wine + FEX on ARM64 Linux
 
@@ -48,8 +60,14 @@ produced: the CMake target here is the Linux host. No user ELF was relinked.
 - A missing game is an acceptable stop. A crash inside GuestArena or FEX
   before any guest instruction is not.
 
-**This run.** `scripts/m1-wine-fex-arm64.sh` refuses to run on a non-ARM
-host and prints the command. It was not executed against a PE.
+**This run.** The pinned FEX fork cross-compiled to aarch64
+(`Bin/FEX`, `Bin/FEXServer`). On this x86-64 VM,
+`scripts/m1-wine-fex-arm64.sh` ran that FEX under `qemu-aarch64-static`
+(no binfmt; a shell wrapper re-execs `FEXServer` via qemu). A nostdlib
+x86-64 guest exited 42. A glibc static hello failed with
+`Cannot allocate TLS block`. Host Wine plus the synthetic PE segfaulted
+in qemu before the PE printed anything. This does not close M1: there is
+no ARM64 machine here, and the PE never reached guest entry under FEX.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 

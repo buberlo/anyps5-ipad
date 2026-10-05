@@ -1,0 +1,52 @@
+name: Linux checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install compilers, lavapipe, and MinGW
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 \
+            libvulkan-dev mesa-vulkan-drivers \
+            g++-mingw-w64-x86-64 \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxrender-dev libxxf86vm-dev \
+            libdrm-dev libudev-dev libdbus-1-dev libgl1-mesa-dev libegl1-mesa-dev \
+            wine
+
+      - name: Fetch AnyPS5 and Madeira
+        run: |
+          git submodule update --init --depth 1 upstreams/AnyPS5 upstreams/Madeira
+          git -C upstreams/AnyPS5 submodule update --init --depth 1
+
+      - name: Apply patches and run the lavapipe capability check
+        run: scripts/check-linux.sh
+
+      - name: Build AnyPS5 for Linux
+        run: scripts/m0-build-anyps5.sh
+
+      - name: Build libSceAgcDriver
+        run: cmake --build build/anyps5 --target libSceAgcDriver --parallel
+
+      - name: Run synthetic relinker tests
+        run: scripts/run-relinker-tests.sh
+
+      - name: Run the synthetic PE under Wine
+        run: scripts/m0-synthetic-pe-wine.sh

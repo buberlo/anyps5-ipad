@@ -7,9 +7,9 @@ submodule by hand and forget to refresh the patch.
 
 | Series | Files |
 | --- | --- |
-| `anyps5` | GuestArena size/base/lazy reserve; MoltenVK portability bits |
+| `anyps5` | GuestArena size/base/lazy reserve; MoltenVK portability bits; `GetThreadDescription` prototype for mingw-w64 11 |
 | `madeira` | FEXBridge AVX switch; extended-virtual-addressing; winevulkan + MoltenVK |
-| `fex` | empty. AVX in the ARM64EC module is already `MADEIRA_FEX_AVX` upstream. |
+| `fex` | rpmalloc POSIX `write` log; declare `InitializeAllocator`; keep iOS compile-block logs under `FEX_IOS_HOST`; `VirtualQuery` only on Windows |
 | `wine` | empty. The iOS unix side forces `SONAME_LIBVULKAN` without a Wine change. |
 | `moltenvk` | empty. No MoltenVK source change in this round. |
 

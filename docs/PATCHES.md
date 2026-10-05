@@ -27,6 +27,40 @@ upstream commits; the patches are the delta.
   linked the relinker. The 17 synthetic tests in
   `core/relinker/relinker/tests/` all passed against that binary. No title
   ELF was used.
+- Synthetic PE under Ubuntu Wine 9 (`scripts/m0-synthetic-pe-wine.sh`).
+  The Linux relinker turned `test_optional_plt.py`'s fixture into
+  `sample.exe` and `sample-intel.exe` (`--windows` and
+  `--windows --to-intel`). Both are `IMAGE_SUBSYSTEM_WINDOWS_CUI` and both
+  exited 42. Lavapipe was selected (`VK_DRIVER_FILES` =
+  `lvp_icd.json`). The PE does not call Vulkan, so this does not exercise
+  the GPU path. Wine's prefix init printed a harmless
+  `rundll32.exe` `c0000135`.
+- Windows `relinker.exe` from Ubuntu MinGW-w64 GCC 13 posix
+  (`build/anyps5-mingw/core/relinker/relinker.exe`, PE32+ console, 3.8 MiB).
+  Under the same Wine it relinked the same fixture to a PE (subsystem 3).
+  That PE printed `Transferring control to ELF entry point` and exited 42.
+  `libc.prx` and `libSceAgcDriver.prx` did not link. See the MinGW block
+  below.
+- Pinned FEX `ios-port-2607` cross-built for aarch64 Linux
+  (`scripts/m1-build-fex-aarch64.sh`, Clang `--target=aarch64-linux-gnu`,
+  `-DTUNE_CPU=cortex-a78`, jemalloc glibc hook off). `Bin/FEX` and
+  `Bin/FEXServer` are aarch64 PIE executables.
+  `scripts/m1-wine-fex-arm64.sh` with no arguments ran a nostdlib x86-64
+  guest (`mov $42, %rdi; mov $60, %rax; syscall`) under
+  `qemu-aarch64-static` and exited 42. `APS5_GUEST_ARENA_LAZY=1` and
+  `APS5_GUEST_ARENA_SIZE=0x100000000` were set; that guest does not read
+  them. A glibc static hello died with `Fatal glibc error: Cannot allocate
+  TLS block` (exit 127). `qemu-aarch64-static` plus host `wine` plus the
+  synthetic PE segfaulted inside qemu (`uncaught target signal 11`) before
+  any guest print. binfmt_misc is not mounted here; the script copies FEX
+  and wraps `FEXServer` in a shell that re-enters qemu. This is a double
+  emulator and not a timing result. The aarch64 binary includes
+  `patches/fex/0001` through `0004` (rpmalloc POSIX log,
+  `InitializeAllocator` declaration, iOS compile-block logs kept under
+  `FEX_IOS_HOST`, and `VirtualQuery` compiled only on Windows).
+- `scripts/check-fexbridge-avx.sh`: host exits were default=0, `MADEIRA_FEX_AVX=0` → 1,
+  `MADEIRA_FEX_AVX=1` → 0. The same TU cross-compiled and under qemu
+  defaulted to AVX on. `FEXBridge.mm` itself was not compiled.
 
 ## Compiled inside the Linux AnyPS5 build
 
@@ -44,6 +78,28 @@ upstream commits; the patches are the delta.
   so the Release Linux object does not contain the `APS5_GUEST_ARENA_*`
   strings (the unused static parser is optimized out). The Linux
   constructor still compiles and leaves the arena unavailable.
+
+## Compiled on a Linux host, not an iOS or Windows library link
+
+- Madeira's Wine fork (`scripts/build-wine-vulkan-linux.sh`), configured
+  `--enable-archs=x86_64` out of tree. `SONAME_LIBVULKAN` is
+  `libvulkan.so.1`. These targets compiled and linked:
+  `dlls/winevulkan/vulkan.o`, `dlls/winevulkan/vulkan_thunks.o`,
+  `dlls/win32u/vulkan.o` (that object references `libvulkan.so.1`),
+  `dlls/winevulkan/x86_64-windows/winevulkan.dll`, and
+  `dlls/vulkan-1/x86_64-windows/vulkan-1.dll` (both PE32+).
+  `winevulkan.so` and the unix `ntdll` build were not produced. `sync.c`
+  uses `qos_class_t`, `pthread_set_qos_class_self_np`, `mach/mach_time.h`,
+  and `clock_gettime_nsec_np` with no Linux guard. The iOS files
+  `vulkan_ios.c` and `vulkan_metal_ios.c` were not compiled.
+- `patches/anyps5/0001-guest-arena-lazy.patch` inside the MinGW libc
+  objects: `GuestArena.cpp.obj` contains `APS5_GUEST_ARENA_BASE`,
+  `APS5_GUEST_ARENA_SIZE`, `APS5_GUEST_ARENA_CHUNK`, and
+  `APS5_GUEST_ARENA_LAZY`. That object is SjLj and is not in a linked
+  `libc.prx`. `patches/anyps5/0003-mingw11-getthreaddescription.patch`
+  supplies the prototype mingw-w64 11 headers omit;
+  `CrashReport.cpp` compiled after that. The import lib already had the
+  symbol.
 
 ## Compile-checked only as a translation unit, not linked into a PE
 
@@ -72,6 +128,21 @@ upstream commits; the patches are the delta.
 - `patches/madeira/0002-extended-virtual-addressing.patch` adds one plist
   key. It does not sign a profile and does not change the address map.
 
+## Blocked on this Linux VM
+
+- Windows HLE libraries (`libc.prx`, and `libSceAgcDriver.prx` which links
+  them). Ubuntu GCC 13 posix plus AnyPS5's
+  `-fno-asynchronous-unwind-tables` emits SjLj, and this libgcc has no
+  SjLj runtime. Removing the flag makes the assembler reject
+  `Filesystem.cpp` (`.seh_handlerdata` outside `.seh_proc`). llvm-mingw
+  Clang cannot compile `__builtin_sysv_va_list`. Upstream's compiler is
+  WinLibs GCC 15.2.0 posix-seh. `relinker.exe` is the PE that did link.
+- `winevulkan.so` / unix `ntdll`, until the Apple QoS and mach time calls
+  in `sync.c` are guarded or the build is the iOS SDK one.
+- Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
+  that returned 42. Host Wine segfaults in qemu before the PE prints
+  anything.
+
 ## Untested, and not claimed
 
 - iOS app link of MoltenVK into `libwin32u_unix.a`.
@@ -89,18 +160,25 @@ upstream commits; the patches are the delta.
   `MADEIRA_WITH_VULKAN=1`. The script was not run (it needs llvm-mingw
   and a macOS or cross setup Madeira documents).
 
-## Next steps
+## Left for a Mac (M3 and the iOS half of M4)
 
-1. On an Apple Silicon Mac, build MoltenVK, point `vk-requirements` at it,
-   and write down every `HARD` failure. That list is the M3 exit criterion.
-2. On a Mac with the iOS SDK, `MADEIRA_WITH_VULKAN=1
-   build/win32u-unix/build.sh` and fix the first compile error in
-   `vulkan_metal_ios.c`. Then link a MoltenVK archive and confirm
+1. Build MoltenVK, point `vk-requirements` at it, and write down every
+   `HARD` failure. Record `stock-anyps5-device-count` versus
+   `portability-device-count`. Expected risks, not yet measured:
+   `textureCompressionBC`, `shaderInt64`, buffer-device address, 8-bit
+   storage, and the portability subset.
+2. With the iOS SDK, `MADEIRA_WITH_VULKAN=1 build/win32u-unix/build.sh`
+   and fix the first compile error in `vulkan_metal_ios.c`. Link a
+   MoltenVK archive and confirm
    `dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr")` in the app.
-3. Build the AnyPS5 Windows PE with a MinGW new enough for upstream
-   (BUILD.md asks for MinGW-w64 GCC 15.2.0; this VM has 13.2) and boot it
-   under Wine on Windows or under FEX+Wine on ARM64 Linux.
-4. Sign a profile that grants extended virtual addressing and read
-   `EntitlementChecker`'s `address-map` line.
-5. Boot a tiny AnyPS5 PE (no title assets) with `MADEIRA_FEX_AVX=1` and
+3. Sign a profile that grants extended virtual addressing and read
+   `EntitlementChecker`'s `address-map` line (512 GB with the entitlement,
+   63 GB without). The plist key in patch 0002 is necessary and not
+   sufficient.
+4. Boot a tiny AnyPS5 PE (no title assets) with `MADEIRA_FEX_AVX=1` and
    `APS5_GUEST_ARENA_LAZY=1` and capture the first exception.
+
+Still also open, and not a Mac-only item: link `libc.prx` with WinLibs
+GCC 15.2 posix-seh (or another libgcc that actually contains SjLj), and
+run Wine+FEX on a real ARM64 Linux host. qemu-user on this VM is not that
+host.

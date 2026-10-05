@@ -22,9 +22,9 @@ is a foundation and the first patch drafts, not a title running on a device.
 | M4 patch drafts (Vulkan, AVX, GuestArena, entitlement) | in `patches/`; see [docs/PATCHES.md](docs/PATCHES.md) for what was compiled |
 | iOS build or device run | not done; this environment is a Linux VM |
 | M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. `libc.prx` does not link with Ubuntu GCC 13 |
-| M1 Wine+FEX on ARM64 Linux | aarch64 FEX runs a nostdlib x86-64 guest under qemu-user (exit 42). Wine+FEX segfaults in qemu. Not a real ARM64 host |
+| M1 Wine+FEX on ARM64 Linux | aarch64 FEX runs a nostdlib x86-64 guest under qemu-user (exit 42). Wine+FEX segfaults in qemu. On `ubuntu-24.04-arm`, native FEX linked; the amd64 rootfs install did not, so the PE has not run under FEX |
 | Linux winevulkan | `ntdll.so`, `win32u.so`, and `winevulkan.so` linked on Linux. Not executed. iOS drafts are not compiled here |
-| CI | Linux lavapipe/AnyPS5/Wine PE job, plus workflows for macOS MoltenVK, `ubuntu-24.04-arm` FEX, and WinLibs. Runner logs are the record of those three; this VM has not seen them |
+| CI | GitHub `ubuntu-24.04` linux job and the synthetic-PE artifact job passed on `54e5815`. MoltenVK's dylib built on `macos-14`/`macos-15`; the capability log, WinLibs PRX, ARM wine rootfs, and iOS draft compile did not. See [docs/PATCHES.md](docs/PATCHES.md) |
 | Slim Vulkan path | [docs/SLIM.md](docs/SLIM.md). `APS5_SLIM=1` drops SDL from `libSceAgcDriver` (8.87 MB → 6.74 MB on Linux). DXMT and D3D are not in this build |
 
 What to leave out of a Vulkan-only iPad build: [docs/SLIM.md](docs/SLIM.md).

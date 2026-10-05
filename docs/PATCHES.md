@@ -145,9 +145,13 @@ upstream commits; the patches are the delta.
   PRX files.
 - Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
   that returned 42. Host Wine segfaults in qemu before the PE prints
-  anything. `.github/workflows/arm64.yml` is the real `ubuntu-24.04-arm`
-  run (native FEX, x86-64 wine from a debootstrap rootfs). Its result is
-  not in this note until that job's log is recorded.
+  anything. On GitHub `ubuntu-24.04-arm` (commit `54e5815`) native FEX
+  and FEXServer linked with Ubuntu clang 18.1.3. The amd64 rootfs did
+  not: `debootstrap` failed while configuring required packages (the log
+  named `passwd`). The nostdlib guest and the PE were not run on that
+  host. `scripts/m1-arm64-host.sh` now unpacks ubuntu-base 24.04.5 and
+  installs `wine64` with qemu-user only for that chroot. That install
+  has not been recorded yet.
 
 ## Untested, and not claimed
 
@@ -182,22 +186,42 @@ the `.so` measured above is the default tree.
 SDL remains in `libSceVideoOut` and FMOD. DXMT and `madeira-d3d12` are
 not built.
 
-## Hosted runners, not yet a recorded result
+## Hosted runners (read from commit 54e5815)
 
-These workflows are in the tree. A green or red log from them is not
-copied into this file until that run has been read.
+The Linux job in `.github/workflows/linux.yml` passed: patches, lavapipe
+`hard_fail=0`, the Linux AnyPS5 build including `libSceAgcDriver`, the
+17 relinker tests, and the synthetic PE under Wine. The `synthetic-pe`
+job in `arm64.yml` also passed and uploaded `sample.exe`.
 
-- `.github/workflows/macos.yml` on `macos-14` and `macos-15`: MoltenVK
-  `make macos`, then `vk-requirements` (exit 1 is kept as a hard-miss
-  log). `macos-14` also links `winevulkan.so` and compiles
-  `vulkan_metal_ios.c`, `vulkan_ios.c`, and `moltenvk_static_loader.c`
-  with the iPhoneOS SDK, and tries Madeira's app for the iOS Simulator
-  with signing turned off.
-- `.github/workflows/arm64.yml` on `ubuntu-24.04-arm`: native FEX, an
-  amd64 debootstrap rootfs (qemu-user only for that install), then FEX
-  plus that rootfs's wine on the synthetic PE.
-- `.github/workflows/windows.yml`: WinLibs GCC 15.2.0 posix-seh,
-  `libc.prx` and `libSceAgcDriver.prx` with `APS5_SLIM=ON`.
+The other jobs on that commit failed before the measurement they exist
+for:
+
+- `winevulkan` on `ubuntu-24.04` stopped in `configure` because FreeType
+  64-bit headers were missing. The base configure in
+  `scripts/build-wine-vulkan-linux.sh` now passes `--without-freetype`
+  and `--without-fontconfig`. The `.so` sizes above are still the local
+  VM link, whose Makefile already existed and was not reconfigured.
+- `winlibs` reached GCC and SDL, then AnyPS5's FFmpeg `file(DOWNLOAD)`
+  failed with curl error 60. WinLibs' own `cmake` was first on `PATH`.
+  The script now calls `C:/Program Files/CMake/bin/cmake.exe` when that
+  file exists. `libc.prx` and `libSceAgcDriver.prx` still do not exist.
+- `fex-wine` on `ubuntu-24.04-arm` linked native `Bin/FEX` and
+  `Bin/FEXServer`, then `debootstrap` failed as noted above. No guest
+  exit code.
+- `moltenvk` on `macos-14` and `macos-15` produced
+  `libMoltenVK.dylib` and `MoltenVK_icd.json`. `vk-requirements` then
+  exited 2 at stock `vkCreateInstance` and printed no `HARD` lines.
+  The tool now prints that `VkResult` and, when
+  `VK_KHR_portability_enumeration` is advertised, continues with the
+  portability instance and records `stock-anyps5-device-count 0`.
+  MoltenVK's hard-feature log is still unmeasured. Exit 1 remains a
+  recorded miss, not a script failure.
+- `winevulkan-ios` and `madeira-simulator` died in `apply-patches.sh`
+  on macOS bash 3.2 (`declare -A`, then `anyps5: unbound variable`).
+  No iOS translation unit was compiled and `xcodebuild` did not run.
+  The script no longer uses associative arrays or `mapfile`.
+
+Those five script changes have not been run on a hosted runner yet.
 
 ## Left for Konrad
 

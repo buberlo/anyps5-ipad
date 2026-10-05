@@ -234,7 +234,11 @@ APS5_SLIM=1 scripts/build-wine-vulkan-linux.sh
 Output is `build/wine-linux-slim`. The default script still uses
 `build/wine-linux`. The default tree now links `winevulkan.so` (see
 [PATCHES.md](PATCHES.md)). The slim tree has not been rebuilt since
-that link started working.
+that link started working. A fresh default configure also passes
+`--without-freetype` and `--without-fontconfig`, because the GitHub
+`ubuntu-24.04` configure stopped without FreeType headers. The local
+Makefile already existed, so the measured `.so` was not rebuilt with
+those flags.
 
 iOS farm, when a Mac is available: build `ntdll`, `kernel32`,
 `kernelbase`, `user32`, `win32u`, `winevulkan`, `vulkan-1`, `xtajit64`,

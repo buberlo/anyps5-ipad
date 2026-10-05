@@ -45,6 +45,10 @@ mkdir -p "$build"
 mkdir -p "$root/upstreams/build"
 ln -sfn ../Madeira/build/madeira_cfg.h "$root/upstreams/build/madeira_cfg.h"
 
+# A fresh configure (GitHub ubuntu-24.04) stops when FreeType headers
+# are missing. Fonts are not part of this winevulkan link, so the base
+# configure turns FreeType and fontconfig off. An existing Makefile is
+# left as it was.
 if [ ! -f "$build/Makefile" ]; then
     (
         cd "$build"
@@ -61,6 +65,8 @@ if [ ! -f "$build/Makefile" ]; then
             --without-oss \
             --without-gphoto \
             --without-pcap \
+            --without-freetype \
+            --without-fontconfig \
             "${slim_args[@]}" \
             --prefix="$build/install"
     )

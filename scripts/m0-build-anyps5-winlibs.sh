@@ -49,9 +49,20 @@ echo "Windows compiler: $($gcc --version | head -1)"
     exit 1
 }
 
+# WinLibs ships a cmake whose curl CA store fails TLS (error 60) on the
+# FFmpeg download inside AnyPS5's configure. GitHub's CMake is ahead of
+# that directory when we call it by path. gcc, objcopy, and windres stay
+# on PATH from mingw64/bin.
+cmake_bin="cmake"
+if [ -x "/c/Program Files/CMake/bin/cmake.exe" ]; then
+    cmake_bin="/c/Program Files/CMake/bin/cmake.exe"
+fi
+echo "cmake: $cmake_bin"
+"$cmake_bin" --version | head -1
+
 git -C "$root/upstreams/AnyPS5" submodule update --init --depth 1
 build="$root/build/anyps5-winlibs"
-cmake -S "$root/upstreams/AnyPS5" -B "$build" -G Ninja \
+"$cmake_bin" -S "$root/upstreams/AnyPS5" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
@@ -66,7 +77,7 @@ if [ -z "$jobs" ]; then
         jobs=4
     fi
 fi
-cmake --build "$build" --target libc --target libSceAgcDriver --parallel "$jobs"
+"$cmake_bin" --build "$build" --target libc --target libSceAgcDriver --parallel "$jobs"
 
 found=0
 while IFS= read -r prx; do

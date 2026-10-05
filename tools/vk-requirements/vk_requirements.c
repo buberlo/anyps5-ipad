@@ -207,11 +207,24 @@ static void check_device(VkPhysicalDevice physical, VkPhysicalDeviceProperties p
     free(exts);
 }
 
-static VkInstance make_instance(const VkInstanceCreateInfo *info)
+static const char *vk_result_str(VkResult result)
 {
-    VkInstance instance = VK_NULL_HANDLE;
-    if (vkCreateInstance(info, NULL, &instance) != VK_SUCCESS) return VK_NULL_HANDLE;
-    return instance;
+    switch (result) {
+    case VK_SUCCESS: return "VK_SUCCESS";
+    case VK_ERROR_OUT_OF_HOST_MEMORY: return "VK_ERROR_OUT_OF_HOST_MEMORY";
+    case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+    case VK_ERROR_INITIALIZATION_FAILED: return "VK_ERROR_INITIALIZATION_FAILED";
+    case VK_ERROR_LAYER_NOT_PRESENT: return "VK_ERROR_LAYER_NOT_PRESENT";
+    case VK_ERROR_EXTENSION_NOT_PRESENT: return "VK_ERROR_EXTENSION_NOT_PRESENT";
+    case VK_ERROR_INCOMPATIBLE_DRIVER: return "VK_ERROR_INCOMPATIBLE_DRIVER";
+    default: return "other";
+    }
+}
+
+static VkResult create_instance(const VkInstanceCreateInfo *info, VkInstance *instance)
+{
+    *instance = VK_NULL_HANDLE;
+    return vkCreateInstance(info, NULL, instance);
 }
 
 static uint32_t device_count(VkInstance instance)
@@ -261,15 +274,25 @@ int main(int argc, char **argv)
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &app,
     };
-    VkInstance stock = make_instance(&stock_info);
-    if (!stock) {
-        fprintf(stderr, "vkCreateInstance failed\n");
-        return 2;
-    }
-    const uint32_t stock_devices = device_count(stock);
-    printf("stock-anyps5-device-count %u\n", stock_devices);
     note("VK_EXT_metal_surface", have_metal ? "instance extension present" : "absent on this host");
     note("VK_KHR_portability_enumeration", have_portability_enum ? "instance extension present" : "absent on this host");
+
+    /* Stock AnyPS5 does not set ENUMERATE_PORTABILITY. MoltenVK's only ICD
+     * is a portability driver, and that create fails before any device
+     * exists. When the enumeration extension is advertised, keep going and
+     * record a stock device count of 0. A full ICD (lavapipe) still takes
+     * the stock instance. */
+    VkInstance stock = VK_NULL_HANDLE;
+    const VkResult stock_result = create_instance(&stock_info, &stock);
+    uint32_t stock_devices = 0;
+    if (stock) {
+        stock_devices = device_count(stock);
+    } else {
+        fprintf(stderr, "vkCreateInstance failed: %s (%d)\n", vk_result_str(stock_result), (int)stock_result);
+        if (!have_portability_enum) return 2;
+        note("stock instance", "create failed; continuing with portability enumeration");
+    }
+    printf("stock-anyps5-device-count %u\n", stock_devices);
 
     const char *port_exts[] = {VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME};
     VkInstanceCreateInfo port_info = stock_info;
@@ -278,11 +301,17 @@ int main(int argc, char **argv)
         port_info.enabledExtensionCount = 1;
         port_info.ppEnabledExtensionNames = port_exts;
     }
-    VkInstance instance = have_portability_enum ? make_instance(&port_info) : stock;
-    if (!instance) {
-        fprintf(stderr, "vkCreateInstance (portability) failed\n");
-        vkDestroyInstance(stock, NULL);
-        return 2;
+    VkInstance instance = VK_NULL_HANDLE;
+    if (have_portability_enum) {
+        const VkResult port_result = create_instance(&port_info, &instance);
+        if (!instance) {
+            fprintf(stderr, "vkCreateInstance (portability) failed: %s (%d)\n",
+                    vk_result_str(port_result), (int)port_result);
+            if (stock) vkDestroyInstance(stock, NULL);
+            return 2;
+        }
+    } else {
+        instance = stock;
     }
     const uint32_t port_devices = device_count(instance);
     printf("portability-device-count %u\n", port_devices);

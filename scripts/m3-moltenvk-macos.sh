@@ -46,10 +46,13 @@ if [ -z "$icd" ]; then
         '}' > "$icd"
 fi
 echo "ICD: $icd"
+echo "ICD contents:"
+cat "$icd"
 
 export VK_DRIVER_FILES="$icd"
 export VK_ICD_FILENAMES="$icd"
 export VK_LOADER_LAYERS_DISABLE='~all~'
+export VK_LOADER_DEBUG="${VK_LOADER_DEBUG:-error}"
 export DYLD_LIBRARY_PATH="$(dirname "$dylib")${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
 if [ -d /opt/homebrew/lib/pkgconfig ]; then

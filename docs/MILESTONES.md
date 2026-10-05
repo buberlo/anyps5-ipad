@@ -69,8 +69,12 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-`.github/workflows/arm64.yml` runs this on a GitHub `ubuntu-24.04-arm`
-host. The qemu-user result above is not that host.
+On GitHub `ubuntu-24.04-arm` (commit `54e5815`) the native FEX build
+linked `Bin/FEX` and `Bin/FEXServer` with Ubuntu clang 18.1.3. The
+amd64 `debootstrap` then failed while configuring packages, so neither
+the nostdlib guest nor the synthetic PE ran under FEX on that host.
+`scripts/m1-arm64-host.sh` now unpacks ubuntu-base 24.04.5 instead.
+That rootfs has not been installed yet. M1 is not closed.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 
@@ -94,9 +98,13 @@ host. The qemu-user result above is not that host.
   subset. A missing hard feature ends M3 with a written gap, not a silent
   skip.
 
-`.github/workflows/macos.yml` builds MoltenVK and runs the capability
-tool on `macos-14` and `macos-15`. The hard-miss log from those jobs is
-the measurement. It is not recorded here until the log has been read.
+`.github/workflows/macos.yml` built the MoltenVK macOS dylib on both
+`macos-14` and `macos-15` (commit `54e5815`). `vk-requirements` exited 2
+on stock `vkCreateInstance` and printed no `HARD` lines, so
+`textureCompressionBC` and the other expected risks are still
+unmeasured. The tool now continues when that create fails and
+`VK_KHR_portability_enumeration` is present. That log does not exist
+yet.
 
 ## M4 — Madeira patches on iOS
 

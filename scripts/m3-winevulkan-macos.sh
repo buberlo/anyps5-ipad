@@ -44,6 +44,8 @@ if [ ! -f "$build/Makefile" ]; then
             --without-oss \
             --without-gphoto \
             --without-pcap \
+            --without-freetype \
+            --without-fontconfig \
             --prefix="$build/install"
     )
 fi

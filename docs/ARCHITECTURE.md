@@ -103,7 +103,9 @@ not optional on that ICD, and stock AnyPS5 does neither:
 `patches/anyps5/0002-vulkan-portability.patch` does both, only when the
 extension is advertised, so a full ICD is unchanged. The capability tool
 prints `stock-anyps5-device-count` and `portability-device-count` so a later
-Mac or iPad run can see the gap directly.
+Mac or iPad run can see the gap directly. If stock `vkCreateInstance`
+fails and `VK_KHR_portability_enumeration` is advertised, the tool
+records a stock count of 0 and continues with the portability instance.
 
 **Entitlement.** Madeira's `EntitlementChecker.swift` records a measured map
 ending at `0xfc0000000` (63 GB) without

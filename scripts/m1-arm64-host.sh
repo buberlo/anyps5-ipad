@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# On a real aarch64 Linux host: build FEX natively, install an x86-64
-# Ubuntu rootfs (debootstrap uses qemu-user only for that install), then
-# run a nostdlib x86-64 guest and, when SAMPLE_EXE is set, that PE under
-# the rootfs wine via FEX. The PE run is FEX, not qemu.
+# On a real aarch64 Linux host: build FEX natively, unpack an x86-64
+# ubuntu-base rootfs, and apt-install wine64 inside it. qemu-user-static
+# is only for that chroot install. The nostdlib guest and, when
+# SAMPLE_EXE is set, the PE run under FEX, not qemu.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,17 +17,46 @@ fex="$root/build/fex-aarch64/Bin/FEX"
 test -x "$fex"
 
 rootfs="${FEX_ROOTFS:-/opt/x86-root}"
-if [ ! -d "$rootfs/usr" ]; then
-    sudo apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y debootstrap qemu-user-static
-    sudo debootstrap --arch=amd64 noble "$rootfs" http://archive.ubuntu.com/ubuntu
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y qemu-user-static binfmt-support ca-certificates curl
+if [ ! -x "$rootfs/bin/bash" ]; then
+    # debootstrap of noble amd64 failed on this runner while configuring
+    # required packages (the log named passwd). ubuntu-base is a packed
+    # rootfs, so that second-stage configure does not run.
+    base_url="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.5-base-amd64.tar.gz"
+    tarball="$root/build/ubuntu-base-24.04.5-base-amd64.tar.gz"
+    mkdir -p "$root/build"
+    curl -L --fail --retry 3 -o "$tarball" "$base_url"
+    sudo mkdir -p "$rootfs"
+    sudo tar -C "$rootfs" -xzf "$tarball"
 fi
-if ! sudo chroot "$rootfs" dpkg -s wine64 >/dev/null 2>&1; then
-    sudo tee "$rootfs/etc/apt/sources.list" >/dev/null << 'EOF'
+sudo mkdir -p "$rootfs/proc" "$rootfs/sys" "$rootfs/dev" "$rootfs/tmp" "$rootfs/etc" \
+    "$rootfs/usr/bin" "$rootfs/usr/sbin" "$rootfs/etc/apt/apt.conf.d" "$rootfs/etc/apt/sources.list.d"
+if [ -x /usr/bin/qemu-x86_64-static ]; then
+    sudo cp /usr/bin/qemu-x86_64-static "$rootfs/usr/bin/qemu-x86_64-static"
+fi
+if ! mountpoint -q "$rootfs/proc"; then
+    sudo mount -t proc proc "$rootfs/proc"
+fi
+if ! mountpoint -q "$rootfs/sys"; then
+    sudo mount -t sysfs sys "$rootfs/sys"
+fi
+if ! mountpoint -q "$rootfs/dev"; then
+    sudo mount --bind /dev "$rootfs/dev"
+fi
+sudo cp /etc/resolv.conf "$rootfs/etc/resolv.conf"
+sudo tee "$rootfs/etc/apt/sources.list" >/dev/null << 'EOF'
 deb http://archive.ubuntu.com/ubuntu noble main universe
 deb http://archive.ubuntu.com/ubuntu noble-updates main universe
 deb http://security.ubuntu.com/ubuntu noble-security main universe
 EOF
+# 24.04.5 ubuntu-base may also ship a deb822 list limited to main.
+sudo rm -f "$rootfs/etc/apt/sources.list.d/"*.sources "$rootfs/etc/apt/sources.list.d/"*.list
+printf '%s\n' 'APT::Sandbox::User "root";' | sudo tee "$rootfs/etc/apt/apt.conf.d/99sandbox" >/dev/null
+printf '%s\n' '#!/bin/sh' 'exit 101' | sudo tee "$rootfs/usr/sbin/policy-rc.d" >/dev/null
+sudo chmod 755 "$rootfs/usr/sbin/policy-rc.d"
+sudo chmod 1777 "$rootfs/tmp"
+if ! sudo chroot "$rootfs" dpkg -s wine64 >/dev/null 2>&1; then
     sudo chroot "$rootfs" apt-get update
     sudo chroot "$rootfs" env DEBIAN_FRONTEND=noninteractive apt-get install -y wine64
 fi

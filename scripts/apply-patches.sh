@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Apply or reverse the patch series in patches/<upstream>/.
 # Each series is applied in lexical order inside the matching submodule.
+# macOS bash is 3.2: no associative arrays and no mapfile.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,29 +15,40 @@ if [ "${1:-}" = "--reverse" ]; then
     shift
 fi
 
-declare -A paths=(
-    [anyps5]="$root/upstreams/AnyPS5"
-    [madeira]="$root/upstreams/Madeira"
-    [fex]="$root/upstreams/FEX"
-    [wine]="$root/upstreams/wine"
-    [moltenvk]="$root/upstreams/MoltenVK"
-)
+repo_for() {
+    case "$1" in
+        anyps5) printf '%s\n' "$root/upstreams/AnyPS5" ;;
+        madeira) printf '%s\n' "$root/upstreams/Madeira" ;;
+        fex) printf '%s\n' "$root/upstreams/FEX" ;;
+        wine) printf '%s\n' "$root/upstreams/wine" ;;
+        moltenvk) printf '%s\n' "$root/upstreams/MoltenVK" ;;
+        *)
+            echo "unknown patch series: $1" >&2
+            exit 1
+            ;;
+    esac
+}
 
 shopt -s nullglob
-for name in "${!paths[@]}"; do
+for name in anyps5 madeira fex wine moltenvk; do
     dir="$root/patches/$name"
     [ -d "$dir" ] || continue
     files=("$dir"/*.patch)
-    [ ${#files[@]} -gt 0 ] || continue
-    repo="${paths[$name]}"
+    [ "${#files[@]}" -gt 0 ] || continue
+    repo="$(repo_for "$name")"
     if [ ! -d "$repo/.git" ] && [ ! -f "$repo/.git" ]; then
         echo "missing submodule: $repo" >&2
         exit 1
     fi
+    ordered=()
     if [ "$mode" = "reverse" ]; then
-        mapfile -t ordered < <(printf '%s\n' "${files[@]}" | sort -r)
+        while IFS= read -r patch; do
+            ordered[${#ordered[@]}]="$patch"
+        done < <(printf '%s\n' "${files[@]}" | sort -r)
     else
-        mapfile -t ordered < <(printf '%s\n' "${files[@]}" | sort)
+        while IFS= read -r patch; do
+            ordered[${#ordered[@]}]="$patch"
+        done < <(printf '%s\n' "${files[@]}" | sort)
     fi
     for patch in "${ordered[@]}"; do
         if [ "$mode" = "reverse" ]; then

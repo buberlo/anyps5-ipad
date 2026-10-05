@@ -468,7 +468,18 @@ iOS replacements instead of swapping objects into a missing base
 archive, and runs Madeira's ntdll, win32u, FFmpeg, GnuTLS, and
 FreeType scripts for `iphoneos` and `iphonesimulator`. The unsigned
 `xcodebuild` no longer treats a missing `libwineserver.a` as success.
-That link has not been measured on a hosted runner yet.
+
+On `3a947d5` (`macos-15`, Xcode 26.3, iPhoneOS 26.2) GnuTLS, FFmpeg
+7.1.1, and FreeType 2.13.3 built. `ntdll-unix` compiled 34 files and
+failed three: `server_ios.c` reads `ri_page_wait_time_mach`, which
+`struct rusage_info_v6` does not have in that SDK; `dwrite` stopped
+at a missing `dcommon.h`; `winegstreamer` stopped at a missing
+`strmif.h`. The job did not reach `libwineserver.a` or `xcodebuild`.
+The xp log now passes 0 for that page-wait field, and the Wine build
+generates those widl headers before the unix compile.
+
+`linux-ubuntu-22` on `3a947d5` selected `g++-12` (12.3.0) and linked
+`libSceAgcDriver.prx`. The PRX was not executed.
 
 ## Left for Konrad
 

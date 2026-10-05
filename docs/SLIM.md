@@ -127,7 +127,8 @@ stopped with `library 'wineserver' not found`. The follow-up compiles
 pinned Wine fork, and the four FFmpeg archives from the tracked
 7.1.1 tarball. `libmadeira_rppairing.a` is iOS 27 on-device pairing
 for Built-in StikJIT. The slim app links a stub that refuses to pair.
-That link has not been measured on a hosted runner yet.
+On `3a947d5` those three dependency builds finished and `ntdll-unix`
+failed three files, so the app still did not link.
 
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's

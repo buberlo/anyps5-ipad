@@ -54,27 +54,50 @@ ln -sfn "$root/build/wine-macos" "$wine/build-macos"
 mkdir -p "$wine/build-arm64ec"
 ln -sfn "$root/build/wine-macos/include" "$wine/build-arm64ec/include"
 
-# dwrite's unix side includes widl headers. Wine generates them while
-# building dlls/dwrite. A missing FreeType on the host may fail the
-# unix object; the headers are the part this step needs.
-if [ ! -f "$root/build/wine-macos/include/dwrite_3.h" ]; then
-    echo "=== generating dwrite/d2d1 headers ==="
+# dwrite and winegstreamer include widl headers that a unix ntdll.so
+# build does not generate. On 3a947d5 dwrite.h existed and the compile
+# stopped at dcommon.h; winegstreamer stopped at strmif.h.
+widl_headers=(
+    include/unknwn.h
+    include/wtypes.h
+    include/objidl.h
+    include/oaidl.h
+    include/dxgiformat.h
+    include/dcommon.h
+    include/d2d1.h
+    include/dwrite.h
+    include/dwrite_1.h
+    include/dwrite_2.h
+    include/dwrite_3.h
+    include/devenum.h
+    include/axcore.h
+    include/axextend.h
+    include/dyngraph.h
+    include/vmrender.h
+    include/dvdif.h
+    include/strmif.h
+    include/amvideo.h
+    include/control.h
+    include/mfobjects.h
+)
+missing_widl=0
+for header in "${widl_headers[@]}"; do
+    if [ ! -f "$root/build/wine-macos/$header" ]; then
+        missing_widl=1
+        break
+    fi
+done
+if [ "$missing_widl" -eq 1 ]; then
+    echo "=== generating widl headers ==="
     set +e
-    make -C "$root/build/wine-macos" -j"$(sysctl -n hw.ncpu)" \
-        include/dwrite.h include/dwrite_1.h include/dwrite_2.h include/dwrite_3.h include/d2d1.h
-    header_status=$?
+    make -C "$root/build/wine-macos" -k -j"$(sysctl -n hw.ncpu)" "${widl_headers[@]}"
     set -e
-    if [ ! -f "$root/build/wine-macos/include/dwrite_3.h" ]; then
-        echo "include/dwrite_3.h was not produced (make exit $header_status); building dlls/dwrite" >&2
-        set +e
-        make -C "$root/build/wine-macos" -k -j"$(sysctl -n hw.ncpu)" dlls/dwrite
-        set -e
-    fi
-    if [ ! -f "$root/build/wine-macos/include/dwrite_3.h" ]; then
-        echo "dwrite_3.h is still absent. Header paths:" >&2
-        find "$root/build/wine-macos" -name 'dwrite_3.h' -o -name 'dwrite.h' | head
-        exit 1
-    fi
+    for header in "${widl_headers[@]}"; do
+        if [ ! -f "$root/build/wine-macos/$header" ]; then
+            echo "missing $header after widl" >&2
+            exit 1
+        fi
+    done
 fi
 
 ft_src="$madeira/research/freetype"
@@ -143,7 +166,12 @@ echo "=== ntdll unix ($sdkname) ==="
 rm -rf "$madeira/build/ntdll-unix/obj"
 if ! bash "$madeira/build/ntdll-unix/build.sh"; then
     echo "ntdll-unix failed; compiler errors:" >&2
-    find "$madeira/build/ntdll-unix/obj" -name '*.err' -size +0c -print -exec tail -n 40 {} \; >&2 || true
+    find "$madeira/build/ntdll-unix/obj" -name '*.err' -print | while read -r err; do
+        if grep -q 'error:' "$err"; then
+            echo "$err" >&2
+            cat "$err" >&2
+        fi
+    done
     exit 1
 fi
 test -f "$app_dir/libntdll_unix.a"

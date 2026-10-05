@@ -11,6 +11,7 @@ if [ "$(uname -s)" != "Darwin" ]; then
     exit 1
 fi
 "$root/scripts/apply-patches.sh"
+"$root/scripts/macos-select-xcode.sh"
 git -C "$root" submodule update --init --depth 1 upstreams/Madeira
 
 xcodebuild \

@@ -120,9 +120,13 @@ if [ -z "$sample" ]; then
     exit 0
 fi
 test -f "$sample"
-sudo cp "$sample" "$rootfs/tmp/sample.exe"
-sudo mkdir -p "$rootfs/tmp/prefix"
-sudo chmod 777 "$rootfs/tmp" "$rootfs/tmp/prefix"
+# Wine refuses to create a prefix under a directory it does not own.
+# /tmp in the ubuntu-base rootfs is root-owned, which produced
+# "wine: '/tmp' is not owned by you" and exit 1 before the PE ran.
+sudo mkdir -p "$rootfs/home/fex"
+sudo chown "$(id -u):$(id -g)" "$rootfs/home/fex"
+sudo cp "$sample" "$rootfs/home/fex/sample.exe"
+sudo chmod 755 "$rootfs/home/fex/sample.exe"
 
 wine_guest=""
 while IFS= read -r cand; do
@@ -137,10 +141,10 @@ if [ -z "$wine_guest" ]; then
     exit 1
 fi
 echo "wine ELF guest path: $wine_guest"
-export WINEPREFIX=/tmp/prefix
+export WINEPREFIX=/home/fex/prefix
 export WINEDEBUG="${WINEDEBUG:--all}"
 set +e
-"$fex" "$wine_guest" /tmp/sample.exe
+"$fex" "$wine_guest" /home/fex/sample.exe
 pe_status=$?
 set -e
 echo "sample.exe exit=$pe_status"

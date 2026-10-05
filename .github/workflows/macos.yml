@@ -17,7 +17,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        # macos-14's paravirtual Metal device aborts inside MoltenVK
+        # (AppleParavirtDevice lacks newArgumentEncoderWithLayout:).
+        # The capability log is the macos-15 run.
+        os: [macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
@@ -36,7 +39,7 @@ jobs:
           path: ${{ runner.temp }}/moltenvk-requirements.txt
 
   winevulkan-ios:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +48,7 @@ jobs:
         run: scripts/m3-ios-drafts.sh
 
   madeira-simulator:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4

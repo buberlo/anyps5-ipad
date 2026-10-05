@@ -12,6 +12,7 @@ if [ "$(uname -s)" != "Darwin" ]; then
     exit 1
 fi
 "$root/scripts/apply-patches.sh"
+"$root/scripts/macos-select-xcode.sh"
 "$root/scripts/m3-winevulkan-macos.sh"
 
 sdk="$(xcrun --sdk iphoneos --show-sdk-path)"

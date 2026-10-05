@@ -106,6 +106,8 @@ prints `stock-anyps5-device-count` and `portability-device-count` so a later
 Mac or iPad run can see the gap directly. If stock `vkCreateInstance`
 fails and `VK_KHR_portability_enumeration` is advertised, the tool
 records a stock count of 0 and continues with the portability instance.
+On the `macos-15` runner that gap is 0 versus 1, and the portability
+device passed every hard check.
 
 **Entitlement.** Madeira's `EntitlementChecker.swift` records a measured map
 ending at `0xfc0000000` (63 GB) without

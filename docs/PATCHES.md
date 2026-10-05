@@ -201,40 +201,58 @@ and fontconfig off) found `-lvulkan` as `libvulkan.so.1` and linked
 executed. Sizes were not printed on that runner; the byte sizes above
 are still the local VM link.
 
-`fex-wine` on `2d7c2b8` linked native FEX, then failed in the rootfs
-apt signature check described above. `linux`, `winlibs`, and every
-macOS job on that commit were cancelled before a runner was assigned
-(no steps). That is not a build result.
+On `a54b497` the `winevulkan` job passed again. `synthetic-pe` passed
+again.
 
-The other jobs on `54e5815` failed before the measurement they exist
-for:
+`moltenvk` on `macos-15` (`a54b497`) is the capability log. Stock
+`vkCreateInstance` returned `VK_ERROR_INCOMPATIBLE_DRIVER` (-9).
+`stock-anyps5-device-count` is 0. With
+`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR` the count is 1.
+`VK_EXT_metal_surface` is present. The device is `Apple Paravirtual
+device`, integrated, API 1.1.357, graphics+compute. This is the
+runner's virtual GPU, not an iPad. Every `HARD` line passed, including
+`VK_KHR_8bit_storage`, `storageBuffer8BitAccess`,
+`VK_KHR_buffer_device_address`, `bufferDeviceAddress`, `shaderInt64`,
+`VK_KHR_shader_float_controls`,
+`shaderSignedZeroInfNanPreserveFloat32`,
+`vertexPipelineStoresAndAtomics`, `fragmentStoresAndAtomics`,
+`samplerAnisotropy`, and `textureCompressionBC`. `VK_KHR_swapchain` is
+present; no surface was created. The device advertises
+`VK_KHR_portability_subset`. Summary: `hard_fail=0`,
+`optional_missing=7`, exit 0. The optional misses are mesh shader,
+shader clock, `VK_EXT_depth_range_unrestricted`,
+`VK_EXT_primitive_topology_list_restart`, `VK_EXT_image_view_min_lod`,
+`shaderFloat64`, and `depthBounds`. No `VkDevice` was created by AnyPS5.
 
-- `winevulkan` on `54e5815` stopped in `configure` because FreeType
-  headers were missing. `2d7c2b8` passed that job with
-  `--without-freetype` and `--without-fontconfig`.
-- `winlibs` on `54e5815` reached GCC and SDL, then AnyPS5's FFmpeg
-  `file(DOWNLOAD)` failed with curl error 60. WinLibs' own `cmake` was
-  first on `PATH`. The script now calls
-  `C:/Program Files/CMake/bin/cmake.exe` when that file exists.
-  `libc.prx` and `libSceAgcDriver.prx` still do not exist. The `2d7c2b8`
-  Windows job was cancelled before it started.
-- `fex-wine` on `54e5815` linked native FEX, then `debootstrap` failed.
-  `2d7c2b8` linked FEX again and failed on the ubuntu-base apt key, as
-  noted above. No guest exit code.
-- `moltenvk` on `macos-14` and `macos-15` produced
-  `libMoltenVK.dylib` and `MoltenVK_icd.json`. `vk-requirements` then
-  exited 2 at stock `vkCreateInstance` and printed no `HARD` lines.
-  The tool now prints that `VkResult` and, when
-  `VK_KHR_portability_enumeration` is advertised, continues with the
-  portability instance and records `stock-anyps5-device-count 0`.
-  MoltenVK's hard-feature log is still unmeasured. Exit 1 remains a
-  recorded miss, not a script failure.
-- `winevulkan-ios` and `madeira-simulator` died in `apply-patches.sh`
-  on macOS bash 3.2 (`declare -A`, then `anyps5: unbound variable`).
-  No iOS translation unit was compiled and `xcodebuild` did not run.
-  The script no longer uses associative arrays or `mapfile`.
+The same commit's `macos-14` MoltenVK package built, then the
+portability `vkCreateInstance` aborted (exit 134) inside
+`MVKPhysicalDevice::initMetalFeatures`: `AppleParavirtDevice` does not
+implement `newArgumentEncoderWithLayout:`. No `HARD` lines. That runner
+is dropped from the matrix. It is not the measurement above.
 
-Those five script changes have not been run on a hosted runner yet.
+`fex-wine` on `a54b497` linked native FEX, installed `wine64` 9.0 from
+ubuntu-base, and ran the nostdlib guest to exit 42. `/usr/lib/wine/wine64`
+then exited 1 with `wine: '/tmp' is not owned by you, refusing to
+create a configuration directory there`. The PE did not start. The
+prefix is now `/home/fex/prefix`, owned by the runner user. That run is
+not recorded yet.
+
+`winevulkan-ios` on `macos-14` stopped in Wine configure: `aarch64 PE
+cross-compiler not found`. No iOS translation unit was compiled. The
+script now downloads llvm-mingw `20260421` (`aarch64-w64-mingw32-clang`)
+and the job runs on `macos-15`.
+
+`madeira-simulator` on `macos-14` reached `xcodebuild` with Xcode 15.4
+and failed in Swift: `BGContinuedProcessingTask` is not in that SDK
+(`SteamDownloadBackground.swift`, `JITPairing.swift`). The job now
+selects Xcode 26 or later on `macos-15`. That build is not recorded yet.
+
+`linux` and `winlibs` on `2d7c2b8` and `a54b497` were cancelled before
+a runner was assigned (`The job was not acquired by Runner of type
+hosted even after multiple attempts`). `libc.prx` and
+`libSceAgcDriver.prx` still do not exist. The `54e5815` Windows failure
+was curl error 60 from WinLibs' cmake; the script calls GitHub's CMake
+when that file exists. That path has not been recorded.
 
 ## Left for Konrad
 

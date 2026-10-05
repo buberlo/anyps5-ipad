@@ -69,12 +69,11 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` the native FEX build linked `Bin/FEX` and
-`Bin/FEXServer` with Ubuntu clang 18.1.3 (`54e5815` and again
-`2d7c2b8`). `debootstrap` failed on the first of those. ubuntu-base
-24.04.5 extracted on the second, then `apt-get update` rejected the
-image keyring (`NO_PUBKEY 871920D1991BC93C`). Neither the nostdlib guest
-nor the synthetic PE has run under FEX on that host. M1 is not closed.
+On GitHub `ubuntu-24.04-arm` (`a54b497`) native FEX linked, ubuntu-base
+24.04.5 supplied `wine64` 9.0, and a nostdlib x86-64 guest exited 42
+under FEX. Wine then exited 1 because `/tmp` in that rootfs is not
+owned by the runner user, before the synthetic PE started. M1 is not
+closed.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 
@@ -98,13 +97,18 @@ nor the synthetic PE has run under FEX on that host. M1 is not closed.
   subset. A missing hard feature ends M3 with a written gap, not a silent
   skip.
 
-`.github/workflows/macos.yml` built the MoltenVK macOS dylib on both
-`macos-14` and `macos-15` (commit `54e5815`). `vk-requirements` exited 2
-on stock `vkCreateInstance` and printed no `HARD` lines, so
-`textureCompressionBC` and the other expected risks are still
-unmeasured. The tool now continues when that create fails and
-`VK_KHR_portability_enumeration` is present. That log does not exist
-yet.
+On `macos-15` (`a54b497`) the capability tool against MoltenVK exited 0.
+Stock `vkCreateInstance` returned `VK_ERROR_INCOMPATIBLE_DRIVER`.
+`stock-anyps5-device-count` is 0 and `portability-device-count` is 1.
+The device is the runner's `Apple Paravirtual device` (integrated, API
+1.1.357), not an iPad GPU. Every hard check passed, including
+`textureCompressionBC`, `shaderInt64`, buffer-device address, and
+8-bit storage. The device requires `VK_KHR_portability_subset`.
+`optional_missing=7` (mesh shader, shader clock, unrestricted depth
+range, primitive topology list restart, image view min lod,
+`shaderFloat64`, `depthBounds`). `macos-14` aborts inside MoltenVK
+before any hard line, on that image's paravirtual Metal device. No
+`VkDevice` was created by AnyPS5. Wine on that Mac was not linked.
 
 ## M4 — Madeira patches on iOS
 

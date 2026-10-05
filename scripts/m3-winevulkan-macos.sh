@@ -18,6 +18,24 @@ if command -v brew >/dev/null 2>&1; then
     fi
 fi
 
+# Wine's --enable-archs=aarch64 configure errors unless it can compile a
+# PE object. Host clang is not that compiler. llvm-mingw supplies
+# aarch64-w64-mingw32-clang. The tarball is a toolchain, not firmware.
+if ! command -v aarch64-w64-mingw32-clang >/dev/null 2>&1; then
+    mingw_tag="20260421"
+    mingw_root="$root/build/toolchains/llvm-mingw-${mingw_tag}-ucrt-macos-universal"
+    if [ ! -x "$mingw_root/bin/aarch64-w64-mingw32-clang" ]; then
+        mkdir -p "$root/build/toolchains"
+        archive="$root/build/toolchains/llvm-mingw-${mingw_tag}-ucrt-macos-universal.tar.xz"
+        url="https://github.com/mstorsjo/llvm-mingw/releases/download/${mingw_tag}/llvm-mingw-${mingw_tag}-ucrt-macos-universal.tar.xz"
+        echo "downloading $url"
+        curl -L --fail --retry 3 -o "$archive" "$url"
+        tar -C "$root/build/toolchains" -xJf "$archive"
+    fi
+    export PATH="$mingw_root/bin:$PATH"
+fi
+echo "PE compiler: $(command -v aarch64-w64-mingw32-clang)"
+
 git -C "$root" submodule update --init --depth 1 upstreams/wine upstreams/Madeira
 src="$root/upstreams/wine"
 build="$root/build/wine-macos"

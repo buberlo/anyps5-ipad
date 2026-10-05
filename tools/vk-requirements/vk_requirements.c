@@ -20,6 +20,17 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
+/* Ubuntu 22.04 ships Vulkan headers 1.3.204. Those headers have no
+ * VK_KHR_portability_enumeration names. The string is the spec name, so
+ * a newer loader that advertises the extension still matches. The
+ * enumerate bit is applied only when that advertisement is present. */
+#ifndef VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+#define VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME "VK_KHR_portability_enumeration"
+#endif
+#ifndef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+#define VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR ((VkInstanceCreateFlags)0x00000001)
+#endif
+
 static int g_hard_fail;
 static int g_optional_miss;
 static int g_present;
@@ -122,16 +133,34 @@ static void check_device(VkPhysicalDevice physical, VkPhysicalDeviceProperties p
     VkPhysicalDevice8BitStorageFeatures storage8 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES};
     VkPhysicalDeviceBufferDeviceAddressFeatures bda = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES};
     VkPhysicalDeviceTimelineSemaphoreFeatures timeline = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES};
-    VkPhysicalDeviceMeshShaderFeaturesEXT mesh = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
-    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR bary = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR};
     VkPhysicalDeviceShaderClockFeaturesKHR clock = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
     VkPhysicalDeviceDescriptorIndexingFeatures indexing = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+    /* Mesh-shader EXT and fragment-shader barycentric KHR arrived after
+     * the headers in Ubuntu 22.04. They are optional AnyPS5 features.
+     * Leave them off the pNext chain when the header cannot name them. */
+#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
+    VkPhysicalDeviceMeshShaderFeaturesEXT mesh = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+#endif
+#ifdef VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME
+    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR bary = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR};
+#endif
     features.pNext = &storage8;
     storage8.pNext = &bda;
     bda.pNext = &timeline;
+#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
     timeline.pNext = &mesh;
+#ifdef VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME
     mesh.pNext = &bary;
     bary.pNext = &clock;
+#else
+    mesh.pNext = &clock;
+#endif
+#elif defined(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME)
+    timeline.pNext = &bary;
+    bary.pNext = &clock;
+#else
+    timeline.pNext = &clock;
+#endif
     clock.pNext = &indexing;
     vkGetPhysicalDeviceFeatures2(physical, &features);
 
@@ -166,10 +195,18 @@ static void check_device(VkPhysicalDevice physical, VkPhysicalDeviceProperties p
                                      : "absent (not required without a window)");
     }
 
+#ifdef VK_EXT_MESH_SHADER_EXTENSION_NAME
     const int mesh_ext = has_ext(exts, ext_count, VK_EXT_MESH_SHADER_EXTENSION_NAME)
         && has_ext(exts, ext_count, VK_KHR_SPIRV_1_4_EXTENSION_NAME);
     optional("mesh shader (EXT_mesh_shader + SPIR-V 1.4)", mesh_ext && mesh.meshShader);
+#else
+    optional("mesh shader (EXT_mesh_shader + SPIR-V 1.4)", 0);
+#endif
+#ifdef VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME
     optional("fragment shader barycentric", has_ext(exts, ext_count, VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) && bary.fragmentShaderBarycentric);
+#else
+    optional("fragment shader barycentric", 0);
+#endif
     optional("shader clock (subgroup and device)", has_ext(exts, ext_count, VK_KHR_SHADER_CLOCK_EXTENSION_NAME)
              && clock.shaderSubgroupClock && clock.shaderDeviceClock);
     optional("VK_EXT_depth_range_unrestricted", has_ext(exts, ext_count, VK_EXT_DEPTH_RANGE_UNRESTRICTED_EXTENSION_NAME));

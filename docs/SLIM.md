@@ -115,6 +115,10 @@ app link has the present-count, GPU-meter, vsync, fence, and
 return empty results. `madeira_set_eco` stays in ntdll, not in this
 stub.
 
+On `4b6d5a4` the simulator job stopped in FEX cmake, before this stub
+was compiled. The missing pieces were FEX's `fmt`, `xxhash`,
+`range-v3`, and `unordered_dense` checkouts.
+
 `x86_64-vcruntime` is not built by any Madeira script.
 `tools/fetch-vcruntime.md` tells the user to extract Microsoft's
 `VC_redist.x64.exe`. The slim PE imports `kernel32` only, so the

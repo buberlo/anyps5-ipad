@@ -120,15 +120,28 @@ if [ -z "$sample" ]; then
     exit 0
 fi
 test -f "$sample"
-# Wine refuses to create a prefix under a directory it does not own.
-# /tmp in the ubuntu-base rootfs is root-owned, which produced
-# "wine: '/tmp' is not owned by you" and exit 1 before the PE ran.
-# Wine 9 also chdirs into WINEPREFIX before creating it
-# ("chdir to /home/fex/prefix : No such file or directory").
-sudo mkdir -p "$rootfs/home/fex/prefix"
-sudo chown -R "$(id -u):$(id -g)" "$rootfs/home/fex"
-sudo cp "$sample" "$rootfs/home/fex/sample.exe"
-sudo chmod 755 "$rootfs/home/fex/sample.exe"
+# Wine's setup_config_dir calls chdir(WINEPREFIX) and mkdir. This FEX
+# fork passes both syscalls to the host kernel (Passthrough.cpp), so a
+# directory that exists only inside the rootfs is still ENOENT. On
+# 4b6d5a4, mkdir of $rootfs/home/fex/prefix still produced
+# "wine: chdir to /home/fex/prefix : No such file or directory".
+# The prefix therefore lives on the host, owned by the runner. /tmp is
+# root-owned, which Wine refuses ("is not owned by you").
+prefix="$HOME/fex-prefix"
+mkdir -p "$prefix"
+cp "$sample" "$HOME/sample.exe"
+chmod 755 "$HOME/sample.exe"
+# A read-only open tries the rootfs first and falls back to the host.
+# Copy the PE into the rootfs at the same absolute path.
+sudo mkdir -p "$rootfs$HOME"
+sudo cp "$sample" "$rootfs$HOME/sample.exe"
+sudo chmod 755 "$rootfs$HOME/sample.exe"
+echo "host prefix $(ls -ld "$prefix" "$HOME/sample.exe")"
+set +e
+"$fex" /usr/bin/ls -ld "$prefix" "$HOME/sample.exe"
+guest_ls=$?
+set -e
+echo "guest ls exit=$guest_ls"
 
 wine_guest=""
 while IFS= read -r cand; do
@@ -143,10 +156,10 @@ if [ -z "$wine_guest" ]; then
     exit 1
 fi
 echo "wine ELF guest path: $wine_guest"
-export WINEPREFIX=/home/fex/prefix
+export WINEPREFIX="$prefix"
 export WINEDEBUG="${WINEDEBUG:--all}"
 set +e
-"$fex" "$wine_guest" /home/fex/sample.exe
+"$fex" "$wine_guest" "$HOME/sample.exe"
 pe_status=$?
 set -e
 echo "sample.exe exit=$pe_status"

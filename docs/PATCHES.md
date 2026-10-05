@@ -145,7 +145,8 @@ upstream commits; the patches are the delta.
   posix-seh (`15.2.0posix-14.0.0-ucrt-r7`) and is what
   `.github/workflows/windows.yml` runs. This VM has not produced those
   PRX files. The GitHub `winlibs` job on `f1d3f06` did; paths are in
-  the hosted-runner section. Byte sizes were not printed on that run.
+  the hosted-runner section. Byte sizes were not printed on `f1d3f06`.
+  They were printed on `4b6d5a4`.
 - Wine under aarch64 FEX on this qemu-user. The nostdlib guest is the run
   that returned 42. Host Wine segfaults in qemu before the PE prints
   anything. On GitHub `ubuntu-24.04-arm` (`a54b497`) native FEX ran that
@@ -312,6 +313,58 @@ without waiting. `winlibs` on `c161948` got a runner and then failed:
 `The hosted runner lost communication with the server`. That is not a
 compile error. The `f1d3f06` PRX paths above still stand. A
 `windows-2022` job runs when that result is not success.
+
+On `4b6d5a4` these jobs passed: `linux` and `winevulkan` on
+`ubuntu-24.04`, `winevulkan-ubuntu-22`, `moltenvk` on `macos-15`
+(same portability `hard_fail=0` result), `synthetic-pe`, and
+`winlibs`. The `winlibs` log printed `libc.prx` at 875965 bytes and
+`libSceAgcDriver.prx` at 7068172 bytes, both under
+`build/anyps5-winlibs/core/libs/libs/unpatched/`, `APS5_SLIM=ON`.
+The PRX files were not executed. `winlibs-fallback` was skipped.
+
+`winevulkan-ios` on `4b6d5a4` (`macos-15`, Xcode 26.3, Apple clang
+17.0.0) linked `winevulkan.so` as a Mach-O 64-bit arm64 shared
+library, and the iOS SDK `-c` steps produced
+`build/ios-drafts/moltenvk_static_loader.o`, `vulkan_metal_ios.o`,
+and `vulkan_ios.o`. Those objects were not executed. No `VkDevice`
+was created.
+
+`linux-ubuntu-22` failed in `make -C tools/vk-requirements`. Ubuntu
+22.04's Vulkan headers do not declare
+`VkPhysicalDeviceMeshShaderFeaturesEXT`,
+`VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR`,
+`VK_EXT_MESH_SHADER_EXTENSION_NAME`,
+`VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME`,
+`VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME`, or
+`VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR`. The `ubuntu-24.04`
+job compiled the same file and passed. The tool now skips the two
+optional feature structs when the header does not name them, and
+supplies the portability names when they are missing. That compile
+is not yet a hosted-runner result. On this VM, with current headers,
+lavapipe still reports `hard_fail=0`.
+
+`fex-wine` on `4b6d5a4` ran the nostdlib guest to exit 42 again.
+`wine64` then exited 1: `wine: chdir to /home/fex/prefix : No such
+file or directory`. The script had created that directory inside the
+rootfs. FEX passes `chdir` and `mkdir` to the host, so the rootfs
+directory is not the one Wine changes into. The prefix is now
+`$HOME/fex-prefix` on the host, and the PE is copied to both
+`$HOME/sample.exe` and the same path inside the rootfs. That run is
+not recorded yet.
+
+`madeira-simulator` on `4b6d5a4` configured FEX with the iphoneos SDK
+and `xcrun` clang (the empty-processor failure is gone) and then
+stopped. `External/unordered_dense`, `External/xxhash`,
+`External/fmt`, and `External/range-v3` were not checked out, and
+`Scripts/aarch64_fit_native.py` could not import `packaging`.
+`NeedDisabledSVE.py` did not find `/proc/cpuinfo`; cmake continued
+with "Platform has bugged SVE". The DXMT stub did not run. The script
+now checks out those four FEX submodules and sets `TUNE_CPU=none` so
+the native CPU probe is not used for an iOS cross build. That
+configure is not recorded yet. The app target still lists
+`libntdll_unix.a`, `libwin32u_unix.a`, `libwineserver.a`,
+`libavformat.a`, and `libmadeira_rppairing.a`, which this script does
+not build.
 
 ## Left for Konrad
 

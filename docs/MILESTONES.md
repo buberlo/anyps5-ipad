@@ -48,10 +48,10 @@ That PE, run under Wine, relinked the same fixture, and the result exited
 42. `libc.prx` did not link: the MINGW unwind flag selects SjLj and this
 libgcc only has SEH. llvm-mingw Clang stops on `__builtin_sysv_va_list`.
 
-On GitHub `windows-latest` (`f1d3f06`) WinLibs GCC 15.2.0 posix-seh
-linked `build/anyps5-winlibs/core/libs/libs/unpatched/libc.prx` and
-`libSceAgcDriver.prx` with `APS5_SLIM=ON`. Byte sizes were not printed.
-The PRX files were not executed.
+On GitHub `windows-latest` (`4b6d5a4`) WinLibs GCC 15.2.0 posix-seh
+linked `build/anyps5-winlibs/core/libs/libs/unpatched/libc.prx`
+(875965 bytes) and `libSceAgcDriver.prx` (7068172 bytes) with
+`APS5_SLIM=ON`. The PRX files were not executed.
 
 ## M1 — The same PE under Wine + FEX on ARM64 Linux
 
@@ -73,11 +73,12 @@ x86-64 guest exited 42. A glibc static hello failed with
 in qemu before the PE printed anything. This does not close M1: there is
 no ARM64 machine here, and the PE never reached guest entry under FEX.
 
-On GitHub `ubuntu-24.04-arm` (`a54b497` and `c161948`) native FEX
-linked, ubuntu-base 24.04.5 supplied `wine64` 9.0, and a nostdlib
-x86-64 guest exited 42 under FEX. On `c161948` the PE exited 1:
-`wine: chdir to /home/fex/prefix : No such file or directory`. M1 is
-not closed.
+On GitHub `ubuntu-24.04-arm` (`a54b497`, `c161948`, and `4b6d5a4`)
+native FEX linked, ubuntu-base 24.04.5 supplied `wine64` 9.0, and a
+nostdlib x86-64 guest exited 42 under FEX. On `4b6d5a4` the PE exited
+1: `wine: chdir to /home/fex/prefix : No such file or directory`.
+The directory had been created inside the rootfs. FEX passes `chdir`
+to the host, so that path was not the one Wine used. M1 is not closed.
 
 ## M2 — Vulkan under Wine + FEX on ARM64 Linux
 

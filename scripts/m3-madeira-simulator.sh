@@ -40,6 +40,17 @@ cleanup_fex_link() {
 }
 trap cleanup_fex_link EXIT
 
+# apply-patches.sh only checks out External/rpmalloc. FEX's iOS configure
+# also add_subdirectory's fmt, xxhash, range-v3, and unordered_dense.
+# On 4b6d5a4 those directories were empty and cmake stopped before the
+# DXMT stub. TUNE_CPU defaults to native, which runs
+# Scripts/aarch64_fit_native.py against /proc/cpuinfo. That file is
+# absent on macOS, and the script imports packaging. An iOS cross build
+# does not tune for the runner's CPU.
+git -C "$root/upstreams/FEX" submodule update --init --depth 1 -- \
+    External/unordered_dense External/xxhash External/fmt External/range-v3 \
+    External/rpmalloc
+
 # Madeira's build/fex-ios/build.sh passes CMAKE_OSX_SYSROOT=iphoneos and
 # does not set CMAKE_SYSTEM_PROCESSOR. On the macos-15 runner that
 # configure used /usr/bin/cc and failed with "Unsupported processor type".
@@ -54,6 +65,7 @@ cmake -S "$root/upstreams/FEX" -B "$fex_build" \
     -DCMAKE_C_COMPILER="$(xcrun -sdk iphoneos -f clang)" \
     -DCMAKE_CXX_COMPILER="$(xcrun -sdk iphoneos -f clang++)" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DTUNE_CPU=none \
     -DBUILD_TESTING=OFF \
     -DBUILD_THUNKS=OFF \
     -DBUILD_FEXCONFIG=OFF \
@@ -62,7 +74,15 @@ cmake -S "$root/upstreams/FEX" -B "$fex_build" \
     -DENABLE_ASSERTIONS=OFF \
     -DENABLE_CLANG_THUNKS=ON \
     -DENABLE_CCACHE=OFF
-cmake --build "$fex_build" --target FEXCore FEXCore_Base --parallel
+cmake --build "$fex_build" --target FEXCore FEXCore_Base JemallocLibs --parallel
+ls -l \
+    "$fex_build/FEXCore/Source/libFEXCore.a" \
+    "$fex_build/FEXCore/Source/libFEXCore_Base.a" \
+    "$fex_build/FEXCore/Source/libJemallocLibs.a" \
+    "$fex_build/External/fmt/libfmt.a" \
+    "$fex_build/External/cephes/libcephes_128bit.a" \
+    "$fex_build/External/xxhash/cmake_unofficial/libxxhash.a" \
+    "$fex_build/External/SoftFloat-3e/libsoftfloat_3e.a"
 
 # Slim path: do not build DXMT or madeira-d3d12. The app target links
 # libdxmt_combined.a for present-count and canary symbols. A no-op

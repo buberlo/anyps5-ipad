@@ -21,11 +21,11 @@ is a foundation and the first patch drafts, not a title running on a device.
 | Vulkan capability tool | lavapipe (Mesa 25.2.8, LLVM 20.1.2): `hard_fail=0`, exit 0 |
 | M4 patch drafts (Vulkan, AVX, GuestArena, entitlement) | in `patches/`; see [docs/PATCHES.md](docs/PATCHES.md) for what was compiled |
 | iOS build or device run | not done; this environment is a Linux VM |
-| M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. Ubuntu GCC 13 does not link `libc.prx`. WinLibs GCC 15.2 on `windows-latest` (`f1d3f06`) linked `libc.prx` and `libSceAgcDriver.prx` (`APS5_SLIM=ON`). Sizes were not printed |
-| M1 Wine+FEX on ARM64 Linux | On `ubuntu-24.04-arm`, native FEX ran a nostdlib x86-64 guest to exit 42 (`c161948` again). The PE exited 1: Wine could not `chdir` to `/home/fex/prefix` because that directory did not exist |
-| Linux winevulkan | `ntdll.so`, `win32u.so`, and `winevulkan.so` linked on this VM and on GitHub `ubuntu-24.04`. Not executed. iOS drafts are not compiled here |
+| M0 AnyPS5 build | Linux relinker, `libc`, `libkernel`, `libSceAgcDriver` built. Synthetic PE exits 42 under Wine (lavapipe selected, Vulkan unused). MinGW `relinker.exe` also produced that PE under Wine. Ubuntu GCC 13 does not link `libc.prx`. WinLibs GCC 15.2 on `windows-latest` (`4b6d5a4`) linked `libc.prx` (875965 bytes) and `libSceAgcDriver.prx` (7068172 bytes), `APS5_SLIM=ON`. The PRX files were not executed |
+| M1 Wine+FEX on ARM64 Linux | On `ubuntu-24.04-arm` (`4b6d5a4`), native FEX ran a nostdlib x86-64 guest to exit 42. The PE exited 1: Wine `chdir` to `/home/fex/prefix` failed. That directory existed only in the rootfs; FEX passes `chdir` to the host |
+| Linux winevulkan | `ntdll.so`, `win32u.so`, and `winevulkan.so` linked on this VM and on GitHub `ubuntu-24.04`. Not executed. On `macos-15` (`4b6d5a4`) `winevulkan.so` linked as Mach-O arm64, and the iOS SDK compiled `moltenvk_static_loader.o`, `vulkan_metal_ios.o`, and `vulkan_ios.o`. Those objects were not executed |
 | MoltenVK on macOS | `macos-15` runner, portability instance: `hard_fail=0` on Apple Paravirtual device (API 1.1.357). Stock instance sees 0 devices. Not an iPad GPU |
-| CI | `linux`, `winevulkan`, and WinLibs PRX passed on `f1d3f06`. MoltenVK `macos-15` passed again on `c161948`. That commit's Linux jobs were cancelled before a runner, WinLibs lost the runner mid-build, and the iOS draft and simulator jobs failed as recorded in [docs/PATCHES.md](docs/PATCHES.md) |
+| CI | On `4b6d5a4`: `linux`, `winevulkan`, `winevulkan-ubuntu-22`, `moltenvk` (`macos-15`), `winevulkan-ios`, `synthetic-pe`, and `winlibs` passed. `linux-ubuntu-22`, `fex-wine`, and `madeira-simulator` failed as recorded in [docs/PATCHES.md](docs/PATCHES.md) |
 | Slim Vulkan path | [docs/SLIM.md](docs/SLIM.md). `APS5_SLIM=1` drops SDL from `libSceAgcDriver` (8.87 MB → 6.74 MB on Linux). DXMT and D3D are not in this build |
 
 What to leave out of a Vulkan-only iPad build: [docs/SLIM.md](docs/SLIM.md).

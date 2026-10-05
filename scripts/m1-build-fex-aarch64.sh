@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Cross-compile the pinned FEX fork (ios-port-2607) to aarch64 Linux.
-# Clang is required; FEX rejects GCC. Jemalloc's glibc hook is disabled
-# because that subproject does not cross-configure cleanly. rpmalloc stays
-# on. Thunks and FEXConfig stay off: this binary is for a static x86-64
-# guest under qemu-aarch64, not a desktop FEX install.
+# Clang is required; FEX rejects GCC. This is the slim FEX configuration
+# (docs/SLIM.md): BUILD_THUNKS=OFF, BUILD_FEXCONFIG=OFF, no i386/WOW64
+# target. Thunks are Linux host libraries; the iPad path is Wine + xtajit64,
+# not FEX thunks. Jemalloc's glibc hook is disabled because that subproject
+# does not cross-configure cleanly. rpmalloc stays on.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -160,6 +160,20 @@ upstream commits; the patches are the delta.
   `MADEIRA_WITH_VULKAN=1`. The script was not run (it needs llvm-mingw
   and a macOS or cross setup Madeira documents).
 
+## Slim configuration
+
+`docs/SLIM.md`. `APS5_SLIM=1` on `scripts/m0-build-anyps5.sh` passes
+`-DAPS5_SLIM=ON`: `libSceAgcDriver` loads `libvulkan.so.1` with `dlopen`
+and does not link SDL. The Linux PRX went from 8,874,056 bytes (3,396
+`SDL_` symbols) to 6,741,112 bytes (no `SDL_` symbols). Portability
+extension strings are still in the slim binary. No `VkDevice` was
+created. `APS5_SLIM=1 scripts/build-wine-vulkan-linux.sh` configures a
+separate tree with OpenGL, Wayland, FreeType, GnuTLS, and the other
+host libraries in that script turned off. `SONAME_LIBVULKAN` stays
+`libvulkan.so.1`. `winevulkan.dll` is the same size as the default tree.
+SDL remains in `libSceVideoOut` and FMOD. DXMT and `madeira-d3d12` are
+not built.
+
 ## Left for a Mac (M3 and the iOS half of M4)
 
 1. Build MoltenVK, point `vk-requirements` at it, and write down every

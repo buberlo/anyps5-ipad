@@ -9,6 +9,33 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 src="$root/upstreams/wine"
 build="$root/build/wine-linux"
+# APS5_SLIM=1 is the same Vulkan targets in a separate tree, with the host
+# drivers this chain does not call turned off at configure time. Vulkan
+# itself stays on. The default tree is unchanged.
+slim_args=()
+if [ "${APS5_SLIM:-}" = 1 ]; then
+    build="$root/build/wine-linux-slim"
+    slim_args=(
+        --without-opengl
+        --without-wayland
+        --without-fontconfig
+        --without-freetype
+        --without-gnutls
+        --without-udev
+        --without-usb
+        --without-v4l2
+        --without-sane
+        --without-opencl
+        --without-ffmpeg
+        --without-pcsclite
+        --without-krb5
+        --without-gssapi
+        --without-netapi
+        --without-capi
+        --disable-win16
+    )
+    echo "APS5_SLIM=1 configure extras: ${slim_args[*]}"
+fi
 mkdir -p "$build"
 
 # ntdll's unix sources include ../../../../build/madeira_cfg.h, which is
@@ -33,6 +60,7 @@ if [ ! -f "$build/Makefile" ]; then
             --without-oss \
             --without-gphoto \
             --without-pcap \
+            "${slim_args[@]}" \
             --prefix="$build/install"
     )
 fi

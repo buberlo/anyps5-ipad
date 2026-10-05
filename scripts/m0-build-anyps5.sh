@@ -23,10 +23,21 @@ if [ "$(uname -m)" != "x86_64" ]; then
 fi
 
 git -C "$root/upstreams/AnyPS5" submodule update --init --depth 1
+# APS5_SLIM=1 loads vulkan-1.dll / libvulkan.so.1 with LoadLibrary/dlopen
+# and does not link SDL2 into libSceAgcDriver. libSceVideoOut and libfmod
+# still use SDL. Default (unset) keeps the upstream SDL loader.
+slim_flag=OFF
+if [ "${APS5_SLIM:-}" = 1 ]; then
+    slim_flag=ON
+fi
 cmake -S "$root/upstreams/AnyPS5" -B "$root/build/anyps5" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
-    -DBUILD_TESTING="${BUILD_TESTING:-OFF}"
+    -DBUILD_TESTING="${BUILD_TESTING:-OFF}" \
+    -DAPS5_SLIM="$slim_flag"
 cmake --build "$root/build/anyps5" --parallel "${JOBS:-$(nproc)}"
-echo "M0 build tree: $root/build/anyps5"
+if [ "$slim_flag" = ON ]; then
+    cmake --build "$root/build/anyps5" --target libSceAgcDriver --parallel "${JOBS:-$(nproc)}"
+fi
+echo "M0 build tree: $root/build/anyps5 (APS5_SLIM=$slim_flag)"

@@ -25,6 +25,9 @@ is a foundation and the first patch drafts, not a title running on a device.
 | M1 Wine+FEX on ARM64 Linux | aarch64 FEX runs a nostdlib x86-64 guest under qemu-user (exit 42). Wine+FEX segfaults in qemu. Not a real ARM64 host |
 | Linux winevulkan | PE `winevulkan.dll` and `vulkan-1.dll` plus unix `vulkan.o` compiled. `winevulkan.so` blocked on iOS calls in `ntdll` unix |
 | CI | `.github/workflows/linux.yml` applies patches, runs lavapipe `vk-requirements`, builds AnyPS5 Linux, runs the synthetic relinker tests and the Wine PE smoke |
+| Slim Vulkan path | [docs/SLIM.md](docs/SLIM.md). `APS5_SLIM=1` drops SDL from `libSceAgcDriver` (8.87 MB → 6.74 MB on Linux). DXMT and D3D are not in this build |
+
+What to leave out of a Vulkan-only iPad build: [docs/SLIM.md](docs/SLIM.md).
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 [docs/MILESTONES.md](docs/MILESTONES.md),

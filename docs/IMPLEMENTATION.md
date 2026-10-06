@@ -645,12 +645,3 @@ See [implementation details](SINGLE_GAME_BOOT.md) and
 not a fresh-device pairing test, every-button input qualification, an automated
 physical home-icon tap or a ten-minute displayed-FPS measurement. Raw logs and
 screenshots remain in ignored build directories.
-
-Build 16 replaces the first generated portrait with the user-selected Dreaming
-Sarah title/eye logo, adapted to a square icon, and shortens the app name to
-“Dreaming Sarah”. The signed update preserves the private game/configuration
-and repeats the automatic tunnel/helper/Wine startup with all 18 controls loaded.
-The existing private app keeps its original bundle ID and Keychain; public builds
-retain main’s new `com.buberlo.anyps5ipad` default, with an explicit
-`APS5_BUNDLE_IDENTIFIER` override for an existing installation. See
-[branding update](evidence/ipad-m2-single-game-branding-build16.json).

@@ -2,7 +2,7 @@
 
 Madeira patch `0019-dreaming-sarah-direct-boot.patch` replaces the library and
 setup screens with one startup transaction. A normal launch of
-`com.buberlo.anyps5ipad` selects
+`com.konradkern.anyps5ipad` selects
 `Documents/wine/drive_c/DreamingSarah-PPSA02929-01_000_000/game.exe`.
 The private game package remains outside the app binary, Git and CI. Updating
 this same bundle preserves its Documents container and stored device pairing.
@@ -50,17 +50,14 @@ configuration catalog, installation UI, shortcut resources and D3D12 converter
 resources are excluded from the app's build. Upstream license notices remain.
 
 The game profile requests 1280 × 720, AVX and the complete 18-control gamepad
-layout with frame generation disabled, replacing any reduced shared demo layout at each start. A compact FPS
+layout, replacing any reduced shared demo layout at each start. A compact FPS
 counter samples successful native Vulkan presents once per second, resets across
 foreground changes, and does not use the guest’s nominal 30 FPS or the DXMT
 Frame 0 HUD. This is a present-rate indicator, not proof of sustained displayed
-FPS. The app name is “Dreaming Sarah”; its icon uses the user-supplied title/eye logo
-adapted to the square icon canvas. The icon
+FPS. The app name is “Dreaming Sarah PS5”; its generated original pixel-art icon
 is stored in `assets/DreamingSarah.appiconset` and staged by
-`scripts/stage-single-game-assets.sh` during an iPhoneOS build.
-Public builds default to `com.buberlo.anyps5ipad`. The existing private device
-installation retains `com.konradkern.anyps5ipad` to preserve its game container and
-Keychain; set `APS5_BUNDLE_IDENTIFIER` to override the build default. The previous library JSON is neither read nor rewritten. Existing
+`scripts/stage-single-game-assets.sh` during an iPhoneOS build. It disables frame
+generation. The previous library JSON is neither read nor rewritten. Existing
 configuration, game files and saves remain in the same container.
 
 ## Verification

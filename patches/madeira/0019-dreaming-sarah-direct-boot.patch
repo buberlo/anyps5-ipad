@@ -411,7 +411,7 @@ diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/proje
 + INFOPLIST_FILE = AnyPS5Tunnel/Info.plist;
 + IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 + LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-+ MADEIRA_BUNDLE_IDENTIFIER = com.buberlo.anyps5ipad;
++ MADEIRA_BUNDLE_IDENTIFIER = com.konradkern.anyps5ipad;
 + MARKETING_VERSION = 0.1.5;
 + PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER).tunnel";
 + PRODUCT_NAME = "$(TARGET_NAME)";
@@ -432,7 +432,7 @@ diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/proje
 + INFOPLIST_FILE = AnyPS5Tunnel/Info.plist;
 + IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 + LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", );
-+ MADEIRA_BUNDLE_IDENTIFIER = com.buberlo.anyps5ipad;
++ MADEIRA_BUNDLE_IDENTIFIER = com.konradkern.anyps5ipad;
 + MARKETING_VERSION = 0.1.5;
 + PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER).tunnel";
 + PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3188,7 +3188,7 @@ diff --git a/app/Madeira/Info.plist b/app/Madeira/Info.plist
  	<string>en</string>
  	<key>CFBundleDisplayName</key>
 -	<string>AnyPS5 iPad</string>
-+	<string>Dreaming Sarah</string>
++	<string>Dreaming Sarah PS5</string>
  	<key>CFBundleExecutable</key>
  	<string>$(EXECUTABLE_NAME)</string>
  	<key>CFBundleIdentifier</key>

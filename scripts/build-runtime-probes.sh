@@ -16,6 +16,10 @@ src="$root/tools/runtime-probes"
     -I"$root/upstreams/AnyPS5/core/libs" "$src/memory_probe.cpp" -o "$out/memory-probe.exe"
 "$win_cxx" -std=c++20 -Wall -Wextra -Werror -Wno-cast-function-type -O2 -static -static-libgcc -static-libstdc++ \
     -I"$root/upstreams/AnyPS5/core/libs" "$src/allocator_probe.cpp" -o "$out/allocator-probe.exe"
+"$win_cxx" -std=c++17 -Wall -Wextra -Werror -O2 -mavx -ffreestanding \
+    -fno-exceptions -fno-rtti -fno-stack-protector -nostdlib \
+    -Wl,--entry=mainCRTStartup "$src/protected_write_probe.cpp" -lkernel32 \
+    -o "$out/protected-write-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'
 printf 'A compiled probe or scalar reference does not establish AVX or memory behavior on iPad.\n'

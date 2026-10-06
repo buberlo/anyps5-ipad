@@ -1,0 +1,126 @@
+diff --git a/build/ntdll-unix/mach_fault_redelivery.h b/build/ntdll-unix/mach_fault_redelivery.h
+--- a/build/ntdll-unix/mach_fault_redelivery.h
++++ b/build/ntdll-unix/mach_fault_redelivery.h
+@@ -8,6 +8,25 @@
+     struct ios_redelivery_entry entries[IOS_REDELIVERY_THREADS];
+     unsigned next;
+ };
++/* Called only after a verified read-only -> writable repair. A repair on
++ * another thread or outside the faulting page is not evidence of progress. */
++static inline int ios_redelivery_repaired(struct ios_redelivery_tracker *t,
++                                          uint64_t thread, uint64_t base,
++                                          uint64_t size)
++{
++    unsigned i;
++    for (i = 0; i < IOS_REDELIVERY_THREADS; ++i)
++    {
++        struct ios_redelivery_entry *e = &t->entries[i];
++        if (e->count && e->thread == thread && e->address >= base &&
++            e->address - base < size)
++        {
++            e->count = 0;
++            return 1;
++        }
++    }
++    return 0;
++}
+ /* One Mach exception-server caller. Other threads do not reset a failing
+  * thread's sequence; a different delivery on that thread does. Watched stores
+  * may recur at the same PC/address after intervening guest work. */
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -6945,6 +6945,60 @@
+  * [unaligned-atomic] block below for why the two paths may not disagree. */
+ static int ios_emulate_unaligned_guest_access(ucontext_t *ctx, uint32_t insn, uintptr_t addr);
+ 
++static struct ios_redelivery_tracker ios_mach_redeliv;
++static pthread_mutex_t ios_mach_redeliv_lock = PTHREAD_MUTEX_INITIALIZER;
++
++/* A guest handler may repair an intentionally protected shared-data page,
++ * resume its store and re-arm that page on every frame. This is not one
++ * unrecoverable refault loop. NtProtectVirtualMemory calls us only after a
++ * successful read-only -> writable transition. Verify the actual backing
++ * before retiring that thread's delivery sequence; never trust logical
++ * Wine permissions alone. */
++void ios_mach_mark_write_repaired( uintptr_t base, size_t size )
++{
++    uint64_t thread = (uint64_t)pthread_mach_thread_np( pthread_self() );
++    mach_vm_address_t address = 0;
++    unsigned i;
++    int found = 0;
++
++    pthread_mutex_lock( &ios_mach_redeliv_lock );
++    for (i = 0; i < IOS_REDELIVERY_THREADS; ++i)
++    {
++        const struct ios_redelivery_entry *e = &ios_mach_redeliv.entries[i];
++        if (e->count && e->thread == thread && e->address >= base &&
++            e->address - base < size)
++        {
++            address = e->address;
++            found = 1;
++            break;
++        }
++    }
++    pthread_mutex_unlock( &ios_mach_redeliv_lock );
++    if (found)
++    {
++        mach_vm_address_t region = address;
++        mach_vm_size_t region_size = 0;
++        natural_t depth = 0;
++        vm_region_submap_info_data_64_t info;
++        kern_return_t kr;
++        do
++        {
++            mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
++            kr = mach_vm_region_recurse( mach_task_self(), &region, &region_size,
++                    &depth, (vm_region_recurse_info_t)&info, &count );
++            if (kr != KERN_SUCCESS || !info.is_submap) break;
++            ++depth;
++        } while (1);
++        if (kr == KERN_SUCCESS && address >= region &&
++            address - region < region_size && (info.protection & VM_PROT_WRITE))
++        {
++            pthread_mutex_lock( &ios_mach_redeliv_lock );
++            ios_redelivery_repaired( &ios_mach_redeliv, thread, base, size );
++            pthread_mutex_unlock( &ios_mach_redeliv_lock );
++        }
++    }
++}
++
+ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_state64_t *state,
+                                                    arm_neon_state64_t *neon, int have_neon,
+                                                    int exception, uintptr_t fault_addr,
+@@ -7577,9 +7631,10 @@
+      * once per loop iteration (FEX emulates, it cannot back-patch an LSE
+      * atomic), and counting those would kill the pseudo-process for making
+      * progress. */
+-    static struct ios_redelivery_tracker redeliv;
+-    uint32_t redeliv_count = ios_redelivery_record( &redeliv, (uint64_t)thread,
++    pthread_mutex_lock( &ios_mach_redeliv_lock );
++    uint32_t redeliv_count = ios_redelivery_record( &ios_mach_redeliv, (uint64_t)thread,
+                                                  pc, fault_addr, is_align );
++    pthread_mutex_unlock( &ios_mach_redeliv_lock );
+     if (!is_align)
+     {
+         static volatile int ios_redeliv_terminating;
+diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -24259,6 +24259,16 @@
+         *old_prot = old;
+ 
+ #ifdef WINE_IOS
++        /* Retire a tracked write-fault sequence only after its own thread
++         * repairs read-only protection. The helper verifies the physical
++         * Mach page is writable; a failed or unrelated protection request
++         * cannot hide an unrecoverable refault loop. */
++        if ((old == PAGE_READONLY || old == PAGE_EXECUTE_READ) &&
++            (new_prot == PAGE_READWRITE || new_prot == PAGE_EXECUTE_READWRITE))
++        {
++            extern void ios_mach_mark_write_repaired( uintptr_t base, size_t size );
++            ios_mach_mark_write_repaired( (uintptr_t)base, size );
++        }
+         /* (Previously: also called mprotect_exec on the JIT-pool RX side
+          * here, but that uses vm_protect+VM_PROT_COPY which makes the page
+          * PRIVATE — breaking the dual-map sharing with the RW alias. We rely

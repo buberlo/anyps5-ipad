@@ -32,7 +32,24 @@ int main(void) {
  /* Bounded table replacement cannot inherit a previous thread's count. */
  for (unsigned i=100;i<300;i++)
   assert(ios_redelivery_record(&t,i,0x1001,0x2001,0)==1);
- puts("PASS actual Mach redelivery counter: recurring work, terminal loop, thread isolation, identity, exemptions and capacity");
+ /* A protection handler repairs and re-arms the same page every iteration.
+    This exact pattern reached the terminal on the real iPad despite 2000
+    independently checked completed AVX stores. */
+ for (unsigned i=0;i<5000;i++) {
+  assert(ios_redelivery_record(&t,400,0x1000,0x21620,0)==1);
+  assert(ios_redelivery_repaired(&t,401,0x20000,0x10000)==0);
+  assert(ios_redelivery_repaired(&t,400,0x30000,0x10000)==0);
+  assert(ios_redelivery_repaired(&t,400,0x20000,0)==0);
+  assert(ios_redelivery_repaired(&t,400,0x20000,0x1620)==0);
+  assert(ios_redelivery_repaired(&t,400,0x20000,0x10000)==1);
+ }
+ /* Bad repair ranges must not reset an unrepaired fault. Subtraction
+    avoids overflow in a base+size containment check. */
+ for (unsigned i=1;i<=2000;i++) {
+  assert(ios_redelivery_record(&t,400,0x1000,0x21620,0)==i);
+  assert(ios_redelivery_repaired(&t,400,UINT64_MAX-4,16)==0);
+ }
+ puts("PASS actual Mach redelivery counter: repaired writes, stuck loop, thread isolation, identity, exemptions, capacity and range bounds");
 }
 '''
 with tempfile.TemporaryDirectory(prefix='anyps5-redelivery-') as tmp:

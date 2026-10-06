@@ -4,6 +4,13 @@ The implementation follow-ups are documented in
 [IMPLEMENTATION.md](IMPLEMENTATION.md): transactional GuestArena (AnyPS5 0005),
 accurate unavailable SDK telemetry (Madeira 0004), the complete static Vulkan
 bridge (0006), and the isolated runtime profile/build integration (0007).
+The native protection-repair follow-up (0017) retains the fault terminal and
+recognizes only a checked writable repair on the faulting thread/range. Build 12
+passes the same original 5000-store probe that terminated at 2000 on Build 11;
+an intentionally unrepaired handler still terminates. Vulkan lifecycle admission
+and drain (0018) parks GPU calls while inactive, preserves native results and
+tracks live devices. Host dispatch/quiescence tests and actual iPhoneOS compilation
+pass; device validation is recorded separately in IMPLEMENTATION.md.
 The foundation measurements below remain historical evidence.
 
 Apply with `scripts/apply-patches.sh`. Reverse with

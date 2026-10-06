@@ -57,34 +57,40 @@ exit 42; the old `kernel32.dll` failure is resolved for that fixture.
 The original demo needs no game data. It exercises public PS5 HLE imports and
 a hand-written RDNA compute program before presenting frames. Linker-only
 import stubs are kept separate from the real runtime PRX files.
-Dreaming Sarah requires a privately supplied decrypted dump. The tested private
-version reaches the main menu on Windows. On iPad its scaling/swapchain issue
-is repaired. Build 10 reaches Vulkan with the shader-fixed graphics library and
-no longer reports the vertex subgroup error. The optional native interpolation path now executes on iPad without the previous
-`PerVertexKHR` errors. The user observes an initial logo, followed by audible
-sound and a black screen. A further shader is conservatively rejected at pc 84,
-and repeated native write faults later terminate the process. Gameplay remains
-unverified. See [interpolation device diagnostic](docs/evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
-Early draw capture now runs on device and independently records the initial
-logo and the rejected shader. That shader consumes I in place and schedules
-independent vector ALU between P1 and P2. The guard supports this sequence
-while rejecting partial-result accesses, raw I/J arithmetic and EXEC changes.
-Forty-three production-guard cases, twelve local shader replays and twelve Apple
-Metal shader compilations pass.
-The extended guard now executes on iPad: the isolated updated driver reaches
-the visible main menu, including New game, Continue and Options, with no shader
-skips or PerVertexKHR errors in the 91-second observation. The previous black
-output limitation is resolved for this menu. Gameplay and save/load remain open.
-See [main menu proof](docs/evidence/ipad-m2-dreaming-sarah-main-menu.json) and
-[early draw diagnosis](docs/evidence/ipad-m2-interpolation-scheduled-pairs.json).
-Build 11 preserves the embedded PE farms and changes only the native exception
-counter. Real touch starts New game and renders credits plus the forest, but the
-character is absent, a further entry-prefix shader rejects, and a remaining
-consecutive native fault reaches the retained terminal. A targeted shader proof
-now accepts only an unconditional completed interpolation prefix with raw I/J
-overwritten before branching; 53 guard cases and 17 shader/Metal compilations
-pass locally. That further guard change still needs a device run.
-See [entry scene and remaining blockers](docs/evidence/ipad-m2-dreaming-sarah-entry-scene.json).
+Dreaming Sarah requires a privately supplied decrypted dump. The tested version
+reaches the main menu on Windows UM790. Build 12 now also renders Sarah and the
+forest on the physical M2 iPad. In a six-minute observation, real D-pad and
+analog-stick touches move her from the starting platform to the pool and back.
+There are no shader skips or repeated-fault terminal events in that run.
+See [visible gameplay and input](docs/evidence/ipad-m2-dreaming-sarah-held-input.json).
+
+Two independent defects caused the earlier black output and termination.
+The guarded native interpolation path now accepts completed ordinary-center
+P1/P2 pairs in an unconditional entry prefix, while rejecting unsupported input
+uses and control flow. All 53 production guard cases and 21 locally captured
+shader replays/Apple Metal compilations pass. A separate native exception fix
+recognizes a successful read-only-to-writable repair only on the faulting thread
+and range, after checking actual Mach backing permissions. The same original
+AVX store probe fails at 2000 repairs on Build 11 and completes 5000 with exit 0
+on Build 12; an intentionally unrepaired fault still terminates at 2000.
+See [repair comparison](docs/evidence/ipad-m2-verified-write-repair.json) and
+[player rendering](docs/evidence/ipad-m2-dreaming-sarah-player.json).
+
+Build 12 is installed and its embedded ARM64EC modules pass strict source/hash
+verification after the actual PE build targets run. This is bounded gameplay
+proof. Ten-minute displayed-FPS acceptance, background recovery, sound,
+save/load and a matching updated-driver Windows gameplay comparison remain open.
+The commercial game's HUD shows Frame 0; its nominal 30 FPS is rejected as
+performance evidence. Shader capture is disabled during the input observation.
+Build 13 adds native Vulkan admission and drain for app inactivity. Build 12's
+background cycle loses the GPU device with iPadOS permission code 7; Build 13
+successfully drains both live devices before a brief cycle and rendering resumes.
+Host lifecycle/dispatch tests pass and the signed build is installed, but the
+separate UI helper crashes during the longer test. Background acceptance is still
+open. See [lifecycle checkpoint](docs/evidence/ipad-m2-vulkan-lifecycle-build13.json).
+The updated-driver UM790 comparison independently shows the menu; its final
+capture is a white transition, so Windows gameplay remains unqualified.
+See [matching-driver Windows observation](docs/evidence/windows-um790-entry-prefix-menu.json).
 Game assets, shader requests and complete game logs stay outside this repository.
 
 ## Historical foundation status

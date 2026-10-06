@@ -172,6 +172,11 @@ def main():
         for name in ("cpu", "memory", "allocator"):
             probes.append(run_guest(args.probes_dir.resolve() / (name + "-probe.exe"), evidence, "native-" + name,
                                     environment, 90, [], probe=name, require_summary=True))
+        protected_write = args.probes_dir.resolve() / "protected-write-probe.exe"
+        if protected_write.is_file():
+            probes.append(run_guest(protected_write, evidence, "native-protected-write", environment, 90,
+                                    ["allocate", "handler", "store_and_repair", "remove_handler", "release", "complete"],
+                                    probe="protected-write"))
     cpu = run_guest(entrypoints["guest_cpu"], evidence, "guest-cpu", environment,
                     args.cpu_timeout, ["entry", "sysv_register_and_stack_arguments", "main_elf_tls_template",
                                        "thread_join_callback_tls_stack", "atomic_64_counter", "pthread_key_destructors",

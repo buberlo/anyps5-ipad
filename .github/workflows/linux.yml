@@ -56,6 +56,7 @@ jobs:
           CXX=g++-12 python3 tools/checks/test_masked_shift_fold.py
           CXX=g++-12 python3 tools/checks/test_fixed_function_interpolation.py
           python3 tools/checks/test_vulkan_surface_scaling.py
+          python3 tools/checks/test_vulkan_lifecycle.py
           scripts/check-vulkan-integration.sh
 
       - name: Build libSceAgcDriver

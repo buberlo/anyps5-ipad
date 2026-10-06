@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "app_build": 12,
+  "private_log_sha256": "0881e0cabccf681c418965198ad37526189bd342b696b076d894af6367979e31",
+  "background_entered": true,
+  "returned_to_foreground": true,
+  "metal_background_permission_error": true,
+  "vulkan_device_lost": true,
+  "acceptance_passed": false,
+  "ui_test_first_attempt": "Home press genuinely backgrounds app, but an immediate state assertion races UIKit; next action activates it after about 60 seconds. Test helper now waits for state transitions.",
+  "finding": "Rendering submissions continue after Home; MoltenVK reports device loss from iPadOS permission code 7. A native admission and drain repair follows.",
+  "private_screenshots_uploaded": false
+}

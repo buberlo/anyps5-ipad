@@ -409,7 +409,7 @@ counter passes host checks and the iPhoneOS signal handler compiles. Device
 validation now confirms Build 11 is installed with byte-preserved embedded PE
 farms and checked game/settings/library data. Touch starts New game and the
 credits plus forest appear. A remaining consecutive native fault still reaches
-the retained terminal, so the memory issue is not resolved.
+the retained terminal, so this first counter repair alone does not resolve the memory issue.
 See [fault-counter diagnosis](evidence/ipad-m2-consecutive-fault-counter.json).
 
 The entry-scene capture adds one rejected fragment with three basic blocks:
@@ -417,10 +417,71 @@ its complete center interpolation occurs in the unconditional entry prefix,
 and a texture result overwrites raw I/J before the first branch. The guard now
 permits this precise shape, requires a valid entry starting at instruction zero
 with no incoming edges, and rejects surviving raw inputs, partial pairs or later
-interpolation. Fifty-three production cases and all seventeen captured shader
-replays/Apple Metal compilations pass. The new prefix guard needs a device run;
-the character remains absent in the current on-device scene. See
+interpolation. Fifty-three production cases pass. The earlier Build 11 scene lacks the
+character and predates the qualified driver/device run below. See
 [entry scene diagnostic](evidence/ipad-m2-dreaming-sarah-entry-scene.json).
+
+Build 12 completes the remaining two targeted repairs. The entry-prefix guard
+is built in Windows CI run 37483428646 and executes on the iPad. All 21 private
+captures replay through the production recompiler, pinned SPIRV-Cross and Apple's
+iOS Metal compiler. A five-minute device observation renders Sarah and the forest
+with zero skipped draws. A separate six-minute run disables shader-file capture
+and uses actual held UI touches: D-pad right leaves the starting platform, analog
+right reaches the pool, and analog left moves/faces left. Every UI action succeeds
+and independent screenshots confirm movement. The HUD's Frame 0/nominal 30 FPS
+is rejected as performance evidence. See
+[player rendering](evidence/ipad-m2-dreaming-sarah-player.json) and
+[held input](evidence/ipad-m2-dreaming-sarah-held-input.json).
+
+Patch 0017 fixes legitimate repeated protection-handler repairs being counted
+as one stuck loop. NtProtectVirtualMemory reports only a successful read-only to
+writable transition; the signal handler checks that the previous fault belongs
+to the calling Mach thread and repaired range and that its actual backing page
+is writable. Only then does it retire that sequence. Memory tracking, warning 256
+and terminal 2000 remain enabled. The same original AVX-store executable stops
+at 2000 validated repairs on Build 11, then completes 5000 and Wine exit 0 on
+Build 12. A deliberately unrepaired handler still reaches terminal 2000 without
+a completed store. Host checks cover thread/range isolation and overflow bounds.
+See [verified protection repair](evidence/ipad-m2-verified-write-repair.json).
+The standalone source is `tools/runtime-probes/protected_write_probe.cpp`;
+`scripts/build-runtime-probes.sh` builds its normal mode, and the Windows reference
+runner executes it when present. The intentionally unrepaired diagnostic is not
+part of the normal reference invocation.
+
+The actual iPhoneOS signal and virtual objects are rebuilt; the other 35 native
+archive members and three embedded PE farms are byte-preserved. Build 12 passes
+strict recursive signing and is independently confirmed installed. After an
+initial source-fingerprint mismatch, the actual pinned ARM64EC FEX and Wine PE
+build targets run and record a fresh manifest. The three output hashes are
+unchanged, and strict source/CHPE verification now passes. The historical
+manifest and initial failed check are retained rather than rewritten.
+
+Patch 0018 adds a native Vulkan lifecycle gate. UIKit closes admission at
+willResignActive, waits for admitted calls to finish and drains each live device
+before background GPU execution becomes prohibited. Queued submit/present/image
+acquisition and wait calls park until didBecomeActive; forwarded Vulkan results
+are preserved. Create/destroy maintain the native device registry; the ordinary
+non-Vulkan app path has a weak no-op fallback. Host tests exercise actual dispatch,
+parked calls, running-call quiescence, native errors and device cleanup. The actual
+iPhoneOS object compiles with implicit declarations treated as errors.
+
+Signed Build 13 changes only win32u's Vulkan archive member plus the app lifecycle
+bridge. All three PE farms are byte-preserved and strict PE source/CHPE checks
+pass after the actual build targets run. Installation readback confirms game PE,
+manifest, index, settings and library preservation. Build 12 demonstrates the
+background permission/device-loss failure. Build 13 drains two devices with
+VK_SUCCESS and returns from a brief cycle without that error. The long-cycle UI
+helper crashes and its state assertion disagrees with UIKit's lifecycle records;
+that automation has not passed. Full background/performance acceptance remains
+open. See [lifecycle checkpoint](evidence/ipad-m2-vulkan-lifecycle-build13.json),
+[baseline failure](evidence/ipad-m2-vulkan-background-failure.json) and
+[brief cycle](evidence/ipad-m2-vulkan-background-short.json).
+
+The same driver/package manifest now runs on UM790 in a fresh, hash-verified
+folder. The menu is independently visible and no skipped draw is logged. The
+95-second observation's final capture is a white transition; this is not Windows
+gameplay acceptance. Original manifests are not repaired in place. See
+[matching-driver comparison](evidence/windows-um790-entry-prefix-menu.json).
 
 Private shader requests, assets and complete game logs remain outside Git and CI.
 
@@ -513,7 +574,7 @@ coordination record. Use the isolated app IDs and preserve other apps and data.
 For bounded command phases, use the [fail-closed lease wrapper](IPAD-LEASE.md),
 which starts no child process after a rejected claim and preserves newer leases.
 Verify built/signed, installed, launched, JIT-enabled and benchmarked states
-separately. No physical-iPad gameplay result is asserted by this source change.
+separately. Bounded physical-iPad gameplay is recorded above; the complete acceptance gates remain open.
 
 Dreaming Sarah can now be prepared from a local decrypted dump with the
 [private game preparer](PRIVATE-GAME-PACKAGING.md). It inventories the exact

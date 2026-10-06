@@ -1,0 +1,34 @@
+{
+  "app_pid": 2131,
+  "duration_seconds": 364.0454697919995,
+  "package_sha256": "c19388457f25d2188afda93473439a8cb7a95b396392b13081285a3c332355f4",
+  "private_log_sha256": "f100e04780f3dcc2681ecdf3d67f79f6fd7c7d9118c2e004b56fe1c342cdf3b6",
+  "status": "visible gameplay and directional control verified",
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "app_build": 12,
+  "driver_ci_run": 37483428646,
+  "shader_skips": 0,
+  "redelivery_256_warnings": 0,
+  "redelivery_terminal": false,
+  "jit_enabled": true,
+  "shader_capture_disabled": true,
+  "own_cleanup_verified": true,
+  "controls": {
+    "dpad_right_8_seconds": "Sarah leaves starting platform and reaches forest floor",
+    "analog_right_8_seconds": "Sarah traverses the forest to pool and pillars",
+    "analog_left_8_seconds": "Sarah moves and faces left"
+  },
+  "screenshots_sha256": {
+    "210": "6b1ddbe5277abfa2ae38f4119f821a8bc065513c4da8f15d972b79674438706d",
+    "270": "0180641c75e852f3f1ee8bf17e0a769edf060d7026b6e2bce503b14ac468bbad",
+    "330": "431fb8fbb585013ab249c7c72f56222673af24d6853affba76a11642611a1c88",
+    "360": "c309e70f977a50c46c1723d0736d527924fac21f2ad2fed015d6b56cca10f6b4"
+  },
+  "limits": [
+    "Not ten-minute performance, audio, save/load or background acceptance.",
+    "HUD Frame 0 and nominal FPS 30 are rejected as gameplay display-rate evidence.",
+    "New scene traversal allocates assets; these memory samples do not prove steady-state resource stability."
+  ]
+}

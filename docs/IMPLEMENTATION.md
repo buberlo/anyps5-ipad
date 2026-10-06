@@ -277,8 +277,20 @@ created an AMD hardware Vulkan swapchain, but displayed black and reported
 an uncaught parse error. The preparer had incorrectly excluded the dumped
 `~INDEX` VFS asset. Packaging now retains it with an immutable-source hash
 check and a synthetic regression test. The game binaries and libraries are
-unchanged in the repaired package. A new Windows run is required before
-claiming that this fixes startup or running the game on iPad. Private assets
+unchanged in the repaired package. The repaired native Windows run reaches the animated title and readable
+main menu without an unhandled exception. Gameplay, audio and save/load are
+still unverified. See [Windows menu evidence](evidence/windows-um790-dreaming-sarah-menu.json).
+
+The same repaired package was verified on iPad and launched with successful
+built-in JIT. The foreground game surface stays black. Shared guest pages
+initially mapped RWX consume all 4,096 anonymous JIT aliases and overflow the
+pool ledger before their requested RW rights are applied. The SDK mapping
+patch now uses the requested initial protection, retaining the final protection
+change and section maximum rights; NOACCESS views start readable and are
+immediately protected. The memory probe exercises the actual SDK mapper,
+bidirectional aliases and writes after tracking is armed. This fix requires
+a rebuilt HLE library and fresh Windows/iPad verification; it is not yet a
+passing device result. See [iPad startup failure](evidence/ipad-m2-dreaming-sarah-startup.json). Private assets
 and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <limits>
 #include <initializer_list>
+#include "prx/libc/include/WindowsMappings.hpp"
 
 using Allocate = PVOID (WINAPI*)(HANDLE, PVOID, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
 using Map = PVOID (WINAPI*)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
@@ -33,6 +34,53 @@ static FARPROC symbol(const char* name) {
             if (auto proc = GetProcAddress(mod, name)) return proc;
     }
     return nullptr;
+}
+
+// Exercise the real SDK mapping path, including write tracking after a read.
+// Raw MapViewOfFile3 success alone missed the temporary RWX remap of GPU data.
+static void sdk_shared_mapping(std::uintptr_t base) {
+    constexpr SIZE_T page = 0x4000, reserve = 0x10000;
+    auto& mappings = GuestArena::WindowsMappings::Get();
+    for (DWORD protection : {PAGE_READWRITE, PAGE_READONLY, PAGE_NOACCESS}) {
+        std::printf("{\"schema\":1,\"probe\":\"memory\",\"sdk_protection\":%lu}\n", static_cast<unsigned long>(protection));
+        void* address = reinterpret_cast<void*>(base);
+        if (!result("sdk_reserve", mappings.Reserve(address, reserve) == address)) return;
+        HANDLE section = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, page, nullptr);
+        if (!result("sdk_section", section != nullptr)) return;
+        void* alias = nullptr;
+        try {
+            mappings.Map(address, page, section, 0, protection);
+            MEMORY_BASIC_INFORMATION info{};
+            result("sdk_initial_protection", VirtualQuery(address, &info, sizeof(info)) && info.Protect == protection);
+            mappings.Commit(address, page, PAGE_READWRITE, page, false);
+            alias = mappings.MapAlias(base, page);
+            auto primary = static_cast<volatile std::uint32_t*>(address);
+            auto shared = static_cast<volatile std::uint32_t*>(alias);
+            primary[0] = 0x12345678;
+            result("sdk_alias_reads_primary", shared[0] == 0x12345678);
+            void* dirty[16]{};
+            std::size_t count = 16;
+            result("sdk_collect_and_arm", mappings.Collect(base, page, dirty, &count, true) && count == 4);
+            result("sdk_handle_tracked_write", mappings.HandleWrite(base));
+            primary[0] = 0x87654321;
+            result("sdk_alias_after_tracked_write", shared[0] == 0x87654321);
+            shared[page / sizeof(*shared) - 1] = 0xfeed1234;
+            result("sdk_primary_reads_alias", primary[page / sizeof(*primary) - 1] == 0xfeed1234);
+            count = 16;
+            result("sdk_recollect_tracked_write", mappings.Collect(base, page, dirty, &count, false) && count == 4);
+            mappings.UnmapAlias(alias);
+            alias = nullptr;
+            mappings.Reset(address, reserve);
+        } catch (const std::exception& error) {
+            std::fprintf(stderr, "SDK shared mapping failed: %s\n", error.what());
+            result("sdk_shared_mapping_exception", false, ERROR_INVALID_DATA);
+            if (alias) mappings.UnmapAlias(alias);
+            CloseHandle(section);
+            return;
+        }
+        CloseHandle(section);
+        result("sdk_release", VirtualFree(address, 0, MEM_RELEASE));
+    }
 }
 
 int main(int argc, char** argv) {
@@ -123,6 +171,7 @@ int main(int argc, char** argv) {
         MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, nullptr, 0);
     result("reserve_same_range_again", reused == address);
     if (reused) result("final_release", VirtualFree(reused, 0, MEM_RELEASE));
+    sdk_shared_mapping(base);
     std::printf("{\"schema\":1,\"probe\":\"memory\",\"summary\":true,\"failed\":%u}\n", failures);
     return failures ? 1 : 0;
 }

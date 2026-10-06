@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "private Dreaming Sarah bounded startup on existing signed iPad runtime",
+  "device": "iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app": "com.konradkern.anyps5ipad",
+  "manifest_sha256": "190a9548020dcac6686c09ddb215a4dc652168ba71390b92127ea62d3b5b0529",
+  "duration_seconds": 177.3118269443512,
+  "jit_helper_pid": 1289,
+  "jit_helper_success": true,
+  "game_surface": "black in foreground screenshots",
+  "swapchain_extent": [
+    768,
+    432
+  ],
+  "swapchain_creation_observed": true,
+  "jit_alias_capacity": 4096,
+  "jit_alias_refusals": 23052,
+  "first_rejected_guest_page": "0x7404008000",
+  "jit_pool_ledger_full_observed": true,
+  "diagnosis": "Each shared guest page is initially mapped RWX; Madeira maps these data pages into its executable pool before the requested RW protection is applied. Source fix awaits matched device verification.",
+  "gameplay": "not_observed",
+  "acceptance": "failed_startup_diagnostic",
+  "private_evidence_sha256": {
+    "operation.json": "b6c7afdfa7f306da9a203f130faa5f8b2f701313f5bd216422ca706c7e4f0aaf",
+    "app-stopped.log": "c9202719eaf2d5175fceaafd2c98754274d904b755538b773ede519d83b1d769",
+    "screen-0.png": "df30dd6f8e0f14c37e59fcd36da2b41d28138a8f4b1eb11132034e4955ec5f21",
+    "final-screen.png": "52f5b6ebaf0f2682c771411d9b1fd5fb2a47019b8ec7b4ae97c81445828e4578"
+  }
+}

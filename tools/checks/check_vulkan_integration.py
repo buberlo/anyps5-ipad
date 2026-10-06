@@ -201,7 +201,6 @@ typedef struct { const void *pNext; const void *pEnabledFeatures; uint32_t flags
     uint32_t enabledExtensionCount; const char *const *ppEnabledExtensionNames; } VkDeviceCreateInfo;
 typedef struct { char extensionName[256]; uint32_t specVersion; } VkExtensionProperties;
 static int advertise = 1, query_error, incomplete, queried, created, expect_count;
-static void *vulkan_handle = (void *)17;
 static VkResult vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physical, const char *name,
         uint32_t *count, VkExtensionProperties *properties) {
     assert(physical == (void *)19 && name == NULL); ++queried;
@@ -223,38 +222,26 @@ static VkResult vkCreateDevice(VkPhysicalDevice physical, const VkDeviceCreateIn
     *device = (void *)41; ++created;
     return VK_SUCCESS;
 }
-static PFN_vkVoidFunction real_get_proc(VkInstance instance, const char *name) {
-    if (instance && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)vkCreateDevice;
-    return NULL;
-}
-static void *madeira_vk_dlsym(void *handle, const char *name) {
-    assert(handle == vulkan_handle);
-    return !strcmp(name, "vkGetInstanceProcAddr") ? (void *)real_get_proc : NULL;
-}
 '''
-host_harness += function(host_source, "static VkResult VKAPI_CALL madeira_vkCreateDevice(")
-host_harness += function(host_source, "static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(")
-# Skip the forward declaration so the extractor starts at the definition.
-host_harness += function(host_source[host_source.rindex("static void *madeira_vk_dlsym_ios("):], "static void *madeira_vk_dlsym_ios(")
+# Test portability conversion independently; the lifecycle test compiles the
+# complete instance/device loader dispatch and admission wrappers.
+host_harness += function(host_source, "static VkResult VKAPI_CALL madeira_vkCreateDevice_base(")
 host_harness += r'''
 int main(void) {
     const char *names[] = {"VK_KHR_buffer_device_address", "VK_KHR_portability_subset"};
     VkDeviceCreateInfo info = {(void *)29, (void *)31, 37, 1, names};
     VkDevice device = NULL;
-    PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym_ios(vulkan_handle,"vkGetInstanceProcAddr");
-    assert(get_proc((void *)43,"vkCreateDevice") == (PFN_vkVoidFunction)madeira_vkCreateDevice);
-    assert(get_proc(NULL,"vkCreateDevice") == NULL);
     expect_count = 2;
-    assert(madeira_vkCreateDevice((void *)19,&info,(void *)23,&device) == 0 && created == 1 && device == (void *)41);
+    assert(madeira_vkCreateDevice_base((void *)19,&info,(void *)23,&device) == 0 && created == 1 && device == (void *)41);
     assert(info.enabledExtensionCount == 1 && info.ppEnabledExtensionNames == names);
     advertise = 0; expect_count = 1;
-    assert(madeira_vkCreateDevice((void *)19,&info,(void *)23,&device) == 0 && created == 2);
+    assert(madeira_vkCreateDevice_base((void *)19,&info,(void *)23,&device) == 0 && created == 2);
     info.enabledExtensionCount = 2; expect_count = 2; queried = 0;
-    assert(madeira_vkCreateDevice((void *)19,&info,(void *)23,&device) == 0 && created == 3 && queried == 0);
+    assert(madeira_vkCreateDevice_base((void *)19,&info,(void *)23,&device) == 0 && created == 3 && queried == 0);
     info.enabledExtensionCount = 1; query_error = -7;
-    assert(madeira_vkCreateDevice((void *)19,&info,(void *)23,&device) == -7 && created == 3);
+    assert(madeira_vkCreateDevice_base((void *)19,&info,(void *)23,&device) == -7 && created == 3);
     query_error = 0; advertise = 1; incomplete = 1; queried = 0;
-    assert(madeira_vkCreateDevice((void *)19,&info,(void *)23,&device) == 0 && created == 4 && queried == 4);
+    assert(madeira_vkCreateDevice_base((void *)19,&info,(void *)23,&device) == 0 && created == 4 && queried == 4);
     puts("PASS: host dispatch enables only advertised portability subset, preserves features, retries enumeration and propagates errors");
 }
 '''

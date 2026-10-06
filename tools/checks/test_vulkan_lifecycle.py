@@ -9,9 +9,12 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 source = (root / "upstreams/Madeira/build/win32u-unix/vulkan_ios.c").read_text()
 start = source.index('#include "vulkan_lifecycle.h"')
-end = source.index('static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr', start)
-production = source[start:end]
+end = source.index('\n#endif', start)
+loader_start = source.rindex('static void *madeira_vk_dlsym_ios(')
+loader_end = source.index('\n/* A Wine HWND', loader_start)
+production = source[start:end] + source[loader_start:loader_end]
 prefix = r'''
+#define MADEIRA_VK_STATIC_LINK 1
 #include <vulkan/vulkan_core.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -65,9 +68,16 @@ static void other_proc(void) {}
 static PFN_vkVoidFunction VKAPI_CALL fake_get(VkDevice d,const char *n) {
  (void)d;return !strcmp(n,"absent")?NULL:other_proc;
 }
+static PFN_vkVoidFunction VKAPI_CALL fake_instance_get(VkInstance i,const char *n) {
+ if(!i && !strcmp(n,"vkCreateDevice"))return NULL;
+ return !strcmp(n,"absent")?NULL:other_proc;
+}
 static void *vulkan_handle;
 static void *madeira_vk_dlsym(void *h,const char *n) {
- (void)h;assert(!strcmp(n,"vkGetDeviceProcAddr"));return (void *)fake_get;
+ (void)h;
+ if(!strcmp(n,"vkGetDeviceProcAddr"))return (void *)fake_get;
+ if(!strcmp(n,"vkGetInstanceProcAddr"))return (void *)fake_instance_get;
+ return !strcmp(n,"absent")?NULL:(void *)other_proc;
 }
 '''
 suffix = r'''
@@ -108,7 +118,16 @@ int main(void) {
  assert(!pthread_create(&worker,NULL,submit_worker,NULL));wait_for(&worker_started);
  usleep(20000);assert(atomic_load(&calls)==2&&!atomic_load(&worker_done));
  aps5_vulkan_set_active(1);assert(!pthread_join(worker,NULL));assert(atomic_load(&calls)==3);
- #define CHECK_PROC(n) assert(madeira_vkGetDeviceProcAddr(device,#n)==(PFN_vkVoidFunction)aps5_##n)
+ assert(madeira_vk_dlsym_ios(vulkan_handle,"vkGetDeviceProcAddr")== (void *)madeira_vkGetDeviceProcAddr);
+ assert(madeira_vk_dlsym_ios(vulkan_handle,"vkGetInstanceProcAddr")== (void *)madeira_vkGetInstanceProcAddr);
+ assert(madeira_vk_dlsym_ios(vulkan_handle,"absent")==NULL);
+ assert(madeira_vk_dlsym_ios(vulkan_handle,"other")== (void *)other_proc);
+ assert(madeira_vkGetInstanceProcAddr(VK_NULL_HANDLE,"vkCreateDevice")==NULL);
+ assert(madeira_vkGetInstanceProcAddr((VkInstance)(uintptr_t)1,"vkCreateDevice")== (PFN_vkVoidFunction)madeira_vkCreateDevice);
+ #define CHECK_PROC(n) do { \
+  assert(madeira_vkGetDeviceProcAddr(device,#n)==(PFN_vkVoidFunction)aps5_##n); \
+  assert(madeira_vkGetInstanceProcAddr((VkInstance)(uintptr_t)1,#n)==(PFN_vkVoidFunction)aps5_##n); \
+ } while(0)
  CHECK_PROC(vkQueueSubmit);CHECK_PROC(vkQueueSubmit2);CHECK_PROC(vkQueueSubmit2KHR);
  CHECK_PROC(vkQueuePresentKHR);CHECK_PROC(vkQueueWaitIdle);CHECK_PROC(vkDeviceWaitIdle);
  CHECK_PROC(vkAcquireNextImageKHR);CHECK_PROC(vkAcquireNextImage2KHR);CHECK_PROC(vkDestroyDevice);

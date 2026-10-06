@@ -53,11 +53,15 @@ import stubs are kept separate from the real runtime PRX files.
 Dreaming Sarah requires a privately supplied decrypted dump. The tested private
 version reaches the main menu on Windows. On iPad its scaling/swapchain issue
 is repaired. Build 10 reaches Vulkan with the shader-fixed graphics library and
-no longer reports the vertex subgroup error. Fragment translation now rejects
-`PerVertexKHR`, and a later repeated host fault terminates the run; visible game
-output remains unverified. The private shader replay can translate through
-native interpolation. Thirty production-guard cases and six Apple Metal shader
-compilations pass; execution with that interpolation path is pending. Game assets and shader requests stay outside this repository.
+no longer reports the vertex subgroup error. The optional native interpolation path now executes on iPad without the previous
+`PerVertexKHR` errors. The user observes an initial logo, followed by audible
+sound and a black screen. A further shader is conservatively rejected at pc 84,
+and repeated native write faults later terminate the process. Gameplay remains
+unverified. See [interpolation device diagnostic](docs/evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
+Thirty production-guard cases and six Apple Metal shader compilations pass.
+Opt-in shader capture now occurs before source validation so newly rejected
+draws can be diagnosed; that capture change awaits a new build/device run.
+Game assets, shader requests and complete game logs stay outside this repository.
 
 ## Historical foundation status
 

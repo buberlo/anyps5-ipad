@@ -367,8 +367,19 @@ center P1/P2 pairs and rejects partial results, raw barycentric arithmetic,
 custom/sample/centroid interpolation and unsupported control flow. Thirty
 compiled guard cases pass. All six captured shaders replay through this guard
 and pinned SPIRV-Cross, and Apple's actual Metal compiler accepts all six MSL
-outputs. This is compiler evidence; the updated driver and visible device
-rendering are still pending. See [interpolation compiler proof](evidence/ipad-m2-fixed-function-interpolation-compiler.json).
+outputs. See [interpolation compiler proof](evidence/ipad-m2-fixed-function-interpolation-compiler.json).
+The repaired Windows CI driver now runs on the installed Build 10. The opt-in
+is selected, and the prior PerVertexKHR error is absent. The user reports the
+first logo and then sound over a black screen; inspected 10/30-second captures
+show black game output. A new draw is rejected at pc 84, and repeated native
+write faults still terminate the process. A short control with the original
+barycentric path shows no logo and restores PerVertexKHR errors. The opt-in
+is restored afterwards. See [device diagnostic](evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
+The six old shader requests copied locally all replay successfully; they do
+not explain the new rejection. Patch 0008 extends the existing opt-in
+APS5_DUMP_SHADERS to draw requests before source analysis, where the guard
+can throw before target-specific captures. It changes no translation or
+memory protections. Its build/device diagnostic is pending.
 
 Private shader requests, assets and complete game logs remain outside Git and CI.
 

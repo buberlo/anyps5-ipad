@@ -105,11 +105,17 @@ embedded modules.
 ## Windows reference and runtime package
 
 `scripts/windows-runtime-build.sh` uses the pinned WinLibs 15.2 posix-SEH
-toolchain, whose archive has an explicit SHA-256. It builds the six real HLE
+toolchain, whose archive has an explicit SHA-256. It builds the 21 real HLE
 targets, the relinker/NID patcher, the smoke demo and CPU/exception guests.
 `scripts/package-runtime.py` accepts unpatched HLE outputs, patches a fresh copy,
 walks native imports/forwarders recursively and resolves every guest NID before
 writing the package. Test-only ELF linker stubs cannot be packaged as PRX files.
+The original demo includes `app0/sce_sys/param.json`, validated against the
+actual libkernel parser used by VideoOut. It calls normal libc `exit(0)` so
+registered VideoOut/AGC shutdown callbacks run before Windows DLL teardown.
+The reference still requires exit code 0; completed frame checks cannot hide
+a teardown timeout.
+
 The package contains `game.exe`, guest probes, `libs/`, `app0/`, hashes and
 `game-profile.cfg`. Import that config explicitly in Madeira's game settings;
 placing a config beside the executable does not apply it automatically.
@@ -224,6 +230,12 @@ exceptions/destructors, plus standalone AVX2/memory/allocator probes. See
 [Windows reference](evidence/windows-reference-a7a9950.json). Graphics is
 explicitly `not_run` because the hosted Windows runner lacks a Vulkan driver.
 The physical iPad graphics demo still needs that reference and its own run.
+A private UM790 Pro run with the AMD Radeon 780M passed the CPU, exception,
+AVX2, mapping and allocator checks. After adding the missing original demo
+metadata, RDNA readback and VideoOut acknowledged all 120 frames, but the
+process timed out during exit. That run remains a **failure**; the normal libc
+exit fix requires a fresh reference run. Input and foreground visibility were
+not verified. See [UM790 diagnostic](evidence/windows-um790-demo-exit-timeout.json).
 Linux checks, ARM64 Wine/FEX and macOS GPU execution passed. Initial iOS jobs
 exposed missing modern Bison and the separate Xcode Metal compiler component;
 the workflow now explicitly installs both.

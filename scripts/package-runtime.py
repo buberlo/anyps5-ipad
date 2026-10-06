@@ -34,6 +34,17 @@ ENVIRONMENT = {
 }
 
 
+def write_demo_assets(app0):
+    # VideoOut obtains its window title from libkernel's AppMetadata parser.
+    # These are original demo metadata, not a copied commercial-game param.
+    system = app0 / "sce_sys"
+    system.mkdir(parents=True, exist_ok=True)
+    metadata = {"titleId": "ANYPS5DEMO", "contentVersion": "01.000.000",
+                "defaultLanguage": "en-US", "downloadDataSize": 0,
+                "localizedParameters": {"en-US": {"titleName": "AnyPS5 original RDNA demo"}}}
+    (system / "param.json").write_text(json.dumps(metadata, indent=2) + "\n")
+
+
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -105,8 +116,7 @@ def main():
     try:
         libs = stage / "libs"
         libs.mkdir()
-        (stage / "app0").mkdir()
-        (stage / "app0/.keep").write_text("Original demo has no external game assets.\n")
+        write_demo_assets(stage / "app0")
         images, sources, exported, dependencies, system = {}, {}, {}, {}, set()
         roots = {item["library"].lower() for _, _, fixture in fixtures for item in fixture["imports"]}
         pending = sorted(roots)

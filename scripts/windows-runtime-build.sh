@@ -12,6 +12,7 @@ python3 tools/runtime-probes/test_runtime_reference.py
 python3 tools/runtime-probes/test_private_game.py
 scripts/m0-build-anyps5-winlibs.sh
 export PATH="$root/build/toolchains/winlibs/mingw64/bin:$PATH"
+HOST_CXX=g++ python3 tools/runtime-probes/test_demo_metadata.py
 relinker="$root/build/anyps5-winlibs/core/relinker/relinker.exe"
 nid_patcher="$root/build/anyps5-winlibs/core/libs/nid_patcher.exe"
 WINDOWS_CXX=g++ NID_PATCHER="$nid_patcher" python3 tools/runtime-probes/test_runtime_packaging.py

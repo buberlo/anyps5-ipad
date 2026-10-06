@@ -15,6 +15,7 @@ import subprocess
 
 
 IMPORTS = {
+    "libc.prx": [("exit", "void", "int")],
     "libkernel.prx": [
         ("sceKernelWrite", "i64", "int, const void*, usize"),
         ("sceKernelUsleep", "int", "unsigned"),

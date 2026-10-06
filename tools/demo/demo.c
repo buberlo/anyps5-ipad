@@ -1,4 +1,4 @@
-// An original, freestanding x86-64 guest. Only public sce* imports are used.
+// An original, freestanding x86-64 guest using public sce* and libc imports.
 // The CPU draws a small paddle game; a real RDNA compute program transforms
 // EVERY pixel before VideoOut presents it. A per-frame CPU comparison checks
 // GPU readback. No shader-recompiler or VideoOut internal API is imported.
@@ -286,5 +286,9 @@ int demo_entry(void) {
     if (!user_stopped && (!frames_done || (DEMO_SMOKE_PROFILE && frames_done != FRAMES)))
         return fail("required_frames", frames_done);
     complete(user_stopped ? "stopped" : "pass", frames_done);
-    return 0;
+    // The normal libc exit path stops and joins the VideoOut/AGC workers
+    // before Windows starts DLL teardown. Returning directly to the PE
+    // entry stub's ExitProcess would terminate workers before their cleanup.
+    exit(0);
+    __builtin_unreachable();
 }

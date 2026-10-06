@@ -374,6 +374,44 @@ Private shader requests, assets and complete game logs remain outside Git and CI
 
 ## Acceptance and current limits
 
+A bounded Build 10 run uses a 1280×720 original guest buffer and completes
+120 full-pixel GPU comparisons with Wine exit 0. Fresh foreground screenshots
+show the paddle scene and controls. The existing SDL window scales presentation
+into a 768×432 swapchain. The guest loop averages 23.130 iterations/s; one Metal
+HUD screenshot reports 26.73 FPS, 37.42 ms frame interval and 0.86 ms GPU time.
+That isolated HUD sample is not an average over ten minutes. Touch input is not
+observed. Independent Windows scene checks at this resolution, full-resolution
+presentation and the complete acceptance run remain open. See the
+[720p diagnostic](evidence/ipad-m2-demo-720-diagnostic.json).
+
+The original guest now reports aggregate timings for drawing/input, dispatch
+and GPU waiting, full readback/checkpoints, flip acknowledgment and post-flip
+pacing, plus poll sleep counts. These measurements retain all pixel comparisons
+and existing waits; they diagnose the bottleneck without claiming display FPS.
+
+`scripts/build-demo.sh --profile interactive` builds a separate 320×192 input
+diagnostic lasting up to 600 seconds (or Circle to exit), with the same real
+RDNA dispatch and full-pixel comparison. It emits no acceptance-pass events;
+it gives a person time to test controls before the short smoke stops. All three
+profiles compile and relink locally. The interactive package is installed and
+has a bounded physical iPad input run; it is not a full acceptance run.
+
+In a manual test the user reports a moving ball but no response to left/right
+or A. This establishes visible ongoing execution, not working input. The earlier
+device log enables touch/XInput but contains no SDL controller-open message.
+One diagnostic is `env.MADEIRA_PAD_EARLY_SLOT = 1` in **All settings** followed by
+a full app restart: it reserves the existing virtual player before SDL initializes.
+The native reader uses global config; this switch in a game's config is currently
+too late for the reservation. After reconnection, the global switch is enabled
+and the device log confirms both an early player reservation and an opened SDL
+Xbox 360 controller. The existing signed XCUITest helper injects four right,
+four left and two A taps into the actual touch controls. The guest sees the
+corresponding `scePad` button states, moves the paddle and serves twice. Zero
+button states follow the taps. At least 1,861 full-pixel GPU comparisons succeed
+before the bounded runner stops the app. This is physical input proof; sticks,
+background/resume, ten-minute performance and clean guest exit need separate
+checks. See [touch input proof](evidence/ipad-m2-touch-input-early-slot.json).
+
 The rejected initial guest-arena candidate was base `0x200000000`, size `0x100000000`,
 with lazy 256-MiB reservations. A 512-GiB entitlement does not make the entire
 space usable: Madeira has GPU, JIT and runtime reservations. Confirm the exact

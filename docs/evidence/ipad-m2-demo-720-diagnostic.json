@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "build": 10,
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "scene_dimensions": [
+    1280,
+    720
+  ],
+  "swapchain_dimensions": [
+    768,
+    432
+  ],
+  "gpu_comparisons": 120,
+  "guest_exit": 0,
+  "guest_elapsed_us": 5187878,
+  "guest_loops_per_second": 23.13,
+  "guest_frame_time_min_us": 23714,
+  "guest_frame_time_p95_us": 34065,
+  "guest_frame_time_max_us": 800348,
+  "neutral_input_gpu_checksum": {
+    "frame_0": 865852541,
+    "frame_60": 2990496509
+  },
+  "reference_scope": "Every GPU pixel equals CPU source XOR 1; independent 720p Windows scene comparison pending.",
+  "foreground_scene": "Visible original paddle scene with touch controls in fresh screenshots.",
+  "metal_hud_single_sample": {
+    "fps": 26.73,
+    "frame_interval_ms": 37.42,
+    "gpu_ms": 0.86,
+    "scope": "One foreground screenshot, not an average over the run."
+  },
+  "actual_touch_input_observed": false,
+  "ten_minute_acceptance": false,
+  "three_successful_restarts": false,
+  "background_resume_verified": false,
+  "scope": "Bounded 120-frame diagnostic. Source buffer is 720p; scaled swapchain is 768x432. Guest loop timings do not measure actual display FPS.",
+  "package_sha256": "5ab266480ddb5f75f6550fc985a3b7c4710566a06848a6ea041048262d4e5299",
+  "private_log_sha256": "fb85f28dc242e7ecba5823007d3cf7a9aad84de304e74bcec5d2929881ea996b",
+  "screenshot_sha256": {
+    "scene-0.png": "9b9dc4bd9f91a2efa5029e1ba16e883f031b484abbde73013f8e131c4953cc9b",
+    "scene-1.png": "23cab212531b936e4df363adc2d9dec76f6d0fbec9ade32ad07b6d79255a0c0a"
+  },
+  "cleanup": "Own app terminated; no own app/helper in final process list."
+}

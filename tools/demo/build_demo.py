@@ -59,13 +59,17 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--relinker", type=Path)
     parser.add_argument("--elf-only", action="store_true")
-    parser.add_argument("--profile", choices=("smoke", "acceptance"), default="acceptance")
+    parser.add_argument("--profile", choices=("smoke", "interactive", "acceptance"), default="acceptance")
     parser.add_argument("--frames", type=int)
     parser.add_argument("--width", type=int)
     parser.add_argument("--height", type=int)
     parser.add_argument("--seconds", type=int)
     args = parser.parse_args()
-    width, height, frames, seconds = (320, 192, 120, 30) if args.profile == "smoke" else (1280, 720, 36000, 600)
+    width, height, frames, seconds = {
+        "smoke": (320, 192, 120, 30),
+        "interactive": (320, 192, 36000, 600),
+        "acceptance": (1280, 720, 36000, 600),
+    }[args.profile]
     args.width = args.width if args.width is not None else width
     args.height = args.height if args.height is not None else height
     args.frames = args.frames if args.frames is not None else frames
@@ -94,6 +98,7 @@ def main():
     declarations = []
     manifest = {"schema": 1, "kind": "original_synthetic_guest", "profile": args.profile, "frame_limit": args.frames,
                 "time_limit_seconds": args.seconds, "dimensions": [args.width, args.height],
+                "acceptance_profile": args.profile == "acceptance",
                 "target_fps": 60, "acceptance_minimum_seconds": 600,
                 "acceptance_minimum_average_fps": 30,
                 "timing_scope": "Guest monotonic frame timings include draw, GPU readback, FlipStatus acknowledgment and pacing; not display timestamps.",
@@ -124,6 +129,7 @@ def main():
                     f"-DDEMO_FRAME_LIMIT={args.frames}", f"-DDEMO_WIDTH={args.width}",
                     f"-DDEMO_HEIGHT={args.height}", f"-DDEMO_SECONDS={args.seconds}", "-I", out,
                     f"-DDEMO_SMOKE_PROFILE={int(args.profile == 'smoke')}",
+                    f"-DDEMO_ACCEPTANCE_PROFILE={int(args.profile == 'acceptance')}",
                     "-c", root / "tools/demo/demo.c", "-o", obj])
     run(linker + ["-m", "elf_x86_64", "-shared", "-Bsymbolic", "-z", "now", "--hash-style=sysv",
                   "--no-undefined", "-e", "demo_entry", "-o", elf, obj, "--no-as-needed", *stub_paths])

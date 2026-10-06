@@ -22,6 +22,9 @@ typedef unsigned long usize;
 #ifndef DEMO_SMOKE_PROFILE
 #define DEMO_SMOKE_PROFILE 0
 #endif
+#ifndef DEMO_ACCEPTANCE_PROFILE
+#define DEMO_ACCEPTANCE_PROFILE 1
+#endif
 #define WIDTH DEMO_WIDTH
 #define HEIGHT DEMO_HEIGHT
 #define PIXELS (WIDTH * HEIGHT)
@@ -208,6 +211,10 @@ int demo_entry(void) {
     u32 previous_buttons = 0; u8 previous_stick = 128;
     int user_stopped = 0;
     u64 minimum_frame = ~0ULL, maximum_frame = 0;
+    // Aggregate phases independently from display FPS. Keep the full-pixel
+    // reference comparison and the same wait/pacing behavior in this probe.
+    u64 draw_us = 0, dispatch_us = 0, readback_us = 0, flip_us = 0, pacing_us = 0;
+    u64 gpu_poll_calls = 0, flip_poll_calls = 0;
     const u64 started = sceKernelGetProcessTime();
     for (unsigned frame = 0; frame < FRAMES; ++frame) {
         const u64 frame_started = sceKernelGetProcessTime();
@@ -239,12 +246,17 @@ int demo_entry(void) {
         game_rectangle(paddle, 169, 56, 7, 0xffe6ba38); game_rectangle(ball_x, ball_y, 6, 6, 0xff68def5);
         for (unsigned i = 0; i < score % 25; ++i) game_rectangle(8 + i * 12, 8, 8, 7, 0xff73e598);
         game_rectangle(8, 183, 304 * (frame % 600) / 600, 2, 0xff7464ff);
+        const u64 drawn = sceKernelGetProcessTime();
+        draw_us += drawn - frame_started;
         unsigned n = make_commands(frame); Packet packet = {commands, n, 0, {0, 0, 0}};
         error = sceAgcDriverSubmitDcb(&packet);
         if (error) return fail("dispatch_submit", error);
         unsigned polls = 0;
         while (*label != frame + 1 && polls++ < 30000) sceKernelUsleep(1000);
         if (*label != frame + 1) return fail("gpu_timeout", frame);
+        gpu_poll_calls += polls;
+        const u64 dispatched = sceKernelGetProcessTime();
+        dispatch_us += dispatched - drawn;
         for (unsigned i = 0; i < PIXELS; ++i)
             if (output[i] != (source[i] ^ 1u)) return fail("gpu_readback", i);
         u32 before_flip = 0;
@@ -253,6 +265,8 @@ int demo_entry(void) {
             event("gpu_checksum_before_flip", "sample", before_flip);
             event("source_xor_checksum", "sample", checksum_xor(source, 1));
         }
+        const u64 compared = sceKernelGetProcessTime();
+        readback_us += compared - dispatched;
         error = sceVideoOutSubmitFlip(video, 0, 1, frame + 1);
         if (error) return fail("flip_submit", error);
         FlipStatus status = {0}; polls = 0;
@@ -263,6 +277,9 @@ int demo_entry(void) {
             sceKernelUsleep(1000);
         } while (++polls < 30000);
         if (polls >= 30000) return fail("flip_timeout", frame);
+        flip_poll_calls += polls;
+        const u64 flipped = sceKernelGetProcessTime();
+        flip_us += flipped - compared;
         frames_done = frame + 1;
         if (frame % 60 == 0) {
             const u32 actual = checksum(output);
@@ -296,6 +313,8 @@ int demo_entry(void) {
             sceKernelUsleep((unsigned)(remaining > 1000 ? 1000 : remaining));
         }
         const u64 frame_elapsed = sceKernelGetProcessTime() - frame_started;
+        // Includes sparse post-flip checkpoint logging as well as pacing.
+        pacing_us += sceKernelGetProcessTime() - flipped;
         frame_times[frame] = (u32)(frame_elapsed > 0xffffffffULL ? 0xffffffffULL : frame_elapsed);
         if (frame_elapsed < minimum_frame) minimum_frame = frame_elapsed;
         if (frame_elapsed > maximum_frame) maximum_frame = frame_elapsed;
@@ -308,6 +327,13 @@ int demo_entry(void) {
     event("readback_frames", frames_done ? "pass" : "fail", frames_done);
     event("frames_presented", "pass", frames_done);
     event("elapsed_us", "pass", elapsed);
+    event("draw_input_total_us", "measured", draw_us);
+    event("dispatch_wait_total_us", "measured", dispatch_us);
+    event("readback_checkpoint_total_us", "measured", readback_us);
+    event("flip_wait_total_us", "measured", flip_us);
+    event("post_flip_pacing_total_us", "measured", pacing_us);
+    event("gpu_poll_sleep_calls", "measured", gpu_poll_calls);
+    event("flip_poll_sleep_calls", "measured", flip_poll_calls);
     const u64 fps_milli = elapsed ? (u64)frames_done * 1000000000ULL / elapsed : 0;
     event("avg_fps_milli", "measured", fps_milli);
     if (frames_done) {
@@ -317,9 +343,9 @@ int demo_entry(void) {
     }
     write_text("{\"schema\":1,\"probe\":\"demo\",\"stage\":\"timing_scope\",\"status\":\"info\",\"detail\":\"guest monotonic time includes draw, GPU readback, FlipStatus acknowledgment and 60Hz pacing; not display timestamps\"}\n");
     event("onscreen_device_foreground", "pending_external_check", 0);
-    if (!DEMO_SMOKE_PROFILE)
+    if (DEMO_ACCEPTANCE_PROFILE)
         event("acceptance_duration", !user_stopped && elapsed >= 600000000ULL ? "pass" : "not_met", elapsed);
-    if (!DEMO_SMOKE_PROFILE)
+    if (DEMO_ACCEPTANCE_PROFILE)
         event("acceptance_average_fps", !user_stopped && fps_milli >= 30000 ? "pass" : "not_met", fps_milli);
     error = sceVideoOutClose(video);
     if (error) return fail("video_close", error);

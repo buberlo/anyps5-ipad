@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the original demo's AnyPS5 PRX closure with WinLibs GCC 15.2.0
+# Build the demo and Dreaming Sarah's AnyPS5 PRX closure with WinLibs GCC 15.2.0
 # posix-seh (15.2.0posix-14.0.0-ucrt-r7), the compiler AnyPS5's BUILD.md
 # requires. Ubuntu's GCC 13 posix emits SjLj and does not link these
 # libraries. This script is for a Windows host (GitHub windows-latest or
@@ -79,9 +79,14 @@ if [ -z "$jobs" ]; then
         jobs=4
     fi
 fi
-"$cmake_bin" --build "$build" --target relinker nid_patcher libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad --parallel "$jobs"
+libraries=(libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad
+    libSceAudioOut libSceCommonDialog libSceIme libSceImeBackend libSceImeDialog
+    libSceLibcInternal libSceNpGameIntent libSceNpTrophy2 libSceNpUniversalDataSystem
+    libSceSaveData.native libSceSaveDataDialog.native libSceSysmodule
+    libSceSystemService libSceUlt libSceUserService)
+"$cmake_bin" --build "$build" --target relinker nid_patcher "${libraries[@]}" --parallel "$jobs"
 
-for library in libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad; do
+for library in "${libraries[@]}"; do
     prx="$build/core/libs/libs/unpatched/$library.prx"
     test -s "$prx" || { echo "Missing built PRX: $prx" >&2; exit 1; }
     wc -c "$prx"

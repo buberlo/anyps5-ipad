@@ -20,6 +20,8 @@ scripts/build-runtime-exceptions.sh --relinker "$relinker"
 HOST_CXX=g++ WINDOWS_CXX=g++ scripts/build-runtime-probes.sh
 artifact="$root/build/windows-runtime-artifact"
 mkdir -p "$artifact/probes"
+python3 scripts/export-hle-runtime.py --unpatched "$root/build/anyps5-winlibs/core/libs/libs/unpatched" \
+    --runtime-dir "$root/build/toolchains/winlibs/mingw64/bin" --output "$artifact/hle-runtime.zip"
 python3 scripts/package-runtime.py --build "$root/build/anyps5-winlibs" \
     --nid-patcher "$nid_patcher" --demo "$root/build/demo-smoke" \
     --runtime-dir "$root/build/toolchains/winlibs/mingw64/bin" \

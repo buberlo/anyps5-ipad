@@ -38,6 +38,9 @@ __attribute__((noinline)) static u64 nine_arguments(u64 a, u64 b, u64 c, u64 d, 
                                                    u64 f, u64 g, u64 h, u64 i) {
     return a + 3*b + 5*c + 7*d + 11*e + 13*f + 17*g + 19*h + 23*i;
 }
+typedef u64 (*NineArguments)(u64, u64, u64, u64, u64, u64, u64, u64, u64);
+// A volatile indirect call prevents IPA from specializing away constant args.
+static NineArguments volatile nine_entry = nine_arguments;
 
 static void key_destructor(void* value) {
     Worker* worker = (Worker*)value;
@@ -74,11 +77,13 @@ static void* work(void* argument) {
     __atomic_store_n(&worker->done, 1, __ATOMIC_RELEASE);
     return worker;
 }
+// Keep a real data relocation alongside the public PLT imports.
+static ThreadEntry volatile worker_entry = work;
 
 int guest_cpu_entry(void) {
     event("entry", 1, 0);
     volatile u64 seed = 1;
-    const u64 abi = nine_arguments(seed, 2, 3, 4, 5, 6, 7, 8, 9);
+    const u64 abi = nine_entry(seed, 2, 3, 4, 5, 6, 7, 8, 9);
     if (abi != 761) return fail("sysv_register_and_stack_arguments", abi);
     event("sysv_register_and_stack_arguments", 1, abi);
     if (*guest_tls_initialized() != TLS_INITIAL || *guest_tls_zero() != 0)
@@ -93,7 +98,7 @@ int guest_cpu_entry(void) {
     void* threads[WORKERS];
     for (unsigned i = 0; i < WORKERS; ++i) {
         workers[i].id = i + 7;
-        error = scePthreadCreate(&threads[i], 0, work, &workers[i], "guest-cpu-probe");
+        error = scePthreadCreate(&threads[i], 0, worker_entry, &workers[i], "guest-cpu-probe");
         if (error) return fail("thread_create", (u32)error);
     }
     u64 deadline = sceKernelGetProcessTime() + 10000000ULL;

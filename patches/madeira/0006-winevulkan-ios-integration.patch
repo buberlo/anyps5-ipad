@@ -188,6 +188,17 @@ diff --git a/build/win32u-unix/moltenvk_static_loader.c b/build/win32u-unix/molt
 diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_metal_ios.c
 --- a/build/win32u-unix/vulkan_metal_ios.c
 +++ b/build/win32u-unix/vulkan_metal_ios.c
+@@ -6,8 +6,8 @@
+  * library on iOS. This TU is linked into libwin32u_unix.a and registered
+  * from driver_ios.c as winios_pVulkanInit when the symbol is present.
+  *
+- * The CAMetalLayer is the one Winios.m already owns for the HWND
+- * (winios_metal_layer_for_hwnd). MoltenVK presents that layer.
++ * IOSDisplayShim selects the existing game CAMetalLayer or the desktop
++ * compositor's HWND layer. The surface retains it until destruction.
+  *
+  * Not compile-checked on Linux: it includes Wine's unix headers and is
+  * built by build/win32u-unix/build.sh with the iOS SDK. The loader beside
 @@ -21,6 +21,7 @@
  #include "config.h"
  
@@ -196,15 +207,70 @@ diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_met
  #include <string.h>
  
  #include "ntstatus.h"
-@@ -29,6 +30,7 @@
+@@ -29,14 +30,23 @@
  #include "winbase.h"
  #include "wine/gdi_driver.h"
  #include "wine/vulkan_driver.h"
 +#include "moltenvk_static_loader.h"
  
- extern void *winios_metal_layer_for_hwnd(void *hwnd);
+-extern void *winios_metal_layer_for_hwnd(void *hwnd);
++extern void *madeira_vulkan_layer_acquire(void *hwnd);
++extern void madeira_vulkan_layer_release(void *layer);
++
++struct ios_client_surface
++{
++    struct client_surface base;
++    void *layer;
++};
  
-@@ -123,8 +125,31 @@
+ static int g_use_metal_surface;
+ 
+ static void ios_surface_destroy(struct client_surface *surface)
+ {
+-    (void)surface;
++    struct ios_client_surface *ios = (struct ios_client_surface *)surface;
++    madeira_vulkan_layer_release(ios->layer);
+ }
+ 
+ static void ios_surface_detach(struct client_surface *surface)
+@@ -69,14 +79,19 @@
+     VkMetalSurfaceCreateInfoEXT info;
+     VkResult res;
+     void *layer;
+-    struct client_surface *surface;
++    struct ios_client_surface *surface;
+ 
+     if (!g_use_metal_surface || !instance || !instance->p_vkCreateMetalSurfaceEXT)
+         return VK_ERROR_EXTENSION_NOT_PRESENT;
+-    layer = winios_metal_layer_for_hwnd(hwnd);
++    layer = madeira_vulkan_layer_acquire(hwnd);
+     if (!layer) return VK_ERROR_INCOMPATIBLE_DRIVER;
+-    surface = client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
+-    if (!surface) return VK_ERROR_OUT_OF_HOST_MEMORY;
++    surface = (struct ios_client_surface *)client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
++    if (!surface)
++    {
++        madeira_vulkan_layer_release(layer);
++        return VK_ERROR_OUT_OF_HOST_MEMORY;
++    }
++    surface->layer = layer;
+ 
+     memset(&info, 0, sizeof(info));
+     info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+@@ -84,10 +99,10 @@
+     res = instance->p_vkCreateMetalSurfaceEXT(instance->host.instance, &info, NULL, handle);
+     if (res != VK_SUCCESS)
+     {
+-        client_surface_release(surface);
++        client_surface_release(&surface->base);
+         return res;
+     }
+-    *client = surface;
++    *client = &surface->base;
+     return VK_SUCCESS;
+ }
+ 
+@@ -123,8 +138,31 @@
  
  UINT winios_pVulkanInit(UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs)
  {
@@ -237,6 +303,132 @@ diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_met
      if (!g_use_metal_surface) return STATUS_NOT_IMPLEMENTED;
      *driver_funcs = &ios_vulkan_driver_funcs;
      return STATUS_SUCCESS;
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+--- a/build/win32u-unix/vulkan_ios.c
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -5,18 +5,20 @@
+  * puts the macro back, then redirects dlopen/dlsym/dlclose onto
+  * moltenvk_static_loader.c before compiling upstream vulkan.c unchanged.
+  *
+- * SONAME is the literal "MoltenVK". madeira_vk_dlopen tries that name first
+- * (an embedded MoltenVK dylib or framework) and, on failure, binds
+- * vkGetInstanceProcAddr from the static archive linked into Madeira.app.
+- * Do not pass -USONAME_LIBVULKAN for this TU.
++ * SONAME is the literal "MoltenVK". The static build selects the pinned
++ * archive and supplies the host-only portability subset during device
++ * creation. Dynamic builds retain the normal loader dispatch.
+  */
+ 
+ #define SONAME_LIBVULKAN "MoltenVK"
+ 
+ #include "moltenvk_static_loader.h"
++#include <dlfcn.h>
++
++static void *madeira_vk_dlsym_ios(void *handle, const char *symbol);
+ 
+ #define dlopen  madeira_vk_dlopen
+-#define dlsym   madeira_vk_dlsym
++#define dlsym   madeira_vk_dlsym_ios
+ #define dlclose madeira_vk_dlclose
+ 
+ #include "vulkan.c"
+@@ -24,3 +26,66 @@
+ #undef dlopen
+ #undef dlsym
+ #undef dlclose
++
++#if defined(MADEIRA_VK_STATIC_LINK)
++/* This Wine revision excludes the provisional portability-subset extension
++ * from its generated extension bitsets. Its host-create conversion therefore
++ * drops the name even when an application requests it. Add the advertised
++ * host requirement after that conversion, preserving the feature chain. */
++static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
++        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
++{
++    static const char subset[] = "VK_KHR_portability_subset";
++    VkExtensionProperties *properties = NULL;
++    uint32_t count = 0;
++    VkResult result;
++    int advertised = 0;
++    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i)
++        if (!strcmp(info->ppEnabledExtensionNames[i], subset))
++            return vkCreateDevice(physical, info, allocator, device);
++    do
++    {
++        free(properties);
++        properties = NULL;
++        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, NULL);
++        if (result != VK_SUCCESS) return result;
++        if (!count) return vkCreateDevice(physical, info, allocator, device);
++        properties = calloc(count, sizeof(*properties));
++        if (!properties) return VK_ERROR_OUT_OF_HOST_MEMORY;
++        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, properties);
++    } while (result == VK_INCOMPLETE);
++    if (result == VK_SUCCESS)
++        for (uint32_t i = 0; i < count; ++i)
++            if (!strcmp(properties[i].extensionName, subset)) advertised = 1;
++    free(properties);
++    if (result != VK_SUCCESS) return result;
++    if (!advertised) return vkCreateDevice(physical, info, allocator, device);
++    const char **extensions = calloc((size_t)info->enabledExtensionCount + 1, sizeof(*extensions));
++    if (!extensions) return VK_ERROR_OUT_OF_HOST_MEMORY;
++    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) extensions[i] = info->ppEnabledExtensionNames[i];
++    extensions[info->enabledExtensionCount] = subset;
++    VkDeviceCreateInfo host = *info;
++    host.enabledExtensionCount++;
++    host.ppEnabledExtensionNames = extensions;
++    result = vkCreateDevice(physical, &host, allocator, device);
++    free(extensions);
++    return result;
++}
++
++static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(VkInstance instance, const char *name)
++{
++    PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
++    PFN_vkVoidFunction proc = get_proc(instance, name);
++    if (proc && name && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)madeira_vkCreateDevice;
++    return proc;
++}
++#endif
++
++static void *madeira_vk_dlsym_ios(void *handle, const char *symbol)
++{
++    void *proc = madeira_vk_dlsym(handle, symbol);
++#if defined(MADEIRA_VK_STATIC_LINK)
++    if (proc && symbol && !strcmp(symbol, "vkGetInstanceProcAddr")) return (void *)madeira_vkGetInstanceProcAddr;
++#endif
++    return proc;
++}
+diff --git a/app/Madeira/IOSDisplayShim.m b/app/Madeira/IOSDisplayShim.m
+--- a/app/Madeira/IOSDisplayShim.m
++++ b/app/Madeira/IOSDisplayShim.m
+@@ -156,6 +156,26 @@
+ // Game sessions: the window a swapchain presents from is the game's own;
+ // Winios.m's game-mode window overlay must not draw its GDI bits.
+ extern void winios_note_game_metal_hwnd(void *hwnd);
++
++/* Vulkan follows the same desktop/game routing as the Metal display bridge.
++ * A retained reference outlives asynchronous HWND/compositor removal. */
++void *madeira_vulkan_layer_acquire(void *hwnd) {
++    const char *desktop = getenv("MADEIRA_DESKTOP");
++    if (desktop && *desktop == '1') {
++        CAMetalLayer *layer = winios_metal_layer_for_hwnd(hwnd);
++        return layer ? (void *)CFBridgingRetain(layer) : NULL;
++    }
++    pthread_mutex_lock(&g_lock);
++    CAMetalLayer *layer = g_layer;
++    void *retained = layer ? (void *)CFBridgingRetain(layer) : NULL;
++    pthread_mutex_unlock(&g_lock);
++    if (retained) winios_note_game_metal_hwnd(hwnd);
++    return retained;
++}
++
++void madeira_vulkan_layer_release(void *layer) {
++    if (layer) CFRelease((CFTypeRef)layer);
++}
+ 
+ static macdrv_metal_device my_create_metal_device(void) {
+     // DXMT also has a separate code path that creates its own MTLDevice;
 diff --git a/build/winevulkan-unix/binder.h b/build/winevulkan-unix/binder.h
 new file mode 100644
 --- /dev/null

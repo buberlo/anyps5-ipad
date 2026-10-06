@@ -10,7 +10,9 @@ export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$JOBS}"
 export APS5_VULKAN_ONLY=1
 export MADEIRA_VK_STATIC_LINK=1
 export MADEIRA_WITH_VULKAN=1
-for command in cmake ninja llvm-objcopy cargo; do
+export WINE_SRC="$root/upstreams/wine"
+export WINE_BUILD="$root/build/wine-macos"
+for command in cmake ninja llvm-objcopy llvm-readobj cargo; do
     command -v "$command" >/dev/null || { echo "Missing build tool: $command" >&2; exit 1; }
 done
 if [ "${APS5_PATCHES_APPLIED:-0}" != 1 ]; then "$root/scripts/apply-patches.sh"; fi
@@ -81,17 +83,25 @@ cp "$moltenvk" "$app_dir/libMoltenVK.a"
 mkdir -p "$root/build/ios-runtime"
 xcrun -sdk iphoneos clang -arch arm64 -isysroot "$sdk" -miphoneos-version-min=17.0 \
     -c "$root/scripts/aps5-vulkan-ui.c" -o "$root/build/ios-runtime/aps5-vulkan-ui.o"
-xcrun -sdk iphoneos libtool -static -o "$app_dir/libaps5_ui.a" "$root/build/ios-runtime/aps5-vulkan-ui.o"
+xcrun -sdk iphoneos clang -arch arm64 -isysroot "$sdk" -miphoneos-version-min=17.0 \
+    -c "$root/scripts/aps5-runtime-diagnostics.c" -o "$root/build/ios-runtime/aps5-runtime-diagnostics.o"
+xcrun -sdk iphoneos libtool -static -o "$app_dir/libaps5_ui.a" \
+    "$root/build/ios-runtime/aps5-vulkan-ui.o" "$root/build/ios-runtime/aps5-runtime-diagnostics.o"
+bash "$root/upstreams/Madeira/build/stage-licenses.sh"
 # No helper-removal, pairing stubs or required-library placeholders are used.
 args=(
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj"
     -scheme Madeira -destination 'generic/platform=iOS' -configuration Debug
     -derivedDataPath "$root/build/ios-runtime/DerivedData"
     MADEIRA_BUNDLE_IDENTIFIER=com.konradkern.anyps5ipad
+    'OTHER_SWIFT_FLAGS=$(inherited) -j'"$JOBS -driver-batch-count $JOBS"
 )
 if [ "${APS5_CODE_SIGNING:-NO}" = YES ]; then
     [ -n "${APS5_DEVELOPMENT_TEAM:-}" ] || { echo "Set APS5_DEVELOPMENT_TEAM for signing" >&2; exit 1; }
     args+=("DEVELOPMENT_TEAM=$APS5_DEVELOPMENT_TEAM" CODE_SIGNING_ALLOWED=YES)
+    if [ "${APS5_ALLOW_PROVISIONING_UPDATES:-0}" = 1 ]; then
+        args+=(-allowProvisioningUpdates)
+    fi
 else
     args+=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO)
 fi
@@ -99,6 +109,7 @@ xcodebuild -jobs "$JOBS" "${args[@]}" build
 app="$root/build/ios-runtime/DerivedData/Build/Products/Debug-iphoneos/Madeira.app"
 test -x "$app/Madeira"
 test -d "$app/PlugIns/MadeiraJITHelper.appex"
+python3 "$root/scripts/check-ios-pe.py" verify --app "$app"
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist"
 echo "LINKED_APP=$app"
 echo "CODE_SIGNING=${APS5_CODE_SIGNING:-NO}; install, JIT and gameplay remain separate device checks"

@@ -1,0 +1,19 @@
+{"scene_activation_state":0,"thermal_state":0,"physical_memory_bytes":7993868288,"timestamp":1791250302.764576,"schema":1,"application_state":0,"stage":"native_gpu","low_power_mode":false,"os":"Version 27.0.1 (Build 24A446)","build_manifest":{"schema":1,"commit":"9168938906ad950e903b3e148f79cf6ac40696ac","hash_scope":"before_codesign","source_dirty":true,"source_sha256":{"tools\/gpu-probe\/bc_sample.comp":"78043ce022f31414788df1675097d2402aeb282b1c1c11f0b78cf236b38f6ebd","tools\/gpu-probe\/gpu_probe.c":"1631964f61d4a115ca0e656e1c1fdc63982210e8ebaa94b30da323fc2f1b7d59","scripts\/build-ipad-probe.sh":"10fe18a569dc136bd47ce47b7a9fa4cf94321543870ba4cac0912bcfefaf0ba5","tools\/gpu-probe\/gpu_probe.h":"a076bc6a6332f58de55c36ec39bc99cf4cb5ae67abf765439ed03a06147f88cc","tools\/gpu-probe\/bda_bytes.comp":"d723d1765118f761d078b741d64a793678a87869349b0e4b2afdf99199ec80ec","tools\/ipad-probe\/main.m":"7ddc2ca25d1236ee7f62f783e9502f2a3d37331802e618d426db5cefe02829cf"},"moltenvk_sha256":"5b04b88bd96ea1905e6217b9424bc5fc4c78dd58607428b45cd6fa916464384d","files_before_codesign":{"bda_bytes.spv":"93fd361be1da4852cf4798ff3952972b54891c212efefc6a9f8bea7509815355","AnyPS5GPUProbe":"f7b75f04d318bc681003da005644c67f0f7fef297e5928d0cedf1b65c820d6f6","bc_sample.spv":"316f775d87077dd5ba0e0ebd3045d3c56850d6a19d71c43e37c02519b6ef953f","Info.plist":"1a3e44422fe6067462014c4a387c017a0ff7b0f30e97e20352abb04d1826c64c"},"stage":"native_gpu"},"test":"device_context","model":"iPad14,10"}
+{"schema":1,"stage":"native_gpu","device":"Apple M2 GPU","api_version":4198757,"driver_version":10403,"device_type":1,"vendor_id":4203,"device_id":452984840}
+{"schema":1,"stage":"native_gpu","test":"hardware_device","status":"pass","code":1}
+{"schema":1,"stage":"native_gpu","test":"VK_KHR_buffer_device_address","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"VK_KHR_8bit_storage","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"VK_KHR_shader_float_controls","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"bufferDeviceAddress","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"storageBuffer8BitAccess","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"shaderInt64","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"textureCompressionBC","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"vertexPipelineStoresAndAtomics","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"fragmentStoresAndAtomics","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"samplerAnisotropy","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"shaderSignedZeroInfNanPreserveFloat32","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"device_creation","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"bda_8bit_readback","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"bc1_sample_readback","status":"pass","code":0}
+{"schema":1,"stage":"native_gpu","test":"offscreen_complete","status":"pass","code":0}
+{"scene_activation_state":0,"visible_gameplay_verified":false,"thermal_state":0,"timestamp":1791250302.792623,"schema":1,"application_state":0,"stage":"native_gpu","pass":true,"interrupted":false,"native_offscreen_accepted":1,"gpu_exit_code":0,"test":"foreground_completion"}

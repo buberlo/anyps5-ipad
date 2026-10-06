@@ -1,5 +1,5 @@
 diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
-index d8606a5..4edbe9e 100644
+index d8606a5..72bbaeb 100644
 --- a/app/Madeira.xcodeproj/project.pbxproj
 +++ b/app/Madeira.xcodeproj/project.pbxproj
 @@ -94,7 +94,7 @@
@@ -88,6 +88,15 @@ index d8606a5..4edbe9e 100644
  				MTL_ENABLE_DEBUG_INFO = NO;
  				MTL_FAST_MATH = YES;
  				SDKROOT = iphoneos;
+@@ -859,7 +855,7 @@
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+ 					"$(inherited)",
 @@ -890,6 +886,7 @@
  					"$(SRCROOT)/../FEX/build-ios/External/SoftFloat-3e",
  					"$(SRCROOT)/Madeira",
@@ -96,6 +105,15 @@ index d8606a5..4edbe9e 100644
  				MARKETING_VERSION = 0.1.3;
  				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
  				PRODUCT_NAME = "$(TARGET_NAME)";
+@@ -910,7 +907,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+ 					"$(inherited)",
 @@ -941,6 +938,7 @@
  					"$(SRCROOT)/../FEX/build-ios/External/SoftFloat-3e",
  					"$(SRCROOT)/Madeira",
@@ -104,8 +122,26 @@ index d8606a5..4edbe9e 100644
  				MARKETING_VERSION = 0.1.3;
  				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
  				PRODUCT_NAME = "$(TARGET_NAME)";
+@@ -960,7 +958,7 @@
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = MadeiraJITHelper/Info.plist;
+@@ -991,7 +989,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = MadeiraJITHelper/Info.plist;
 diff --git a/app/Madeira/Info.plist b/app/Madeira/Info.plist
-index 651ac88..18d3d98 100644
+index 651ac88..4a26222 100644
 --- a/app/Madeira/Info.plist
 +++ b/app/Madeira/Info.plist
 @@ -12,7 +12,7 @@
@@ -117,11 +153,59 @@ index 651ac88..18d3d98 100644
  	<key>CFBundleExecutable</key>
  	<string>$(EXECUTABLE_NAME)</string>
  	<key>CFBundleIdentifier</key>
+@@ -32,7 +32,7 @@
+ 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+ 			<key>CFBundleURLSchemes</key>
+ 			<array>
+-				<string>madeira</string>
++				<string>anyps5ipad</string>
+ 			</array>
+ 		</dict>
+ 	</array>
+diff --git a/app/Madeira/JITNetwork.swift b/app/Madeira/JITNetwork.swift
+index f82b271..9169cf6 100644
+--- a/app/Madeira/JITNetwork.swift
++++ b/app/Madeira/JITNetwork.swift
+@@ -193,7 +193,7 @@ enum JITShortcutFile {
+ ///
+ /// An app can only run a shortcut by opening the Shortcuts app, so each run leaves
+ /// Madeira for a moment and comes back through x-callback-url
+-/// (madeira://jit-network/...). Off unless Settings › JIT › Madeira JIT shortcut
++/// (anyps5ipad://jit-network/...). Off unless Settings › JIT › Madeira JIT shortcut
+ /// turns it on (madeira.cfg env.MADEIRA_JIT_SHORTCUT = 1): without the shortcut the
+ /// Shortcuts app would only report that it is missing.
+ @MainActor final class JITNetworkShortcut: ObservableObject {
+@@ -291,9 +291,9 @@ enum JITShortcutFile {
+             URLQueryItem(name: "name", value: Self.name),
+             URLQueryItem(name: "input", value: "text"),
+             URLQueryItem(name: "text", value: input),
+-            URLQueryItem(name: "x-success", value: "madeira://jit-network/success"),
+-            URLQueryItem(name: "x-error", value: "madeira://jit-network/error"),
+-            URLQueryItem(name: "x-cancel", value: "madeira://jit-network/cancel")
++            URLQueryItem(name: "x-success", value: "anyps5ipad://jit-network/success"),
++            URLQueryItem(name: "x-error", value: "anyps5ipad://jit-network/error"),
++            URLQueryItem(name: "x-cancel", value: "anyps5ipad://jit-network/cancel")
+         ]
+         guard let url = c.url else { completion(.failed("bad shortcut URL")); return }
+         LogStore.shared.log("[jit-shortcut] run input=\(input)")
+@@ -306,10 +306,10 @@ enum JITShortcutFile {
+         }
+     }
+ 
+-    /// madeira://jit-network/{success|error|cancel}, from Shortcuts' x-callback-url.
++    /// anyps5ipad://jit-network/{success|error|cancel}, from Shortcuts' x-callback-url.
+     @discardableResult
+     func handle(_ url: URL) -> Bool {
+-        guard url.scheme == "madeira", url.host == "jit-network" else { return false }
++        guard url.scheme == "anyps5ipad", url.host == "jit-network" else { return false }
+         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+         let value = { (name: String) in query.first { $0.name == name }?.value ?? "" }
+         switch url.path {
 diff --git a/app/Madeira/MadeiraApp.swift b/app/Madeira/MadeiraApp.swift
-index 4a1b630..4e437d7 100644
+index 4a1b630..6d29912 100644
 --- a/app/Madeira/MadeiraApp.swift
 +++ b/app/Madeira/MadeiraApp.swift
-@@ -2,6 +2,32 @@ import SwiftUI
+@@ -2,6 +2,36 @@ import SwiftUI
  
  @main
  struct MadeiraApp: App {
@@ -134,6 +218,9 @@ index 4a1b630..4e437d7 100644
 +            # Guest addresses are retained; physical pages are committed on demand.
 +            env.MADEIRA_FEX_AVX = 1
 +            env.APS5_GUEST_ARENA_LAZY = 1
++            env.APS5_GUEST_ARENA_BASE = 0x200000000
++            env.APS5_GUEST_ARENA_SIZE = 0x100000000
++            env.APS5_GUEST_ARENA_CHUNK = 0x10000000
 +            env.MADEIRA_CONTROLS_XBOX_DEFAULT = 1
 +            env.MADEIRA_FRAMEGEN = 0
 +            d3d12 = 0
@@ -146,7 +233,8 @@ index 4a1b630..4e437d7 100644
 +            }
 +        }
 +        // Touch controls read their defaults before Wine exports cfg env lines.
-+        for name in ["MADEIRA_FEX_AVX", "APS5_GUEST_ARENA_LAZY", "MADEIRA_CONTROLS_XBOX_DEFAULT"] {
++        for name in ["MADEIRA_FEX_AVX", "APS5_GUEST_ARENA_LAZY", "APS5_GUEST_ARENA_BASE",
++                     "APS5_GUEST_ARENA_SIZE", "APS5_GUEST_ARENA_CHUNK", "MADEIRA_CONTROLS_XBOX_DEFAULT"] {
 +            if let value = MadeiraConfig.get("env." + name) { setenv(name, value, 1) }
 +        }
 +    }
@@ -154,6 +242,68 @@ index 4a1b630..4e437d7 100644
      var body: some Scene {
          WindowGroup {
              ContentView()
+@@ -11,8 +41,8 @@ struct MadeiraApp: App {
+                     HardwareInput.shared.start()
+                     JITNetworkShortcut.shared.restoreLeftover()   // also starts its network path monitor
+                 }
+-                // madeira://jit-network/... (the Madeira JIT shortcut returning, JITNetwork.swift),
+-                // else madeira://play?exe=... (Home Screen shortcuts, SavesAndShortcuts.swift).
++                // anyps5ipad://jit-network/... (the Madeira JIT shortcut returning, JITNetwork.swift),
++                // else anyps5ipad://play?exe=... (Home Screen shortcuts, SavesAndShortcuts.swift).
+                 .onOpenURL { url in if !JITNetworkShortcut.shared.handle(url) { ShortcutRouter.shared.handle(url) } }
+         }
+     }
+diff --git a/app/Madeira/SavesAndShortcuts.swift b/app/Madeira/SavesAndShortcuts.swift
+index 65bc204..6328fc6 100644
+--- a/app/Madeira/SavesAndShortcuts.swift
++++ b/app/Madeira/SavesAndShortcuts.swift
+@@ -8,7 +8,7 @@
+ //   id takes with it. Settings › Saves writes every Windows user's Documents,
+ //   Saved Games and AppData (caches, and Valve's client and web caches, left
+ //   out) into one zip to keep in Files or iCloud Drive, and puts one back.
+-// * Home Screen shortcuts. madeira://play?exe=<Windows path> starts that game
++// * Home Screen shortcuts. anyps5ipad://play?exe=<Windows path> starts that game
+ //   if it is in the library (after JIT, like Play on its details page). Game
+ //   details copies the link; the Shortcuts app turns it into a Home Screen icon.
+ 
+@@ -29,14 +29,14 @@ final class ShortcutRouter: ObservableObject {
+ 
+     static func link(for windowsPath: String) -> String {
+         var c = URLComponents()
+-        c.scheme = "madeira"
++        c.scheme = "anyps5ipad"
+         c.host = "play"
+         c.queryItems = [URLQueryItem(name: "exe", value: windowsPath)]
+-        return c.string ?? "madeira://play"
++        return c.string ?? "anyps5ipad://play"
+     }
+ 
+     func handle(_ url: URL) {
+-        guard url.scheme?.lowercased() == "madeira", url.host?.lowercased() == "play",
++        guard url.scheme?.lowercased() == "anyps5ipad", url.host?.lowercased() == "play",
+               let exe = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                 .queryItems?.first(where: { $0.name == "exe" })?.value, !exe.isEmpty else { return }
+         LogStore.shared.log("[shortcut] asked to start \(exe)")
+diff --git a/build/crypto-unix/ios_gnutls_shim.h b/build/crypto-unix/ios_gnutls_shim.h
+index 1f1a7f0..5704b34 100644
+--- a/build/crypto-unix/ios_gnutls_shim.h
++++ b/build/crypto-unix/ios_gnutls_shim.h
+@@ -19,6 +19,15 @@
+  * of these files loads something else too. */
+ #pragma once
+ 
++/* The macOS configure need not have GnuTLS. These iOS translation units use
++ * the real static GnuTLS build, so its Unix-call tables must be compiled. */
++#ifndef HAVE_GNUTLS_CIPHER_INIT
++#define HAVE_GNUTLS_CIPHER_INIT 1
++#endif
++#ifndef SONAME_LIBGNUTLS
++#define SONAME_LIBGNUTLS "libgnutls"
++#endif
++
+ extern void *ios_gnutls_dlopen(const char *name, int flags);
+ extern void *ios_gnutls_dlsym(void *handle, const char *name);
+ extern int   ios_gnutls_dlclose(void *handle);
 diff --git a/build/ffmpeg/build.sh b/build/ffmpeg/build.sh
 index c9e773c..d5adf2f 100755
 --- a/build/ffmpeg/build.sh
@@ -213,3 +363,23 @@ index e02a173..2ae5959 100755
          -D__wine_unix_call_funcs=${prefix}_unix_call_funcs \
          -D__wine_unix_call_wow64_funcs=${prefix}_unix_call_wow64_funcs \
          "$@" \
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+index c8861cb..9e073b1 100644
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -7107,6 +7107,7 @@ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_s
+                                 if (pair[0] <= fp) break;
+                                 fp = pair[0];
+                             }
++#ifndef APS5_VULKAN_ONLY
+                             {   /* ml1155: did WE free the object this thread is touching? (winemetal records
+                                  * every release that dropped the last reference) */
+                                 extern const char *madeira_wmt_released_class( uintptr_t addr, uint64_t *ago ) __attribute__((weak_import));
+@@ -7122,6 +7123,7 @@ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_s
+                                                       r ? 8 : 0, (unsigned long long)v );
+                                     }
+                             }
++#endif
+                         }
+                     }
+                     return 0;

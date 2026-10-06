@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build AnyPS5 libc.prx and libSceAgcDriver.prx with WinLibs GCC 15.2.0
+# Build the original demo's AnyPS5 PRX closure with WinLibs GCC 15.2.0
 # posix-seh (15.2.0posix-14.0.0-ucrt-r7), the compiler AnyPS5's BUILD.md
 # requires. Ubuntu's GCC 13 posix emits SjLj and does not link these
 # libraries. This script is for a Windows host (GitHub windows-latest or
@@ -11,6 +11,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 "$root/scripts/apply-patches.sh"
 
 url="https://github.com/brechtsanders/winlibs_mingw/releases/download/15.2.0posix-14.0.0-ucrt-r7/winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
+archive_sha256="a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b3"
 dest="$root/build/toolchains/winlibs"
 gcc=""
 if [ -x "$dest/mingw64/bin/g++.exe" ]; then
@@ -23,6 +24,7 @@ if [ -z "$gcc" ]; then
     archive="$root/build/toolchains/winlibs-15.2.0posix-seh.7z"
     echo "downloading $url"
     curl -L --fail --retry 3 -o "$archive" "$url"
+    printf '%s  %s\n' "$archive_sha256" "$archive" | sha256sum --check --strict -
     if [ -x "/c/Program Files/7-Zip/7z.exe" ]; then
         seven="/c/Program Files/7-Zip/7z.exe"
     elif command -v 7z >/dev/null 2>&1; then
@@ -77,18 +79,11 @@ if [ -z "$jobs" ]; then
         jobs=4
     fi
 fi
-"$cmake_bin" --build "$build" --target libc --target libSceAgcDriver --parallel "$jobs"
+"$cmake_bin" --build "$build" --target relinker nid_patcher libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad --parallel "$jobs"
 
-found=0
-while IFS= read -r prx; do
-    echo "PRX $prx"
+for library in libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad; do
+    prx="$build/core/libs/libs/unpatched/$library.prx"
+    test -s "$prx" || { echo "Missing built PRX: $prx" >&2; exit 1; }
     wc -c "$prx"
-    found=$((found + 1))
-done < <(find "$build" -name 'libc.prx' -o -name 'libSceAgcDriver.prx' | sort)
-if [ "$found" -ne 2 ]; then
-    echo "libc.prx and libSceAgcDriver.prx were not both produced" >&2
-    exit 1
-fi
-test -n "$(find "$build" -name 'libc.prx' -print -quit)"
-test -n "$(find "$build" -name 'libSceAgcDriver.prx' -print -quit)"
+done
 echo "WinLibs build tree: $build"

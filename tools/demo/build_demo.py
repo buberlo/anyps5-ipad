@@ -85,12 +85,16 @@ def main():
             ld = str(sorted(candidates)[0])
     if not ld:
         raise SystemExit("ELF linker missing: set ELF_LD to ld.lld or rust-lld")
-    linker = [ld] + (["-flavor", "gnu"] if Path(ld).name.startswith("rust-lld") or Path(ld).name == "lld" else [])
+    linker = [ld] + (["-flavor", "gnu"] if Path(ld).stem in ("rust-lld", "lld") else [])
     compiler = [cc, "--target=x86_64-unknown-linux-gnu", "-ffreestanding", "-fPIC", "-fno-stack-protector",
                 "-fno-asynchronous-unwind-tables", "-fno-unwind-tables", "-fno-builtin", "-mno-red-zone"]
     declarations = []
     manifest = {"schema": 1, "kind": "original_synthetic_guest", "profile": args.profile, "frame_limit": args.frames,
                 "time_limit_seconds": args.seconds, "dimensions": [args.width, args.height],
+                "target_fps": 60, "acceptance_minimum_seconds": 600,
+                "acceptance_minimum_average_fps": 30,
+                "timing_scope": "Guest monotonic frame timings include draw, GPU readback, FlipStatus acknowledgment and pacing; not display timestamps.",
+                "complete_status_scope": "execution only; device foreground, visible presentation and user input require independent acceptance",
                 "controls": {"move": "left stick or dpad", "serve": "cross", "exit": "circle"},
                 "imports": [], "runtime_verified": False,
                 "source_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
@@ -116,6 +120,7 @@ def main():
     run(compiler + ["-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-fvisibility=hidden",
                     f"-DDEMO_FRAME_LIMIT={args.frames}", f"-DDEMO_WIDTH={args.width}",
                     f"-DDEMO_HEIGHT={args.height}", f"-DDEMO_SECONDS={args.seconds}", "-I", out,
+                    f"-DDEMO_SMOKE_PROFILE={int(args.profile == 'smoke')}",
                     "-c", root / "tools/demo/demo.c", "-o", obj])
     run(linker + ["-m", "elf_x86_64", "-shared", "-Bsymbolic", "-z", "now", "--hash-style=sysv",
                   "--no-undefined", "-e", "demo_entry", "-o", elf, obj, "--no-as-needed", *stub_paths])

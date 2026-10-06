@@ -10,12 +10,17 @@ compiler="$(command -v arm64ec-w64-mingw32-clang || true)"
 [ -n "$compiler" ] || { echo "Pinned llvm-mingw ARM64EC compiler is required" >&2; exit 1; }
 tc="$(dirname "$compiler")"
 jobs="${JOBS:-2}"
+git -C "$fex" submodule update --init --depth 1 Source/Common/cpp-optparse
+# llvm-mingw 20260421's ARM64EC ThinLTO link cannot resolve EC libc++ symbols
+# (also reproducible with a tiny std::mutex DLL). Preserve native object code.
 cmake -S "$fex" -B "$fex/build-arm64ec" \
     -DCMAKE_BUILD_TYPE=Release -DMINGW_TRIPLE=arm64ec-w64-mingw32 \
     -DCMAKE_TOOLCHAIN_FILE="$fex/Data/CMake/toolchain_mingw.cmake" \
+    -DCMAKE_C_FLAGS=-DFEX_IOS_HOST -DCMAKE_CXX_FLAGS=-DFEX_IOS_HOST \
+    -DCMAKE_ASM_FLAGS=-DFEX_IOS_HOST \
     -DTUNE_CPU=none -DENABLE_FEX_ALLOCATOR=ON -DENABLE_JEMALLOC_GLIBC_ALLOC=ON \
-    -DENABLE_OFFLINE_RUNTIME=ON -DBUILD_FEXCONFIG=OFF -DENABLE_CLANG_THUNKS=ON \
-    -DENABLE_CCACHE=OFF -DBUILD_TESTING=OFF -DBUILD_THUNKS=OFF -DENABLE_ASSERTIONS=OFF
+    -DFEX_IOS_HOST_BUILD=ON -DENABLE_OFFLINE_RUNTIME=ON -DBUILD_FEXCONFIG=OFF -DENABLE_CLANG_THUNKS=ON \
+    -DENABLE_LTO=OFF -DENABLE_CCACHE=OFF -DBUILD_TESTING=OFF -DBUILD_THUNKS=OFF -DENABLE_ASSERTIONS=OFF
 cmake --build "$fex/build-arm64ec" --target arm64ecfex --parallel "$jobs"
 cp "$fex/build-arm64ec/Bin/libarm64ecfex.dll" "$madeira/app/Madeira/arm64ec-windows/xtajit64.dll"
 
@@ -43,3 +48,4 @@ done
 for module in xtajit64 winevulkan vulkan-1; do
     file "$madeira/app/Madeira/arm64ec-windows/$module.dll"
 done
+python3 "$root/scripts/check-ios-pe.py" record

@@ -23,11 +23,20 @@ case "$platform" in
             -Wl,-rpath,"$(dirname "$MOLTENVK_LIB")" -o "$out/gpu-probe"
         ;;
     windows)
-        # MinGW's import library provides the entry points from vulkan-1.dll.
-        : "${VULKAN_IMPORT_LIB:?Set VULKAN_IMPORT_LIB to a Windows x64 Vulkan import library}"
+        # Import the public entry points actually called by this probe.
+        # vkGetBufferDeviceAddressKHR is resolved through vkGetDeviceProcAddr.
+        import_lib="${VULKAN_IMPORT_LIB:-$out/libvulkan-1.a}"
+        if [ -z "${VULKAN_IMPORT_LIB:-}" ]; then
+            python3 - "$root/tools/gpu-probe/gpu_probe.c" "$out/vulkan-1.def" <<'PY'
+import pathlib, re, sys
+names = sorted(set(re.findall(r'\b(vk[A-Z]\w+)\s*\(', pathlib.Path(sys.argv[1]).read_text())))
+pathlib.Path(sys.argv[2]).write_text('LIBRARY vulkan-1.dll\nEXPORTS\n' + ''.join('  ' + n + '\n' for n in names))
+PY
+            "${DLLTOOL_WINDOWS:-x86_64-w64-mingw32-dlltool}" -m i386:x86-64 -d "$out/vulkan-1.def" -l "$import_lib"
+        fi
         "${CC_WINDOWS:-x86_64-w64-mingw32-gcc}" -std=c11 -Wall -Wextra -Werror -O2 \
             -DAPS5_GPU_PROBE_CLI -I"$headers" "$root/tools/gpu-probe/gpu_probe.c" \
-            "$VULKAN_IMPORT_LIB" -o "$out/gpu-probe.exe"
+            "$import_lib" -o "$out/gpu-probe.exe"
         ;;
     *) echo "usage: $0 macos|windows" >&2; exit 2 ;;
 esac

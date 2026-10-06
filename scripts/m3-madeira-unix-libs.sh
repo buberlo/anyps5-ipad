@@ -60,16 +60,12 @@ if [ "$APS5_SLIM" = 0 ]; then
         include/dwrite_1.h
         include/dwrite_2.h
         include/dwrite_3.h
-        include/devenum.h
-        include/axcore.h
-        include/axextend.h
-        include/dyngraph.h
-        include/vmrender.h
         include/dvdif.h
         include/strmif.h
         include/amvideo.h
         include/control.h
         include/mfobjects.h
+        include/mediaobj.h
     )
     missing_widl=0
     for header in "${widl_headers[@]}"; do

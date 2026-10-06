@@ -80,7 +80,11 @@ static VkResult initialize(Probe *p) {
     vkGetPhysicalDeviceProperties(p->physical, &props);
     fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"device\":");
     json_string(p->report, props.deviceName);
-    fprintf(p->report, ",\"api_version\":%u,\"driver_version\":%u}\n", props.apiVersion, props.driverVersion);
+    fprintf(p->report, ",\"api_version\":%u,\"driver_version\":%u,\"device_type\":%u,\"vendor_id\":%u,\"device_id\":%u}\n",
+            props.apiVersion, props.driverVersion, (unsigned)props.deviceType, props.vendorID, props.deviceID);
+    const int hardware = props.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU;
+    result(p, "hardware_device", hardware, (long)props.deviceType);
+    if (!hardware) return VK_ERROR_FEATURE_NOT_PRESENT;
     if (props.apiVersion < VK_API_VERSION_1_1) return VK_ERROR_INCOMPATIBLE_DRIVER;
 
     count = 0;
@@ -219,10 +223,17 @@ static VkResult submit(Probe *p, VkCommandBuffer cmd) {
     if (rc == VK_SUCCESS) rc = vkCreateFence(p->device, &fi, NULL, &fence);
     VkSubmitInfo si = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .commandBufferCount = 1, .pCommandBuffers = &cmd};
     if (rc == VK_SUCCESS) rc = vkQueueSubmit(p->queue, 1, &si, fence);
-    if (rc == VK_SUCCESS) rc = vkWaitForFences(p->device, 1, &fence, VK_TRUE, UINT64_C(10000000000));
-    /* Do not destroy resources still in use after timeout. The caller exits
-     * the isolated probe process instead of claiming a recoverable result. */
-    if (rc == VK_TIMEOUT) { result(p, "gpu_timeout", 0, rc); fflush(p->report); exit(2); }
+    if (rc == VK_SUCCESS) {
+        rc = vkWaitForFences(p->device, 1, &fence, VK_TRUE, UINT64_C(10000000000));
+        /* A failed wait does not prove the accepted submission finished.
+         * Device loss permits cleanup; all other failures terminate this
+         * isolated probe before potentially in-flight resources are freed. */
+        if (rc != VK_SUCCESS && rc != VK_ERROR_DEVICE_LOST) {
+            result(p, rc == VK_TIMEOUT ? "gpu_timeout" : "gpu_wait_failed", 0, rc);
+            fflush(p->report);
+            exit(2);
+        }
+    }
     if (fence) vkDestroyFence(p->device, fence, NULL);
     return rc;
 }
@@ -252,7 +263,9 @@ static VkResult bda_test(Probe *p, const char *dir) {
     vkCmdDispatch(cmd, 1, 1, 1);
     TRY(submit(p, cmd)); TRY(sync_memory(p, &data, 1));
     for (uint32_t i = 0; i < 80; ++i) {
-        uint8_t expected = i < 64 ? (uint8_t)(i * 37 + 11) : 0xa5;
+        const uint64_t wide = ((uint64_t)(i + 1) << 32) | (uint64_t)(i * 37 + 11);
+        const uint64_t mixed = wide * 3 + UINT64_C(0xfffffffd);
+        uint8_t expected = i < 64 ? (uint8_t)((uint32_t)mixed ^ (uint32_t)(mixed >> 32)) : 0xa5;
         if (((uint8_t *)data.mapped)[i] != expected) { rc = VK_ERROR_UNKNOWN; break; }
     }
 done:

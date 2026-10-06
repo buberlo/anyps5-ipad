@@ -19,6 +19,9 @@ typedef unsigned long usize;
 #ifndef DEMO_SECONDS
 #define DEMO_SECONDS 600
 #endif
+#ifndef DEMO_SMOKE_PROFILE
+#define DEMO_SMOKE_PROFILE 0
+#endif
 #define WIDTH DEMO_WIDTH
 #define HEIGHT DEMO_HEIGHT
 #define PIXELS (WIDTH * HEIGHT)
@@ -74,11 +77,14 @@ static const u32 shader_code[] __attribute__((aligned(256))) = {
     0xe0701000, 0x09010201,     // buffer_store_dword v2, v1, s[4:7], s9 offen
     0xbf810000                  // s_endpgm
 };
+// An exercised data relocation, in addition to the ELF's imported PLT entries.
+static const u32* volatile shader_pointer = shader_code;
 static ShaderHeader shader_header;
 static u32 commands[64] __attribute__((aligned(256)));
 static u32* source;
 static volatile u32* output;
 static volatile u32* label;
+static u32 frame_times[FRAMES];
 
 static usize length(const char* text) { usize n = 0; while (text[n]) ++n; return n; }
 static void write_text(const char* text) { sceKernelWrite(1, text, length(text)); }
@@ -92,7 +98,32 @@ static void event(const char* stage, const char* status, u64 value) {
     write_text("\",\"status\":\""); write_text(status);
     write_text("\",\"value\":"); number(value); write_text("}\n");
 }
+static void complete(const char* status, u64 frames) {
+    write_text("{\"schema\":1,\"probe\":\"demo\",\"stage\":\"complete\",\"scope\":\"execution_only\",\"status\":\"");
+    write_text(status); write_text("\",\"value\":"); number(frames); write_text("}\n");
+}
 static int fail(const char* stage, int value) { event(stage, "fail", (u32)value); return 1; }
+static u32 percentile95(unsigned count) {
+    // In-place quickselect runs only after the timed frame loop has ended.
+    int low = 0, high = (int)count - 1;
+    const int target = (int)((count * 95u + 99u) / 100u) - 1;
+    while (low < high) {
+        const u32 pivot = frame_times[low + (high - low) / 2];
+        int left = low, right = high;
+        while (left <= right) {
+            while (frame_times[left] < pivot) ++left;
+            while (frame_times[right] > pivot) --right;
+            if (left <= right) {
+                const u32 tmp = frame_times[left]; frame_times[left] = frame_times[right]; frame_times[right] = tmp;
+                ++left; --right;
+            }
+        }
+        if (target <= right) high = right;
+        else if (target >= left) low = left;
+        else break;
+    }
+    return frame_times[target];
+}
 static void rectangle(int x, int y, int width, int height, u32 color) {
     for (int j = y; j < y + height; ++j)
         for (int i = x; i < x + width; ++i)
@@ -114,7 +145,7 @@ static void descriptor(u32* to, const void* address) {
     to[2] = FRAME_BYTES; to[3] = 0x01016fac;
 }
 static unsigned make_commands(unsigned frame) {
-    unsigned n = 0; const u64 code = (u64)shader_code, done = (u64)label;
+    unsigned n = 0; const u64 code = (u64)shader_pointer, done = (u64)label;
 #define WORD(value) commands[n++] = (value)
     WORD(0xc0027600); WORD(0x20c); WORD((u32)(code >> 8)); WORD((u32)(code >> 40));
     WORD(0xc0017600); WORD(0x213); WORD((8u << 1) | (1u << 7));
@@ -164,8 +195,10 @@ int demo_entry(void) {
     unsigned score = 0, input_changes = 0, served = 0, frames_done = 0;
     u32 previous_buttons = 0; u8 previous_stick = 128;
     int user_stopped = 0;
+    u64 minimum_frame = ~0ULL, maximum_frame = 0;
     const u64 started = sceKernelGetProcessTime();
     for (unsigned frame = 0; frame < FRAMES; ++frame) {
+        const u64 frame_started = sceKernelGetProcessTime();
         if (sceKernelGetProcessTime() - started >= (u64)DEMO_SECONDS * 1000000) break;
         u8 pad_data[256] __attribute__((aligned(16))) = {0};
         error = scePadReadState(pad, pad_data);
@@ -214,12 +247,44 @@ int demo_entry(void) {
         if (polls >= 30000) return fail("flip_timeout", frame);
         frames_done = frame + 1;
         if (frame % 60 == 0) { event("frame", "pass", frame); event("gpu_checksum", "pass", checksum(output)); }
+        // Target60Hz using the guest monotonic clock. Catch up after a slow
+        // frame without introducing another full-frame sleep.
+        const u64 next_frame = started + ((u64)frames_done * 1000000 + 59) / 60;
+        u64 now;
+        while ((now = sceKernelGetProcessTime()) < next_frame) {
+            const u64 remaining = next_frame - now;
+            sceKernelUsleep((unsigned)(remaining > 1000 ? 1000 : remaining));
+        }
+        const u64 frame_elapsed = sceKernelGetProcessTime() - frame_started;
+        frame_times[frame] = (u32)(frame_elapsed > 0xffffffffULL ? 0xffffffffULL : frame_elapsed);
+        if (frame_elapsed < minimum_frame) minimum_frame = frame_elapsed;
+        if (frame_elapsed > maximum_frame) maximum_frame = frame_elapsed;
+        if (frame % 60 == 0) event("frame_elapsed_us", "sample", frame_elapsed);
     }
+    const u64 elapsed = sceKernelGetProcessTime() - started;
     event("input_changes", "pass", input_changes);
+    event("input_observed", input_changes ? "observed" : "not_observed", input_changes);
+    event("serve_actions", served ? "observed" : "not_observed", served);
+    event("readback_frames", frames_done ? "pass" : "fail", frames_done);
     event("frames_presented", "pass", frames_done);
-    event("elapsed_us", "pass", sceKernelGetProcessTime() - started);
+    event("elapsed_us", "pass", elapsed);
+    const u64 fps_milli = elapsed ? (u64)frames_done * 1000000000ULL / elapsed : 0;
+    event("avg_fps_milli", "measured", fps_milli);
+    if (frames_done) {
+        event("frame_time_min_us", "measured", minimum_frame);
+        event("frame_time_max_us", "measured", maximum_frame);
+        event("frame_time_p95_us", "measured", percentile95(frames_done));
+    }
+    write_text("{\"schema\":1,\"probe\":\"demo\",\"stage\":\"timing_scope\",\"status\":\"info\",\"detail\":\"guest monotonic time includes draw, GPU readback, FlipStatus acknowledgment and 60Hz pacing; not display timestamps\"}\n");
+    event("onscreen_device_foreground", "pending_external_check", 0);
+    if (!DEMO_SMOKE_PROFILE)
+        event("acceptance_duration", !user_stopped && elapsed >= 600000000ULL ? "pass" : "not_met", elapsed);
+    if (!DEMO_SMOKE_PROFILE)
+        event("acceptance_average_fps", !user_stopped && fps_milli >= 30000 ? "pass" : "not_met", fps_milli);
     error = sceVideoOutClose(video);
     if (error) return fail("video_close", error);
-    event("complete", user_stopped ? "stopped" : "pass", frames_done);
+    if (!user_stopped && (!frames_done || (DEMO_SMOKE_PROFILE && frames_done != FRAMES)))
+        return fail("required_frames", frames_done);
+    complete(user_stopped ? "stopped" : "pass", frames_done);
     return 0;
 }

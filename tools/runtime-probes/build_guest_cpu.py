@@ -38,7 +38,7 @@ def main():
     ld = os.environ.get("ELF_LD") or shutil.which("ld.lld")
     if not ld:
         raise SystemExit("Set ELF_LD to an ELF-compatible ld.lld or rust-lld")
-    linker = [ld] + (["-flavor", "gnu"] if Path(ld).name in ("lld", "rust-lld") else [])
+    linker = [ld] + (["-flavor", "gnu"] if Path(ld).stem in ("lld", "rust-lld") else [])
     compiler = [cc, "--target=x86_64-unknown-linux-gnu", "-ffreestanding", "-fPIE", "-fno-stack-protector",
                 "-fno-asynchronous-unwind-tables", "-fno-unwind-tables", "-fno-builtin", "-mno-red-zone"]
     declarations, assembly, imports = [], [".text"], []

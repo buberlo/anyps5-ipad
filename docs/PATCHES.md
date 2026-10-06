@@ -447,13 +447,3 @@ sense. See the [README](../README.md) and
 `patches/madeira/0002` still does not grant extended virtual addressing by
 itself; the provisioning profile has to include it. No game dump belongs in
 this repository.
-
-## Single-game host (Madeira 0019)
-
-Replaces the launcher/library screens with direct Dreaming Sarah startup. Removes
-Steam and setup sources from the app target and converter/shortcut resources.
-Adds the Blur-style embedded local packet tunnel and app/extension entitlements,
-retaining Madeira's classic JIT helper and existing native runtime. Exact provider
-route verification precedes JIT; helper completion and tunnel teardown precede
-Wine. Production Swift state/route tests run on macOS. Private pairing, game data
-and device logs are not included. See [startup details](SINGLE_GAME_BOOT.md).

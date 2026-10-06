@@ -110,8 +110,6 @@ jobs:
           set -o pipefail
           scripts/m3-madeira-ios.sh 2>&1 | tee build/logs/iphoneos-build.log
           python3 tools/checks/test_session_log_archives.py
-          python3 tools/checks/test_single_game_boot.py
-          python3 tools/checks/test_embedded_tunnel_route.py
           MOLTENVK_IOS_LIB="$APS5_MOLTENVK_LIBRARY" scripts/build-ipad-probe.sh
 
       - name: Preserve iPhoneOS build artifacts and diagnostics

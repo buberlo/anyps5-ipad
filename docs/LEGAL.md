@@ -12,32 +12,62 @@ must not gain:
 Users supply their own material and are responsible for having the right to
 use it. AnyPS5's upstream README says the same thing about its own project.
 
-## Upstream licenses
+The copyright holder for files written in this repository is buberlo.
+Copyright (C) 2026 buberlo. Upstream authors keep the copyright in their
+own projects. The findings behind the table below are quoted in
+[NOTICE](../NOTICE).
 
-| Tree | Pin | License |
-| --- | --- | --- |
-| `upstreams/AnyPS5` | see [UPSTREAMS.md](UPSTREAMS.md) | GPL-2.0-only |
-| `upstreams/Madeira` | same | GPL-3.0-or-later |
-| `upstreams/FEX` | Madeira's gitlink | MIT |
-| `upstreams/wine` | Madeira's `madeira-lgpl` gitlink | LGPL-2.1-or-later |
-| `upstreams/MoltenVK` | Khronos `main` at the pin | Apache-2.0 |
+## What is under which license
 
-Patches under `patches/<name>/` are derivative works of that upstream and
-stay under its license. Do not merge AnyPS5's GPL-2.0-only sources into a
-GPL-3.0 program. The two trees are submodules so they can be built and
-patched separately. A Windows PE produced by AnyPS5 is data the user runs
-under Madeira; producing it does not combine the two licenses into one
-binary in this repository.
+| Material | License |
+| --- | --- |
+| This repository's own files, outside `patches/` and `upstreams/`, unless a file has an `SPDX-License-Identifier` line | GPL-2.0-or-later ([LICENSE](../LICENSE)) |
+| SPDX MIT probes listed in [NOTICE](../NOTICE) | MIT |
+| `tools/checks/fexbridge_avx_decision.cpp` | GPL-3.0-or-later |
+| `patches/anyps5/` and a patched AnyPS5 build | GPL-2.0-only |
+| `patches/madeira/` and the Madeira-derived iPad app | GPL-3.0-or-later |
+| `patches/fex/` | GPL-3.0-or-later (upstream FEX code in the fork stays MIT; rpmalloc stays 0BSD) |
+| `patches/wine/` and the pinned `madeira-lgpl` tree | LGPL-2.1-or-later |
+| `upstreams/MoltenVK` | Apache-2.0 |
+| StikDebug, StikJIT | not vendored; AGPL-3.0 and MPL-2.0 in their own repositories |
 
-Madeira's `LICENSE-EXCEPTION.md` and `THIRD-PARTY-NOTICES.md` apply to
-Madeira's own distribution. Read them before shipping a Madeira build.
+One GPL version cannot cover the whole checkout. AnyPS5 is GPL-2.0-only, so
+`patches/anyps5/` cannot be placed under GPL-3.0. Madeira is
+GPL-3.0-or-later, so `patches/madeira/` cannot be placed under GPL-2.0-only.
+GPL-2.0-only and GPL-3.0 cannot be combined into one program.
 
-## Files written in this repository
+GPL-2.0-or-later is the license for this project's own files because those
+files are the scripts used to build both programs. GPL-2 treats the scripts
+that compile and install a program as part of its complete source. A
+downstream distributor can convey them under GPL-2.0 with a patched AnyPS5
+binary, or under GPL-3.0 with the iPad app. GPL-3.0-or-later scripts would
+not satisfy the source obligation for the GPL-2.0-only program.
 
-Scripts, docs, and the milestone notes are GPL-3.0-or-later so they can sit
-next to Madeira. The capability tool and its loader test are MIT
-(`SPDX-License-Identifier: MIT` in the sources). They do not link AnyPS5 or
-Madeira; they talk to the Vulkan loader, or they compile one new Madeira C
-file that has no Wine types in it.
+## How the built programs combine
 
-Submodule checkouts are not relicensed by being pinned here.
+The iPad Mach-O is a derivative of Madeira. The build statically links:
+
+- Wine's unix libraries from the `madeira-lgpl` pin (LGPL-2.1-or-later)
+- FEX (MIT upstream code plus GPL-3.0-or-later Madeira modifications)
+- MoltenVK (Apache-2.0)
+
+Apache-2.0 and MIT can be included in a GPL-3.0 work. LGPL-2.1-or-later can
+be linked with that work; the LGPL notices and the ability to relink the
+Wine libraries stay in force. The Wine patches stay LGPL-2.1-or-later.
+The iPad app is conveyed under GPL-3.0-or-later because Madeira is.
+
+AnyPS5 stays a separate program. The relinker and the Windows HLE libraries
+are GPL-2.0-only. Wine loads the HLE as Windows modules, which is the same
+boundary this tree already builds. Keep AnyPS5 object code in that program,
+and keep the two patch series as separate works. The binary that statically
+links Apache-2.0 MoltenVK is the GPL-3.0 app.
+
+Madeira's Converter Exception applies only to copyright the Madeira authors
+hold. buberlo's patches stay outside that exception. The graphics path in
+this repository uses MoltenVK. A distributor who turns Madeira's D3D
+converter path back on has to satisfy Madeira's `LICENSE-EXCEPTION.md` and
+Apple's terms for that library.
+
+Madeira's `THIRD-PARTY-NOTICES.md` applies to Madeira's own distribution.
+Read it before shipping a Madeira build. Submodule checkouts are not
+relicensed by being pinned here.

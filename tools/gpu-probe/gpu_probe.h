@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 buberlo */
 #ifndef APS5_GPU_PROBE_H
 #define APS5_GPU_PROBE_H
 #include <stdio.h>

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 buberlo */
 #import <UIKit/UIKit.h>
 #import <sys/utsname.h>
 #include "../gpu-probe/gpu_probe.h"

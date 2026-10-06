@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: MIT */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Copyright (C) 2026 buberlo */
 /* Compile-check the FEXBridge AVX decision against the pinned FEX headers.
  * This is the expression in patches/madeira/0001-fexbridge-avx.patch.
  * FEXBridge.mm itself is Objective-C++ and is not compiled here.

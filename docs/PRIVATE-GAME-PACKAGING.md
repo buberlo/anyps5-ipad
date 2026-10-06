@@ -4,18 +4,21 @@ Private dumps stay outside source control. The repository ignores root folders
 matching `PPSA*-app0/`; all generated binaries, inventories and game reports live
 under ignored `build/`. Never add a dump to CI artifacts or Git.
 
-The Windows workflow builds the pinned AnyPS5 implementations for the additional
-audio, dialog, save, user and system APIs used by Dreaming Sarah. Its public
-`hle-runtime.zip` contains only unpatched HLE PRXs and compiler DLLs, with a hash
-manifest. It contains no game executable or assets. Libraries are built with the
-same WinLibs SEH toolchain used for the qualified CPU/exception reference.
+Run `scripts/windows-runtime-build.sh` locally on Windows in Git Bash to build
+the pinned AnyPS5 implementations for the additional audio, dialog, save, user
+and system APIs used by Dreaming Sarah. It exports
+`build/windows-runtime-artifact/hle-runtime.zip`, containing only unpatched HLE
+PRXs and compiler DLLs, with a hash manifest. It contains no game executable or
+assets. Libraries use the qualified WinLibs SEH toolchain. Builds do not use
+GitHub Actions.
 
-After downloading that archive, prepare a new local output directory:
+If preparing on another host, copy that archive to the same local path there.
+Then prepare a new local output directory:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/prepare-private-game.py \
     --dump PPSA02929-app0 \
-    --hle build/ci/game-hle/windows-runtime-artifact/hle-runtime.zip \
+    --hle build/windows-runtime-artifact/hle-runtime.zip \
     --output build/dreaming-sarah-runtime
 ```
 
@@ -42,8 +45,8 @@ that same package on the iPad with its qualified 464–468 GiB arena. Menu,
 gameplay, touch, audio and save/load are separate results. On the M2 iPad, a
 maintainer recording shows library launch, the menu, and basic touch-controlled
 gameplay, including logo audio and music. Save/load, displayed FPS and formal
-audio acceptance remain open. See the README status table. Shared iPad actions
-must use `scripts/with-ipad-lease.py`.
+audio acceptance remain open. See the README device-results table. Shared iPad
+actions must use `scripts/with-ipad-lease.py`.
 
 Validation: `python3 tools/runtime-probes/test_private_game.py` covers malformed
 ELF tables, original/backup selection, unsafe dependency paths, archive hashes

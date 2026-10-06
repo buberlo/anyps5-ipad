@@ -15,7 +15,6 @@
   "checks": {
     "development_signature_verified": true,
     "increased_memory_and_extended_va_entitlements": true,
-    "installed_alongside_penta": true,
     "private_package_files_verified": 843,
     "private_package_bytes_verified": 120496264,
     "own_pairing_migrated_to_keychain": true,

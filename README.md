@@ -1,165 +1,239 @@
 # madeira-anyps5
 
-This public repository contains **madeira-anyps5**, the Madeira-menu version
-of the AnyPS5 iPad integration. Its playable baseline is `abe64be`; the later
-direct-start and Dreaming Sarah branding changes were removed with ordinary
-revert commits. The history remains intact.
+**Run relinked PS5 games locally on an iPad using AnyPS5, Madeira, Wine, FEX, and MoltenVK.**
 
-The separate **[Penta](https://github.com/buberlo/penta)** project is private.
-Its slim multi-game library, on-device import and performance work continue
-there. This repository keeps the Madeira menus and the existing graphics,
-memory, input and lifecycle fixes. Penta results are not evidence for this app.
+AnyPS5 converts a decrypted PS5 executable ahead of time into an **x86-64 Windows PE** and supplies implementations of the PS5 APIs it uses. Madeira runs that Windows program on Apple Silicon: **Wine provides Windows services, FEX translates x86-64 CPU instructions to ARM64, and graphics follow Vulkan → MoltenVK → Metal**.
 
-**No GitHub Actions:** builds and checks run locally. Actions is disabled in
-repository settings and the workflow files have been removed. Do not re-enable
-Actions or add automatic workflows.
+This repository contains the patches, build scripts, preparation tools, and device probes that connect those components. The app retains Madeira's library, settings, JIT setup, and touch controller. Games execute on the iPad; a PS5 or remote PC is not involved during play.
 
-The original published URL, <https://github.com/buberlo/anyps5-ipad>, redirects
-here. **Do not create another repository named `buberlo/anyps5-ipad`:** that
-name must remain unused so links already shared on social media keep working.
+**Dreaming Sarah's PS5 build has reached touch-controlled gameplay on an iPad Air 13-inch M2.** This is an experimental compatibility stack with a limited tested library. See [device results](#device-results) for the distinction between gameplay observations, component tests, and the latest app build.
 
-**The PS5 build of Dreaming Sarah boots on an M2 iPad and is playable in a basic sense.**
+## Execution architecture
 
-[AnyPS5](https://github.com/boykopovar/AnyPS5) relinks that title's own binary into an x86-64 Windows PE. [Madeira](https://github.com/willfaust/Madeira) runs the PE on the iPad: Wine ARM64EC, FEX, and this repo's `winevulkan` path through MoltenVK to Metal. The binary is the PS5 build, not a PC or Switch port. Dreaming Sarah is not a PS5 exclusive. This is local execution: not streaming, not Remote Play, and not a console emulator.
+There are two separate stages. Relinking happens before launch; CPU translation happens while the game runs.
 
-On 2026-10-06, about 16:11 UTC (23:11 WIB), buberlo recorded roughly two minutes on an iPad Air 13-inch (M2), iPadOS 27.0.1. The in-app library entry `Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB` launched with JIT through the StikDebug-style flow. The Ratalaika Games publisher logo played with audio. The title screen and Options menu worked. New game started, the Asteristic studio intro and its music played, and about 60 seconds of gameplay followed: the player character was visible, walked and jumped through the forest, music continued, and a dialogue box rendered while she talked to an NPC. Input was the on-screen touch controller. The recording did not crash. Displayed FPS was not measured.
-
-> **Demo:** TODO — put the public video or GIF link here.
->
-> <!-- TODO: media URL. Do not commit game footage, GIFs, or screenshots. -->
-
-The recording is a maintainer observation, written up in [docs/evidence/ipad-m2-dreaming-sarah-gameplay-recording.json](docs/evidence/ipad-m2-dreaming-sarah-gameplay-recording.json). Instrumented runs from the same day are in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
-
-Owner: buberlo.
-
-## How it works
-
-```
-PS5 ELF, supplied by the user
-  -> AnyPS5  (--windows --to-intel)
-  -> x86-64 Windows PE + HLE PRX
-  -> FEX on Apple ARM, AVX/AVX2 enabled
-  -> Wine ARM64EC
-  -> iOS winevulkan
-  -> MoltenVK
-  -> Metal
+```mermaid
+flowchart TD
+    subgraph Preparation["Preparation on the host"]
+        ELF["Decrypted PS5 ELF + bundled modules"] --> Relinker["AnyPS5 relinker: --windows --to-intel"]
+        Relinker --> Package["x86-64 Windows PE + converted modules + HLE libraries + assets"]
+    end
+    subgraph iPad["Local execution on the iPad"]
+        Package --> Runtime["Madeira: Wine ARM64EC + FEX"]
+        Runtime --> CPU["FEX JIT: x86-64 code → ARM64"]
+        Runtime --> HLE["AnyPS5 PS5 API implementations"]
+        HLE --> Graphics["AGC commands + RDNA shaders → Vulkan + SPIR-V"]
+        Graphics --> WineVulkan["Wine Vulkan dispatch + iOS surface integration"]
+        WineVulkan --> MoltenVK["MoltenVK: Vulkan → Metal"]
+        MoltenVK --> Display["CAMetalLayer → iPad display"]
+    end
 ```
 
-JIT comes from StikDebug/StikJIT. Nothing in the chain emulates the PS5 firmware.
+### 1. AnyPS5: executable conversion and PS5 APIs
 
-This repository adds the pieces the pinned upstreams do not ship:
+The input is the game's decrypted ELF executable and its bundled modules, rather than its source code or a PC version. The relinker writes a Windows PE with startup and dynamic-linking machinery, converts bundled modules, and checks the executable for unsupported syscall use. `--to-intel` rewrites supported AMD-specific instructions into a form suitable for the downstream x86-64 execution path. It does **not** compile the game into native ARM64 code.
 
-- iOS `winevulkan` bound to MoltenVK, so AnyPS5's Vulkan output reaches Metal. Madeira's DXMT/D3D path is not the one this title uses.
-- AVX/AVX2 in FEX (`MADEIRA_FEX_AVX`), including the in-process bridge that upstream left off.
-- A 4 GiB guest arena at 464–468 GiB virtual address, reserved in lazy chunks, so the Windows guest mapping fits this iPad.
-- RDNA shader fixes for M2/MoltenVK: masked-shift folding that drops unsupported subgroup use, and validated fixed-function interpolation.
+PS5 system calls and library interfaces are handled by AnyPS5's replacement libraries, including `libkernel`, `libSceAgcDriver`, `libSceVideoOut`, `libScePad`, and the audio, user, dialog, and save APIs needed by the tested title. These are high-level API implementations, not PS5 firmware. Libraries with a `.prx` extension in the Windows runtime are host-built implementations; their filename alone does not make them original console binaries.
 
-Longer form: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PATCHES.md](docs/PATCHES.md), [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
+The PE wrapper does not change every guest function into a conventional Win64 function: the game retains PS5/SysV calling conventions. The relinker startup code, generated trampolines, and HLE builds must agree on those boundaries, thread-local storage, and exception unwinding.
 
-## Current installation — 2026-10-07
+PS5 imports identify functions through NIDs. The preparation tools NID-patch fresh HLE libraries and check the resulting import/export graph, including converted guest modules and Windows DLL dependencies. Resolving an import proves that a provider exists; it does not prove that every behavior required by a game is implemented.
 
-The restored menu app **0.1.8 (17)** was built and development-signed locally,
-then installed on the test iPad as `com.buberlo.anyps5ipad`. Its provisioning
-profile grants debugging, increased memory and extended virtual addressing.
-It is installed alongside Penta; the apps have separate data containers.
+The current Windows HLE build selects the libraries needed for the synthetic demo and Dreaming Sarah. It is not an exhaustive implementation or packaging list for arbitrary PS5 games. See [AnyPS5's relinker usage](https://github.com/boykopovar/AnyPS5/blob/0518f0e02187b6c7c00e6f7e7a7265c848efb346/docs/user/USAGE.md) and this repository's [game preparation guide](docs/PRIVATE-GAME-PACKAGING.md).
 
-The earlier Dreaming Sarah installation and pairing remain in Penta's existing
-test container (`com.konradkern.anyps5ipad`). The menu app has now been prepared separately: all 843 packaged game files
-(120,496,264 bytes) were transferred and checked against the private manifest,
-its library shows Dreaming Sarah, and its own pairing record was migrated into
-the Keychain. Private files and credentials were not published.
+### 2. Wine and FEX: Windows services and CPU translation
 
-A fresh menu launch now reaches the Dreaming Sarah title screen with all 18
-controls visible. On this installation, select **Settings → JIT method →
-Built-in StikJIT** and keep LocalDevVPN connected: Play successfully enabled JIT,
-allocated its pool, detached the debugger and started the game. The default
-Automatic setting selects installed StikDebug, whose disconnected-VPN attempt
-failed before this successful run.
+Wine's ARM64EC runtime handles Windows executable loading, threading, files, exceptions, and virtual-memory APIs. FEX's `xtajit64.dll` translates the x86-64 guest code into ARM64 at runtime. These are complementary responsibilities: Wine supplies the operating-system interface; FEX supplies execution of the foreign CPU instructions.
 
-This proves startup and title-screen rendering for build 17. Gameplay, audio,
-save/load and background recovery still need a fresh check for this separate
-installation. [Build 17 evidence](docs/evidence/ipad-m2-menu-build17.json).
+The iOS build has two kinds of runtime components:
 
-## Status
+- **Windows PE modules**, including `xtajit64.dll`, `winevulkan.dll`, and `vulkan-1.dll`, packaged for Wine.
+- **Native iPhoneOS static libraries**, containing Wine's Unix-side services and FEX support, linked into the app's Mach-O executable. Madeira's binder registers the Unix call tables instead of relying on desktop-style loading of Unix `.so` modules.
 
-Device notes below are the iPad Air 13-inch M2 on iPadOS 27.0.1, unless a row says otherwise.
+AVX/AVX2 support must be enabled in the actual `xtajit64` execution path before initialization with `MADEIRA_FEX_AVX=1`. Changing only Madeira's separate in-process FEX bridge is insufficient. On the tested Apple Silicon CPU, FEX lowers the relevant vector operations using its 128-bit host path; this does not require native 256-bit AVX or SVE hardware.
 
-| Verified on device | What was actually seen |
+The build verifies the packaged ARM64EC PE components with [check-ios-pe.py](scripts/check-ios-pe.py). Required runtime libraries are real implementations, not empty archives used to make the linker succeed.
+
+### 3. Graphics: PS5 commands to Metal
+
+AnyPS5's graphics libraries interpret the game's AGC command stream, maintain GPU resources, and recompile RDNA shaders to SPIR-V. Their Vulkan calls cross this boundary:
+
+```text
+AnyPS5 libSceAgcDriver / libSceVideoOut
+  → vulkan-1.dll → winevulkan.dll
+  → registered iOS winevulkan Unix call table / win32u driver
+  → statically linked MoltenVK
+  → Metal command buffers and CAMetalLayer
+```
+
+The window path remains **SDL window → HWND → Wine surface → CAMetalLayer**. Wine translates the Win32 surface request into the Metal surface used by MoltenVK. The project does not replace VideoOut with a separate native Metal renderer, and this graphics path does not use Madeira's DXMT/D3D renderer.
+
+The iOS integration builds `libwinevulkan_unix.a`, registers its dispatch table in Madeira's binder, and retains the statically linked MoltenVK entry points. The loader resolves Vulkan functions through valid dispatch entry points rather than passing an internal placeholder handle to ordinary `dlsym`.
+
+The patches also handle Vulkan portability enumeration and enable the portability subset when advertised. Device capability checks remain meaningful: a successful Vulkan instance alone does not prove that shader execution, buffer device addresses, 8-bit storage, or BC textures work on the target iPad.
+
+Two shader changes were necessary for the tested M2/MoltenVK path:
+
+- **Invariant masked-shift folding:** prove that particular lane-query expressions are invariant, then remove their unnecessary subgroup operations. This addresses vertex-stage subgroup instructions that the device cannot support.
+- **Validated fixed-function interpolation:** recognize supported RDNA interpolation sequences and emit a fixed-function equivalent, avoiding the unsupported barycentric path. `APS5_FIXED_FUNCTION_INTERPOLATION=1` explicitly selects this compatibility path; unrecognized sequences are rejected rather than silently approximated.
+
+Game render targets, the SDL window, the Vulkan swapchain, and the Metal layer are separate dimensions. Dreaming Sarah diagnostics recorded **1280 × 720 game textures with a 768 × 432 swapchain**. A separate synthetic demo exercised a full 1280 × 720 surface. These results must not be conflated into a claim of native 720p output for every game run.
+
+### 4. Guest memory and coherency
+
+AnyPS5's original guest arena spans 448 GiB starting at an 8 GiB virtual address. An iPad's extended virtual-address entitlement does not make an equally large contiguous range available: Madeira, Wine, FEX, JIT aliases, and native mappings already occupy parts of the process address space.
+
+The tested M2 configuration instead uses a **4 GiB virtual window at 464–468 GiB**, reserved lazily in **256 MiB chunks**. This is an address-space reservation policy, not an allocation of 4 GiB of physical RAM at startup.
+
+The allocator accounts for existing host mappings and excludes conflicting chunks. A failed multi-chunk reservation rolls back newly acquired placeholders; a failed rollback is reported. Fixed-address conflicts are diagnosed rather than hidden by relocating mappings behind the guest's back.
+
+Wine-side fixes preserve Windows placeholder replacement, shared 16 KiB mappings, protection changes, and write-watch behavior on iOS. Guest data mappings are distinguished from executable allocations so ordinary game memory does not exhaust FEX's JIT alias pool. PS5 memory uses 16 KiB pages, but Windows still exposes its own page and allocation-granularity semantics; matching the native page size alone is insufficient.
+
+AnyPS5 tracks CPU writes to GPU-visible memory through page protection and dirty tracking. Native fault handling repairs the relevant writes while preserving shared aliases and subsequent GPU synchronization. Consecutive-fault diagnostics distinguish a stuck repeated fault from a long sequence of legitimate handled writes.
+
+### 5. Input, JIT, and app lifecycle
+
+Touch input follows **Madeira touch controller → XInput → SDL controller → `scePad`**. The app retains its 18-control layout. Early reservation of the virtual controller slot is available for titles that initialize SDL before the first touch; otherwise the game can miss the controller even while the native overlay responds.
+
+JIT is required for FEX. Madeira retains its StikDebug and built-in StikJIT paths. The verified build-17 configuration uses **Settings → JIT method → Built-in StikJIT**, a pairing record stored in the app's Keychain, and an active LocalDevVPN connection. The helper enables debugging, prepares the JIT pool, and detaches before Wine starts. Automatic selection may choose an installed external helper, so the selected method and tunnel state matter.
+
+The app needs a development signature and a provisioning profile that actually grants debugging, increased memory, and extended virtual addressing. Adding entitlement keys to the app without corresponding profile grants is insufficient.
+
+The Vulkan lifecycle patch stops admitting new work when the app becomes inactive and drains submitted GPU work before suspension. A brief background/resume cycle has been observed to recover; long cycles remain a separate compatibility check. Audio runs through the AnyPS5/Wine runtime; music has been heard during gameplay, but complete audio behavior and save/load still need qualification.
+
+## How this differs from Magnus
+
+[MagnusPS5](https://github.com/BaconMakin/MagnusPS5) describes itself as an ARM/iOS PS5 emulator based on KyTyPS5. Its [runtime linker](https://github.com/BaconMakin/MagnusPS5/blob/main/src/loader/runtimeLinker.cpp) loads ELF programs and resolves them inside the emulator.
+
+**madeira-anyps5 takes the ahead-of-time relinking route:** AnyPS5 prepares an x86-64 Windows program first; that program then runs through Wine + FEX, with graphics through Vulkan → MoltenVK → Metal. Executable conversion, PS5 API compatibility, CPU translation, and graphics translation remain distinct layers. This architectural difference is not a claim that either project is faster or supports more games.
+
+## Device results
+
+Evidence currently covers an **iPad Air 13-inch M2 (`iPad14,10`), iPadOS 27.0.1**. It does not establish compatibility with other models or OS versions.
+
+| Test | Observed result |
 | --- | --- |
-| Library launch into gameplay | 2026-10-06 recording, about two minutes, no crash. Logo with audio, title and Options, New game, Asteristic intro and music, then about 60 seconds of touch-controlled play: visible character, walk and jump, forest, music, NPC dialogue box. Displayed FPS was not measured. |
-| Build 12 forest traversal | Six-minute observation. Sarah and the forest render. Held D-pad and analog touches go to the pool and back. No skipped draws and no fault terminal in that log. [Evidence](docs/evidence/ipad-m2-dreaming-sarah-held-input.json). |
-| Build 13 app inactivity | Vulkan admission and drain. A brief background cycle drains both live devices and rendering resumes. [Evidence](docs/evidence/ipad-m2-vulkan-lifecycle-build13.json). |
-| Supporting probes on the same iPad | Standalone AVX2 through Wine/FEX; the 4 GiB arena at 464–468 GiB; the original RDNA scene; a 600-second 1280×720 demo that exits 0. Guest loop rates in those logs are not displayed FPS. |
+| Dreaming Sarah, PS5 version `01.000.000` | Publisher logo, title/options, new game, visible forest gameplay, walking/jumping, music, and NPC dialogue in a maintainer recording. A separate six-minute run verified held directional input. [Recording notes](docs/evidence/ipad-m2-dreaming-sarah-gameplay-recording.json), [directional-input run](docs/evidence/ipad-m2-dreaming-sarah-held-input.json). |
+| Current menu app, `0.1.8 (17)`, 2026-10-07 | Locally signed and installed as `com.buberlo.anyps5ipad`; its own library launch enabled JIT and reached the title screen with 18 controls. Gameplay, audio, save/load, and background recovery were not requalified on this exact build. [Build record](docs/evidence/ipad-m2-menu-build17.json). |
+| CPU and HLE | Standalone AVX2 cases passed through Wine/FEX; an ELF processed by the actual relinker exercised real HLE calls, TLS, threads, and exceptions. [AVX2](docs/evidence/ipad-m2-wine-fex-cpu.json), [relinked CPU/HLE](docs/evidence/ipad-m2-relinked-hle-cpu-exceptions.json). |
+| Memory | Exact reservation, collision refusal, placeholder replacement, write-watch, protection changes, shared aliases, and release passed in bounded probes. [Memory record](docs/evidence/ipad-m2-464gib-memory.json). |
+| Graphics demo | A 600-second synthetic RDNA/VideoOut scene ran with a 1280 × 720 surface and exited successfully. This is a component/demo result, not a Dreaming Sarah benchmark. [Demo record](docs/evidence/ipad-m2-demo-720-ten-minute.json). |
+| Lifecycle | A brief background cycle drained Vulkan work and resumed rendering. [Lifecycle record](docs/evidence/ipad-m2-vulkan-lifecycle-build13.json). |
 
-| Still open | Why it is open |
-| --- | --- |
-| Displayed FPS | Not measured on the gameplay recording. The commercial HUD's Frame 0 and its nominal 30 FPS are not acceptance. Guest loop counters are not displayed frame time. |
-| Long sessions | The new recording is about two minutes. Ten-minute displayed-rate acceptance is open. Build 12's six minutes did not record displayed FPS either. |
-| Full background recovery | Build 13 covers a brief cycle only. The separate long-cycle UI helper crashes. |
-| Save/load | Not shown. |
-| Audio acceptance | The recording includes publisher-logo audio, intro music, and gameplay music. PR #3's audio acceptance gate is still open. |
-| Other iPads | This M2 only. |
-| Public IPA | No installable IPA is published in this repository. A locally signed build has been installed on the test iPad; that file is not in Git. |
-| Matching Windows gameplay | The updated-driver UM790 run shows the menu. Its final capture is a white transition, so Windows gameplay stays unqualified. [Evidence](docs/evidence/windows-um790-entry-prefix-menu.json). |
+**Stable displayed 60 FPS is not established.** The Vulkan HUD integration counts successful present calls, not the timestamps at which the display actually shows each game frame. Guest-loop rates, nominal FPS labels, and an upstream Windows benchmark do not establish iPad display performance. Long-session stability, full background recovery, save/load, and broader game compatibility remain open.
 
-The 2026-10-05 foundation log is historical. It lives in [docs/MILESTONES.md](docs/MILESTONES.md) and [docs/PATCHES.md](docs/PATCHES.md). It is not the current device status.
+## Build and prepare a game
 
-## Credits
+Builds are manual and local. GitHub Actions is disabled, and there is no published installable IPA. Use fresh submodule checkouts and the recorded pins; mixing binaries or patches from different runtime revisions can break ABI and memory assumptions.
 
-- [AnyPS5](https://github.com/boykopovar/AnyPS5) by boykopovar. Relinker and PS5 HLE, including the Vulkan graphics driver.
-- [Madeira](https://github.com/willfaust/Madeira) by Will Faust. Wine ARM64EC and the iOS app shell.
-- [FEX-Emu](https://github.com/FEX-Emu/FEX). The pinned iOS port is [willfaust/FEX](https://github.com/willfaust/FEX).
-- [Wine](https://www.winehq.org/). The pinned tree is [willfaust/wine](https://github.com/willfaust/wine), branch `madeira-lgpl`.
-- [MoltenVK](https://github.com/KhronosGroup/MoltenVK). Vulkan on Metal.
-- [StikDebug](https://github.com/StikDebug/StikDebug) and [StikJIT](https://github.com/StikDebug/StikJIT). On-device JIT.
+### Prepare the source and host tools
 
-Pins and licenses: [docs/UPSTREAMS.md](docs/UPSTREAMS.md), [docs/LEGAL.md](docs/LEGAL.md).
-
-## Legal
-
-No games, keys, firmware, or SDK files are in this repo. Users must use games they own and dumped themselves. Nothing here helps obtain them. Not affiliated with Sony Interactive Entertainment or Apple.
-
-AnyPS5 is GPL-2.0-only and Madeira is GPL-3.0-or-later. They stay separate submodules. [docs/LEGAL.md](docs/LEGAL.md).
-
-## Layout
-
-```
-upstreams/     pinned submodules, unmodified until you apply patches
-patches/       one series per upstream
-scripts/       apply patches, checks, build entry points
-tools/         probes and host-side checks
-docs/          architecture, patches, implementation, evidence
-```
-
-## First commands
+On an Apple Silicon Mac with Xcode, CMake, Ninja, and a C++20 compiler:
 
 ```sh
-git submodule update --init
+git clone https://github.com/buberlo/madeira-anyps5.git
+cd madeira-anyps5
 scripts/apply-patches.sh
-scripts/check-linux.sh
+scripts/build-host-relinker.sh
 ```
 
-`check-linux.sh` needs a C compiler, MinGW (`x86_64-w64-mingw32-g++`), and a
-Vulkan loader. It selects lavapipe when
-`/usr/share/vulkan/icd.d/lvp_icd.json` is present. Exit 0 from the tool
-means that ICD meets AnyPS5's hard checks. Exit 1 means the tool ran and the
-ICD failed one or more; that is still a successful run of the tool.
+This builds only the portable relinker and NID patcher. It does not build Windows HLE libraries or execute a game.
 
-Build and device steps: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
-What a Vulkan-only iPad build leaves out: [docs/SLIM.md](docs/SLIM.md).
+### Build the Windows HLE runtime
 
-## iPad configuration the patches expect
-
-These are switches, not measurements:
+In a separate checkout on Windows, use Git Bash with Python 3, CMake, Ninja, LLVM's ELF tools, and 7-Zip available:
 
 ```sh
-MADEIRA_WITH_VULKAN=1          # Madeira build: winevulkan + MoltenVK unix side
-MADEIRA_FEX_AVX=1              # xtajit64's FEXCore; the in-process bridge defaults on
-APS5_GUEST_ARENA_LAZY=1        # reserve guest VA in 256 MiB chunks
-APS5_GUEST_ARENA_SIZE=0x100000000   # 4 GiB example; default remains 448 GiB
+scripts/windows-runtime-build.sh
 ```
 
-The qualified M2 profile sets `APS5_GUEST_ARENA_BASE=0x7400000000` (464 GiB)
-with that 4 GiB size, so the guest window is 464–468 GiB.
-`Madeira.entitlements` gains `com.apple.developer.kernel.extended-virtual-addressing`
-only after the patch is applied. The provisioning profile still has to grant it.
+The script applies the patches, builds the selected AnyPS5 libraries and probes, and exports `build/windows-runtime-artifact/hle-runtime.zip`. The archive contains unpatched HLE libraries, compiler runtime DLLs, and a hash manifest; it contains no game data. Its build-time tests do not replace runtime tests on a Windows Vulkan GPU or an iPad.
+
+The qualified HLE compiler is **WinLibs GCC 15.2.0, posix-SEH, UCRT r7**, downloaded and hash-checked by [m0-build-anyps5-winlibs.sh](scripts/m0-build-anyps5-winlibs.sh). The SysV calling convention and exception/unwind path are toolchain-sensitive; an arbitrary MinGW or Clang build is not an equivalent replacement.
+
+### Prepare your decrypted dump
+
+Copy the HLE archive to the same local path on the preparation host, then run:
+
+```sh
+python3 scripts/prepare-private-game.py \
+    --dump /path/to/your/decrypted-app0 \
+    --hle build/windows-runtime-artifact/hle-runtime.zip \
+    --output build/private-game
+```
+
+The tools leave the originals unchanged, relink the executable and bundled modules, copy assets, patch fresh HLE copies, and audit dependencies. The output has `game.exe`, `libs/`, `app0/`, and `private-game-manifest.json` with file hashes and tool provenance.
+
+`prepared_unexecuted` means static preparation passed. Missing dependencies produce `not_ready_missing_dependencies` and exit code 2; no empty replacement library is fabricated. Preparation currently happens on the host, rather than through a raw-dump importer inside the iPad app. See [private game preparation](docs/PRIVATE-GAME-PACKAGING.md) for the detailed input rules.
+
+### Build the iPad app
+
+The app build additionally requires Rust/Cargo, LLVM binary tools, the Wine build dependencies, and a static **iPhoneOS ARM64 MoltenVK** archive. Select Xcode explicitly and build MoltenVK from its pinned checkout:
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+git submodule update --init upstreams/MoltenVK
+(
+    cd upstreams/MoltenVK
+    ./fetchDependencies --ios
+    make ios
+)
+scripts/m3-madeira-ios.sh
+```
+
+[m3-madeira-ios.sh](scripts/m3-madeira-ios.sh) builds the native FEX/Wine pieces, packages the ARM64EC PE modules, links the Vulkan integration, and checks the app and JIT helper. The default is an unsigned build at `build/ios-runtime/DerivedData/Build/Products/Debug-iphoneos/Madeira.app`. It retains the tested Debug host/JIT configuration while compiling major runtime components with their release settings.
+
+For a signed device build, configure your Xcode account and a suitable provisioning profile, then run:
+
+```sh
+APS5_CODE_SIGNING=YES APS5_DEVELOPMENT_TEAM=YOUR_TEAM_ID \
+    scripts/m3-madeira-ios.sh
+```
+
+`APS5_MOLTENVK_LIBRARY` can select another matching iPhoneOS archive. `APS5_ALLOW_PROVISIONING_UPDATES=1` allows Xcode to update provisioning. Neither setting substitutes for the required entitlements. Building does not install the app, import the private package into its container, pair the JIT helper, or prove gameplay.
+
+## Runtime configuration
+
+The app seeds an AnyPS5 profile once and preserves subsequent user settings. These are configuration values, not performance measurements. In `madeira.cfg`, runtime environment entries use the form `env.NAME = value`.
+
+| Setting | Tested value / purpose |
+| --- | --- |
+| `env.MADEIRA_FEX_AVX` | `1`: enable the AVX/AVX2 execution path before FEX initialization. |
+| `env.APS5_GUEST_ARENA_LAZY` | `1`: reserve guest addresses on demand. |
+| `env.APS5_GUEST_ARENA_BASE` | `0x7400000000`: 464 GiB virtual base for the tested M2 layout. |
+| `env.APS5_GUEST_ARENA_SIZE` | `0x100000000`: 4 GiB virtual window. |
+| `env.APS5_GUEST_ARENA_CHUNK` | `0x10000000`: 256 MiB reservation chunks. |
+| `env.MADEIRA_CONTROLS_XBOX_DEFAULT` | `1`: seed the Xbox-style touch layout. |
+| `env.MADEIRA_PAD_EARLY_SLOT` | `1`: reserve the virtual controller before SDL initialization when needed; restart the app after changing it. |
+| `env.APS5_FIXED_FUNCTION_INTERPOLATION` | `1` in the tested Dreaming Sarah profile; a specific shader compatibility option, not a universal game default. |
+| `env.MADEIRA_FRAMEGEN` | `0`: frame generation disabled. |
+| `d3d12` | `0`: use this Vulkan path rather than D3D12. |
+
+The build uses `APS5_VULKAN_ONLY=1`, `MADEIRA_WITH_VULKAN=1`, and `MADEIRA_VK_STATIC_LINK=1`. Those build switches are distinct from the game-session environment above.
+
+## Source layout and technical records
+
+| Path | Contents |
+| --- | --- |
+| `upstreams/` | Pinned AnyPS5, Madeira, FEX, Wine, and MoltenVK submodules. |
+| `patches/` | Separate patch series for each upstream. |
+| `scripts/` | Build entry points, private preparation, packaging, and runtime integration. |
+| `tools/` | CPU, memory, graphics, shader, and packaging probes. |
+| `docs/evidence/` | Structured test results with scope, hashes, and limitations; private dumps and raw shader captures are excluded. |
+
+[Implementation records](docs/IMPLEMENTATION.md) document the port's repairs and experiments. [Upstream pins](docs/UPSTREAMS.md) identify the exact source revisions. [Milestones](docs/MILESTONES.md) and [early patch notes](docs/PATCHES.md) describe historical foundation work, not the current build status.
+
+## Credits and licensing
+
+- [AnyPS5](https://github.com/boykopovar/AnyPS5), by boykopovar: relinker, PS5 API implementations, RDNA shader recompiler, and Vulkan renderer.
+- [Madeira](https://github.com/willfaust/Madeira), by Will Faust: iOS host, Wine ARM64EC integration, JIT setup, and controller UI.
+- [FEX](https://github.com/FEX-Emu/FEX), using [willfaust's iOS port](https://github.com/willfaust/FEX): x86-64 to ARM64 translation.
+- [Wine](https://www.winehq.org/), using [willfaust's Madeira branch](https://github.com/willfaust/wine): Windows compatibility.
+- [MoltenVK](https://github.com/KhronosGroup/MoltenVK): Vulkan implementation over Metal.
+- [StikDebug](https://github.com/StikDebug/StikDebug) and [StikJIT](https://github.com/StikDebug/StikJIT): JIT activation.
+
+AnyPS5 is GPL-2.0-only; Madeira is GPL-3.0-or-later. They remain separate projects and build products. Patches retain their upstream licenses. See [licensing details](docs/LEGAL.md) and the upstream notices before distributing a build.
+
+The repository contains no games, extracted game assets, decryption keys, proprietary SDK libraries, or PS5 firmware. Supply your own lawfully obtained decrypted dump. Private game packages and pairing material stay outside Git. The project is not affiliated with Sony Interactive Entertainment or Apple.
+
+The original [buberlo/anyps5-ipad](https://github.com/buberlo/anyps5-ipad) URL redirects to this repository.

@@ -21,7 +21,7 @@ build artifacts, host execution and physical-device acceptance.
   lazy guest arena, touch/XInput enabled. It preserves the JIT helper and
   builds real Wine, pairing, font and media archives. Its private URL scheme
   is `anyps5ipad://`, including JIT callbacks. Initial configuration uses the
-  candidate 8–12 GiB arena; existing user settings are retained.
+  qualified M2 candidate 464–468 GiB arena; existing user settings are retained.
 - The original guest demo imports public `sce*` APIs through NIDs, feeds RDNA
   instructions to AGC, checks the GPU result and presents through VideoOut.
   Madeira touch → XInput → SDL → `scePad` remains the input path.
@@ -257,7 +257,9 @@ which starts no child process after a rejected claim and preserves newer leases.
 Verify built/signed, installed, launched, JIT-enabled and benchmarked states
 separately. No physical-iPad gameplay result is asserted by this source change.
 
-Dreaming Sarah remains a later data-dependent test: inventory the exact ELF,
-module/NID imports and transitive runtime dependencies; establish the same
-version on Windows before comparing menu/gameplay/audio/saves on iPad. The
-original demo is not commercial-title compatibility evidence.
+Dreaming Sarah can now be prepared from a local decrypted dump with the
+[private game preparer](PRIVATE-GAME-PACKAGING.md). It inventories the exact
+ELFs and assets, retains bundled modules, builds and validates the real HLE
+closure, and never uploads game data. Establish the same version on Windows
+before comparing menu/gameplay/audio/saves on iPad. Packaging is not execution;
+the original demo is not commercial-title compatibility evidence.

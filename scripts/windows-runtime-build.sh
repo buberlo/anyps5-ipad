@@ -9,6 +9,7 @@ for tool in "$ELF_CC" "$ELF_LD" "$ELF_OBJCOPY" "$ELF_NM"; do
     command -v "$tool" >/dev/null || { echo "Missing ELF tool: $tool" >&2; exit 1; }
 done
 python3 tools/runtime-probes/test_runtime_reference.py
+python3 tools/runtime-probes/test_private_game.py
 scripts/m0-build-anyps5-winlibs.sh
 export PATH="$root/build/toolchains/winlibs/mingw64/bin:$PATH"
 relinker="$root/build/anyps5-winlibs/core/relinker/relinker.exe"

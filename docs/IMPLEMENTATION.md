@@ -393,6 +393,16 @@ recompiler locally changes this capture from rejection to success; all twelve
 local requests pass pinned SPIRV-Cross and Apple's Metal compiler. The extended guard has not yet run on
 the iPad. See [scheduled-pair diagnosis](evidence/ipad-m2-interpolation-scheduled-pairs.json).
 
+The exception-delivery terminal also contains a separate accumulation defect:
+its PC/address hash counts recurring visits even when that thread has delivered
+other faults in between. The baseline log shows intervening fault pairs and
+successful changed stores before its 2000-count termination. Patch 0016 counts
+consecutive identical deliveries per exact Mach-thread identity instead, retaining
+the 256 warning, 2000 terminal and all memory protection/write tracking. The actual
+counter passes host checks and the iPhoneOS signal handler compiles. Device
+validation is pending; this does not establish that every observed fault is valid.
+See [fault-counter diagnosis](evidence/ipad-m2-consecutive-fault-counter.json).
+
 Private shader requests, assets and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits

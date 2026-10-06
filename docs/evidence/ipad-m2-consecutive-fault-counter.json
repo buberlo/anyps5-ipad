@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "private_baseline_log_sha256": "2f8fce5024accabe45cc6b72114c6833be6f4979ea7b5c0b3838dfc1d801e4ec",
+  "finding": "The old 16-bucket PC/address hash counted recurring exceptions over the session even when the same thread delivered other exceptions between visits.",
+  "baseline_evidence": {
+    "distinct_fault_pairs_on_same_guest_thread_before_terminal": 14,
+    "successful_changed_store_bytes_logged": true,
+    "threshold_was_reached": 2000
+  },
+  "change": "Count consecutive identical guest exception deliveries per exact Mach-thread identity. Other threads do not reset a failing thread. A different PC/address or exempt alignment delivery on that thread resets its sequence.",
+  "terminal_threshold": 2000,
+  "warning_threshold": 256,
+  "protection_and_write_tracking_disabled": false,
+  "host_validation": "Production counter passes recurring-work, stuck-loop, other-thread isolation, full identity, alignment exemption and bounded capacity cases. Real iPhoneOS signal handler compiles.",
+  "native_build_archive": {
+    "change": "consecutive per-thread exception delivery counter; terminal threshold unchanged",
+    "previous_archive_sha256": "7ac73ee44c8214154cf99f4ded88b033a4825fc6cc9f4423afdc5d88e0848f7c",
+    "archive_sha256": "13b3435f0d66994c780ce9cc0b53219a00ccc73cf76d56a2b1682bc00d7fe4bb",
+    "object_sha256": "2130327a3821b0c210ef319a75303c56493b212dee7d817c41f3cd26a5613509",
+    "signal_source_sha256": "9fbd198f1f651e12096f793b7910247598bd55f9a8787896e3978100bf1f65ba",
+    "counter_source_sha256": "f6fa60275b69c7643456e5fbe0230f3262050cb046b0fa838a39e125d5eb1253"
+  },
+  "device_execution": "pending signed new app and isolated comparison",
+  "limitations": [
+    "This corrects a proven accumulation error; it does not prove every logged native protection fault is legitimate.",
+    "Repeated same-PC/address work without intervening guest exception deliveries can still reach the threshold.",
+    "A bounded table may evict a thread when more than 64 distinct threads are concurrently represented."
+  ]
+}

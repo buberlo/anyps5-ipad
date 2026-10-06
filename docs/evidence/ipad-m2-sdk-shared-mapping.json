@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "scope": "Real AnyPS5 SDK mapper in standalone PE under physical iPad Wine/FEX",
+  "build": 7,
+  "device": "iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "jit_success": true,
+  "guest_exit_code": 0,
+  "native_guest_data_path_selected": true,
+  "guest_arena_jit_alias_created": false,
+  "initial_protections": [
+    "READWRITE",
+    "READONLY",
+    "NOACCESS"
+  ],
+  "checks": [
+    "initial rights",
+    "later write permission",
+    "bidirectional shared aliases",
+    "tracked write after arming",
+    "dirty recollection",
+    "placeholder restoration and release"
+  ],
+  "gameplay_acceptance": "not_run",
+  "private_evidence_sha256": {
+    "operation.json": "ce479cb9c7461c4f1f1b80259ac468c3997198b18f04fa242068fd904f80220b",
+    "app-final.log": "ec8bdfb054433980dfb8e7330c41cc5f8128afdca0b0596b29d57f6e910f7446"
+  }
+}

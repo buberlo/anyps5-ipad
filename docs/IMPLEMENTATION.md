@@ -267,8 +267,8 @@ ball simulation coordinates match the neutral scene. Before/after-flip checks
 and host analysis of both pixel snapshots confirm the difference already
 exists in the CPU source buffer: the ball remains drawn at its first-frame
 position, differing in exactly 72 pixels from the frame-60 model. GPU output
-still matches every source pixel XOR 1. This is an unresolved CPU/render-store
-issue; it cannot be accepted as correct scene execution. Failure paths now
+still matches every source pixel XOR 1. This baseline failed correct scene
+execution. Failure paths now
 use normal libc shutdown too, and retain original-demo pixel snapshots.
 See [M2 RDNA diagnostic](evidence/ipad-m2-rdna-smoke.json).
 
@@ -284,16 +284,41 @@ still unverified. See [Windows menu evidence](evidence/windows-um790-dreaming-sa
 The same repaired package was verified on iPad and launched with successful
 built-in JIT. The foreground game surface stays black. Shared guest pages
 initially mapped RWX consume all 4,096 anonymous JIT aliases and overflow the
-pool ledger before their requested RW rights are applied. The SDK mapping
-change to initial SDK mapping rights was rejected after the real device probe
+pool ledger before their requested RW rights are applied. The initial change to SDK mapping rights was rejected after the real device probe
 found that it prevented a later read-only → read-write transition. The SDK's
 original maximum access rights are retained. Instead, the Madeira patch
 removes only native EXEC from fully mapped non-native views inside the explicit
 PS5 arena. Wine's logical rights, FEX notifications and write tracking remain;
-ARM64EC code, images, system/placeholder views, holes and JIT pool ranges are
-excluded. Compiled tests exercise the actual selector with controlled mappings,
-boundary/overflow cases and native-code exclusions. A rebuilt signed runtime
-and fresh device verification are still required. See [iPad startup failure](evidence/ipad-m2-dreaming-sarah-startup.json). Private assets
+ARM64EC code, images, system views, uncommitted placeholders, holes and JIT
+pool ranges are excluded. Committed replacement views retain the placeholder
+flag for later unmapping; they must not be mistaken for empty reservations.
+A bounded on-device classifier confirmed this flag on actual SDK shared pages. Compiled tests exercise the actual selector with controlled mappings,
+boundary/overflow cases, late profile export and native-code exclusions.
+Builds 5/6 pass the actual SDK alias/tracking tests but still route shared pages
+to the native JIT pool and reproduce the demo scene failure. Build 7 corrects
+the committed-placeholder classification. Its physical-iPad SDK probe passes
+RW, RO and NOACCESS mappings, later write permission, shared aliases, write
+tracking and placeholder restoration, with clean guest exit and no arena JIT
+alias. The byte-identical diagnostic demo now matches Windows at frames 0/60,
+passes all 120 GPU comparisons and exits 0. Its short loop rate is 28.233/s;
+the screenshots occurred after guest exit, so this run alone does not prove
+foreground scene visibility or display FPS. See [SDK mapping proof](evidence/ipad-m2-sdk-shared-mapping.json)
+and [corrected RDNA result](evidence/ipad-m2-rdna-shared-mapping-fixed.json).
+
+Dreaming Sarah Build 7 also avoids the former JIT alias exhaustion, but
+remains black and recreates 5,222 swapchains during its bounded startup.
+See [post-memory-fix startup](evidence/ipad-m2-dreaming-sarah-shared-mapping-fixed.json).
+The iOS Vulkan adapter now negotiates advertised surface/device maintenance,
+queries and enables the maintenance feature, and requests supported stretch
+scaling for the HWND inside the iPad layer. It preserves application chains
+and propagates capability errors; it does not suppress SUBOPTIMAL/OUT_OF_DATE.
+Compiled adapter tests cover unsupported features/scaling and host errors.
+Build 8 is built, signed and installed. Its longer original demo is visibly
+rendered on iPad, but its log export timed out and execution completion is not
+accepted. Dreaming Sarah remains black in fresh 10/30/60-second screenshots.
+The app-data file service also times out after confirmed own-process cleanup;
+fresh JIT/scaling logs and a diagnosis of the remaining game rendering issue
+are pending. See [Build 8 visibility limits](evidence/ipad-m2-vulkan-scaling-visibility.json). Private assets
 and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits

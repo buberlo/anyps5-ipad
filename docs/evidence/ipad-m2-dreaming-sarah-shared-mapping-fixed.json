@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "app": {
+    "bundle_id": "com.konradkern.anyps5ipad",
+    "build": 7
+  },
+  "game": {
+    "title": "Dreaming Sarah",
+    "title_id": "PPSA02929",
+    "version": "01.000.000",
+    "game_pe_sha256": "62843996793401590fc009f713d9d438546e17aeee939cf0a38d513065d7d45a",
+    "package_manifest_sha256": "190a9548020dcac6686c09ddb215a4dc652168ba71390b92127ea62d3b5b0529"
+  },
+  "jit_success": true,
+  "native_guest_data_path_selected": true,
+  "guest_arena_jit_alias_created": false,
+  "alias_table_exhaustion": false,
+  "menu": "not_visible",
+  "gameplay": "not_verified",
+  "surface_extent": [
+    768,
+    432
+  ],
+  "swapchain_creations": 5222,
+  "startup_duration_seconds": 199.4300880432129,
+  "audio": "output thread started; audible result unverified",
+  "bounded_cleanup": "own application SIGTERM receipt success",
+  "result": "black_surface_with_repeated_swapchain_recreation_after_shared_memory_fix",
+  "private_evidence_sha256": {
+    "app-collected.log": "78fc1eb348efc85c5e944706396aee784ba33153051ba7432c521e6c8a98ff52",
+    "operation.json": "1e7b39929ecf320cb93c1116c441e0fd17e4e10ad282aecd2cbb7129a2f377a5",
+    "final-screen.png": "c8bef4b841abf6038718775edea3beda43a4161c8aefca18980b42f631b6e49c"
+  }
+}

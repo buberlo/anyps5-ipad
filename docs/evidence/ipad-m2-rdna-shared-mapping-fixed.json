@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": {
+    "model": "iPad14,10",
+    "soc": "M2",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "app": {
+    "bundle_id": "com.konradkern.anyps5ipad",
+    "version": "0.1.4",
+    "build": 7
+  },
+  "dimensions": [
+    320,
+    192
+  ],
+  "jit": "built_in_helper_reported_success",
+  "guest_exit_code": 0,
+  "readback_frames": 120,
+  "acknowledged_frames": 120,
+  "cross_platform_scene_reference": {
+    "status": "pass",
+    "frame_0_crc": 1745292961,
+    "frame_60_crc": 3237446373,
+    "same_demo_and_hle_bytes_as_previous_pixel_diagnostic": true
+  },
+  "native_guest_data_path_selected": true,
+  "guest_arena_jit_alias_created": false,
+  "timing": {
+    "elapsed_us": 4250266,
+    "avg_fps_milli": 28233,
+    "frame_time_min_us": 15739,
+    "frame_time_max_us": 276007,
+    "frame_time_p95_us": 34218
+  },
+  "timing_scope": "Guest monotonic loop including draw, full GPU comparison, FlipStatus acknowledgment and pacing; not display timestamps",
+  "visible_scene": "not_captured_during_this_short_run; screenshots show library after clean guest exit",
+  "input": "not_observed",
+  "full_acceptance": "not_passed",
+  "private_evidence_sha256": {
+    "operation.json": "f27fbbf2b86f51c7f31f6cf004c289612ffa0072b0375cc3f030ef320350163a",
+    "app-final.log": "4573094528d8a47fde44f7fca4f2dbea9c97e93224dc6b4e0c7661430f5f49ff"
+  },
+  "package_manifest_sha256": "fa876f35b9fc7d66d02f5213dc7c6d62d66b21525a23353eec509a972d9b477f",
+  "demo_pe_sha256": "3ecf2d5b780b843177f6ee9d9e51f42c05962dce9b9164946b540649e882367e"
+}

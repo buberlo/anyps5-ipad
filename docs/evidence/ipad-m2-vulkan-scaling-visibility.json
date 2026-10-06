@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "app": {
+    "bundle_id": "com.konradkern.anyps5ipad",
+    "build": 8
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "scope": "Bounded physical-iPad visibility comparison after negotiated Vulkan scaling adapter",
+  "original_demo": {
+    "visible_scene": "observed in fresh foreground screenshot",
+    "frame_limit": 900,
+    "dimensions": [
+      320,
+      192
+    ],
+    "gpu_completion_and_timing": "log collection blocked; not accepted",
+    "private_screenshot_sha256": "7c0fd8d2951cd176b23c8d070efb2747c742302714ddd1d12a90a0a4d31269f7"
+  },
+  "dreaming_sarah": {
+    "title_id": "PPSA02929",
+    "version": "01.000.000",
+    "screenshots_at_seconds": [
+      10,
+      30,
+      60
+    ],
+    "menu": "not_visible",
+    "result": "black_surface",
+    "jit_and_swapchain_negotiation": "requires fresh log verification",
+    "gameplay": "not_verified"
+  },
+  "file_service": "coredevice app-data read and listing timed out even after process termination",
+  "cleanup": "SIGKILL own application receipt successful; no own app/helper in final process list",
+  "private_evidence_sha256": {
+    "operation.json": "2f23c957a35d4d08df9641ecf8a1d77e451b2d0dadf93f49de3794b4e9532d96",
+    "screen-0.png": "47c982191c8f2a87c75ad491f1656a162fee183293d3d63cb9e072f85df5def0",
+    "screen-1.png": "97bc70fc0931da05792d9de6778c44471f6b4252da701dbdb8ef190df5922be2",
+    "screen-2.png": "543f11a473cb0437e463a53177c5a42de8aa7395b02e875363a5ed1ea982f981",
+    "terminate-own.json": "784de87114ec6e0755f6c3991d8388f579651be295789bce4164e19386c0a6ff"
+  }
+}

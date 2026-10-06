@@ -48,12 +48,19 @@ typedef VkResult (*PFN_vkEnumerateInstanceExtensionProperties)(const char *, uin
 #define WINE_VULKAN_DRIVER_VERSION 123
 struct vulkan_driver_funcs { int identity; };
 static const struct vulkan_driver_funcs ios_vulkan_driver_funcs = {42};
-static int g_use_metal_surface, advertise = 1, fail_enumerate;
+static int g_use_metal_surface, g_surface_maintenance, advertise = 1, fail_enumerate;
+static int maintenance_extensions;
+struct vulkan_instance_extensions { int has_VK_KHR_win32_surface, has_VK_EXT_metal_surface;
+    int has_VK_EXT_surface_maintenance1, has_VK_KHR_get_surface_capabilities2; };
 static VkResult enumerate(const char *layer, uint32_t *count, VkExtensionProperties *props) {
     (void)layer;
     if (fail_enumerate) return -3;
-    if (props) strcpy(props[0].extensionName, advertise ? "VK_EXT_metal_surface" : "VK_EXT_headless_surface");
-    *count = 1;
+    if (props) {
+        strcpy(props[0].extensionName, advertise ? "VK_EXT_metal_surface" : "VK_EXT_headless_surface");
+        if (maintenance_extensions >= 1) strcpy(props[1].extensionName, "VK_EXT_surface_maintenance1");
+        if (maintenance_extensions >= 2) strcpy(props[2].extensionName, "VK_KHR_get_surface_capabilities2");
+    }
+    *count = 1 + maintenance_extensions;
     return VK_SUCCESS;
 }
 Proc vkGetInstanceProcAddr(void *instance, const char *name) {
@@ -64,16 +71,30 @@ Proc vkGetDeviceProcAddr(void *device, const char *name) {
     (void)device; (void)name; return NULL;
 }
 '''
-surface_harness += initializer + r'''
+surface_harness += initializer
+surface_harness += function(surface, "static void ios_map_instance_extensions(")
+surface_harness += r'''
 int main(void) {
     const struct vulkan_driver_funcs *driver = NULL;
     void *handle = madeira_vk_dlopen("/__anyps5_missing__/libMoltenVK.dylib", 1);
     assert(handle == madeira_vk_static_sentinel());
     assert(winios_pVulkanInit(123, handle, &driver) == 0);
     assert(driver == &ios_vulkan_driver_funcs && g_use_metal_surface);
+    assert(!g_surface_maintenance);
+    maintenance_extensions = 1;
+    assert(winios_pVulkanInit(123, handle, &driver) == 0 && !g_surface_maintenance);
+    maintenance_extensions = 2;
+    assert(winios_pVulkanInit(123, handle, &driver) == 0 && g_surface_maintenance);
+    struct vulkan_instance_extensions extensions = {1,0,0,0};
+    ios_map_instance_extensions(&extensions);
+    assert(extensions.has_VK_EXT_metal_surface && extensions.has_VK_EXT_surface_maintenance1 &&
+           extensions.has_VK_KHR_get_surface_capabilities2);
+    struct vulkan_instance_extensions headless = {0,0,0,0};
+    ios_map_instance_extensions(&headless);
+    assert(!headless.has_VK_EXT_surface_maintenance1);
     assert(winios_pVulkanInit(122, handle, &driver) == STATUS_INVALID_PARAMETER);
     assert(winios_pVulkanInit(123, handle, NULL) == STATUS_INVALID_PARAMETER);
-    advertise = 0;
+    advertise = 0; maintenance_extensions = 0;
     assert(winios_pVulkanInit(123, handle, &driver) == STATUS_NOT_IMPLEMENTED);
     assert(driver == NULL && !g_use_metal_surface);
     advertise = 1; fail_enumerate = 1;

@@ -14,6 +14,18 @@ The recording is a maintainer observation, written up in [docs/evidence/ipad-m2-
 
 Owner: buberlo.
 
+The single-game host now opens the installed Dreaming Sarah package directly,
+without Madeira onboarding, library or Steam menus. It embeds the private Blur
+host’s local packet tunnel and automatically activates Madeira’s existing JIT
+helper when needed. iOS requires one initial VPN permission; stored pairing and
+private game files stay in the app container. Signed Build 15 completed three
+ordinary cold starts on the M2 iPad, with all 18 controls and a native Vulkan
+present-rate FPS counter visible. See [direct launch and automatic JIT](docs/SINGLE_GAME_BOOT.md)
+and [bounded startup evidence](docs/evidence/ipad-m2-single-game-boot-build15.json).
+These startup checks do not close sustained FPS, all-button input or save/load
+acceptance.
+
+
 ## How it works
 
 ```

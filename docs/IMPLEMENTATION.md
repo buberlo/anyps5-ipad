@@ -620,3 +620,28 @@ ELFs and assets, retains bundled modules, builds and validates the real HLE
 closure, and never uploads game data. Establish the same version on Windows
 before comparing menu/gameplay/audio/saves on iPad. Packaging is not execution;
 the original demo is not commercial-title compatibility evidence.
+
+## Dedicated game startup (Build 15)
+
+Madeira patch 0019 removes the library/onboarding/Steam UI and selects the
+installed Dreaming Sarah package on an ordinary app launch. It ports the private
+Blur host’s embedded packet tunnel while retaining Madeira’s classic separate
+StikJIT helper. Exact provider interface/index/address verification precedes JIT;
+actual debugger readiness, pool allocation, detach, helper terminal success and
+own-tunnel disconnect precede Wine. No private credentials or game assets are
+embedded in public builds.
+
+Signed Build 15 is installed as “Dreaming Sarah PS5” with the original generated
+icon, complete 18-control gamepad and native Vulkan present-rate FPS counter.
+Three fresh launches with no arguments, URL or JIT overrides complete the
+automatic connection/helper/game chain on the physical M2 iPad. Private game
+package, driver, ~INDEX, global configuration and old library pass before/after
+hash checks. Full controls and the FPS display are visually confirmed. The
+production Swift boot and route-socket tests pass (13 and 6 scenarios), alongside
+session archive and Vulkan integration/lifecycle checks.
+
+See [implementation details](SINGLE_GAME_BOOT.md) and
+[bounded device evidence](evidence/ipad-m2-single-game-boot-build15.json). This is
+not a fresh-device pairing test, every-button input qualification, an automated
+physical home-icon tap or a ten-minute displayed-FPS measurement. Raw logs and
+screenshots remain in ignored build directories.

@@ -17,6 +17,7 @@ for command in cmake ninja llvm-objcopy llvm-readobj cargo; do
 done
 if [ "${APS5_PATCHES_APPLIED:-0}" != 1 ]; then "$root/scripts/apply-patches.sh"; fi
 "$root/scripts/link-madeira-siblings.sh"
+"$root/scripts/stage-single-game-assets.sh"
 # GitHub checkout cleanup traverses nested gitlinks and rejects our local links.
 # Remove only links made by the build, after all child builds have completed.
 cleanup_links() {

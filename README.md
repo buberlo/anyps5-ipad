@@ -223,7 +223,7 @@ The build uses `APS5_VULKAN_ONLY=1`, `MADEIRA_WITH_VULKAN=1`, and `MADEIRA_VK_ST
 
 [Implementation records](docs/IMPLEMENTATION.md) document the port's repairs and experiments. [Upstream pins](docs/UPSTREAMS.md) identify the exact source revisions. [Milestones](docs/MILESTONES.md) and [early patch notes](docs/PATCHES.md) describe historical foundation work, not the current build status.
 
-## Credits and licensing
+## Credits
 
 - [AnyPS5](https://github.com/boykopovar/AnyPS5), by boykopovar: relinker, PS5 API implementations, RDNA shader recompiler, and Vulkan renderer.
 - [Madeira](https://github.com/willfaust/Madeira), by Will Faust: iOS host, Wine ARM64EC integration, JIT setup, and controller UI.
@@ -232,8 +232,26 @@ The build uses `APS5_VULKAN_ONLY=1`, `MADEIRA_WITH_VULKAN=1`, and `MADEIRA_VK_ST
 - [MoltenVK](https://github.com/KhronosGroup/MoltenVK): Vulkan implementation over Metal.
 - [StikDebug](https://github.com/StikDebug/StikDebug) and [StikJIT](https://github.com/StikDebug/StikJIT): JIT activation.
 
-AnyPS5 is GPL-2.0-only; Madeira is GPL-3.0-or-later. They remain separate projects and build products. Patches retain their upstream licenses. See [licensing details](docs/LEGAL.md) and the upstream notices before distributing a build.
-
 The repository contains no games, extracted game assets, decryption keys, proprietary SDK libraries, or PS5 firmware. Supply your own lawfully obtained decrypted dump. Private game packages and pairing material stay outside Git. The project is not affiliated with Sony Interactive Entertainment or Apple.
 
 The original [buberlo/anyps5-ipad](https://github.com/buberlo/anyps5-ipad) URL redirects to this repository.
+
+## License
+
+Copyright (C) 2026 buberlo. The files written for this project are under the GNU General Public License, version 2 or (at your option) any later version. The text is [LICENSE](LICENSE). That covers `scripts/`, `tools/`, `docs/`, and the other files outside `patches/` and `upstreams/`, except a file that carries its own `SPDX-License-Identifier` line.
+
+`patches/<name>/` is a derivative work of that upstream and keeps the upstream license. Pinning a submodule does not relicense it. Upstream projects keep their own licenses.
+
+| Series | License of the patches |
+| --- | --- |
+| `patches/anyps5/` | GPL-2.0-only |
+| `patches/madeira/` | GPL-3.0-or-later |
+| `patches/fex/` | GPL-3.0-or-later |
+| `patches/wine/` | LGPL-2.1-or-later |
+| `patches/moltenvk/` | no source patches |
+
+AnyPS5's README at the pinned commit states "version 2 only", so those patches cannot be relicensed to GPL-3.0. Madeira is GPL-3.0-or-later, so its patches cannot be relicensed to GPL-2.0-only. GPL-2.0-or-later is the copyleft that can travel with either build: convey these scripts under GPL-2.0 with an AnyPS5 binary, or under GPL-3.0 with the iPad app.
+
+The iPad Mach-O is a Madeira derivative. It statically links Wine (LGPL-2.1-or-later), FEX (upstream MIT, Madeira's modifications GPL-3.0-or-later), and MoltenVK (Apache-2.0). That combination is conveyed under GPL-3.0-or-later, and the LGPL obligations for Wine stay in force. AnyPS5 is a separate GPL-2.0-only program. Wine loads the relinker output and the HLE libraries as Windows modules. Keep that GPL-2.0-only code in its own program. The Mach-O that statically links Apache-2.0 MoltenVK is the GPL-3.0 app.
+
+The per-upstream findings, pins, and the files that stay MIT are in [NOTICE](NOTICE). Distribution rules are in [docs/LEGAL.md](docs/LEGAL.md).

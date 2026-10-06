@@ -1,0 +1,88 @@
+# Third-party notices
+
+Copyright (C) 2026 buberlo for this repository's own files. That copyright
+does not attach to the upstream projects below, and it does not replace
+their copyright notices.
+
+Checked 2026-10-06 against the commits in [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
+GitHub's license API reports the older SPDX ids `GPL-2.0` and `GPL-3.0`.
+The "only" or "or later" result below comes from the project's own grant,
+not from that API id.
+
+Submodule checkouts are not relicensed by being pinned here. Nested
+submodules that an upstream fetches for its own build (AnyPS5's SDL,
+Vulkan-Headers, glslang, and the others listed in `docs/UPSTREAMS.md`) keep
+the licenses in those checkouts.
+
+## This repository
+
+| Material | License |
+| --- | --- |
+| Own files (`scripts/`, `tools/`, `docs/`, and the other files outside `patches/` and `upstreams/`), unless a file says otherwise | GPL-2.0-or-later. Text in [LICENSE](LICENSE). Copyright (C) 2026 buberlo. |
+| `tools/vk-requirements/vk_requirements.c`, `tools/gpu-probe/gpu_probe.c`, `tools/gpu-probe/gpu_probe.h`, `tools/ipad-probe/main.m`, `tools/checks/test_moltenvk_loader.c` | MIT, `SPDX-License-Identifier: MIT`. Copyright (C) 2026 buberlo. They do not include AnyPS5 or Madeira source. |
+| `tools/checks/fexbridge_avx_decision.cpp` | GPL-3.0-or-later. It is the AVX decision from `patches/madeira/0001-fexbridge-avx.patch`. |
+| `patches/anyps5/` | GPL-2.0-only |
+| `patches/madeira/` | GPL-3.0-or-later |
+| `patches/fex/` | GPL-3.0-or-later |
+| `patches/wine/` | LGPL-2.1-or-later |
+| `patches/moltenvk/` | no source patch |
+
+## AnyPS5
+
+- Remote: https://github.com/boykopovar/AnyPS5
+- Pin: `0518f0e02187b6c7c00e6f7e7a7265c848efb346`
+- License file: `LICENSE`, the GNU GPL version 2 text
+- Grant, from that commit's `README.md`: "This project is licensed under the GNU General Public License version 2 only."
+- The same sentence is on `main` as of this check. Sampled sources (`CMakeLists.txt`, `core/relinker/main.cpp`, `CONTRIBUTING.md`) carry no "or later" notice. The phrase "either version 2 of the License, or" occurs only inside the GPL's "How to Apply These Terms" appendix, which is instructions, not AnyPS5's grant.
+- Result: **GPL-2.0-only**
+- `patches/anyps5/` is a derivative work of that code and stays GPL-2.0-only.
+
+## Madeira
+
+- Remote: https://github.com/willfaust/Madeira
+- Pin: `bbbf8d0e20fd8b75f433f4a8d2a8eaf8d5571120`
+- `LICENSE` and `COPYING` are the GNU GPL version 3 text (same blob).
+- Grant, from `LICENSE-EXCEPTION.md` at that commit: "Madeira is licensed under the GNU General Public License, version 3 or (at your option) any later version (see `COPYING`)." The README badge is GPL-3.0-or-later.
+- Additional permission: Madeira Converter Exception, version 1, adopted 2026-09-24 by Will Faust, under GPL-3.0 section 7. It covers copyright held by the Madeira authors. Copyright held by buberlo stays under the license of the file, without that exception. The PS5 graphics path uses MoltenVK.
+- Result: **GPL-3.0-or-later**, plus that exception for Madeira's own copyright.
+- `patches/madeira/` is a derivative work of that code and stays GPL-3.0-or-later.
+
+## FEX
+
+- Remote pinned here: https://github.com/willfaust/FEX (branch `ios-port-2607`)
+- Pin: `be778d7ba5b98bee0405fd1d6a50d305a0807df0` (Madeira's gitlink at the Madeira pin)
+- Upstream project: https://github.com/FEX-Emu/FEX
+- `LICENSE` at the pin is the MIT license, Copyright (c) 2019 Ryan Houdek.
+- `COPYING.GPL-3.0` is the GNU GPL version 3 text.
+- `LICENSE-MADEIRA.md` and `Readme.md` at the pin: upstream FEX-Emu code stays MIT; modifications and new files authored for Madeira are GPL-3.0-or-later, with the Madeira Converter Exception for those modifications. A file that contains both may only be distributed under terms compatible with GPL-3.0-or-later. The same file says upstream rpmalloc stays 0BSD.
+- Result for this fork: **upstream MIT (rpmalloc 0BSD); Madeira's modifications GPL-3.0-or-later**.
+- `patches/fex/` is a derivative of that fork and stays GPL-3.0-or-later. Applying a patch does not change the MIT or 0BSD grant on the upstream code.
+
+## Wine
+
+- Remote pinned here: https://github.com/willfaust/wine (branch `madeira-lgpl`)
+- Pin: `3a54f56896c85c932870afe6fd91404bbbcb74c8` (Madeira's gitlink at the Madeira pin)
+- Upstream project: https://www.winehq.org/ and https://gitlab.winehq.org/wine/wine
+- `LICENSE` at the pin: "either version 2.1 of the License, or (at your option) any later version." `COPYING.LIB` is the GNU LGPL version 2.1 text. `README.md` says Wine is released under the GNU LGPL.
+- `LICENSE-MADEIRA.md` at the pin: this branch keeps LGPL-2.1-or-later. It was rebuilt from upstream `wine-11.4`. The earlier LGPL section 3 conversion of another branch to GPL-3.0-or-later is not applied here. Madeira's modifications on this branch are LGPL-2.1-or-later.
+- Result: **LGPL-2.1-or-later**
+- `patches/wine/` is a derivative of that branch and stays LGPL-2.1-or-later. These patches are not converted to GPL-3.0-only.
+
+## MoltenVK
+
+- Remote: https://github.com/KhronosGroup/MoltenVK
+- Pin: `fae55a18779ee59da2cc5373a367a0282779c171`
+- `LICENSE` at the pin is the Apache License, Version 2.0, January 2004.
+- Result: **Apache-2.0**
+- `patches/moltenvk/` is empty. Apache-2.0 is compatible with GPL-3.0 and is not compatible with GPL-2.0-only, so the statically linked iOS app is the GPL-3.0 combination, not a GPL-2.0-only binary.
+
+## Not in this repository
+
+These are external JIT helpers. This repository does not vendor their source, and its license does not apply to them.
+
+| Project | Remote | License as stated by that project |
+| --- | --- | --- |
+| StikDebug | https://github.com/StikDebug/StikDebug | AGPL-3.0. `README.md` says "licensed under AGPL-3.0". The `LICENSE` file is the GNU Affero General Public License version 3. |
+| StikJIT | https://github.com/StikDebug/StikJIT | MPL-2.0. `README.md` says "licensed under the MPL-2.0". The `LICENSE` file is the Mozilla Public License Version 2.0. |
+
+Madeira's own `THIRD-PARTY-NOTICES.md`, `LICENSE-EXCEPTION.md`, and `docs/LICENSING.md` at its pin cover components this repository does not vendor (DXMT, madeira-dock, LLVM, GnuTLS, FFmpeg, and the Apple shader converter). Read those before distributing a Madeira build that includes that path.

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 buberlo */
 /* Report whether a Vulkan device meets AnyPS5's hard requirements.
  *
  * Derived from boykopovar/AnyPS5 (pinned in this repo) :

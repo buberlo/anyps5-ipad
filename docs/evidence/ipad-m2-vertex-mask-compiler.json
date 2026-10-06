@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "scope": "Native host replay of six privately captured physical-iPad Dreaming Sarah compiler requests; not GPU execution",
+  "shader_patch_sha256": "20f891235f4120804c65b1dd13649343340973b8c491862a039c97d6a906a037",
+  "mathematical_rule": "Fold (C >> (selector & bound)) & mask only when bound <=31 and every shift from zero to bound has identical masked value; remove resulting dead instructions normally",
+  "compiled_ir_tests": {
+    "passed": 20,
+    "uses_real_constant_folder_dead_code_and_subgroup_analysis": true
+  },
+  "replayed_shaders": [
+    {
+      "input_sha256": "0cda501e630d8c2983786fbe0d9d5d7aca85a80bb9ff9ea1a4d5df89cf9ca32a",
+      "output_spirv_sha256": "e0be47cdae25aaf26ecf3d315fffdc42734d47158f16034b43a260a3a3f0ec40",
+      "execution_models": [
+        0
+      ],
+      "capabilities": [
+        1,
+        4466
+      ],
+      "subgroup_operations": []
+    },
+    {
+      "input_sha256": "3fd58f9a9c3d954bfb352b38a672f27211a7a45d4cc3f1de1fdc9dab143a7924",
+      "output_spirv_sha256": "1ce7a1922088197343b5bacc74de6ae49ee398dc9c4789a9b7c246302a7a86fe",
+      "execution_models": [
+        4
+      ],
+      "capabilities": [
+        1,
+        4466
+      ],
+      "subgroup_operations": []
+    },
+    {
+      "input_sha256": "8c13f519bac90f1e1923b84fe96fb8e27fdea6e060cb4cc66671add64812d2ef",
+      "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+      "execution_models": [
+        0
+      ],
+      "capabilities": [
+        1,
+        4466
+      ],
+      "subgroup_operations": []
+    },
+    {
+      "input_sha256": "cdad4379d67d53836f6b3cc0875781ee48888acac173ce1a2e4857e2aad99be7",
+      "output_spirv_sha256": "31afe7da59622e77496452eceb6fe056292a0bc8c08ebb89c2c5456f55435ed0",
+      "execution_models": [
+        4
+      ],
+      "capabilities": [
+        1,
+        61,
+        64,
+        5284,
+        4466
+      ],
+      "subgroup_operations": [
+        339
+      ]
+    },
+    {
+      "input_sha256": "e99361aa096b28b59dd437d61b9755ea7be310f95ebee1da02438e1ed38d37e5",
+      "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+      "execution_models": [
+        0
+      ],
+      "capabilities": [
+        1,
+        4466
+      ],
+      "subgroup_operations": []
+    },
+    {
+      "input_sha256": "da33c8e10a46a38f903eb5b871dd956ea3eff7ed496b16058f1f0950cafc9416",
+      "output_spirv_sha256": "31afe7da59622e77496452eceb6fe056292a0bc8c08ebb89c2c5456f55435ed0",
+      "execution_models": [
+        4
+      ],
+      "capabilities": [
+        1,
+        61,
+        64,
+        5284,
+        4466
+      ],
+      "subgroup_operations": [
+        339
+      ]
+    }
+  ],
+  "vertex_subgroup_queries": "removed by proved invariant folding and dead-code elimination",
+  "real_fragment_ballot_requirements": "retained",
+  "validation_bypass": false,
+  "updated_hle_game_execution_on_ipad": "pending"
+}

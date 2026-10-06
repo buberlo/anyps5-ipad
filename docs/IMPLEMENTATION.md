@@ -320,6 +320,18 @@ this includes GPU readback and is not presented-frame FPS or ten-minute acceptan
 The initial runner timed out because the two newest archived logs were hard-linked.
 AFC refused opening those files; replacing only the redundant archive links with
 byte-identical independent copies recovered both full logs without losing data.
+The native archive patch now keeps the active log single-linked, snapshots each
+session at completion and seals crash logs before the next launch rotates them.
+Compiled Foundation tests verify byte preservation, an already-open writer,
+crash/relaunch, rotation, independent links and unsafe-name rejection. The app
+also loads the Xbox touch preset for enabled games with an empty profile and no
+explicit layout; existing controls and named layouts retain their settings.
+Signed installed Build 9 repeats 900 GPU comparisons and exits 0. Its active
+log and completed named archive both export directly with one filesystem link.
+A fresh foreground screenshot shows the scene and Xbox controls; the saved game
+profile contains 18 controls. Actual touch input remains unverified. The original
+runner failed parsing an interleaved diagnostic line; a separate bounded collection
+verified the completion, archive and own-process cleanup. See [log and layout proof](evidence/ipad-m2-independent-logs-touch-layout.json).
 
 Dreaming Sarah still remains black in fresh 10/30/60-second screenshots. The
 recovered Build 8 log confirms JIT, enabled maintenance/stretch scaling and exactly
@@ -329,7 +341,10 @@ shows fully set export masks retaining unnecessary LaneId queries. The new compi
 patch proves masked constant shifts invariant before folding them; dead-code removal
 then removes those lane queries and their subgroup requirement. Compiled tests exercise
 20 real IR/pass cases including genuinely varying masks, unbounded shifts and invalid
-bounds. A fresh game test with the updated HLE is still required. Validation stays enabled.
+bounds. Native replay of six private on-device requests produces three vertex
+shaders without subgroup capabilities; genuine fragment ballot requirements
+remain. See [compiler proof](evidence/ipad-m2-vertex-mask-compiler.json).
+A fresh game test with the updated HLE is still required. Validation stays enabled.
 See [Build 8 results and limits](evidence/ipad-m2-vulkan-scaling-visibility.json).
 Private shader requests, assets and complete game logs remain outside Git and CI.
 

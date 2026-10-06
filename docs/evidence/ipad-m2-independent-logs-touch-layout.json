@@ -1,0 +1,29 @@
+{
+  "build": 9,
+  "gpu_comparisons": 900,
+  "active_log_links": 1,
+  "archive_links": 1,
+  "archive_contains_completed_demo": true,
+  "saved_touch_controls": 18,
+  "saved_touch_layout": "builtin.xbox",
+  "guest_loop_per_second": 29.561,
+  "malformed_log_fragments": 1,
+  "log_sha256": "fabeca84ef7680cdd25c9aa3f6e88f5fe66bca2ee2e415575f1be2fa4a9b157e",
+  "archive_sha256": "e432fb4da9f80b03beb290a8159ef218cfce4cd4aa5f18952ac3177a4e0c84da",
+  "scope": "bounded 320x192 execution and visible controls; actual input and full acceptance not verified",
+  "original_runner": "failed while parsing interleaved diagnostic JSON; own SIGKILL succeeded; subsequent archive collection verified separately",
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "scene_dimensions": [
+    320,
+    192
+  ],
+  "foreground_scene": "visible in fresh screenshot with touch controls",
+  "screenshot_sha256": "38f565385562ac8d498b6a3ee5b9b8abf7d47cfb62cdda5e97d9e12f280421a6",
+  "guest_exit": 0,
+  "cleanup": "own app killed; no own app/helper in final process list"
+}

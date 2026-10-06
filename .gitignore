@@ -4,3 +4,8 @@ tools/vk-requirements/vk-requirements
 tools/checks/test_moltenvk_loader
 *.o
 *.obj
+__pycache__/
+*.pyc
+.DS_Store
+# Private PS5 dumps and game data must never enter public source/artifacts.
+/PPSA*-app0/

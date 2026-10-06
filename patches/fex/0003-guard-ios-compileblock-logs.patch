@@ -1,5 +1,5 @@
 diff --git a/FEXCore/Source/Interface/Core/Core.cpp b/FEXCore/Source/Interface/Core/Core.cpp
-index be54311..72c690f 100644
+index be54311..f5785c5 100644
 --- a/FEXCore/Source/Interface/Core/Core.cpp
 +++ b/FEXCore/Source/Interface/Core/Core.cpp
 @@ -1487,7 +1487,9 @@ uintptr_t ContextImpl::CompileBlock(FEXCore::Core::CpuStateFrame* Frame, uint64_
@@ -21,3 +21,21 @@ index be54311..72c690f 100644
  
    /* iOS-Madeira: refuse to compile obviously-invalid guest RIPs. After a
     * NULL-vtable virtual call (`call [rax+8]` with rax=0), control flow
+@@ -1966,7 +1969,8 @@ uintptr_t ContextImpl::CompileBlock(FEXCore::Core::CpuStateFrame* Frame, uint64_
+        * automatically healthy contention — it can equally be page reuse or a
+        * foreign writer, so check block_index/list_size against block_count before
+        * concluding anything. */
+-      {
++#ifndef __APPLE__
++      { // Apple builds explicitly disable rpmalloc in the root CMakeLists.txt.
+         rpm_cas_snapshot Snap;
+         if (rpm_cas_snapshot_take(&Snap)) {
+           LogMan::Msg::EFmt("[rpm-cas] ml622 loop={} {} page=0x{:x} block=0x{:x} heap=0x{:x} atomic=0x{:x} "
+@@ -1979,6 +1983,7 @@ uintptr_t ContextImpl::CompileBlock(FEXCore::Core::CpuStateFrame* Frame, uint64_
+                             Snap.fail_changed, Snap.fail_unchanged, Snap.fail_invalid);
+         }
+       }
++#endif
+     }
+   }
+ 

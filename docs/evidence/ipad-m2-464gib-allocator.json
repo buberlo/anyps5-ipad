@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "scope": "standalone x64 Windows probe under Wine/FEX; the allocator includes the real patched GuestArena implementation; not full game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "base": "0x7400000000",
+  "jit_method": "builtIn",
+  "records": [
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "base": "0x7400000000",
+      "size": 1048576,
+      "chunk": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "prepare_exact_host_obstacle",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "startup_host_collision_recorded",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "allocate_before_hole",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "skip_host_collision",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "fixed_collision_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "host_contents_unchanged",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "prepare_late_host_collision",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "multichunk_failure_reported",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "partial_reservations_rolled_back",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "remove_late_obstacle",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "failed_allocation_did_not_consume_range",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "release_and_reuse",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "zero_allocation_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "fixed_outside_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "overflow_hint_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "overflow_alignment_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "release_outside_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "case": "host_overlap_overflow_refused",
+      "status": "pass"
+    },
+    {
+      "schema": 1,
+      "probe": "allocator",
+      "summary": true,
+      "failed": 0
+    }
+  ],
+  "raw_log_sha256": "375f3c7ada488191940263200dfefb7a1f220e47e92d61eb768f25c978da4b3f",
+  "guest_exit_code": 0,
+  "limitation": "Memory test reserves 4 GiB and commits a 16 KiB replacement; allocator uses a controlled 1 MiB arena with 64 KiB chunks. Game runtime still uses 256 MiB chunks and requires its own execution test.",
+  "target_pid": 1143,
+  "helper_pid": 1144,
+  "helper_completion_success": true,
+  "executable_sha256": "9d106dca302f1c54aca941d069cc2a2fee26424002e67b04f95dc1d3bf592454",
+  "measured_app_sha256": "not collected for diagnostic rebuild; do not infer identity from the subsequently rebuilt local profile binary"
+}

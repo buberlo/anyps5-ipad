@@ -8,18 +8,22 @@
 
 #include "../../upstreams/Madeira/build/win32u-unix/moltenvk_static_loader.h"
 
-__attribute__((visibility("default"))) void *vkGetInstanceProcAddr(void *instance, const char *name)
+typedef void (*test_vk_proc)(void);
+static void instance_result(void) { }
+static void device_result(void) { }
+
+__attribute__((visibility("default"))) test_vk_proc vkGetInstanceProcAddr(void *instance, const char *name)
 {
     (void)instance;
     (void)name;
-    return (void *)1;
+    return instance_result;
 }
 
-__attribute__((visibility("default"))) void *vkGetDeviceProcAddr(void *device, const char *name)
+__attribute__((visibility("default"))) test_vk_proc vkGetDeviceProcAddr(void *device, const char *name)
 {
     (void)device;
     (void)name;
-    return (void *)2;
+    return device_result;
 }
 
 static int g_fail;
@@ -45,11 +49,16 @@ int main(void)
     void *missing = madeira_vk_dlopen("libfreetype-not-installed.so", 1);
     expect("unrelated dlopen misses", missing == NULL);
 
-    void *icd = madeira_vk_dlopen("libMoltenVK.dylib", 1);
+    expect("null load path is a miss", madeira_vk_dlopen(NULL, 1) == NULL);
+    void *icd = madeira_vk_dlopen("/__anyps5_missing__/libMoltenVK.dylib", 1);
     expect("static fallback sentinel", icd == madeira_vk_static_sentinel());
     expect("instance proc from sentinel", madeira_vk_dlsym(icd, "vkGetInstanceProcAddr") == (void *)vkGetInstanceProcAddr);
     expect("device proc from sentinel", madeira_vk_dlsym(icd, "vkGetDeviceProcAddr") == (void *)vkGetDeviceProcAddr);
     expect("other symbol stays unresolved", madeira_vk_dlsym(icd, "vkCreateInstance") == NULL);
+    expect("null symbol is a miss", madeira_vk_dlsym(icd, NULL) == NULL);
+    test_vk_proc (*instance_proc)(void *, const char *) =
+        (test_vk_proc (*)(void *, const char *))madeira_vk_dlsym(icd, "vkGetInstanceProcAddr");
+    expect("static resolver is callable", instance_proc && instance_proc(NULL, "test") == instance_result);
     expect("close sentinel", madeira_vk_dlclose(icd) == 0);
     return g_fail ? 1 : 0;
 }

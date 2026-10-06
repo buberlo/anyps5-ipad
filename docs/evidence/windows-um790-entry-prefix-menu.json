@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "platform": "UM790 Windows / Vulkan GPU",
+  "driver_ci_run": 37483428646,
+  "package_manifest_sha256": "c19388457f25d2188afda93473439a8cb7a95b396392b13081285a3c332355f4",
+  "duration_seconds": 95.7156811,
+  "main_menu_visible": true,
+  "gameplay_verified": false,
+  "private_image_sha256": "61c9dbdce9f06e25265fe73d48bac30b34549f5859df6f6fd7d9d109053f8221",
+  "private_final_image_sha256": "d0f30cb6203636e9e06f226bcf88c3069e99b9daf08503848aee9b07b9b1782c",
+  "private_logs_zip_sha256": "c9dd4d4b49c781626c77bd9054c7972fa845b6c2908ea17d186e67c8d45a41e7",
+  "final_frame": "White transition frame; not visible gameplay. Observation ends before full intro verification.",
+  "fresh_package_verified": true,
+  "original_package_manifest_not_modified": true,
+  "follow_up": "Longer observation prepared using the previously verified cached archive; not yet executed."
+}

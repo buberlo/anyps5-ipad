@@ -1,0 +1,12 @@
+diff --git a/app/Madeira/MadeiraApp.swift b/app/Madeira/MadeiraApp.swift
+--- a/app/Madeira/MadeiraApp.swift
++++ b/app/Madeira/MadeiraApp.swift
+@@ -11,7 +11,7 @@
+             # Guest addresses are retained; physical pages are committed on demand.
+             env.MADEIRA_FEX_AVX = 1
+             env.APS5_GUEST_ARENA_LAZY = 1
+-            env.APS5_GUEST_ARENA_BASE = 0x200000000
++            env.APS5_GUEST_ARENA_BASE = 0x7400000000
+             env.APS5_GUEST_ARENA_SIZE = 0x100000000
+             env.APS5_GUEST_ARENA_CHUNK = 0x10000000
+             env.MADEIRA_CONTROLS_XBOX_DEFAULT = 1

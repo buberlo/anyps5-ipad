@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "scope": "standalone x64 PE AVX2 execution through iOS Wine/FEX; not AnyPS5 ELF/HLE or gameplay",
+  "source_commit": "4c5ac89",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "jit_method": "builtIn",
+  "pairing_migrated_to_own_keychain": true,
+  "helper_start_verified": true,
+  "helper_result_success": true,
+  "target_pid": 1092,
+  "helper_pid": 1093,
+  "guest_exit_code": 0,
+  "records": [
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "add_upper_lower",
+      "status": "pass",
+      "actual": [
+        18640,
+        2164411365,
+        33836794,
+        2198229519,
+        67654948,
+        2232047673,
+        101473102,
+        2265865827
+      ],
+      "expected": [
+        18640,
+        2164411365,
+        33836794,
+        2198229519,
+        67654948,
+        2232047673,
+        101473102,
+        2265865827
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "permute_cross_lane",
+      "status": "pass",
+      "actual": [
+        2232033608,
+        101459020,
+        2265851728,
+        4660,
+        2164397368,
+        33822780,
+        2198215488,
+        67640900
+      ],
+      "expected": [
+        2232033608,
+        101459020,
+        2265851728,
+        4660,
+        2164397368,
+        33822780,
+        2198215488,
+        67640900
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "shift_variable",
+      "status": "pass",
+      "actual": [
+        4660,
+        541239040,
+        274788352,
+        228589568,
+        3829399552,
+        2415919104,
+        0,
+        0
+      ],
+      "expected": [
+        4660,
+        541239040,
+        274788352,
+        228589568,
+        3829399552,
+        2415919104,
+        0,
+        0
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "signed_compare_blend",
+      "status": "pass",
+      "actual": [
+        13980,
+        13997,
+        33822780,
+        14031,
+        67640900,
+        14065,
+        101459020,
+        14099
+      ],
+      "expected": [
+        13980,
+        13997,
+        33822780,
+        14031,
+        67640900,
+        14065,
+        101459020,
+        14099
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "gather",
+      "status": "pass",
+      "actual": [
+        19093331,
+        76351400,
+        133625829,
+        190882866,
+        248157199,
+        305415236,
+        362689681,
+        419947758
+      ],
+      "expected": [
+        19093331,
+        76351400,
+        133625829,
+        190882866,
+        248157199,
+        305415236,
+        362689681,
+        419947758
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "seed": 4660,
+      "case": "unaligned_load_store",
+      "status": "pass",
+      "actual": [
+        4660,
+        2164397368,
+        33822780,
+        2198215488,
+        67640900,
+        2232033608,
+        101459020,
+        2265851728
+      ],
+      "expected": [
+        4660,
+        2164397368,
+        33822780,
+        2198215488,
+        67640900,
+        2232033608,
+        101459020,
+        2265851728
+      ]
+    },
+    {
+      "schema": 1,
+      "probe": "cpu",
+      "mode": "avx2",
+      "summary": true,
+      "failed": 0
+    }
+  ],
+  "log_sha256": "d19acb5c1db5b3ab39fc792764d0aa58e7d096280f8829bae65cddbbcf5e7891",
+  "exe_sha256": "41477195714fde527d67b438d92d2a844ef609bf8b9bac7f1930c44434312722",
+  "private_mac_pairing_copy_deleted": true,
+  "game_acceptance": "not_run"
+}

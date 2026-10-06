@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "cpu": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "guest-cpu",
+    "status": "pass",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_seconds": 0.062,
+    "executable_sha256": "c77cdcbbf9ca9589087ad2ffc341806eb3cd0ee1ecb961fa1f7c5c10a52e59a1",
+    "missing_required_stages": [],
+    "scope": "native_windows_execution_only"
+  },
+  "exceptions": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "guest-exceptions",
+    "status": "pass",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_seconds": 0.032,
+    "executable_sha256": "03bbfa6c1f06b1e50af778ef6f451f981c5bc6dc3741e8b4728564881c6a772d",
+    "missing_required_stages": [],
+    "scope": "native_windows_execution_only"
+  },
+  "native_probes": [
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-cpu",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.016,
+      "executable_sha256": "f0e85c7d187e37c32536fa1f456cd132a2c20d8906532ed03243c19abe096e32",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    },
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-memory",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.015,
+      "executable_sha256": "31195dd606b6b9e54383ad5cd05ec023b36e7efe30c7c29087b1b70a5ef62478",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    },
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-allocator",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.016,
+      "executable_sha256": "1ff1ee0d0a12eee636b847263cf8034c1a502ff4fd78e404bb4332e47cf9cce4",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    }
+  ],
+  "graphics": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "demo",
+    "status": "not_run",
+    "reason": "vulkan_incompatible_driver",
+    "scope": "no_graphics_execution_or_acceptance"
+  },
+  "package_manifest_sha256": "032ec60e063846a21f241cd6b3e6ea443344c30706e963a443e427e5ac8dd48e",
+  "device_acceptance": "not_run",
+  "source_commit": "a7a99504740cdb19426591131d7a10c2e2229fed",
+  "ci_run": 37406326493,
+  "scope": "native Windows CI reference; GPU explicitly not_run, no iPad or gameplay acceptance",
+  "evidence_files": {
+    "guest-cpu.stdout.log": "a499128dba7df3e320b0998d6e27bcf133e9db7d688c8adc8494367089a69971",
+    "guest-exceptions.stderr.log": "37bc7991a6c24d0bd59678934ba82017b9fd90903deb5e96bf600bc65c90e321",
+    "native-memory.jsonl": "35e0c22c2fb59ff4a8305cd14c31e5d25e08094ce6c4b77a576bc8a7046c5367",
+    "native-allocator.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "guest-exceptions.jsonl": "eaee86540e394b280ef631c767a1696b7bd84d18e2543527159f4f9dabf7165f",
+    "native-cpu.stdout.log": "5c2cea5e899660e70e8c5d50a58a0e01b78a672d9fcd4549408cc572b7d4450b",
+    "native-memory.stdout.log": "453aef73c1b2beb22978918d8d216c306cf622e46f6b7359023cdc464f07aee7",
+    "vulkan-inventory.json": "b950115d51f77c1458f8414f137dcc55bb3d8e360b9f63500bb781b423ce80df",
+    "demo-not-run.json": "311463f45ecb5aada6e1b9f12753c33dfe443518dbad57ef6f0ad0af75357f1e",
+    "guest-exceptions.stdout.log": "526c68d771f1559b0fe9b4ef0309845e9aea97ae26f8e33819d0eccc5e7143a9",
+    "guest-cpu.stderr.log": "37bc7991a6c24d0bd59678934ba82017b9fd90903deb5e96bf600bc65c90e321",
+    "native-allocator.stdout.log": "87546adedd9689a184055947148e67ecbb4c7278619fe0fb1239fa4815288836",
+    "native-cpu.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-cpu.jsonl": "e50b70e59b900a7208a1f4dae39d42235b91661930f0c88b0fa3e290b9e08971",
+    "native-allocator.jsonl": "4c3366de3d1623321010f3e838b3b2cdf377dfe2ccbde37bd9b3692a673e6bb0",
+    "guest-cpu.jsonl": "27bea1a1ed5a78d7cdde1882ccfe5ce9c1db2f922e3457a656800ef219a8362a",
+    "reference-summary.json": "9657bce22fac0b02f9759aca829de8788d7a63e2eac6bf2594c57a30a9c6deba",
+    "native-memory.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

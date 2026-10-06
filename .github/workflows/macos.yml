@@ -1,6 +1,7 @@
-name: macOS MoltenVK and iOS drafts
+name: MoltenVK execution and iPhoneOS runtime
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -38,20 +39,85 @@ jobs:
           name: moltenvk-requirements-${{ matrix.os }}
           path: ${{ runner.temp }}/moltenvk-requirements.txt
 
+      - name: Execute GPU buffer-address and BC texture readbacks
+        run: |
+          brew install glslang spirv-tools
+          export MOLTENVK_LIB="$(find "$PWD/upstreams/MoltenVK/Package" -path '*macOS*' -name libMoltenVK.dylib | head -1)"
+          scripts/build-gpu-probe.sh macos
+          set -o pipefail
+          build/gpu-probe/macos/gpu-probe build/gpu-probe/macos | tee build/gpu-probe/macos/readback.jsonl
+
+      - name: Save actual GPU execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-gpu-execution
+          path: build/gpu-probe/macos/
+
   winevulkan-ios:
     runs-on: macos-15
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Wine parser build dependencies
+        run: |
+          brew install bison flex
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+
       - name: Link winevulkan.so and compile the iOS drafts
         run: scripts/m3-ios-drafts.sh
 
-  madeira-simulator:
-    runs-on: macos-15
+  madeira-ios:
+    # The pinned StikJIT framework uses Swift 6.4. The older macos-15
+    # toolchain cannot compile it; retain the real helper on Xcode 27.
+    runs-on: xcode-27
     timeout-minutes: 180
+    env:
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+      JOBS: 4
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Madeira for the iOS Simulator, unsigned
-        run: scripts/m3-madeira-simulator.sh
+      - name: Install build tools and pinned LLVM-MinGW
+        run: |
+          brew install cmake ninja bison flex pkgconf python glslang spirv-tools vulkan-headers
+          rustup toolchain install 1.99.0 --profile minimal --target aarch64-apple-ios
+          echo "RUSTUP_TOOLCHAIN=1.99.0" >> "$GITHUB_ENV"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          mkdir -p build/toolchains
+          archive=build/toolchains/llvm-mingw.tar.xz
+          curl --fail --location --retry 3 https://github.com/mstorsjo/llvm-mingw/releases/download/20260421/llvm-mingw-20260421-ucrt-macos-universal.tar.xz -o "$archive"
+          echo "bd85a3975723815cef28dbbd2ca2cb0c926f6b348a12a0453f39f7af273cb3f7  $archive" | shasum -a 256 -c -
+          tar -xJf "$archive" -C build/toolchains
+          echo "$PWD/build/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+
+      - name: Install Xcode Metal compiler component
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Build pinned MoltenVK for iPhoneOS
+        run: |
+          git submodule update --init --depth 1 upstreams/MoltenVK
+          cd upstreams/MoltenVK
+          ./fetchDependencies --ios
+          make ios -j4
+
+      - name: Link the real unsigned iPhoneOS app and native probe
+        run: |
+          mkdir -p build/logs
+          export APS5_MOLTENVK_LIBRARY="$(find "$PWD/upstreams/MoltenVK/Package" -path '*ios-arm64/*' -name libMoltenVK.a | head -1)"
+          set -o pipefail
+          scripts/m3-madeira-ios.sh 2>&1 | tee build/logs/iphoneos-build.log
+          python3 tools/checks/test_session_log_archives.py
+          MOLTENVK_IOS_LIB="$APS5_MOLTENVK_LIBRARY" scripts/build-ipad-probe.sh
+
+      - name: Preserve iPhoneOS build artifacts and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-iphoneos-runtime
+          path: |
+            build/logs/
+            build/ipad-probe/
+            build/ios-runtime/DerivedData/Build/Products/Debug-iphoneos/*.app

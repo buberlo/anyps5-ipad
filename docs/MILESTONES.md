@@ -1,5 +1,12 @@
 # Milestones
 
+For the current implementation and executable probes see
+[IMPLEMENTATION.md](IMPLEMENTATION.md). The foundation log below is historical.
+Main's ARM64 run 37386696225 executed `sample.exe` with exit 42 after the Wine
+tree bind-mount fix. That closes the synthetic CPU startup check only; it does
+not execute AnyPS5 PRX, Vulkan or a title. The former M1 exit-53 report below
+belongs to the earlier commits explicitly named there.
+
 Acceptance is observational. A milestone is done when the check below has
 been run and the result recorded, including a failure with a log. Guessing
 that a later stage will pass does not close an earlier one.

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "app_build": 12,
+  "driver_ci_run": 37483428646,
+  "package_manifest_sha256": "c19388457f25d2188afda93473439a8cb7a95b396392b13081285a3c332355f4",
+  "driver_sha256": "d450924cbb7cf77e64d94665bb8f6490c6b2fbb712db17808a293ba42e4f5819",
+  "private_log_sha256": "28ff11bfbf88ebd0ef803fcb9b8afdd9dc76a9ac3b74e2f29cd7ee4614fe671b",
+  "observation_seconds": 303.1531265829999,
+  "native_write_repair_installed": true,
+  "shader_skips": 0,
+  "redelivery_256_warnings": 0,
+  "redelivery_terminal": false,
+  "visible_player": true,
+  "completed_local_shader_and_metal_replays": 21,
+  "own_cleanup_verified": true,
+  "gameplay_movement": "not demonstrated by this run; held-input comparison follows",
+  "observations": [
+    "Screen210 independently shows Sarah standing in the forest.",
+    "Shader input guard remains enabled; no fragment interpolation rejection appears.",
+    "Survives the five-minute observation without the earlier retained fault terminal."
+  ],
+  "limits": [
+    "Short movement taps do not establish visible movement.",
+    "This is not the ten-minute performance, audio, save/load or background acceptance."
+  ],
+  "screenshots_sha256": {
+    "150": "2b2846f8e23a4e8ecab686748a7abf546fce9dd02f58953ed9127ab1c2166a2d",
+    "210": "425285f270ca11ac0ab121aab4e2d190e4e2ae2c029a7cd324cfd7e25f752db3",
+    "300": "ec4a1e3a9c90fed25ab471da612929b5cb80ed35a390de58335c9a335ae9ac16"
+  }
+}

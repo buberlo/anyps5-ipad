@@ -1,6 +1,7 @@
 name: Linux checks
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -25,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config python3 \
+            build-essential g++-12 clang cmake ninja-build pkg-config python3 \
             libvulkan-dev mesa-vulkan-drivers \
             g++-mingw-w64-x86-64 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
@@ -42,7 +43,21 @@ jobs:
         run: scripts/check-linux.sh
 
       - name: Build AnyPS5 for Linux
+        env:
+          ANYPS5_CC: gcc-12
+          ANYPS5_CXX: g++-12
         run: scripts/m0-build-anyps5.sh
+
+      - name: Verify complete patch stacks and Vulkan boundary tests
+        run: |
+          python3 tools/checks/check_patch_stack.py
+          python3 tools/checks/test_guest_arena_host_data.py
+          python3 tools/checks/test_fault_redelivery.py
+          CXX=g++-12 python3 tools/checks/test_masked_shift_fold.py
+          CXX=g++-12 python3 tools/checks/test_fixed_function_interpolation.py
+          python3 tools/checks/test_vulkan_surface_scaling.py
+          python3 tools/checks/test_vulkan_lifecycle.py
+          scripts/check-vulkan-integration.sh
 
       - name: Build libSceAgcDriver
         run: cmake --build build/anyps5 --target libSceAgcDriver --parallel

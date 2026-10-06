@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "finding": "Build11 terminated correct repeated protection repairs after 2000 AVX stores. Successful read-only-to-writable repair on the same thread and fault page is now verified against Mach backing permissions before its delivery sequence is retired.",
+  "same_positive_executable_before_and_after": true,
+  "terminal_threshold": 2000,
+  "tracking_or_watchdog_disabled": false,
+  "runs": {
+    "device-protected-write-loop-build11": {
+      "probe_sha256": "46e03db91f0c1429543919f227a73fcd55aebc4ff2c5903e720f650d13686031",
+      "private_log_sha256": "7d0702f5943fd405fbb9308f40eb7b952998572e333c2a03e891f35c49e992a5",
+      "observation_seconds": 4.09845787499944,
+      "max_verified_iteration": 2000,
+      "complete_pass": false,
+      "wine_exit_0": false,
+      "redelivery_2000_terminal": true,
+      "redelivery_256_warning": true
+    },
+    "device-protected-write-loop-build12": {
+      "probe_sha256": "46e03db91f0c1429543919f227a73fcd55aebc4ff2c5903e720f650d13686031",
+      "private_log_sha256": "92b19a8cc167bb73c2999e4b4ed6bac90e0550c2ffbd29ef6983afaed781644d",
+      "observation_seconds": 8.336073166999995,
+      "max_verified_iteration": 5000,
+      "complete_pass": true,
+      "wine_exit_0": true,
+      "redelivery_2000_terminal": false,
+      "redelivery_256_warning": false
+    },
+    "device-unrepaired-write-loop-build12": {
+      "probe_sha256": "1dc8df5ba8091ade67fcc5453c6acdfae63748d2606d316cd276a083fb592b26",
+      "private_log_sha256": "72e2fc9c8666f97c5c076127f7058d1ab154d597abb115e9f2d0d144e4e3bfb0",
+      "observation_seconds": 4.110976125000889,
+      "max_verified_iteration": 0,
+      "complete_pass": false,
+      "wine_exit_0": false,
+      "redelivery_2000_terminal": true,
+      "redelivery_256_warning": true
+    },
+    "device-writewatch-loop-registered-build11": {
+      "probe_sha256": "c2071d45b30d5ae9d5e8bb4ea679fe5d3cdbae4de5ec5bad583983e104bbb7cf",
+      "private_log_sha256": "59836685ca7449d56f709f3730cb525c557808a41bb88d3477b18e9ab775e803",
+      "observation_seconds": 4.06874920899827,
+      "max_verified_iteration": 5000,
+      "complete_pass": true,
+      "wine_exit_0": false,
+      "redelivery_2000_terminal": false,
+      "redelivery_256_warning": true
+    }
+  },
+  "native_archive": {
+    "change": "verified write-protection repair progress; terminal threshold unchanged",
+    "previous_archive_sha256": "13b3435f0d66994c780ce9cc0b53219a00ccc73cf76d56a2b1682bc00d7fe4bb",
+    "archive_sha256": "cbffd7a6afbbf40cb12746adde2f3cc598aadafbb854b4e1c9d734d859d8d349",
+    "object_sha256": "445a1f84015e95fbfad87bc64903390c957677a87862cb91a856807253cdd118",
+    "virtual_object_sha256": "94df1c39227f669c566497690ddba4f5da765ddbc22e8926fe224fd387412b85",
+    "virtual_source_sha256": "55f4c4eee21a080a6d776b9e5aac3dbb2bb9df3e6b108e05dccf7a83ed0f39b4",
+    "signal_source_sha256": "e92e14974ad640a806c486a21c07e2e6c08675ecd8d7bd59440e400ddafb96cd",
+    "counter_source_sha256": "e843eec83af856f6cb9c08bc17eccfd3d05eeec953c77cc1a142cea9bcbf740b"
+  },
+  "signed_build": {
+    "build": 12,
+    "xcode_build_succeeded": true,
+    "deep_strict_signature_verified": true,
+    "all_existing_pe_farms_byte_preserved": true,
+    "archive_symbol_index_regenerated": [
+      "__.SYMDEF SORTED"
+    ],
+    "archive_members_changed": [
+      "signal_arm64.o",
+      "virtual.o"
+    ],
+    "archive_members_unchanged": 35,
+    "generic_source_fingerprint_check_exit": 1,
+    "generic_source_fingerprint_check": "Full patch fingerprint changed; embedded PE farms explicitly byte-compared to Build11; original PE manifest unchanged.",
+    "installed": false
+  },
+  "installation": {
+    "build": 12,
+    "game_manifest_index_library_settings_unchanged": true
+  },
+  "source": "tools/runtime-probes/protected_write_probe.cpp",
+  "source_reproduction": "Recompiled positive and intentionally unrepaired modes preserve every tested code/data byte; only COFF and build-id timestamps differ.",
+  "limitations": [
+    "This validates protection tracking and preservation of an unrepaired-fault terminal; it does not establish Dreaming Sarah sustained playability.",
+    "The independent MEM_WRITE_WATCH loop completes 10000 stores, but its subsequent Wine termination failed; do not treat it as a clean-exit pass.",
+    "A successful repair is inferred from a checked protection transition, not from every possible guest execution pattern."
+  ],
+  "pe_rebuild_and_verification": {
+    "real_arm64ec_fex_target_built": true,
+    "real_wine_vulkan_targets_built_or_up_to_date": true,
+    "all_three_pe_component_hashes_unchanged": true,
+    "strict_source_and_arm64ec_verification_passed": true,
+    "historical_manifest_preserved": "build/ios-runtime/pe-components.before-patch-header-refresh.json",
+    "initial_generic_fingerprint_failure_retained_in_build_record": true,
+    "new_manifest_recorded_by_actual_pe_build_script": true
+  }
+}

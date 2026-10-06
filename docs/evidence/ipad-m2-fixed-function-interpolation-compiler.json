@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "scope": "Host replay of six private iPad requests through actual AnyPS5 compiler, conservative native-interpolation guard and pinned SPIRV-Cross; Apple Metal compilation, not device execution",
+  "guard_cases_passed": 30,
+  "shader_validation_bypass": false,
+  "strategy": "Select native interpolated attributes only for complete unmodified center P1/P2 pairs; reject custom/centroid/sample, partial results, raw barycentric use and unsupported control flow",
+  "runtime_opt_in": "APS5_FIXED_FUNCTION_INTERPOLATION=1",
+  "spirv_cross_source_commit": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165",
+  "apple_metal_version": "32023.921 (metalfe-32023.921.6), ios-metal2.4",
+  "replayed_shaders": [
+    {
+      "input_sha256": "0cda501e630d8c2983786fbe0d9d5d7aca85a80bb9ff9ea1a4d5df89cf9ca32a",
+      "output_spirv_sha256": "e0be47cdae25aaf26ecf3d315fffdc42734d47158f16034b43a260a3a3f0ec40",
+      "output_msl_sha256": "2f14aa943bdde585d17ee2218467225ca4c6a524fe37a4be6b88c4992f0041ee",
+      "metal_compile_passed": true
+    },
+    {
+      "input_sha256": "3fd58f9a9c3d954bfb352b38a672f27211a7a45d4cc3f1de1fdc9dab143a7924",
+      "output_spirv_sha256": "1ce7a1922088197343b5bacc74de6ae49ee398dc9c4789a9b7c246302a7a86fe",
+      "output_msl_sha256": "482ab39f9fec9111c6c7db82fa3bf71a51a39ed67c6bdd82e151c7f0bbe81b5c",
+      "metal_compile_passed": true
+    },
+    {
+      "input_sha256": "8c13f519bac90f1e1923b84fe96fb8e27fdea6e060cb4cc66671add64812d2ef",
+      "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+      "output_msl_sha256": "3e5851f349a5c948354ae12083d75106c2ec8d4b5cb980ccd4392686f834b37b",
+      "metal_compile_passed": true
+    },
+    {
+      "input_sha256": "cdad4379d67d53836f6b3cc0875781ee48888acac173ce1a2e4857e2aad99be7",
+      "output_spirv_sha256": "8571e6a1cb59dea1dcc7624b2336fd2526b4826b658288755beae76c87f0f76f",
+      "output_msl_sha256": "fb122b4a75d1b56f6291d07cb1d79ad3aeb79223c6b570c5e9c3a2d9700601d6",
+      "metal_compile_passed": true
+    },
+    {
+      "input_sha256": "e99361aa096b28b59dd437d61b9755ea7be310f95ebee1da02438e1ed38d37e5",
+      "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+      "output_msl_sha256": "3e5851f349a5c948354ae12083d75106c2ec8d4b5cb980ccd4392686f834b37b",
+      "metal_compile_passed": true
+    },
+    {
+      "input_sha256": "da33c8e10a46a38f903eb5b871dd956ea3eff7ed496b16058f1f0950cafc9416",
+      "output_spirv_sha256": "8571e6a1cb59dea1dcc7624b2336fd2526b4826b658288755beae76c87f0f76f",
+      "output_msl_sha256": "fb122b4a75d1b56f6291d07cb1d79ad3aeb79223c6b570c5e9c3a2d9700601d6",
+      "metal_compile_passed": true
+    }
+  ],
+  "device_execution": "pending updated driver CI artifact; existing Build 10 driver still rejects PerVertexKHR"
+}

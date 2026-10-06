@@ -1,0 +1,132 @@
+diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
+index 8f01a4b..28ca05d 100644
+--- a/app/Madeira/Library.swift
++++ b/app/Madeira/Library.swift
+@@ -947,6 +947,13 @@ final class LibraryModel: ObservableObject {
+                 controls.layoutID = ControlPresetsModel.shared.store.resolvedID(entry.controlLayout)
+             }
+         }
++        // An enabled game with an empty migrated profile needs a usable default.
++        // Explicit layouts and all existing buttons remain authoritative.
++        if entry.touchControls, controls.controls.isEmpty, entry.controlLayout == nil,
++           ControlPresetsModel.enabled, MadeiraConfig.flag("MADEIRA_CONTROLS_XBOX_DEFAULT", fallback: false) {
++            ControlPresetsModel.shared.load(ControlPresetLayout.xboxID,
++                screen: ControlPresetsModel.currentScreen(), reason: "empty-game-profile-default")
++        }
+         controls.visible = entry.touchControls
+         controls.sizeScale = min(max(entry.controlSize ?? 1, 0.5), 2)
+         controllerBinds = GamepadInput.keyboardMouseAvailable ? (entry.controllerBinds ?? [:]) : [:]
+@@ -1098,6 +1105,7 @@ final class LibraryModel: ObservableObject {
+         MetalHostView.shared.isHidden = true
+         ProMotionIntent.shared.setActive(false)
+         fputs("[frontend] returned to library\n", stderr)
++        LogStore.shared.finishSessionLog()
+     }
+ }
+ 
+diff --git a/app/Madeira/LogStore.swift b/app/Madeira/LogStore.swift
+index 73b0817..5ba3a6c 100644
+--- a/app/Madeira/LogStore.swift
++++ b/app/Madeira/LogStore.swift
+@@ -1,6 +1,45 @@
+ import Foundation
+ import SwiftUI
+ 
++// Named logs are independent snapshots. The active single-link file remains
++// readable by iOS file services while native writers keep their descriptors.
++// A pending name survives a crash; the next launch seals it before rotation.
++enum SessionLogArchive {
++    static func pendingURL(_ log: URL) -> URL {
++        log.deletingLastPathComponent().appendingPathComponent("madeira-log.archive-pending.txt")
++    }
++    static func snapshot(_ log: URL, clearPending: Bool = false) throws {
++        let pending = pendingURL(log)
++        guard FileManager.default.fileExists(atPath: pending.path) else { return }
++        let name = try String(contentsOf: pending, encoding: .utf8)
++        guard !name.isEmpty, name != ".txt", name.hasSuffix(".txt"),
++              !name.contains("/"), !name.contains("\\"), !name.contains("\n") else {
++            throw CocoaError(.fileReadCorruptFile)
++        }
++        let dir = log.deletingLastPathComponent().appendingPathComponent("logs")
++        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
++        // Avoid buffering a potentially large log in the app's early heap:
++        // JIT and guest images still need their fixed virtual address windows.
++        let fm = FileManager.default
++        let target = dir.appendingPathComponent(name)
++        let temporary = dir.appendingPathComponent(UUID().uuidString + ".archive-tmp")
++        defer { try? fm.removeItem(at: temporary) }
++        try fm.copyItem(at: log, to: temporary)
++        if fm.fileExists(atPath: target.path) {
++            _ = try fm.replaceItemAt(target, withItemAt: temporary)
++        } else {
++            try fm.moveItem(at: temporary, to: target)
++        }
++        if clearPending { try FileManager.default.removeItem(at: pending) }
++    }
++    static func begin(_ log: URL, name: String) throws {
++        // Finish an earlier session before replacing its pending archive name.
++        try snapshot(log, clearPending: true)
++        try name.write(to: pendingURL(log), atomically: true, encoding: .utf8)
++        try snapshot(log)
++    }
++}
++
+ final class LogStore: ObservableObject {
+     static let shared = LogStore()
+ 
+@@ -81,6 +120,8 @@ final class LogStore: ObservableObject {
+         //
+         // Pull the previous run with the usual devicectl command, substituting
+         // Documents/madeira-log.prev.txt for Documents/madeira-log.txt.
++        do { try SessionLogArchive.snapshot(logFileURL, clearPending: true) }
++        catch { NSLog("[session-log] Could not seal previous archive: %@", String(describing: error)) }
+         let prevLogURL = docs.appendingPathComponent("madeira-log.prev.txt")
+         if FileManager.default.fileExists(atPath: logFileURL.path) {
+             try? FileManager.default.removeItem(at: prevLogURL)
+@@ -124,12 +165,11 @@ final class LogStore: ObservableObject {
+     /// Crysis64.exe-2026-09-26_12-05-00.txt, so a run can be found and sent
+     /// without renaming madeira-log.txt by hand.
+     ///
+-    /// A hard link, not a copy: Wine, wineserver and the app all append to
+-    /// madeira-log.txt through their own descriptors right up to a crash, and
+-    /// both names see every line. The next app launch rotates madeira-log.txt
+-    /// to a new file, which leaves this name holding the finished run. Keeps
+-    /// the newest `keep` runs. A Steam game started through Madeira Dock is
+-    /// named by ntdll instead (process_ios.c, madeira_steam_session_log).
++    /// The archive is refreshed when the session ends and before the next
++    /// launch rotates the active file. A crash leaves the full active log and
++    /// pending archive name intact. During execution, export madeira-log.txt.
++    /// MADEIRA_LOG_ARCHIVE_COPIES=0 retains the upstream hard-link behavior.
++    /// Keeps the newest `keep` runs. Steam Dock logging is handled by ntdll.
+     func startSessionLog(program: String, keep: Int = 40) {
+         let fm = FileManager.default
+         let dir = logFileURL.deletingLastPathComponent().appendingPathComponent("logs")
+@@ -139,10 +179,14 @@ final class LogStore: ObservableObject {
+         let safe = program.map { "/\\:*?\"<>|".contains($0) ? "_" : $0 }
+         let url = dir.appendingPathComponent(String(safe) + "-" + stamp.string(from: Date()) + ".txt")
+         do {
+-            try fm.linkItem(at: logFileURL, to: url)
++            if MadeiraConfig.flag("MADEIRA_LOG_ARCHIVE_COPIES", fallback: true) {
++                try SessionLogArchive.begin(logFileURL, name: url.lastPathComponent)
++            } else {
++                try fm.linkItem(at: logFileURL, to: url)
++            }
+             log("Session log: logs/\(url.lastPathComponent)")
+         } catch {
+-            log("Session log: could not link logs/\(url.lastPathComponent) (\(error.localizedDescription))", level: .error)
++            log("Session log: could not archive logs/\(url.lastPathComponent) (\(error.localizedDescription))", level: .error)
+         }
+         let runs = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
+             .filter { $0.pathExtension == "txt" }
+@@ -154,6 +198,11 @@ final class LogStore: ObservableObject {
+         for old in runs.dropFirst(keep) { try? fm.removeItem(at: old) }
+     }
+ 
++    func finishSessionLog() {
++        do { try SessionLogArchive.snapshot(logFileURL) }
++        catch { log("Could not refresh session archive: \(error.localizedDescription)", level: .error) }
++    }
++
+     /// Once Wine points stderr at madeira-log.txt, the app's own log lines are
+     /// written through stderr too (appendToFile); 0 keeps a per-call file handle.
+     private static let viaStderr = MadeiraConfig.flag("MADEIRA_LOG_VIA_STDERR")

@@ -1,0 +1,225 @@
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+--- a/build/win32u-unix/vulkan_ios.c
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -30,11 +30,24 @@
+ #undef dlclose
+ 
+ #if defined(MADEIRA_VK_STATIC_LINK)
++/* Wine suppresses native Vulkan prototypes; these are the statically linked
++ * MoltenVK entry points, with the native ABI and full declared signatures. */
++extern VkResult VKAPI_CALL vkCreateDevice(VkPhysicalDevice, const VkDeviceCreateInfo *, const VkAllocationCallbacks *, VkDevice *);
++extern VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(VkPhysicalDevice, const char *, uint32_t *, VkExtensionProperties *);
++extern void VKAPI_CALL vkDestroyDevice(VkDevice, const VkAllocationCallbacks *);
++extern VkResult VKAPI_CALL vkQueueSubmit(VkQueue, uint32_t, const VkSubmitInfo *, VkFence);
++extern VkResult VKAPI_CALL vkQueueSubmit2(VkQueue, uint32_t, const VkSubmitInfo2 *, VkFence);
++extern VkResult VKAPI_CALL vkQueueSubmit2KHR(VkQueue, uint32_t, const VkSubmitInfo2 *, VkFence);
++extern VkResult VKAPI_CALL vkQueuePresentKHR(VkQueue, const VkPresentInfoKHR *);
++extern VkResult VKAPI_CALL vkQueueWaitIdle(VkQueue);
++extern VkResult VKAPI_CALL vkDeviceWaitIdle(VkDevice);
++extern VkResult VKAPI_CALL vkAcquireNextImageKHR(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t *);
++extern VkResult VKAPI_CALL vkAcquireNextImage2KHR(VkDevice, const VkAcquireNextImageInfoKHR *, uint32_t *);
+ /* This Wine revision excludes the provisional portability-subset extension
+  * from its generated extension bitsets. Its host-create conversion therefore
+  * drops the name even when an application requests it. Add the advertised
+  * host requirement after that conversion, preserving the feature chain. */
+-static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
++static VkResult VKAPI_CALL madeira_vkCreateDevice_base(VkPhysicalDevice physical,
+         const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
+ {
+     static const char subset[] = "VK_KHR_portability_subset";
+@@ -74,12 +87,97 @@
+     return result;
+ }
+ 
++#include "vulkan_lifecycle.h"
++static struct aps5_gpu_gate aps5_gpu = APS5_GPU_GATE_INITIALIZER;
++struct aps5_gpu_device { VkDevice host; struct aps5_gpu_device *next; };
++static struct aps5_gpu_device *aps5_gpu_devices;
++static pthread_mutex_t aps5_gpu_devices_lock = PTHREAD_MUTEX_INITIALIZER;
++
++__attribute__((visibility("default"))) void aps5_vulkan_set_active(int active)
++{
++    if (active) {
++        aps5_gpu_resume(&aps5_gpu);
++        fprintf(stderr, "[anyps5-vulkan-lifecycle] resumed\n");
++        return;
++    }
++    aps5_gpu_pause_lock(&aps5_gpu);
++    pthread_mutex_lock(&aps5_gpu_devices_lock);
++    unsigned devices = 0;
++    for (struct aps5_gpu_device *d = aps5_gpu_devices; d; d = d->next) {
++        /* Direct static MoltenVK call bypasses the closed admission gate. */
++        VkResult result = vkDeviceWaitIdle(d->host);
++        fprintf(stderr, "[anyps5-vulkan-lifecycle] drain result=%d\n", result);
++        ++devices;
++    }
++    pthread_mutex_unlock(&aps5_gpu_devices_lock);
++    pthread_mutex_unlock(&aps5_gpu.lock);
++    fprintf(stderr, "[anyps5-vulkan-lifecycle] paused devices=%u\n", devices);
++}
++
++static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
++        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
++{
++    struct aps5_gpu_device *entry = calloc(1, sizeof(*entry));
++    if (!entry) return VK_ERROR_OUT_OF_HOST_MEMORY;
++    aps5_gpu_enter(&aps5_gpu);
++    VkResult result = madeira_vkCreateDevice_base(physical, info, allocator, device);
++    if (result == VK_SUCCESS) {
++        entry->host = *device;
++        pthread_mutex_lock(&aps5_gpu_devices_lock);
++        entry->next = aps5_gpu_devices;
++        aps5_gpu_devices = entry;
++        pthread_mutex_unlock(&aps5_gpu_devices_lock);
++    } else free(entry);
++    aps5_gpu_leave(&aps5_gpu);
++    return result;
++}
++
++static void VKAPI_CALL aps5_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks *allocator)
++{
++    aps5_gpu_enter(&aps5_gpu);
++    pthread_mutex_lock(&aps5_gpu_devices_lock);
++    struct aps5_gpu_device **at = &aps5_gpu_devices;
++    while (*at && (*at)->host != device) at = &(*at)->next;
++    if (*at) { struct aps5_gpu_device *old = *at; *at = old->next; free(old); }
++    pthread_mutex_unlock(&aps5_gpu_devices_lock);
++    vkDestroyDevice(device, allocator);
++    aps5_gpu_leave(&aps5_gpu);
++}
++#define APS5_GPU_RESULT(name, signature, arguments) \
++static VkResult VKAPI_CALL aps5_##name signature \
++{ aps5_gpu_enter(&aps5_gpu); VkResult result = name arguments; aps5_gpu_leave(&aps5_gpu); return result; }
++APS5_GPU_RESULT(vkQueueSubmit, (VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f), (q,n,s,f))
++APS5_GPU_RESULT(vkQueueSubmit2, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
++APS5_GPU_RESULT(vkQueueSubmit2KHR, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
++APS5_GPU_RESULT(vkQueuePresentKHR, (VkQueue q, const VkPresentInfoKHR *i), (q,i))
++APS5_GPU_RESULT(vkQueueWaitIdle, (VkQueue q), (q))
++APS5_GPU_RESULT(vkDeviceWaitIdle, (VkDevice d), (d))
++APS5_GPU_RESULT(vkAcquireNextImageKHR, (VkDevice d, VkSwapchainKHR s, uint64_t t, VkSemaphore m, VkFence f, uint32_t *i), (d,s,t,m,f,i))
++APS5_GPU_RESULT(vkAcquireNextImage2KHR, (VkDevice d, const VkAcquireNextImageInfoKHR *a, uint32_t *i), (d,a,i))
++#undef APS5_GPU_RESULT
++
++static PFN_vkVoidFunction aps5_lifecycle_proc(const char *name, PFN_vkVoidFunction proc)
++{
++    if (!proc || !name) return proc;
++#define APS5_GPU_PROC(n) if (!strcmp(name, #n)) return (PFN_vkVoidFunction)aps5_##n
++    APS5_GPU_PROC(vkQueueSubmit); APS5_GPU_PROC(vkQueueSubmit2); APS5_GPU_PROC(vkQueueSubmit2KHR);
++    APS5_GPU_PROC(vkQueuePresentKHR); APS5_GPU_PROC(vkQueueWaitIdle); APS5_GPU_PROC(vkDeviceWaitIdle);
++    APS5_GPU_PROC(vkAcquireNextImageKHR); APS5_GPU_PROC(vkAcquireNextImage2KHR); APS5_GPU_PROC(vkDestroyDevice);
++#undef APS5_GPU_PROC
++    return proc;
++}
++static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetDeviceProcAddr(VkDevice device, const char *name)
++{
++    PFN_vkGetDeviceProcAddr get_proc = (PFN_vkGetDeviceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetDeviceProcAddr");
++    return aps5_lifecycle_proc(name, get_proc(device, name));
++}
++
+ static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(VkInstance instance, const char *name)
+ {
+     PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
+     PFN_vkVoidFunction proc = get_proc(instance, name);
+     if (proc && name && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)madeira_vkCreateDevice;
+-    return proc;
++    return aps5_lifecycle_proc(name, proc);
+ }
+ #endif
+ 
+@@ -88,6 +186,7 @@
+     void *proc = madeira_vk_dlsym(handle, symbol);
+ #if defined(MADEIRA_VK_STATIC_LINK)
+     if (proc && symbol && !strcmp(symbol, "vkGetInstanceProcAddr")) return (void *)madeira_vkGetInstanceProcAddr;
++    if (proc && symbol && !strcmp(symbol, "vkGetDeviceProcAddr")) return (void *)madeira_vkGetDeviceProcAddr;
+ #endif
+     return proc;
+ }
+diff --git a/app/Madeira/ContentView.swift b/app/Madeira/ContentView.swift
+--- a/app/Madeira/ContentView.swift
++++ b/app/Madeira/ContentView.swift
+@@ -1348,15 +1348,18 @@
+             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                 library.refreshFlag()
+                 if library.enabled && library.current == nil { MetalHostView.shared.isHidden = true }
++                aps5_vulkan_set_active(1)
+                 AnyPS5RuntimeDiagnostics.record("app_did_become_active")
+             }
+             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
++                aps5_vulkan_set_active(0)
+                 AnyPS5RuntimeDiagnostics.record("app_will_resign_active")
+             }
+             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                 AnyPS5RuntimeDiagnostics.record("app_did_enter_background")
+             }
+             .onAppear {
++                aps5_vulkan_set_active(UIApplication.shared.applicationState == .active ? 1 : 0)
+                 jit_install_trap_handler()
+                 entitlements = EntitlementStatus.check()
+                 logEntitlementStatus()
+diff --git a/app/Madeira/Madeira-Bridging-Header.h b/app/Madeira/Madeira-Bridging-Header.h
+--- a/app/Madeira/Madeira-Bridging-Header.h
++++ b/app/Madeira/Madeira-Bridging-Header.h
+@@ -71,3 +71,6 @@
+ int madeira_d3d12_canary_run_log(const char *fixture_dir, const char *dylib_path,
+                                  void (*sink)(const char *), const char *log_path,
+                                  const char *build_id);
++
++// Park Vulkan submissions while inactive; drain outstanding work before background.
++void aps5_vulkan_set_active(int active);
+diff --git a/app/Madeira/IOSDisplayShim.m b/app/Madeira/IOSDisplayShim.m
+--- a/app/Madeira/IOSDisplayShim.m
++++ b/app/Madeira/IOSDisplayShim.m
+@@ -284,3 +284,7 @@
+ void macdrv_view_release_metal_view(macdrv_metal_view v) {
+     my_view_release_metal_view(v);
+ }
++
++/* Non-Vulkan builds have no submission gate. The static Vulkan driver defines
++ * the strong implementation in its already-linked win32u object. */
++__attribute__((weak)) void aps5_vulkan_set_active(int active) { (void)active; }
+diff --git a/build/win32u-unix/vulkan_lifecycle.h b/build/win32u-unix/vulkan_lifecycle.h
+new file mode 100644
+--- /dev/null
++++ b/build/win32u-unix/vulkan_lifecycle.h
+@@ -0,0 +1,41 @@
++/* Admission gate: UIKit closes it before backgrounding; entrants park rather
++ * than dropping a submission or reporting fabricated Vulkan success. */
++#ifndef APS5_VULKAN_LIFECYCLE_H
++#define APS5_VULKAN_LIFECYCLE_H
++#include <pthread.h>
++struct aps5_gpu_gate {
++    pthread_mutex_t lock;
++    pthread_cond_t changed;
++    unsigned running;
++    int active;
++};
++#define APS5_GPU_GATE_INITIALIZER { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0 }
++static inline void aps5_gpu_enter(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    while (!g->active) pthread_cond_wait(&g->changed, &g->lock);
++    ++g->running;
++    pthread_mutex_unlock(&g->lock);
++}
++static inline void aps5_gpu_leave(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    if (!--g->running) pthread_cond_broadcast(&g->changed);
++    pthread_mutex_unlock(&g->lock);
++}
++/* Returns with admission closed and lock held; caller drains outstanding GPU
++ * work before releasing the lock, while UIKit still permits execution. */
++static inline void aps5_gpu_pause_lock(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    g->active = 0;
++    while (g->running) pthread_cond_wait(&g->changed, &g->lock);
++}
++static inline void aps5_gpu_resume(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    g->active = 1;
++    pthread_cond_broadcast(&g->changed);
++    pthread_mutex_unlock(&g->lock);
++}
++#endif

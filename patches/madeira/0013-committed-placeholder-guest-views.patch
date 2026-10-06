@@ -1,0 +1,15 @@
+diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -12080,7 +12080,10 @@
+         if (classify_n++ < 24 && !ios_in_mach_exc)
+             dprintf( 2, "[anyps5-guest-classify] request=%p+0x%lx view=%p flags=0x%x\n",
+                      base, (unsigned long)size, view ? view->base : NULL, view ? view->protect : 0 );
+-        if (!view || (view->protect & (SEC_IMAGE | VPROT_ARM64EC | VPROT_SYSTEM | VPROT_PLACEHOLDER))) return 0;
++        if (!view || (view->protect & (SEC_IMAGE | VPROT_ARM64EC | VPROT_SYSTEM))) return 0;
++        /* Replaced section views retain PLACEHOLDER so unmap can restore it.
++         * Reject an empty placeholder, not a committed replacement mapping. */
++        if ((view->protect & VPROT_PLACEHOLDER) && !(view->protect & VPROT_COMMITTED)) return 0;
+         vb = (uintptr_t)view->base;
+         if (!view->size || view->size > UINTPTR_MAX - vb || vb + view->size <= a) return 0;
+         a = vb + view->size;

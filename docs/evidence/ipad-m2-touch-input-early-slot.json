@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "build": 10,
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "scene_dimensions": [
+    320,
+    192
+  ],
+  "configured_switch": "env.MADEIRA_PAD_EARLY_SLOT = 1 (global config)",
+  "controller_open": "SDL Xbox 360 Controller; previously no controller-open message in bounded demo log",
+  "ui_test": "Passed; existing signed XCUITest helper activated only AnyPS5 and injected real UI touch taps at saved controller coordinates.",
+  "scripted_taps": {
+    "right": 4,
+    "left": 4,
+    "A": 2
+  },
+  "guest_scePad_observed_nonzero_buttons": {
+    "right_0x20": 4,
+    "left_0x80": 4,
+    "cross_0x4000": 2
+  },
+  "serve_actions": 2,
+  "paddle_x_samples": [
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    132,
+    156,
+    140,
+    132,
+    132,
+    132,
+    84,
+    100,
+    192,
+    256,
+    124
+  ],
+  "minimum_verified_gpu_readback_frames": 1861,
+  "reported_guest_failures": 0,
+  "button_release_events": "Zero button states observed after taps. Stick changes also observed; this was not an isolated stick test.",
+  "foreground_scene": "Visible in fresh screenshot with controller controls and Metal HUD.",
+  "scope": "Input proof in a bounded low-resolution scene. Run externally stopped; not a ten-minute acceptance or clean guest completion. Physical touch taps reached scePad through XInput and SDL.",
+  "ten_minute_acceptance": false,
+  "background_resume_acceptance": false,
+  "package_sha256": "e566001f9af725a446e1e4e1dbadf1f0e0aad656afc62a29136ca7bedf7dab36",
+  "private_log_sha256": "42f5e7a86cd412e4965daa230cfc7069081a88a45e92d99012610b323878ae71",
+  "ui_test_log_sha256": "a56252e7c0207a29217e317cb08bc66ce904d0fa7260f35a4001beb99f79801e",
+  "screenshot_sha256": "2192851b82dd87edd02ab7cef92b8a61eeba20695ebc0a4087981327fd7f1924",
+  "cleanup": "Own app terminated; after.json confirms no own app/helper.",
+  "clean_exit_repeat": {
+    "scripted_taps": {
+      "right": 4,
+      "left": 4,
+      "A": 2,
+      "B": 1
+    },
+    "guest_button_counts": {
+      "32": 4,
+      "0": 10,
+      "128": 4,
+      "16384": 2,
+      "8192": 1
+    },
+    "complete_status": "stopped via B/Circle",
+    "gpu_comparisons": 310,
+    "input_changes": 21,
+    "serve_actions": 2,
+    "guest_exit": 0,
+    "guest_elapsed_us": 10817413,
+    "guest_loops_per_second": 28.657,
+    "phase_totals_us": {
+      "draw_input_total_us": 497405,
+      "dispatch_wait_total_us": 730509,
+      "readback_checkpoint_total_us": 24266,
+      "flip_wait_total_us": 9561543,
+      "post_flip_pacing_total_us": 3146
+    },
+    "gpu_poll_sleep_calls": 709,
+    "flip_poll_sleep_calls": 9463,
+    "timing_scope": "Guest loop phases, including warmup and control test; not display timestamps or a ten-minute FPS average.",
+    "private_log_sha256": "9870bd3ccfe64a434f7588a09e2be22f8e0513a186783a581c03fc959b0ca01e",
+    "ui_test_log_sha256": "2e4e8351e6c3f2600ec3254278feb64e789f2a5b99a3d98f05da7c511b379c96",
+    "cleanup": "Normal guest shutdown followed by own native app cleanup; no own app/helper in after.json."
+  },
+  "third_fresh_launch": {
+    "gpu_comparisons": 315,
+    "input_changes": 33,
+    "serve_actions": 2,
+    "exit": 0,
+    "complete_status": "stopped via B/Circle",
+    "private_log_sha256": "91f2878501636fab9d6ae3a08ce770d04c72b261d13e679f0b2563781ffb6a4a",
+    "ui_test_passed": true,
+    "input_scope": "Button and left-stick changes combined; count need not equal scripted button transitions."
+  },
+  "three_fresh_launches": [
+    {
+      "scope": "same installed Build 10, same interactive package, global early slot enabled",
+      "jit_pool_initialized": true,
+      "sdl_controller_opened": true,
+      "touch_input_reached_guest": true,
+      "package_sha256": "e566001f9af725a446e1e4e1dbadf1f0e0aad656afc62a29136ca7bedf7dab36",
+      "log_sha256": "42f5e7a86cd412e4965daa230cfc7069081a88a45e92d99012610b323878ae71",
+      "normal_guest_exit": false,
+      "own_process_cleanup_verified": true
+    },
+    {
+      "scope": "same installed Build 10, same interactive package, global early slot enabled",
+      "jit_pool_initialized": true,
+      "sdl_controller_opened": true,
+      "touch_input_reached_guest": true,
+      "package_sha256": "e566001f9af725a446e1e4e1dbadf1f0e0aad656afc62a29136ca7bedf7dab36",
+      "log_sha256": "9870bd3ccfe64a434f7588a09e2be22f8e0513a186783a581c03fc959b0ca01e",
+      "normal_guest_exit": true,
+      "own_process_cleanup_verified": true
+    },
+    {
+      "scope": "same installed Build 10, same interactive package, global early slot enabled",
+      "jit_pool_initialized": true,
+      "sdl_controller_opened": true,
+      "touch_input_reached_guest": true,
+      "package_sha256": "e566001f9af725a446e1e4e1dbadf1f0e0aad656afc62a29136ca7bedf7dab36",
+      "log_sha256": "91f2878501636fab9d6ae3a08ce770d04c72b261d13e679f0b2563781ffb6a4a",
+      "normal_guest_exit": true,
+      "own_process_cleanup_verified": true
+    }
+  ],
+  "restart_scope": "Three fresh Build 10 starts with JIT and real input. First externally stopped after bounded test; next two finish normally through B/Circle. Not a ten-minute performance/background acceptance."
+}

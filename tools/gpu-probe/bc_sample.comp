@@ -1,0 +1,5 @@
+#version 450
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) uniform sampler2D bcTexture;
+layout(std430, set = 0, binding = 1) buffer Result { vec4 value; } result;
+void main() { result.value = textureLod(bcTexture, vec2(0.5), 0.0); }

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "standalone Win32 Vulkan clear/present; screenshot corroborates foreground output; not SDL, RDNA demo, touch or game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "jit_method": "builtIn",
+  "target_pid": 1113,
+  "helper_pid": 1114,
+  "report": {
+    "schema": 1,
+    "probe": "win32_vulkan_present",
+    "status": "pass",
+    "stage": "complete",
+    "vk_result": 0,
+    "win32_error": 0,
+    "device": "Apple M2 GPU",
+    "requested_frames": 600,
+    "accepted_presents": 600,
+    "width": 634,
+    "height": 328,
+    "elapsed_ms": 10430.002,
+    "visible_device_verified": false
+  },
+  "screenshot_visually_inspected": true,
+  "screenshot_sha256": "266c110fbc1790d2a8e8d35a6c027910451cba2575a899471ebf69d552232152",
+  "guest_exit_code": 0
+}

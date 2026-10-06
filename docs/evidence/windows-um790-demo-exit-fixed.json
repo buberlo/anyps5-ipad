@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "cpu": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "guest-cpu",
+    "status": "pass",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_seconds": 0.062,
+    "executable_sha256": "c77cdcbbf9ca9589087ad2ffc341806eb3cd0ee1ecb961fa1f7c5c10a52e59a1",
+    "missing_required_stages": [],
+    "scope": "native_windows_execution_only"
+  },
+  "exceptions": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "guest-exceptions",
+    "status": "pass",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_seconds": 0.016,
+    "executable_sha256": "03bbfa6c1f06b1e50af778ef6f451f981c5bc6dc3741e8b4728564881c6a772d",
+    "missing_required_stages": [],
+    "scope": "native_windows_execution_only"
+  },
+  "native_probes": [
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-cpu",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.0,
+      "executable_sha256": "f0e85c7d187e37c32536fa1f456cd132a2c20d8906532ed03243c19abe096e32",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    },
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-memory",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.016,
+      "executable_sha256": "31195dd606b6b9e54383ad5cd05ec023b36e7efe30c7c29087b1b70a5ef62478",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    },
+    {
+      "schema": 1,
+      "probe": "windows_reference",
+      "fixture": "native-allocator",
+      "status": "pass",
+      "exit_code": 0,
+      "timed_out": false,
+      "elapsed_seconds": 0.016,
+      "executable_sha256": "1ff1ee0d0a12eee636b847263cf8034c1a502ff4fd78e404bb4332e47cf9cce4",
+      "missing_required_stages": [],
+      "scope": "native_windows_execution_only"
+    }
+  ],
+  "graphics": {
+    "schema": 1,
+    "probe": "windows_reference",
+    "fixture": "demo",
+    "status": "pass",
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_seconds": 9.921,
+    "executable_sha256": "7cca49dcfdb01b20fa325b1604268410a8496adb0d52e4503fe676e09d24737d",
+    "missing_required_stages": [],
+    "scope": "native_windows_execution_only"
+  },
+  "package_manifest_sha256": "3148af68a6e5eab324d8c16a4ef200c0dc5a79f90c51c50361320e9193296c34",
+  "device_acceptance": "not_run",
+  "gpu": {
+    "status": "available",
+    "reason": "integrated_or_discrete_gpu",
+    "devices": [
+      {
+        "name": "AMD Radeon 780M Graphics",
+        "api_version": 4206842,
+        "driver_version": 8388878,
+        "vendor_id": 4098,
+        "device_id": 5567,
+        "device_type": 1
+      }
+    ]
+  },
+  "diagnostic": {
+    "date": "2026-10-06",
+    "machine": "UM790 Pro",
+    "demo_dimensions": [
+      320,
+      192
+    ],
+    "demo_readback_frames": 120,
+    "demo_acknowledged_frames": 120,
+    "normal_libc_exit": "verified_exit_0",
+    "input": "not_observed",
+    "foreground_visibility": "unverified",
+    "device_acceptance": "not_run"
+  }
+}

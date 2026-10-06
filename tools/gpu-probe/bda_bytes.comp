@@ -1,0 +1,15 @@
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+layout(local_size_x = 64) in;
+layout(buffer_reference, std430, buffer_reference_align = 1) buffer Bytes {
+    uint8_t values[];
+};
+layout(push_constant) uniform Arguments { Bytes outputBytes; } args;
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    uint64_t wide = (uint64_t(i + 1) << 32) | uint64_t(i * 37 + 11);
+    uint64_t mixed = wide * uint64_t(3) + uint64_t(0xfffffffdU);
+    args.outputBytes.values[i] = uint8_t((uint(mixed) ^ uint(mixed >> 32)) & 255u);
+}

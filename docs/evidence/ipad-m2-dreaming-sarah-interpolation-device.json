@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app_build": 10,
+  "scope": "Bounded private Dreaming Sarah graphics diagnostic; gameplay acceptance not achieved",
+  "driver_ci_run": 37470600502,
+  "driver_source_commit": "d1ba99d74af0d559f68bf77aee92ebb6680223ab",
+  "runtime_base_source_commit": "ab49b99fe0acc2ddbc285777e8166b1a229cdab5",
+  "package_manifest_sha256": "9cf0925e874c2abb9f4bf803721c99d9bc03913b9bef093956bef2d6b13e8e40",
+  "driver_sha256": "c509b3705f2ed043b1833608ddc61d273380a7ff1faa0a2b7bb17486b8019fcc",
+  "private_log_sha256": "2f8fce5024accabe45cc6b72114c6833be6f4979ea7b5c0b3838dfc1d801e4ec",
+  "duration_seconds": 93.08343787499962,
+  "configured_switch": "env.APS5_FIXED_FUNCTION_INTERPOLATION = 1 (game profile)",
+  "switch_selected_messages": 2,
+  "vulkan_devices_created": 2,
+  "swapchain": "768x432, two images",
+  "vertex_subgroup_rejection_messages": 0,
+  "per_vertex_msl_rejection_messages": 0,
+  "draw_rejections": [
+    "[gpu] skipped draw: fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences in one basic block (pc=84) [DRAW_INDEX_OFFSET_2, color target 0x740c5b0000]"
+  ],
+  "user_observation": {
+    "first_logo_visible": true,
+    "sound_audible_after_logo": true,
+    "then_black": true,
+    "scope": "Direct user report during interpolation opt-in run; logo and audio were not independently recorded or accepted as gameplay"
+  },
+  "agent_screenshot_observation": "Fresh 10-second and 30-second screenshots inspected: black game area with controller/log overlay; no gameplay scene",
+  "termination": "Runtime terminates after 2000 identical native fault redeliveries; own native process absent after cleanup",
+  "repeated_fault": {
+    "write_address": "0x740125baf0",
+    "guest_rip": "0x71fe223f69",
+    "access_violation": true,
+    "cause_resolved": false
+  },
+  "own_process_cleanup_verified": true,
+  "assets_and_pe_unchanged": true,
+  "validation_bypass": false,
+  "diagnostic_control": {
+    "interpolation_opt_in": false,
+    "duration_seconds": 20,
+    "user_observation": "Completely black, no first logo",
+    "per_vertex_msl_rejection_present": true,
+    "scope": "Short existing barycentric-path diagnostic control; target-specific shader capture did not collect the newly rejected request. Opt-in restored afterwards."
+  },
+  "shader_request_analysis": {
+    "copied_only_to_local_mac_with_explicit_permission": true,
+    "existing_requests_count": 6,
+    "existing_requests_native_replay_passed": 6,
+    "newly_rejected_request_captured": false,
+    "next_change": "Opt-in APS5_DUMP_SHADERS capture before source validation; not yet built or tested on device"
+  },
+  "acceptance": {
+    "gameplay": false,
+    "audio_quality": false,
+    "save_load": false,
+    "ten_minute_720p": false,
+    "background_resume": false
+  }
+}

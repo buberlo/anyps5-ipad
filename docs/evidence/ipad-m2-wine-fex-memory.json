@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "scope": "standalone x64 Windows PE under iOS Wine/FEX; not PS5 HLE/game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x200000000",
+      "size": 268435456,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x200000000",
+      "region_size": 473083936768,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "fail",
+      "win32_error": 87
+    }
+  ],
+  "raw_log_sha256": "9079785da3aa6ae335e0e6465858f925a235a23fd238a143b42738b2c04b0749",
+  "additional_candidate_records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x1000000000",
+      "size": 268435456,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x1000000000",
+      "region_size": 412937617408,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "fail",
+      "win32_error": 87
+    }
+  ],
+  "interpretation": "8 GiB candidate failed; independent native census shows 8\u201312 GiB host overlap. Corrected 64 GiB run proves native mapping refusal KERN_NO_SPACE/ERROR_INVALID_ADDRESS with no overwrite. Separate 464 GiB mapping and allocator qualification is ongoing.",
+  "legacy_win32_error_scope": "Original GetLastError values may have been sampled before the API call due C++ argument evaluation order. Reservation failure itself is established; superseded error numbers are not authoritative.",
+  "corrected_64gib_records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x1000000000",
+      "size": 268435456,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x1000000000",
+      "region_size": 412954394624,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "fail",
+      "win32_error": 487
+    }
+  ],
+  "corrected_64gib_host_failure": {
+    "base": "0x1000000000",
+    "size": 268435456,
+    "errno": 17,
+    "mach_stage": 6,
+    "mach_error": 3,
+    "wine_reserved_area": false,
+    "win32_error": 487,
+    "native_pre_wine_host_region": {
+      "start": "0x1000000000",
+      "end": "0x7000000000",
+      "protection": 0,
+      "user_tag": 31
+    }
+  }
+}

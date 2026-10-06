@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "app_build": 11,
+  "package_manifest_sha256": "19294193491de6b9c59fa72e56e2c53a23f89413c92191f6978a4819a2454af9",
+  "private_log_sha256": "59026ffb457b8abe692fd77dc37829ddc103423c12cfe3a3915dacc98fe26c13",
+  "observation_seconds": 243.50885991700034,
+  "native_counter_fix_installed": true,
+  "same_graphics_driver_as_menu_build10": true,
+  "observations": {
+    "new_game_started_via_real_touch": true,
+    "start_ui_test_passed": true,
+    "movement_ui_test_passed": true,
+    "credits_visible": true,
+    "forest_environment_visible": true,
+    "player_character_not_visible": true,
+    "skipped_shader_count": 1,
+    "new_skip_pc": 0,
+    "PerVertexKHR_count": 0,
+    "redelivery_256_warning_count": 2,
+    "redelivery_2000_terminal": true,
+    "screenshots_sha256": {
+      "40": "9d3e2770c52520a95fe3dc991f4a99ae71c77fa44d93a7f149b05f461723f7ed",
+      "120": "32b3481675d1512c73c9565423ec2e52352a97d3af162af69c495b73e0633d9f",
+      "180": "01d4c3efbae35b5d7f55938c21e138bc1e8c0e2fc3a1ba864364583aa9ab6566"
+    }
+  },
+  "private_requests": 17,
+  "new_shader_diagnosis": {
+    "request_sha256": "3b62e9a4b24388f8c93cfcdb7d90bee835e1dfe741b5bb085c1a8ed8ccf0266c",
+    "basic_blocks": 3,
+    "interpolation_prefix": "Complete center P1/P2 pairs in entry; image sample overwrites raw I/J before the first branch.",
+    "guard_cases_passed": 53,
+    "old_guard_replays_passed": 16,
+    "old_guard_replays_rejected": 1,
+    "entry_prefix_guard_replays_passed": 17,
+    "metal_compilations_passed": 17,
+    "entry_prefix_guard_device_execution": "pending CI driver"
+  },
+  "limits": [
+    "Environment and touch-triggered start are device evidence; missing character prevents a playability claim.",
+    "The consecutive counter corrects lifetime accumulation but does not resolve the remaining repeated native fault.",
+    "Movement taps ran, but character movement cannot be assessed without a visible character.",
+    "Audio quality, save/load, sustained display FPS and background recovery remain unverified."
+  ]
+}

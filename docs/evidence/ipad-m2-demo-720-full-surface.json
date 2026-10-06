@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "build": 10,
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "scene_dimensions": [
+    1280,
+    720
+  ],
+  "swapchain_dimensions": [
+    1280,
+    720
+  ],
+  "synthetic_desktop_dimensions": [
+    2134,
+    1200
+  ],
+  "configuration_reason": "Existing SDL window uses 60 percent of the usable desktop; a separate game profile gives an actual 1280x720 swapchain without changing SDL/Wine/MoltenVK rendering.",
+  "gpu_comparisons": 180,
+  "complete_status": "pass",
+  "guest_exit": 0,
+  "guest_elapsed_us": 6823434,
+  "guest_loops_per_second": 26.379,
+  "frame_time_p95_us": 34100,
+  "phase_totals_us": {
+    "draw_input_total_us": 582031,
+    "dispatch_wait_total_us": 381598,
+    "readback_checkpoint_total_us": 151185,
+    "flip_wait_total_us": 5702489,
+    "post_flip_pacing_total_us": 5858
+  },
+  "foreground_scene": "Visible original paddle scene with touch controls; actual 1280x720 also shown by Metal HUD.",
+  "hud_performance_scope": "No reliable numerical HUD FPS sample transcribed because controls obscure it. Guest loop timing is not display FPS.",
+  "touch_input_observed_in_this_run": false,
+  "independent_720p_windows_scene_comparison": "pending",
+  "ten_minute_acceptance": false,
+  "minimum_average_fps_acceptance": "not established; short guest loop is below 30/s",
+  "package_sha256": "eeb29bde54179fdd2c916d344b18ecc6bd431a9933c7595f6e0a087e15b58ab6",
+  "private_log_sha256": "a13118527116f2125025c1877e7e90fd6d44df948f2261004e9e43dcf7028497",
+  "screenshot_sha256": "aeae480e794e0682caa19026d342dd5aed219b05ee8243c4e0b7b2e53bd8808e",
+  "cleanup": "Own app terminated; no own app/helper in after.json."
+}

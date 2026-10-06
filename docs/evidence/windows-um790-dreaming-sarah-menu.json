@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "scope": "private commercial-title startup diagnostic; no gameplay acceptance",
+  "platform": "native Windows UM790 Pro",
+  "gpu": "AMD Radeon 780M",
+  "title": "Dreaming Sarah",
+  "title_id": "PPSA02929",
+  "version": "01.000.000",
+  "started": "2026-10-06T05:04:01.5591310Z",
+  "duration_seconds": 33.657649,
+  "manifest_sha256": "190a9548020dcac6686c09ddb215a4dc652168ba71390b92127ea62d3b5b0529",
+  "observed": "title animation and readable New game / Continue / Options menu",
+  "process_exited_before_cleanup": false,
+  "unhandled_exception_observed": false,
+  "input_actions_sent": [
+    {
+      "key": "enter",
+      "result": "press_and_release_sent_to_foreground_game"
+    },
+    {
+      "key": "D",
+      "result": "press_and_release_sent_to_foreground_game"
+    },
+    {
+      "key": "space",
+      "result": "press_and_release_sent_to_foreground_game"
+    }
+  ],
+  "gameplay": "not_observed",
+  "audio": "not_verified",
+  "save_load": "not_verified",
+  "acceptance": "not_run",
+  "private_evidence_sha256": {
+    "game-report.json": "1397e902f106bd7694edcad965c8100dc5bb52ea679145a55af37cb5cf644e36",
+    "game-logs.zip": "3c7fa358160e57c4aa56da20ccca1d073391b6d36c5ed4573ad5e9ebf388ebdf",
+    "game-screen.png": "63b715d304e2d98dfac51763548038bc50e75efe3097cf5aa49f7068761cbefb",
+    "game-screen-final.png": "c2e6bffba4d9631239769f40ab5e58aed0abf357a4954a05216efe7b17f65dc1"
+  }
+}

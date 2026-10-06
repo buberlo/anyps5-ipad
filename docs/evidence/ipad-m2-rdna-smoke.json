@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": {
+    "model": "iPad14,10",
+    "soc": "M2",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "app": {
+    "bundle_id": "com.konradkern.anyps5ipad",
+    "version": "0.1.3",
+    "build": 4
+  },
+  "package_manifest_sha256": "3148af68a6e5eab324d8c16a4ef200c0dc5a79f90c51c50361320e9193296c34",
+  "demo_pe_sha256": "7cca49dcfdb01b20fa325b1604268410a8496adb0d52e4503fe676e09d24737d",
+  "dimensions": [
+    320,
+    192
+  ],
+  "jit": "built_in_helper_reported_success",
+  "guest_exit_code": 0,
+  "readback_frames": 120,
+  "acknowledged_frames": 120,
+  "visible_scene": "observed_in_two_ipad_screenshots",
+  "execution_only_result": "passed_original_probe_requirements",
+  "cross_platform_scene_reference": {
+    "status": "fail",
+    "checkpoint_frame": 60,
+    "windows_checksum": 3237446373,
+    "ipad_checksum": 2612983613,
+    "frame_0_checksum_matches": true,
+    "reason": "neutral-input scene checksum diverges despite successful per-frame output/source XOR comparisons",
+    "diagnosis": "Confirmed pixel-content divergence before presentation: source and output snapshots independently hash to 2612983613 on the host. All GPU output pixels equal source XOR 1. Exactly 72 scene pixels differ; the ball is still drawn at its frame-0 position (162,72), although frame-60 simulation coordinates are (170,70). Translation/render-store cause remains unresolved.",
+    "reproduced_in_diagnostics": 3,
+    "before_and_after_flip_checksum_equal": true,
+    "host_snapshot_analysis": "Confirmed actual pixel difference, not merely guest checksum arithmetic"
+  },
+  "timing": {
+    "elapsed_us": 18568971,
+    "avg_fps_milli": 6462,
+    "frame_time_min_us": 144535,
+    "frame_time_max_us": 565692,
+    "frame_time_p95_us": 163764
+  },
+  "timing_scope": "Guest monotonic loop including CPU draw, RDNA dispatch, full per-pixel readback, FlipStatus acknowledgment and pacing; not display timestamps",
+  "input": "not_observed",
+  "full_acceptance": "not_passed",
+  "limits": [
+    "Short low-resolution diagnostic only",
+    "Neutral scene checksum divergence must be resolved",
+    "Average loop rate 6.462 per second falls below the 30 FPS acceptance threshold",
+    "No ten-minute 1280x720 run, three restarts, touch or background/resume acceptance"
+  ]
+}

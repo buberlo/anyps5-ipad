@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "app_build": 13,
+  "private_log_sha256": "af5c268f1741472523c55fc42640d6aad340c1dffe466335784ddc032ee98eb2",
+  "observation_seconds": 272.9498500419995,
+  "native_gpu_devices_drained": 2,
+  "nonzero_drain_result": false,
+  "background_entered": true,
+  "returned_to_foreground": true,
+  "shader_skips": 0,
+  "vulkan_device_lost": false,
+  "redelivery_terminal": false,
+  "own_cleanup_verified": true,
+  "qualification": "Brief background cycle only; UI assertion could not hold background. Longer isolated round-trip follows.",
+  "limitation": "The app reactivates about 0.33s after didEnterBackground; this does not qualify a sustained background pause."
+}

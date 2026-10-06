@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "app_build": 13,
+  "build_and_signing": {
+    "app_build": 13,
+    "xcode_build_succeeded": true,
+    "deep_strict_signature_verified": true,
+    "strict_pe_source_hash_and_chpe_verified": true,
+    "all_three_pe_farms_byte_preserved": true,
+    "installed": false
+  },
+  "installation_verified": true,
+  "game_settings_library_index_preserved": true,
+  "native_archive": {
+    "before_sha256": "089b1e984c846175f0cd8dc43463210eb6055af1f155b389a7d343a3ee9901e2",
+    "after_sha256": "5428f0cd140e2fca6ffa65066ec792fa89028e3eb45728ac1e12f7dbdb6a288a",
+    "changed_members": [
+      "vulkan.o"
+    ],
+    "unchanged_members": 89,
+    "actual_iphoneos_compile_exit": 0
+  },
+  "host_test": "Actual admission, quiescence, dispatch, device lifetime and error propagation passed.",
+  "device_scope": "Two live Vulkan devices drain with VK_SUCCESS before a brief background cycle; rendering resumes without device loss. Full background acceptance remains open.",
+  "limits": [
+    "XCTest foreground/background state disagrees with UIKit lifecycle records in this observation.",
+    "The separate background helper crashes; its long-cycle automation has not passed. Do not infer full device acceptance from the host test.",
+    "Ten-minute displayed-FPS acceptance remains open."
+  ],
+  "previous_failure_evidence": "ipad-m2-vulkan-background-failure.json",
+  "brief_cycle_evidence": "ipad-m2-vulkan-background-short.json"
+}

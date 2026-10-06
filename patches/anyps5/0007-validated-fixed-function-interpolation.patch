@@ -1,0 +1,165 @@
+diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+@@ -0,0 +1,127 @@
++#pragma once
++#include "ControlFlow/ControlFlowGraph.hpp"
++#include "Optimization/ShaderStageInputInfo.hpp"
++#include "RdnaDecoder/RdnaProgram.hpp"
++#include "Recompiler.hpp"
++#include <algorithm>
++#include <map>
++#include <set>
++#include <stdexcept>
++
++namespace ShaderRecompiler {
++
++// The existing native interpolation lowering drops P1 and replaces P2 with an
++// interpolated attribute. Prove that this represents the original I/J pair;
++// never apply it to arbitrary barycentric arithmetic or partial P1 results.
++inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
++                                               const ControlFlowGraph& cfg,
++                                               const ShaderPixelInputInfo& pixel) {
++    std::set<std::uint32_t> live;
++    std::set<std::uint32_t> centers;
++    for (const auto input : {PixelInput::PerspectiveSample, PixelInput::PerspectiveCenter,
++                             PixelInput::PerspectiveCentroid, PixelInput::PerspectivePullModel,
++                             PixelInput::LinearSample, PixelInput::LinearCenter, PixelInput::LinearCentroid}) {
++        const auto base = pixel.psInputVgpr[static_cast<std::size_t>(input)];
++        if (base == ShaderPixelInputInfo::NoPixelInputVgpr) continue;
++        live.insert(base); live.insert(base + 1u);
++        if (input == PixelInput::PerspectivePullModel) live.insert(base + 2u);
++        if (input == PixelInput::PerspectiveCenter || input == PixelInput::LinearCenter) centers.insert(base);
++    }
++    std::uint32_t pc = 0;
++    const auto fail = [&] { throw std::runtime_error("fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences in an unconditional entry block (pc=" + std::to_string(pc) + ")"); };
++    const bool hasInterpolation = std::any_of(decoded.instructions.begin(), decoded.instructions.end(), [](const auto& i) {
++        return i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32 || i.op == RdnaOpcode::VInterpMovF32;
++    });
++    if (!hasInterpolation && live.empty()) return;
++    const BasicBlock* entry = nullptr;
++    if (cfg.blocks.size() != 1u) {
++        // A branch after an unconditional interpolation prefix is harmless
++        // only when every raw I/J register has been overwritten on entry.
++        // Reject loops into the prefix and interpolation in later blocks.
++        const auto found = std::find_if(cfg.blocks.begin(), cfg.blocks.end(), [&](const auto& b) { return b.id == cfg.entryBlock; });
++        if (cfg.unsupported || cfg.irreducible || found == cfg.blocks.end() ||
++            found->instructionBegin != 0u || !found->instructionEnd ||
++            found->instructionEnd > decoded.instructions.size() || !found->predecessors.empty()) fail();
++        entry = &*found;
++    }
++    struct Pair { std::uint32_t base, attribute, component; };
++    std::map<std::uint32_t, Pair> pending;
++    bool vectorWritten = false;
++    const auto plain = [](const RdnaOperand& o) {
++        return !o.negate && !o.negateHi && !o.absolute && !o.clamp && !o.omod && !o.opSel && !o.opSelHi &&
++               !o.dpp && !o.dpp8 && !o.explicitSdwaDst && !o.sdwaSext && o.sdwaSel == 6u;
++    };
++    for (const auto& i : decoded.instructions) {
++        pc = i.programCounter;
++        const auto index = static_cast<std::size_t>(&i - decoded.instructions.data());
++        if (entry && index >= entry->instructionEnd && (!live.empty() || !pending.empty())) fail();
++        if (i.op == RdnaOpcode::VInterpMovF32) fail(); // Requires original vertex values.
++        if (i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32) {
++            if (entry && index >= entry->instructionEnd) fail();
++            if (i.source0.kind != RdnaOperandKind::VectorRegister || i.destination.kind != RdnaOperandKind::VectorRegister ||
++                !plain(i.source0) || !plain(i.destination) || i.clampResult || i.source1.value >= 32u ||
++                i.source1.value >= pixel.inputNum || i.source2.value >= 4u || pixel.InputIsCustom(i.source1.value)) fail();
++            if (i.op == RdnaOpcode::VInterpP1F32) {
++                if (!centers.contains(i.source0.reg) || !live.contains(i.source0.reg) ||
++                    !live.contains(i.source0.reg + 1u) || pending.contains(i.destination.reg) ||
++                    (live.contains(i.destination.reg) && i.destination.reg != i.source0.reg)) fail();
++                pending.emplace(i.destination.reg, Pair{i.source0.reg, i.source1.value, i.source2.value});
++                // P1 may consume I in place after the other P1 instructions.
++                // Its original raw value cannot be used by another pair.
++                live.erase(i.destination.reg);
++            } else {
++                const auto p = pending.find(i.destination.reg);
++                if (p == pending.end() || i.source0.reg != p->second.base + 1u ||
++                    !live.contains(i.source0.reg) || p->second.attribute != i.source1.value || p->second.component != i.source2.value) fail();
++                pending.erase(p);
++            }
++            continue;
++        }
++        const auto writesExec = [](const RdnaOperand& o) {
++            return o.kind == RdnaOperandKind::ExecLo || o.kind == RdnaOperandKind::ExecHi;
++        };
++        if ((!pending.empty() || (vectorWritten && !live.empty())) &&
++            (writesExec(i.destination) || writesExec(i.destination2))) fail();
++        // Independent vector ALU may be scheduled between P1 and P2. Require
++        // explicit vector results and reject reads/writes of all partials.
++        // Memory, compares, control flow and implicit/unknown effects reject.
++        if (!pending.empty()) {
++            const bool independentAlu = i.family == RdnaInstructionFamily::VOP1 || i.family == RdnaInstructionFamily::VOP2 ||
++                                        i.family == RdnaInstructionFamily::VOP3 || i.family == RdnaInstructionFamily::VOP3P;
++            if (!independentAlu || i.destination.kind != RdnaOperandKind::VectorRegister) fail();
++            const auto overlapsPartial = [&](const RdnaOperand& operand, std::uint32_t count) {
++                if (operand.kind != RdnaOperandKind::VectorRegister) return false;
++                return std::any_of(pending.begin(), pending.end(), [&](const auto& pair) {
++                    return pair.first >= operand.reg && pair.first - operand.reg < count;
++                });
++            };
++            const auto count = i.is64Bit ? 2u : 1u;
++            for (const auto& source : {i.source0, i.source1, i.source2, i.source3})
++                if (overlapsPartial(source, count)) fail();
++            if (overlapsPartial(i.destination, count) || overlapsPartial(i.destination2, count)) fail();
++        }
++        const bool alu = i.family == RdnaInstructionFamily::VOP1 || i.family == RdnaInstructionFamily::VOP2 ||
++                         i.family == RdnaInstructionFamily::VOP3 || i.family == RdnaInstructionFamily::VOP3P || i.family == RdnaInstructionFamily::VOPC;
++        const auto width = alu ? (i.is64Bit ? 2u : 1u) : std::max({4u, i.dataDwordCount, i.dataComponents, i.imageAddressComponents});
++        for (const auto& source : {i.source0, i.source1, i.source2, i.source3}) {
++            if (source.dpp || source.dpp8) fail();
++            if (source.kind != RdnaOperandKind::VectorRegister) continue;
++            for (const auto reg : live) if (reg >= source.reg && reg - source.reg < width) fail();
++        }
++        for (const auto reg : i.imageNsaVectorRegisters) {
++            if (i.imageNsaDwordCount != 0u && live.contains(reg)) fail();
++        }
++        // Memory decoders record the written vector width. ALU destinations
++        // forget just their first register; ambiguous wider writes reject later.
++        if (i.destination.kind == RdnaOperandKind::VectorRegister) {
++            const bool memory = i.family == RdnaInstructionFamily::MIMG || i.family == RdnaInstructionFamily::MUBUF ||
++                                i.family == RdnaInstructionFamily::MTBUF || i.family == RdnaInstructionFamily::FLAT || i.family == RdnaInstructionFamily::DS;
++            const auto count = memory ? std::max(i.dataDwordCount, 1u) : 1u;
++            for (std::uint32_t j = 0; j < count; ++j) live.erase(i.destination.reg + j);
++            vectorWritten = true;
++        }
++        if (i.destination2.kind == RdnaOperandKind::VectorRegister) live.erase(i.destination2.reg);
++    }
++    if (!pending.empty()) fail();
++}
++}
+diff --git a/core/shader/recompiler/Translation/src/InstructionTranslator.cpp b/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
+--- a/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
++++ b/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
+@@ -1,4 +1,5 @@
+ #include "Translation/InstructionTranslator.hpp"
++#include "Translation/FixedFunctionInterpolation.hpp"
+ #include "Recompiler.hpp"
+ #include "Translation/DispatchInstructions.hpp"
+ #include "Translation/TranslationContext.hpp"
+@@ -390,6 +391,9 @@
+         }
+     }
+ 
++    if (options.stage == ShaderStageKind::Pixel && !options.fragmentShaderBarycentricEnabled) {
++        ValidateFixedFunctionInterpolation(decoded, cfg, *options.inputInfo.pixel);
++    }
+     IrProgram program;
+     program.SetWaveSize(options.waveSize);
+     program.Resources().stage = toIrShaderStage(options.stage);
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -757,6 +757,10 @@
+         state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &features);
+         state->fragmentShaderBarycentric = barycentricFeatures.fragmentShaderBarycentric == VK_TRUE;
+     }
++    if (const auto* interpolation = std::getenv("APS5_FIXED_FUNCTION_INTERPOLATION"); interpolation && std::strcmp(interpolation, "1") == 0) {
++        state->fragmentShaderBarycentric = false;
++        APS5_LOG_OUT("%s", "Fixed-function fragment interpolation selected; noncanonical I/J programs remain rejected");
++    }
+     VkPhysicalDeviceShaderClockFeaturesKHR clockFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
+     if (hasExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME)) {
+         VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &clockFeatures};

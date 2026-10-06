@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "scope": "native_offscreen_gpu_only",
+  "model": "iPad14,10",
+  "os": "Version 27.0.1 (Build 24A446)",
+  "gpu": "Apple M2 GPU",
+  "elapsed_seconds": 0.02804708480834961,
+  "application_and_scene_active": true,
+  "interrupted": false,
+  "wine_fex_verified": false,
+  "visible_gameplay_verified": false,
+  "full_device_acceptance": "not_run"
+}

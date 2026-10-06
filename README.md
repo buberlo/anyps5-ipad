@@ -34,6 +34,9 @@ A Build 10 diagnostic also completes 120 GPU comparisons with a 1280×720
 source buffer and visible output, scaled into a 768×432 swapchain. Its guest
 loop averages 23.130 iterations/s; full-resolution performance acceptance
 remains open. See the [720p evidence](docs/evidence/ipad-m2-demo-720-diagnostic.json).
+A follow-up game profile creates a true 1280×720 swapchain through the existing
+SDL/Wine path; all 180 GPU comparisons pass and Wine exits 0. Its short guest
+loop averages 26.379/s. See [full surface proof](docs/evidence/ipad-m2-demo-720-full-surface.json).
 With global `env.MADEIRA_PAD_EARLY_SLOT = 1`, actual UI touch taps now reach
 `scePad` through XInput/SDL: left/right move the paddle and A serves twice.
 See [bounded input proof](docs/evidence/ipad-m2-touch-input-early-slot.json).

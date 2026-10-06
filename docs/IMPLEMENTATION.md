@@ -383,6 +383,13 @@ That isolated HUD sample is not an average over ten minutes. Touch input is not
 observed. Independent Windows scene checks at this resolution, full-resolution
 presentation and the complete acceptance run remain open. See the
 [720p diagnostic](evidence/ipad-m2-demo-720-diagnostic.json).
+A follow-up profile uses a 2134×1200 synthetic desktop so the existing
+60-percent SDL window creates an actual 1280×720 swapchain. The same SDL/Wine/
+MoltenVK path remains in use. All 180 GPU comparisons pass and Wine exits 0;
+a fresh foreground screenshot and Metal HUD confirm the full swapchain size.
+The short guest loop averages 26.379/s, with 5.702 of 6.823 seconds attributed
+to flip submission/acknowledgment. This does not establish a ten-minute displayed
+FPS average. See [full 720p surface proof](evidence/ipad-m2-demo-720-full-surface.json).
 
 The original guest now reports aggregate timings for drawing/input, dispatch
 and GPU waiting, full readback/checkpoints, flip acknowledgment and post-flip

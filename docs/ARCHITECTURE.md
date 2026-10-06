@@ -50,7 +50,9 @@ In this tree `GetGuestVectorLength()` returns 256-bit only when both
 `SupportsAVX` and `SupportsSVE256` are set. With SVE off, AVX and AVX2 stay
 on the 128-bit IR path, which lowers onto NEON. SVE is not a prerequisite
 for enabling `SupportsAVX`. It is the fast path for full-width YMM ops.
-Correctness of that 128-bit split for PS5 AVX2 has not been measured here.
+A standalone x64 AVX2 probe has passed through Wine/FEX on the M2 iPad.
+That probe is not a measurement of every PS5 AVX2 sequence on the 128-bit
+split. See [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 Madeira has two FEXCore copies:
 
@@ -68,21 +70,24 @@ Madeira has two FEXCore copies:
 ARM64EC. Madeira does not run a wineserver plus unix `.so` files the way
 desktop Wine does. `ntdll` and `win32u` unix sides are compiled with the iOS
 SDK and archived into the app (`build/ntdll-unix`, `build/win32u-unix`).
-The i386 PE farm is configured `--without-vulkan`, and `config_ios.h`
-`#undef`s `SONAME_LIBVULKAN`, so `vulkan_init_once` logs that Wine was built
-without Vulkan and returns. D3D 9–12 go through DXMT and `madeira-d3d12` to
-Metal. AnyPS5 does not speak D3D. It speaks Vulkan.
+Upstream Madeira configures the i386 PE farm `--without-vulkan`, and
+`config_ios.h` `#undef`s `SONAME_LIBVULKAN`, so an unpatched
+`vulkan_init_once` logs that Wine was built without Vulkan and returns.
+D3D 9–12 go through DXMT and `madeira-d3d12` to Metal. AnyPS5 does not speak
+D3D. It speaks Vulkan. The patches in this tree build the iOS `winevulkan`
+unix archive and connect it to MoltenVK. That is the path that presents the
+PS5 build on the M2 iPad.
 
-The load path the M4 patch aims at:
+The load path:
 
 1. The PE calls `SDL_LoadObject("vulkan-1.dll")`.
 2. Wine's `vulkan-1.dll` forwards into `winevulkan.dll`.
 3. `winevulkan` calls `__wine_get_vulkan_driver` in `win32u`.
 4. `dlls/win32u/vulkan.c` `dlopen`s `SONAME_LIBVULKAN` and `dlsym`s
    `vkGetInstanceProcAddr` and `vkGetDeviceProcAddr`.
-5. The user driver `pVulkanInit` creates the surface. Madeira's winios
-   driver currently leaves that slot empty, so it falls through to
-   `nulldrv_VulkanInit` (`STATUS_NOT_IMPLEMENTED`) and a headless surface.
+5. The user driver `pVulkanInit` creates the surface. Unpatched Madeira
+   leaves that slot empty, so it falls through to `nulldrv_VulkanInit`
+   (`STATUS_NOT_IMPLEMENTED`) and a headless surface. The patch fills it.
 
 The patch compiles `vulkan.c` with `SONAME_LIBVULKAN` defined as `"MoltenVK"`
 and points `dlopen` at `moltenvk_static_loader.c`. That tries a real

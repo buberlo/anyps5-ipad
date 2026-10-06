@@ -36,11 +36,14 @@ status; it never claims readiness. Inputs, binaries, assets, build provenance an
 tool hashes are retained in `private-game-manifest.json`.
 
 `prepared_unexecuted` means only that static dependency validation passed. It
-does not prove Windows graphics, iPad startup or gameplay. The next gate is a
-native Windows PC with Vulkan GPU, qualified using the existing probes. Then
-test the exact same game package on the iPad with its qualified 464–468 GiB arena.
-Menu, gameplay, touch, audio and save/load remain separate device results. Shared
-iPad actions must use `scripts/with-ipad-lease.py`.
+does not prove Windows graphics, iPad startup or gameplay. Qualify the package
+on a native Windows PC with a Vulkan GPU, using the existing probes, and test
+that same package on the iPad with its qualified 464–468 GiB arena. Menu,
+gameplay, touch, audio and save/load are separate results. On the M2 iPad, a
+maintainer recording shows library launch, the menu, and basic touch-controlled
+gameplay, including logo audio and music. Save/load, displayed FPS and formal
+audio acceptance remain open. See the README status table. Shared iPad actions
+must use `scripts/with-ipad-lease.py`.
 
 Validation: `python3 tools/runtime-probes/test_private_game.py` covers malformed
 ELF tables, original/backup selection, unsafe dependency paths, archive hashes

@@ -7,7 +7,7 @@
     "os": "iPadOS 27.0.1 (24A446)"
   },
   "app": {
-    "bundle_id": "com.konradkern.anyps5ipad",
+    "bundle_id": "com.buberlo.anyps5ipad",
     "version": "0.1.4",
     "build": 7
   },

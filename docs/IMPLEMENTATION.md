@@ -8,7 +8,7 @@ source work, build artifacts, host execution and physical-device acceptance.
 
 ## Current device result
 
-On 2026-10-06 at about 16:11 UTC (23:11 WIB), Konrad Kern recorded the iPad
+On 2026-10-06 at about 16:11 UTC (23:11 WIB), buberlo recorded the iPad
 screen for about two minutes. The device was an iPad Air 13-inch M2 running
 iPadOS 27.0.1. The AnyPS5 iPad app library entry
 `Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB` launched, JIT came
@@ -114,7 +114,7 @@ guard bytes, then samples a known BC1 texture and compares the returned color.
 CPU Vulkan implementations cannot pass the hardware gate. Its JSON Lines report and
 artifact manifest are retained. This is an **offscreen native GPU test**,
 not a Wine presentation or game test. The separate iPad probe ID is
-`com.konradkern.anyps5ipad.probe`; its report is in Documents/gpu-probe.jsonl.
+`com.buberlo.anyps5ipad.probe`; its report is in Documents/gpu-probe.jsonl.
 The probe uses a single `UIWindowScene`; active start and completion are recorded,
 and any intervening loss of foreground invalidates device acceptance. Metadata
 includes source hashes, model/OS, memory, thermal state and Low Power Mode.

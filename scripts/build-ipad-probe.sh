@@ -32,7 +32,7 @@ python3 - "$app" "$root" "$MOLTENVK_IOS_LIB" <<'PY'
 import hashlib, json, pathlib, plistlib, subprocess, sys
 app, root, molten = map(pathlib.Path, sys.argv[1:])
 with (app / "Info.plist").open("wb") as stream:
-    plistlib.dump({"CFBundleIdentifier":"com.konradkern.anyps5ipad.probe",
+    plistlib.dump({"CFBundleIdentifier":"com.buberlo.anyps5ipad.probe",
         "CFBundleName":"AnyPS5 GPU Probe", "CFBundleDisplayName":"AnyPS5 GPU Probe",
         "CFBundleExecutable":"AnyPS5GPUProbe", "CFBundlePackageType":"APPL",
         "CFBundleVersion":"1", "CFBundleShortVersionString":"0.1",
@@ -61,7 +61,7 @@ import datetime, fnmatch, plistlib, sys
 with open(sys.argv[1], "rb") as f: p=plistlib.load(f)
 assert p["ExpirationDate"] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None), "provisioning profile expired"
 e=p["Entitlements"]
-bundle="com.konradkern.anyps5ipad.probe"
+bundle="com.buberlo.anyps5ipad.probe"
 prefix=p["ApplicationIdentifierPrefix"][0]
 app_id=prefix+"."+bundle
 assert fnmatch.fnmatchcase(app_id,e["application-identifier"]), "profile does not cover probe bundle ID"

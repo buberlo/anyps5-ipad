@@ -4,7 +4,7 @@
 
 [AnyPS5](https://github.com/boykopovar/AnyPS5) relinks that title's own binary into an x86-64 Windows PE. [Madeira](https://github.com/willfaust/Madeira) runs the PE on the iPad: Wine ARM64EC, FEX, and this repo's `winevulkan` path through MoltenVK to Metal. The binary is the PS5 build, not a PC or Switch port. Dreaming Sarah is not a PS5 exclusive. This is local execution: not streaming, not Remote Play, and not a console emulator.
 
-On 2026-10-06, about 16:11 UTC (23:11 WIB), maintainer Konrad Kern recorded roughly two minutes on an iPad Air 13-inch (M2), iPadOS 27.0.1. The in-app library entry `Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB` launched with JIT through the StikDebug-style flow. The Ratalaika Games publisher logo played with audio. The title screen and Options menu worked. New game started, the Asteristic studio intro and its music played, and about 60 seconds of gameplay followed: the player character was visible, walked and jumped through the forest, music continued, and a dialogue box rendered while she talked to an NPC. Input was the on-screen touch controller. The recording did not crash. Displayed FPS was not measured.
+On 2026-10-06, about 16:11 UTC (23:11 WIB), buberlo recorded roughly two minutes on an iPad Air 13-inch (M2), iPadOS 27.0.1. The in-app library entry `Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB` launched with JIT through the StikDebug-style flow. The Ratalaika Games publisher logo played with audio. The title screen and Options menu worked. New game started, the Asteristic studio intro and its music played, and about 60 seconds of gameplay followed: the player character was visible, walked and jumped through the forest, music continued, and a dialogue box rendered while she talked to an NPC. Input was the on-screen touch controller. The recording did not crash. Displayed FPS was not measured.
 
 > **Demo:** TODO — put the public video or GIF link here.
 >
@@ -12,7 +12,7 @@ On 2026-10-06, about 16:11 UTC (23:11 WIB), maintainer Konrad Kern recorded roug
 
 The recording is a maintainer observation, written up in [docs/evidence/ipad-m2-dreaming-sarah-gameplay-recording.json](docs/evidence/ipad-m2-dreaming-sarah-gameplay-recording.json). Instrumented runs from the same day are in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 
-Owner: Konrad Kern.
+Owner: buberlo.
 
 ## How it works
 

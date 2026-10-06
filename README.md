@@ -10,7 +10,8 @@ build connecting `winevulkan` to MoltenVK and tests guest memory placement.
 
 Owner: Konrad Kern. This is a long-term research project. The current tree
 has a complete signed iPad runtime build and a native GPU device proof.
-No PS5 title or complete AnyPS5 guest session has yet been verified on iPad.
+A standalone x64 Windows AVX2 probe now passes through Wine/FEX on iPad.
+PS5 HLE and full-game acceptance remain open.
 
 ## Runtime implementation
 
@@ -22,8 +23,9 @@ bundle ID is `com.konradkern.anyps5ipad`.
 
 On the physical M2 iPad, the separate native probe passed device creation,
 buffer-device-address, 8-bit and 64-bit compute readbacks, and BC1 sampling.
-The full app is signed, installed and opens its library; Wine/FEX execution,
-visible Vulkan presentation and the ten-minute game acceptance remain open.
+The full app is signed and installed; a standalone Windows AVX2 probe passes
+through Wine/FEX with built-in StikJIT. Visible Vulkan presentation and the
+ten-minute game acceptance remain open.
 
 See [implementation and verification](docs/IMPLEMENTATION.md) for build commands
 and the remaining device gates. The tables below are the **foundation's

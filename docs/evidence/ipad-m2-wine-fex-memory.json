@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "scope": "standalone x64 Windows PE under iOS Wine/FEX; not PS5 HLE/game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x200000000",
+      "size": 268435456,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x200000000",
+      "region_size": 473083936768,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "fail",
+      "win32_error": 87
+    }
+  ],
+  "raw_log_sha256": "9079785da3aa6ae335e0e6465858f925a235a23fd238a143b42738b2c04b0749",
+  "additional_candidate_records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x1000000000",
+      "size": 268435456,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x1000000000",
+      "region_size": 412937617408,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "fail",
+      "win32_error": 87
+    }
+  ],
+  "interpretation": "Both 8 GiB and 64 GiB exact placeholder reserves failed with error 87. Native pre-Wine 8\u201312 GiB host overlap is independently recorded. The API failure cause is not yet attributed; placeholder replacement, aliases and protections were not reached."
+}

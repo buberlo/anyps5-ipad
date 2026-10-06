@@ -243,7 +243,9 @@ static VkResult bda_test(Probe *p, const char *dir) {
     VkPipelineLayout layout = VK_NULL_HANDLE; VkPipeline compute = VK_NULL_HANDLE;
     VkCommandBuffer cmd = VK_NULL_HANDLE;
     VkResult rc = buffer(p, 80, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, &data);
-#define TRY(call) do { rc = (call); if (rc != VK_SUCCESS) goto done; } while (0)
+#define TRY(call) do { rc = (call); if (rc != VK_SUCCESS) { \
+    fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"operation_line\":%d,\"code\":%d}\n", __LINE__, (int)rc); \
+    goto done; } } while (0)
     if (rc != VK_SUCCESS) goto done;
     memset(data.mapped, 0xa5, 80); TRY(sync_memory(p, &data, 0));
     TRY(shader(p, dir, "bda_bytes.spv", &module));
@@ -256,6 +258,8 @@ static VkResult bda_test(Probe *p, const char *dir) {
     PFN_vkGetBufferDeviceAddressKHR get_address = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(p->device, "vkGetBufferDeviceAddressKHR");
     if (!get_address) { rc = VK_ERROR_EXTENSION_NOT_PRESENT; goto done; }
     VkDeviceAddress address = get_address(p->device, &address_info);
+    fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"test\":\"bda_address\",\"address\":\"0x%llx\"}\n",
+        (unsigned long long)address);
     if (!address) { rc = VK_ERROR_INITIALIZATION_FAILED; goto done; }
     TRY(begin(p, &cmd));
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, compute);
@@ -266,7 +270,11 @@ static VkResult bda_test(Probe *p, const char *dir) {
         const uint64_t wide = ((uint64_t)(i + 1) << 32) | (uint64_t)(i * 37 + 11);
         const uint64_t mixed = wide * 3 + UINT64_C(0xfffffffd);
         uint8_t expected = i < 64 ? (uint8_t)((uint32_t)mixed ^ (uint32_t)(mixed >> 32)) : 0xa5;
-        if (((uint8_t *)data.mapped)[i] != expected) { rc = VK_ERROR_UNKNOWN; break; }
+        if (((uint8_t *)data.mapped)[i] != expected) {
+            fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"test\":\"bda_mismatch\",\"offset\":%u,\"actual\":%u,\"expected\":%u}\n",
+                i, (unsigned)((uint8_t *)data.mapped)[i], (unsigned)expected);
+            rc = VK_ERROR_UNKNOWN; break;
+        }
     }
 done:
     if (cmd) vkFreeCommandBuffers(p->device, p->pool, 1, &cmd);

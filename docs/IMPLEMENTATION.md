@@ -142,8 +142,12 @@ a failed demo is a failure. These logs prove only native Windows execution.
   Memory Limit. The full app is installed and its library has started on the
   physical iPad. The first external JIT attempt found no VPN route. After the
   user enabled LocalDevVPN, the route was reachable, but StikDebug 3.1.13 still
-  did not establish a verified live debugger. The app correctly withheld the
-  guest launch. App launch is therefore not yet Wine/FEX execution evidence.
+  initially did not establish a verified live debugger. After the approved
+  pairing migration, both external StikDebug and the built-in helper completed
+  a standalone x64 AVX2 probe. The built-in run logged its own helper PID,
+  successful completion, six exact vector comparisons and guest exit code 0.
+  See [Wine/FEX CPU evidence](evidence/ipad-m2-wine-fex-cpu.json). This exercises
+  Windows PE CPU execution; relinked PS5 HLE and graphics remain separate gates.
 - The separate native probe was built, signed, installed and run on the physical
   iPad Air 13-inch M2 (`iPad14,10`, iPadOS 27.0.1 / 24A446). Actual device
   creation, BDA/8-bit/int64 shader readback and BC1 texture sampling all passed.
@@ -154,6 +158,18 @@ a failed demo is a failure. These logs prove only native Windows execution.
   [strict qualification](evidence/ipad-m2-native-gpu-qualification.json).
   This proves native offscreen GPU execution only; it does not prove Wine/FEX,
   a visible swapchain, or the game acceptance below.
+- The matching Windows PE and SPIR-V bundle now passes the same GPU readbacks
+  through the actual iOS Wine/FEX/winevulkan/MoltenVK path. An older staged
+  shader initially failed the stricter reference; that mixed bundle is rejected.
+  See [Wine/FEX GPU evidence](evidence/ipad-m2-wine-fex-gpu.json).
+- The Win32 swapchain probe accepted 600 presents in 10.43 seconds and a
+  foreground screenshot shows its coloured output. This is a short clear/present
+  smoke test, not the SDL/RDNA scene or a gameplay FPS result.
+  See [presentation evidence](evidence/ipad-m2-wine-fex-present.json).
+- Exact placeholder reservation failed with error 87 at both 8 GiB and an
+  explicitly separate 64 GiB candidate. Further mapping stages were not reached;
+  neither the candidate nor the runtime arena has been qualified.
+  See [memory failures](evidence/ipad-m2-wine-fex-memory.json).
 - The local Homebrew GCC 16 HLE cross-build fails at libc's SjLj unwind symbols.
   No complete HLE package or Windows guest execution has been claimed from it.
   Use the pinned Windows toolchain for that build.
@@ -170,14 +186,21 @@ no-access regions; none is an unmapped hole. The proposed default is therefore
 as a failing diagnostic and qualify another range against both native mappings
 and Wine's own reserved-area bookkeeping before changing the runtime profile.
 See [app-start and address-map evidence](evidence/ipad-m2-runtime-start.json).
-iPad runtime mapping behavior still needs the guest probes.
+The guest probes also fail their first exact placeholder reservation at both
+8 GiB and 64 GiB; native overlap and error 87 are not conflated.
 
 Additional local evidence lives under ignored `build/logs/`,
 `build/ios-runtime/logs/` and the fixture directories. The signed probe,
 installation/launch receipts, final executable hashes and screenshot are in
 `build/ipad-probe/`. Its process was closed and the shared-device reservation
-released after the test. Wine/FEX execution and the full iPad acceptance below
-remain open; prepared CI has not established them.
+released after the test. The standalone Wine/FEX CPU test now passes; PS5 HLE and
+the full iPad acceptance below remain open. Draft PR #3 runs the prepared CI.
+The first Windows CI built the full real HLE closure; reference execution found
+fixture errors (incorrect scalar ABI expectation, missing libc process-parameter
+initialization and placeholder-release size) which are being corrected and rerun.
+Linux checks, ARM64 Wine/FEX and macOS GPU execution passed. Initial iOS jobs
+exposed missing modern Bison and the separate Xcode Metal compiler component;
+the workflow now explicitly installs both.
 
 The initial Xcode **"No Accounts"** signing failure was resolved by signing in
 to the developer account and generating the app's explicit capability profile.

@@ -8,6 +8,17 @@ static void text(const char *s) { std::fputs(s, stdout); }
 extern "C" long long sceKernelWrite(int, const void *, usize);
 extern "C" void *malloc(usize);
 extern "C" void free(void *);
+extern "C" void _init_env();
+// Supply the same process-parameter chain consumed by the public libc
+// initializer. A zero replacement table selects its real default guest heap.
+struct Replacement { unsigned long long size, version; void *initialize, *finalize, *api[10]; unsigned long long reserved; };
+static const Replacement replacement = {0x78, 2, nullptr, nullptr, {}, 0};
+struct LibcParameters { unsigned long long size, reserved[5]; const Replacement *replacement; };
+static const LibcParameters libc_parameters = {0x38, {}, &replacement};
+struct ProcessParameters { unsigned long long size; unsigned magic, version; unsigned long long reserved[5]; const LibcParameters *libc; };
+__attribute__((used, section(".process_parameters")))
+static const ProcessParameters process_parameters = {0x40, 0x4942524f, 0, {}, &libc_parameters};
+static_assert(sizeof(Replacement) == 0x78 && sizeof(LibcParameters) == 0x38 && sizeof(ProcessParameters) == 0x40);
 static void text(const char *s) {
     usize n = 0; while (s[n]) ++n;
     sceKernelWrite(1, s, n);
@@ -42,6 +53,10 @@ static int event(const char *name, bool pass) {
 
 extern "C" int guest_exceptions_entry() {
     event("entry", true);
+#ifndef HOST_REFERENCE
+    _init_env();
+    event("libc_process_parameters_initialized", true);
+#endif
     auto *bytes = static_cast<volatile unsigned char *>(malloc(65573));
     if (!bytes) return event("heap_allocate", false);
     for (usize i = 0; i < 65573; ++i) bytes[i] = (unsigned char)(i * 17 + 9);

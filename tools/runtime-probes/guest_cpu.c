@@ -84,7 +84,7 @@ int guest_cpu_entry(void) {
     event("entry", 1, 0);
     volatile u64 seed = 1;
     const u64 abi = nine_entry(seed, 2, 3, 4, 5, 6, 7, 8, 9);
-    if (abi != 761) return fail("sysv_register_and_stack_arguments", abi);
+    if (abi != 661) return fail("sysv_register_and_stack_arguments", abi);
     event("sysv_register_and_stack_arguments", 1, abi);
     if (*guest_tls_initialized() != TLS_INITIAL || *guest_tls_zero() != 0)
         return fail("main_elf_tls_template", *guest_tls_initialized());

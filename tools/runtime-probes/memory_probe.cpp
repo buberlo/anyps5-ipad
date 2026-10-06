@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
     result("protect_readonly", VirtualProtect(address, guest_page, PAGE_READONLY, &previous));
     MEMORY_BASIC_INFORMATION protected_info{};
     result("query_readonly", VirtualQuery(address, &protected_info, sizeof(protected_info)) && protected_info.Protect == PAGE_READONLY);
-    if (!result("private_preserve_placeholder", VirtualFree(address, 0, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER))) return 1;
+    if (!result("private_preserve_placeholder", VirtualFree(address, guest_page, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER))) return 1;
     HANDLE section = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, guest_page, nullptr);
     if (!result("create_shared_section", section != nullptr)) return 1;
     if (!result("replace_shared_16k", map(section, GetCurrentProcess(), address, 0, guest_page,

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +38,7 @@ def main():
          "-O1", "-Wall", "-Wextra", "-Werror", "-c", source, "-o", obj])
     symbols = subprocess.check_output([nm, "--undefined-only", "--format=posix", str(obj)], text=True)
     names = sorted(line.split()[0] for line in symbols.splitlines() if line.strip())
-    allowed = {"sceKernelWrite", "malloc", "free", "__cxa_allocate_exception", "__cxa_throw",
+    allowed = {"sceKernelWrite", "malloc", "free", "_init_env", "__cxa_allocate_exception", "__cxa_throw",
                "__cxa_begin_catch", "__cxa_end_catch", "__cxa_rethrow", "__cxa_free_exception",
                "__gxx_personality_v0", "_Unwind_Resume", "_ZSt9terminatev",
                "_ZTVN10__cxxabiv117__class_type_infoE"}
@@ -69,6 +70,30 @@ def main():
     run(linker + ["-m", "elf_x86_64", "-shared", "-Bsymbolic", "-z", "now", "--hash-style=sysv",
                   "--eh-frame-hdr", "--no-undefined", "-e", "guest_exceptions_entry", "-o", elf, obj,
                   "--no-as-needed", *inputs])
+    # Generic ELF linkers do not emit the console's process-parameter segment.
+    # Reuse the unused GNU stack descriptor; the loaded data and relocations
+    # remain unchanged. The real relinker preserves it as PE .procpar metadata.
+    data = bytearray(elf.read_bytes())
+    phoff, shoff = struct.unpack_from("<QQ", data, 32)
+    phsize, phcount, shsize, shcount, names_index = struct.unpack_from("<HHHHH", data, 54)
+    names_header = shoff + names_index * shsize
+    names_offset, names_size = struct.unpack_from("<QQ", data, names_header + 24)
+    section_names = data[names_offset:names_offset + names_size]
+    parameters = []
+    for index in range(shcount):
+        header = shoff + index * shsize
+        name_offset = struct.unpack_from("<I", data, header)[0]
+        name = section_names[name_offset:].split(b"\0", 1)[0]
+        if name == b".process_parameters":
+            address, offset, size = struct.unpack_from("<QQQ", data, header + 16)
+            parameters.append((address, offset, size))
+    stacks = [phoff + i * phsize for i in range(phcount)
+              if struct.unpack_from("<I", data, phoff + i * phsize)[0] == 0x6474e551]
+    if len(parameters) != 1 or len(stacks) != 1 or parameters[0][2] != 0x40:
+        raise SystemExit("Expected one process-parameter section and one GNU stack descriptor")
+    address, offset, size = parameters[0]
+    struct.pack_into("<IIQQQQQQ", data, stacks[0], 0x61000001, 4, offset, address, address, size, size, 8)
+    elf.write_bytes(data)
     sources = ["tools/runtime-probes/guest_exceptions.cpp", "tools/runtime-probes/build_guest_exceptions.py", "tools/demo/build_demo.py"]
     manifest = {"schema":1,"kind":"original_synthetic_guest_exceptions","runtime_verified":False,
                 "hard_timeout_seconds":90,"imports":imports,

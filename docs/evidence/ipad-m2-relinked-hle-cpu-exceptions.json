@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "scope": "Original synthetic SysV ELF through actual AnyPS5 relinker and real HLE on iPad Wine/FEX; not RDNA scene/game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "jit_method": "builtIn",
+  "windows_reference_ci_run": 37406326493,
+  "exact_windows_reference_bytes": true,
+  "package_manifest_sha256": "032ec60e063846a21f241cd6b3e6ea443344c30706e963a443e427e5ac8dd48e",
+  "runtime_arena": {
+    "base": "0x7400000000",
+    "size": 4294967296,
+    "chunk": 268435456,
+    "lazy": true
+  },
+  "measured_app_executable_sha256": "6e81bca52cda324905a65074a0afc94cf67b8c82470d73f91a40aab8ea5d6018",
+  "hle_library_sha256": {
+    "libs/libSceAgc.prx": "251ead97eb5542c60920200ee9a4dc6fdd3488cfd79e669c018bb4469b168cdf",
+    "libs/libSceAgcDriver.prx": "e102cc61edd64026c941dece933cf90584de233e1419b083ee5fb2949a90a75d",
+    "libs/libSceKeyboard.prx": "46c4a5abf00a5690b1b2892d1febb7fc9209bf576f21d155f9f5ff897f442a4f",
+    "libs/libSceMouse.prx": "47c6ca3410d39cf212efb145961a8dc726c8c59c20a5c42237e06739b7ce2812",
+    "libs/libScePad.prx": "2908aa3247bc617c7a0a44548da009d372824d5cb9d1ccb2fb558f589126fd61",
+    "libs/libSceVideoOut.prx": "6ee6e94150d017d646efe229809bb9d2aa5b331aa4ca8fc6e284b7efa3839cbe",
+    "libs/libc.prx": "881bf8b0683b64d77362dcb10d39557b5e2fc39613e2514ed16f0551ff8fdddc",
+    "libs/libgcc_s_seh-1.dll": "0e41bb41c8d5d5a1c16150cf860225e835ff8fdbb351073835bf45eaa8fe831d",
+    "libs/libkernel.prx": "cf1bc04aea567292357a50722faf6d1805642af94270037323d414cff9ce06e8",
+    "libs/libstdc++-6.dll": "d1aebaa36202db736b96a7e4f491eb457256ff6e3cac8e225dae05790bacd147",
+    "libs/libwinpthread-1.dll": "a9230c9b3590af438066c18afa2185ac6c74b544f58606a0d20d80039b102179"
+  },
+  "reports": {
+    "guest-cpu": {
+      "records": [
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "entry",
+          "status": "pass",
+          "value": 0
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "sysv_register_and_stack_arguments",
+          "status": "pass",
+          "value": 661
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "main_elf_tls_template",
+          "status": "pass",
+          "value": 1
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "thread_join_callback_tls_stack",
+          "status": "pass",
+          "value": 2
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "atomic_64_counter",
+          "status": "pass",
+          "value": 1024
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "pthread_key_destructors",
+          "status": "pass",
+          "value": 2
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "main_tls_isolation",
+          "status": "pass",
+          "value": 1
+        },
+        {
+          "schema": 1,
+          "probe": "guest_cpu",
+          "stage": "complete",
+          "status": "pass",
+          "value": 1
+        }
+      ],
+      "pid": 1165,
+      "helper_pid": 1166,
+      "guest_exit_code": 0,
+      "raw_log_sha256": "ec4f5437208f09b32a310d98e864686703d7b4ccb08e504b0931a451249818bf",
+      "executable_sha256": "c77cdcbbf9ca9589087ad2ffc341806eb3cd0ee1ecb961fa1f7c5c10a52e59a1"
+    },
+    "guest-exceptions": {
+      "records": [
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "entry",
+          "status": "pass"
+        },
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "libc_process_parameters_initialized",
+          "status": "pass"
+        },
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "heap_write_read_free",
+          "status": "pass"
+        },
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "typed_catch_and_rethrow",
+          "status": "pass"
+        },
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "unwind_destructors",
+          "status": "pass"
+        },
+        {
+          "schema": 1,
+          "probe": "guest_exceptions",
+          "stage": "complete",
+          "status": "pass"
+        }
+      ],
+      "pid": 1168,
+      "helper_pid": 1169,
+      "guest_exit_code": 0,
+      "raw_log_sha256": "c42259933047a4ecb4ecf9a012de99bdc185a02bb1593117d2181c66076b5869",
+      "executable_sha256": "03bbfa6c1f06b1e50af778ef6f451f981c5bc6dc3741e8b4728564881c6a772d"
+    }
+  }
+}

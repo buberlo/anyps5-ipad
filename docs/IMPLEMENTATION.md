@@ -172,6 +172,13 @@ a failed demo is a failure. These logs prove only native Windows execution.
   stale error due to C++ argument evaluation order. Further mapping stages
   were not reached in those failed candidates.
   See [memory failures](evidence/ipad-m2-wine-fex-memory.json).
+- The exact CPU and exception ELF/PE bytes from the successful Windows CI
+  package now also pass on iPad with the real PRX closure: SysV stack/register
+  calls, two threads, main/worker TLS isolation, atomics, pthread key destructors,
+  initialized libc heap, typed nested rethrow and unwind destructors. The runs
+  use the configured 464–468 GiB arena with 256 MiB lazy chunks and exit 0.
+  See [relinked HLE evidence](evidence/ipad-m2-relinked-hle-cpu-exceptions.json).
+  RDNA/SDL, scene interaction and full acceptance still need their own tests.
 - The local Homebrew GCC 16 HLE cross-build fails at libc's SjLj unwind symbols.
   No complete HLE package or Windows guest execution has been claimed from it.
   Use the pinned Windows toolchain for that build.
@@ -209,11 +216,14 @@ Additional local evidence lives under ignored `build/logs/`,
 `build/ios-runtime/logs/` and the fixture directories. The signed probe,
 installation/launch receipts, final executable hashes and screenshot are in
 `build/ipad-probe/`. Its process was closed and the shared-device reservation
-released after the test. The standalone Wine/FEX CPU test now passes; PS5 HLE and
-the full iPad acceptance below remain open. Draft PR #3 runs the prepared CI.
-The first Windows CI built the full real HLE closure; reference execution found
-fixture errors (incorrect scalar ABI expectation, missing libc process-parameter
-initialization and placeholder-release size) which are being corrected and rerun.
+released after the test. The standalone CPU/GPU probes and relinked CPU/exception HLE tests pass; the
+RDNA scene and full iPad acceptance below remain open. Draft PR #3 runs the prepared CI.
+The corrected Windows CI at `a7a9950` builds the full real HLE closure and
+passes relinked CPU callbacks/threads/TLS, initialized libc heap and nested
+exceptions/destructors, plus standalone AVX2/memory/allocator probes. See
+[Windows reference](evidence/windows-reference-a7a9950.json). Graphics is
+explicitly `not_run` because the hosted Windows runner lacks a Vulkan driver.
+The physical iPad graphics demo still needs that reference and its own run.
 Linux checks, ARM64 Wine/FEX and macOS GPU execution passed. Initial iOS jobs
 exposed missing modern Bison and the separate Xcode Metal compiler component;
 the workflow now explicitly installs both.

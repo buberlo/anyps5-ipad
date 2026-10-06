@@ -7,6 +7,11 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 out="${APS5_IPAD_PROBE_BUILD:-$root/build/ipad-probe}"
 app="$out/AnyPS5GPUProbe.app"
 headers="${VULKAN_HEADERS:-$root/upstreams/AnyPS5/3rdparty/Vulkan-Headers/include}"
+if [ ! -f "$headers/vulkan/vulkan.h" ] && [ -z "${VULKAN_HEADERS:-}" ]; then
+    # The standalone iOS CI initializes MoltenVK, not AnyPS5's nested headers.
+    headers="$root/upstreams/MoltenVK/External/Vulkan-Headers/include"
+fi
+[ -f "$headers/vulkan/vulkan.h" ] || { echo "Missing real Vulkan headers: $headers" >&2; exit 1; }
 : "${MOLTENVK_IOS_LIB:?Set MOLTENVK_IOS_LIB to the pinned iPhoneOS libMoltenVK.a}"
 sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
 mkdir -p "$app"

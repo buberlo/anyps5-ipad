@@ -86,7 +86,14 @@
     "first_loopback": "unreachable_no_vpn",
     "second_loopback": "reachable_utun",
     "external_debugger_attach_verified": false,
-    "builtin_helper_tested": false
+    "builtin_helper_tested": false,
+    "external_named_script_attempt": {
+      "script_sha256": "71887a1c6dc7549f0d3cef0272a42e8fa4c6678bac556a3eb2b4f24baa58b0e1",
+      "request": "same script via script-name, current target PID and bundle ID",
+      "debugger_attach_verified": false,
+      "visible_result": "StikDebug Apps list; no confirmation or return to guest observed during bounded test",
+      "target_process_terminated": true
+    }
   },
   "windows_cpu_avx2": "not_run",
   "windows_memory": "not_run",
@@ -97,7 +104,11 @@
     "native-va-analysis.json": "b1935c7682e3e282b59363371a8bda2a067fde102aa2a529f91fda92c5a4292a",
     "device-runtime-log-3.txt": "0b214fbb36f85a986b823c799251ef6de32f90b1e3f3e95e0a1d4e9673a536f3",
     "signing-verification.json": "73f9ea854b7df170b1ae8c76b2626be2a8e5f3293320f44cab87cf4cc42b81d5",
-    "AnyPS5-iPad-SIGNED.ipa": "c1baad51b3768038d76769027673b3828b6ed3fb468e3be364ca026a4be89e61"
+    "AnyPS5-iPad-SIGNED.ipa": "c1baad51b3768038d76769027673b3828b6ed3fb468e3be364ca026a4be89e61",
+    "device-runtime-log-final.txt": "045144aca7c63bfdf79f7753d8edb512fea6166e4ed246c957f32f0ec30af46e",
+    "external-named-app.log": "e88bed18a046a2319f3626d84cf15d68301fc86fb3870d7bba3f1d956bff014f",
+    "external-named-final.png": "2ac2bbd83b5309b3886c71d61c991738fda39d4b18dcd31c7031858d9d61c1f2",
+    "external-named-terminate.json": "020046ed44603d79ee943511e94f6a9882eabd2a22d21188f0ba145acc302497"
   },
   "limitations": [
     "Live walks are non-atomic; foreground/JIT flags were captured before the walk, not continuously through it.",
@@ -106,5 +117,6 @@
     "Region owners, image paths, and Wine reserved_areas/free_ranges were not captured.",
     "This analysis performed no allocation, remap, JIT execution, guest launch, or guest arena safety test.",
     "Observed gaps are bounded snapshot observations, not guarantees of successful later Wine or fixed-address allocations."
-  ]
+  ],
+  "device_lease_released": true
 }

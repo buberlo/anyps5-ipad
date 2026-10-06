@@ -285,12 +285,15 @@ The same repaired package was verified on iPad and launched with successful
 built-in JIT. The foreground game surface stays black. Shared guest pages
 initially mapped RWX consume all 4,096 anonymous JIT aliases and overflow the
 pool ledger before their requested RW rights are applied. The SDK mapping
-patch now uses the requested initial protection, retaining the final protection
-change and section maximum rights; NOACCESS views start readable and are
-immediately protected. The memory probe exercises the actual SDK mapper,
-bidirectional aliases and writes after tracking is armed. This fix requires
-a rebuilt HLE library and fresh Windows/iPad verification; it is not yet a
-passing device result. See [iPad startup failure](evidence/ipad-m2-dreaming-sarah-startup.json). Private assets
+change to initial SDK mapping rights was rejected after the real device probe
+found that it prevented a later read-only → read-write transition. The SDK's
+original maximum access rights are retained. Instead, the Madeira patch
+removes only native EXEC from fully mapped non-native views inside the explicit
+PS5 arena. Wine's logical rights, FEX notifications and write tracking remain;
+ARM64EC code, images, system/placeholder views, holes and JIT pool ranges are
+excluded. Compiled tests exercise the actual selector with controlled mappings,
+boundary/overflow cases and native-code exclusions. A rebuilt signed runtime
+and fresh device verification are still required. See [iPad startup failure](evidence/ipad-m2-dreaming-sarah-startup.json). Private assets
 and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits

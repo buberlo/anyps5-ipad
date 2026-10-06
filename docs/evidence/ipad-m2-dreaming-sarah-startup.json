@@ -18,7 +18,7 @@
   "jit_alias_refusals": 23052,
   "first_rejected_guest_page": "0x7404008000",
   "jit_pool_ledger_full_observed": true,
-  "diagnosis": "Each shared guest page is initially mapped RWX; Madeira maps these data pages into its executable pool before the requested RW protection is applied. Source fix awaits matched device verification.",
+  "diagnosis": "Each shared guest page is initially mapped RWX; Madeira maps these data pages into its executable pool before the requested RW protection is applied. The initial SDK-rights change was rejected by a later upgrade test; a scoped Madeira native-protection fix awaits matched device verification.",
   "gameplay": "not_observed",
   "acceptance": "failed_startup_diagnostic",
   "private_evidence_sha256": {

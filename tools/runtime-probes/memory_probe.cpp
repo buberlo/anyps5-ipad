@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
         if (i == 1) base = static_cast<std::uintptr_t>(value);
         else size = static_cast<std::size_t>(value);
     }
-    if (base % 0x10000 || size % 0x10000 || size < 0x10000 || size > UINTPTR_MAX - base) return 64;
+    if (base % 0x10000 || size % 0x10000 || size < 0x10000 || size > UINTPTR_MAX - base || UINTPTR_MAX - base - size < 0x10000) return 64;
     SYSTEM_INFO system{};
     GetSystemInfo(&system);
     std::printf("{\"schema\":1,\"probe\":\"memory\",\"base\":\"0x%llx\",\"size\":%llu,\"windows_page_size\":%lu,\"allocation_granularity\":%lu}\n",
@@ -171,7 +171,9 @@ int main(int argc, char** argv) {
         MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, nullptr, 0);
     result("reserve_same_range_again", reused == address);
     if (reused) result("final_release", VirtualFree(reused, 0, MEM_RELEASE));
-    sdk_shared_mapping(base);
+    // A raw RWX view earlier in this probe may leave runtime alias bookkeeping
+    // behind after unmapping. Use a distinct VA for the independent SDK cases.
+    sdk_shared_mapping(base + size);
     std::printf("{\"schema\":1,\"probe\":\"memory\",\"summary\":true,\"failed\":%u}\n", failures);
     return failures ? 1 : 0;
 }

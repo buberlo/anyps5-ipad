@@ -4,6 +4,10 @@ This repository preserves the Madeira-menu integration through the playable
 Dreaming Sarah baseline (`abe64be`). The app is named **madeira-anyps5**.
 Builds and checks run locally; GitHub Actions is disabled for this project.
 
+The original published URL, <https://github.com/buberlo/anyps5-ipad>, redirects
+here. **Do not create another repository named `buberlo/anyps5-ipad`:** that
+name must remain unused so links already shared on social media keep working.
+
 **The PS5 build of Dreaming Sarah boots on an M2 iPad and is playable in a basic sense.**
 
 [AnyPS5](https://github.com/boykopovar/AnyPS5) relinks that title's own binary into an x86-64 Windows PE. [Madeira](https://github.com/willfaust/Madeira) runs the PE on the iPad: Wine ARM64EC, FEX, and this repo's `winevulkan` path through MoltenVK to Metal. The binary is the PS5 build, not a PC or Switch port. Dreaming Sarah is not a PS5 exclusive. This is local execution: not streaming, not Remote Play, and not a console emulator.

@@ -12,6 +12,26 @@ configured without Vulkan. The work in this tree is to put MoltenVK under
 Owner: Konrad Kern. This is a long-term research project. The current tree
 is a foundation and the first patch drafts, not a title running on a device.
 
+## Runtime implementation
+
+The implementation branch adds the iOS `winevulkan` Unix dispatch archive,
+static MoltenVK surface-loader fixes, transactional lazy GuestArena, executable
+CPU/memory/GPU probes, and an original relinkable 2D guest. The complete iPhoneOS
+build keeps the real JIT helper and pairing/FFmpeg libraries. The private app's
+bundle ID is `com.konradkern.anyps5ipad`.
+
+See [implementation and verification](docs/IMPLEMENTATION.md) for build commands
+and the remaining device gates. The tables below are the **foundation's
+historical evidence**, not a statement that a commercial game now works.
+In particular, main's ARM64 CI subsequently executed the synthetic PE with
+exit 42; the old `kernel32.dll` failure is resolved for that fixture.
+
+The original demo needs no game data. It exercises public PS5 HLE imports and
+a hand-written RDNA compute program before presenting frames. Linker-only
+import stubs are kept separate from the real runtime PRX files.
+Dreaming Sarah still requires user-supplied input and a separate Windows/iPad
+compatibility run.
+
 ## Status
 
 | Piece | State |

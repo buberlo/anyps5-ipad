@@ -1,6 +1,7 @@
 name: Windows WinLibs PRX
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -34,6 +35,25 @@ jobs:
         shell: bash
         run: scripts/m0-build-anyps5-winlibs.sh
 
+      - name: Execute CPU, Windows mapping and actual allocator probes
+        shell: bash
+        run: |
+          export PATH="$PWD/build/toolchains/winlibs/mingw64/bin:$PATH"
+          HOST_CXX=g++ WINDOWS_CXX=g++ scripts/build-runtime-probes.sh
+          for probe in cpu memory allocator; do
+            "build/runtime-probes/$probe-probe.exe" > "build/runtime-probes/$probe-windows.jsonl"
+          done
+
+      - name: Save runtime evidence and Windows libraries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-runtime-evidence
+          path: |
+            build/runtime-probes/*.jsonl
+            build/runtime-probes/*.exe
+            build/anyps5-winlibs/core/libs/libs/**/*.prx
+
   # A runner that dies mid-build is conclusion failure, not cancelled
   # ("lost communication with the server" on c161948). Retry that too.
   # The job is skipped when the primary succeeded, so a green build
@@ -55,3 +75,22 @@ jobs:
       - name: Build libc.prx and libSceAgcDriver.prx with WinLibs GCC 15.2
         shell: bash
         run: scripts/m0-build-anyps5-winlibs.sh
+
+      - name: Execute CPU, Windows mapping and actual allocator probes
+        shell: bash
+        run: |
+          export PATH="$PWD/build/toolchains/winlibs/mingw64/bin:$PATH"
+          HOST_CXX=g++ WINDOWS_CXX=g++ scripts/build-runtime-probes.sh
+          for probe in cpu memory allocator; do
+            "build/runtime-probes/$probe-probe.exe" > "build/runtime-probes/$probe-windows.jsonl"
+          done
+
+      - name: Save fallback runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-runtime-evidence-fallback
+          path: |
+            build/runtime-probes/*.jsonl
+            build/runtime-probes/*.exe
+            build/anyps5-winlibs/core/libs/libs/**/*.prx

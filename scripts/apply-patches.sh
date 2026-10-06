@@ -50,6 +50,16 @@ for name in anyps5 madeira fex wine moltenvk; do
             ordered[${#ordered[@]}]="$patch"
         done < <(printf '%s\n' "${files[@]}" | sort)
     fi
+    # Later patches can intentionally change lines introduced by an earlier
+    # patch. Checking each earlier patch in isolation then reports a false
+    # conflict on a fully patched checkout. Validate the complete reverse
+    # series first, without touching the checkout.
+    if [ "$mode" = "apply" ]; then
+        if python3 "$root/scripts/check-patch-series.py" "$repo" "${ordered[@]}"; then
+            echo "already applied: ${name} complete series"
+            continue
+        fi
+    fi
     for patch in "${ordered[@]}"; do
         if [ "$mode" = "reverse" ]; then
             if git -C "$repo" apply --reverse --check "$patch" 2>/dev/null; then

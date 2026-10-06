@@ -1,5 +1,11 @@
 # Patch status
 
+The implementation follow-ups are documented in
+[IMPLEMENTATION.md](IMPLEMENTATION.md): transactional GuestArena (AnyPS5 0005),
+accurate unavailable SDK telemetry (Madeira 0004), the complete static Vulkan
+bridge (0006), and the isolated runtime profile/build integration (0007).
+The foundation measurements below remain historical evidence.
+
 Apply with `scripts/apply-patches.sh`. Reverse with
 `scripts/apply-patches.sh --reverse`. The submodules in git stay at the
 upstream commits; the patches are the delta.

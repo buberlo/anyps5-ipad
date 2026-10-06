@@ -1,0 +1,3 @@
+# Unified-diff context markers intentionally contain a single leading space.
+# Source whitespace is checked while applying these patches, not as diff text.
+*.patch -whitespace

@@ -32,8 +32,8 @@ if [ "${APS5_SLIM:-}" = 1 ]; then
 fi
 cmake -S "$root/upstreams/AnyPS5" -B "$root/build/anyps5" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=gcc \
-    -DCMAKE_CXX_COMPILER=g++ \
+    -DCMAKE_C_COMPILER="${ANYPS5_CC:-gcc}" \
+    -DCMAKE_CXX_COMPILER="${ANYPS5_CXX:-g++}" \
     -DBUILD_TESTING="${BUILD_TESTING:-OFF}" \
     -DAPS5_SLIM="$slim_flag"
 if [ -n "${APS5_TARGETS:-}" ]; then

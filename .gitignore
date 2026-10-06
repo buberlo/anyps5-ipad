@@ -4,3 +4,5 @@ tools/vk-requirements/vk-requirements
 tools/checks/test_moltenvk_loader
 *.o
 *.obj
+__pycache__/
+*.pyc

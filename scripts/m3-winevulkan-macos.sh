@@ -9,10 +9,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
     echo "this script is for macOS" >&2
     exit 1
 fi
-"$root/scripts/apply-patches.sh"
+if [ "${APS5_PATCHES_APPLIED:-0}" != 1 ]; then "$root/scripts/apply-patches.sh"; fi
 
 if command -v brew >/dev/null 2>&1; then
-    brew install cmake ninja pkgconf bison flex gettext vulkan-loader vulkan-headers || true
     if [ -d /opt/homebrew/opt/bison/bin ]; then
         export PATH="/opt/homebrew/opt/bison/bin:$PATH"
     fi
@@ -30,6 +29,7 @@ if ! command -v aarch64-w64-mingw32-clang >/dev/null 2>&1; then
         url="https://github.com/mstorsjo/llvm-mingw/releases/download/${mingw_tag}/llvm-mingw-${mingw_tag}-ucrt-macos-universal.tar.xz"
         echo "downloading $url"
         curl -L --fail --retry 3 -o "$archive" "$url"
+        printf '%s  %s\n' bd85a3975723815cef28dbbd2ca2cb0c926f6b348a12a0453f39f7af273cb3f7 "$archive" | shasum -a 256 -c -
         tar -C "$root/build/toolchains" -xJf "$archive"
     fi
     export PATH="$mingw_root/bin:$PATH"
@@ -68,7 +68,7 @@ if [ ! -f "$build/Makefile" ]; then
     )
 fi
 
-make -C "$build" -j"$(sysctl -n hw.ncpu)" \
+make -C "$build" -j"${JOBS:-2}" \
     dlls/ntdll/ntdll.so \
     dlls/win32u/win32u.so \
     dlls/winevulkan/winevulkan.so

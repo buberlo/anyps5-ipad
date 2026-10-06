@@ -12,12 +12,19 @@ using Map = PVOID (WINAPI*)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG
 using Unmap = BOOL (WINAPI*)(HANDLE, PVOID, ULONG);
 
 static unsigned failures;
-static bool result(const char* name, bool pass, DWORD error = GetLastError()) {
+static bool result(const char* name, bool pass, DWORD error) {
     std::printf("{\"schema\":1,\"probe\":\"memory\",\"case\":\"%s\",\"status\":\"%s\",\"win32_error\":%lu}\n",
         name, pass ? "pass" : "fail", static_cast<unsigned long>(pass ? 0 : error));
     std::fflush(stdout);
     failures += !pass;
     return pass;
+}
+
+static bool result(const char* name, bool pass) {
+    // Function arguments have no guaranteed evaluation order: a default
+    // GetLastError() argument could run before the API being checked.
+    const DWORD error = pass ? ERROR_SUCCESS : GetLastError();
+    return result(name, pass, error);
 }
 
 static FARPROC symbol(const char* name) {

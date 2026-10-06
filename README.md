@@ -10,7 +10,9 @@ build connecting `winevulkan` to MoltenVK and tests guest memory placement.
 
 Owner: Konrad Kern. This is a long-term research project. The current tree
 has a complete signed iPad runtime build and a native GPU device proof.
-A standalone x64 Windows AVX2 probe now passes through Wine/FEX on iPad.
+Standalone x64 AVX2 and GPU readbacks now pass through Wine/FEX on iPad;
+a short Win32 swapchain test has visible output. The 464–468 GiB candidate
+passes mapping/allocator probes; PS5 HLE and gameplay are still separate gates.
 PS5 HLE and full-game acceptance remain open.
 
 ## Runtime implementation

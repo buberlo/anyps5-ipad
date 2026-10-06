@@ -1,0 +1,23 @@
+diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -14499,6 +14499,19 @@
+     return STATUS_SUCCESS;
+ 
+ failed:
++#ifdef WINE_IOS
++    /* Preserve the raw failure before logging can change errno. This is a
++     * bounded diagnosis, never permission to replace an unrelated host map. */
++    {
++        const int saved_errno = errno;
++        static unsigned fixed_failures;
++        if (fixed_failures++ < 32)
++            dprintf( 2, "[anyps5-fixed-map] base=%p size=0x%llx start=%p prot=0x%x errno=%d af_stage=%d af_error=%d reserved=%d\n",
++                     base, (unsigned long long)size, start, unix_prot, saved_errno,
++                     ios_af.stage, ios_af.err, mmap_is_in_reserved_area( base, size ) );
++        errno = saved_errno;
++    }
++#endif
+     if (errno == ENOMEM)
+     {
+         ERR( "out of memory for %p-%p\n", base, (char *)base + size );

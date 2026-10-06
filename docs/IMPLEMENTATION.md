@@ -166,9 +166,11 @@ a failed demo is a failure. These logs prove only native Windows execution.
   foreground screenshot shows its coloured output. This is a short clear/present
   smoke test, not the SDL/RDNA scene or a gameplay FPS result.
   See [presentation evidence](evidence/ipad-m2-wine-fex-present.json).
-- Exact placeholder reservation failed with error 87 at both 8 GiB and an
-  explicitly separate 64 GiB candidate. Further mapping stages were not reached;
-  neither the candidate nor the runtime arena has been qualified.
+- Exact placeholder reservation failed at both 8 GiB and an
+  explicitly separate 64 GiB candidate. Corrected error sampling at 64 GiB
+  reports Windows error 487 and native KERN_NO_SPACE; the original 87 was a
+  stale error due to C++ argument evaluation order. Further mapping stages
+  were not reached in those failed candidates.
   See [memory failures](evidence/ipad-m2-wine-fex-memory.json).
 - The local Homebrew GCC 16 HLE cross-build fails at libc's SjLj unwind symbols.
   No complete HLE package or Windows guest execution has been claimed from it.
@@ -186,8 +188,22 @@ no-access regions; none is an unmapped hole. The proposed default is therefore
 as a failing diagnostic and qualify another range against both native mappings
 and Wine's own reserved-area bookkeeping before changing the runtime profile.
 See [app-start and address-map evidence](evidence/ipad-m2-runtime-start.json).
-The guest probes also fail their first exact placeholder reservation at both
-8 GiB and 64 GiB; native overlap and error 87 are not conflated.
+The corrected 64 GiB attempt also hits a native no-access host reservation
+covering 64–448 GiB. It fails with KERN_NO_SPACE / Windows error 487 and never
+overwrites that reservation. The bounded native diagnostic preserves both codes.
+
+A separate candidate at **464–468 GiB** now passes a complete 4 GiB reservation,
+16 KiB private/shared replacements, write watch, aliases, protection changes,
+coalescing and reuse through Wine/FEX. This reserves virtual addresses and does
+not allocate 4 GiB of RAM. The real GuestArena implementation also passes its
+controlled 1 MiB / 64 KiB-chunk startup collision, late collision, transaction
+rollback, reuse and overflow tests. See [mapping evidence](evidence/ipad-m2-464gib-memory.json)
+and [allocator evidence](evidence/ipad-m2-464gib-allocator.json). The initial
+runtime profile now uses this candidate with its existing 4 GiB size and
+256 MiB lazy chunks; existing user configuration is not silently replaced.
+This is qualified for the observed M2 runs only. A live map and successful
+probe do not guarantee that another launch, iPad or a game's fixed addresses
+will fit; allocation collisions must still fail safely.
 
 Additional local evidence lives under ignored `build/logs/`,
 `build/ios-runtime/logs/` and the fixture directories. The signed probe,

@@ -7,7 +7,11 @@
 #include <exception>
 #include <limits>
 
-static constexpr std::uintptr_t test_base = UINT64_C(0x200000000);
+#ifndef APS5_ALLOCATOR_PROBE_BASE
+#define APS5_ALLOCATOR_PROBE_BASE UINT64_C(0x200000000)
+#endif
+static constexpr std::uintptr_t test_base = APS5_ALLOCATOR_PROBE_BASE;
+static_assert(test_base % 0x10000 == 0 && test_base <= UINTPTR_MAX - 0x100000);
 static constexpr std::size_t chunk = 0x10000;
 static void* startup_obstacle;
 static unsigned failed;
@@ -23,10 +27,13 @@ static bool check(const char* name, bool pass) {
 // observes a real occupied host region and the controlled test profile.
 static struct Prepare {
     Prepare() {
-        _putenv("APS5_GUEST_ARENA_BASE=0x200000000");
+        char base_value[32];
+        std::snprintf(base_value, sizeof(base_value), "0x%llx", static_cast<unsigned long long>(test_base));
+        _putenv_s("APS5_GUEST_ARENA_BASE", base_value);
         _putenv("APS5_GUEST_ARENA_SIZE=0x100000");
         _putenv("APS5_GUEST_ARENA_CHUNK=0x10000");
         _putenv("APS5_GUEST_ARENA_LAZY=1");
+        std::printf("{\"schema\":1,\"probe\":\"allocator\",\"base\":\"%s\",\"size\":1048576,\"chunk\":65536}\n", base_value);
         startup_obstacle = VirtualAlloc(reinterpret_cast<void*>(test_base + 2 * chunk), chunk,
             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
         if (!check("prepare_exact_host_obstacle", startup_obstacle == reinterpret_cast<void*>(test_base + 2 * chunk))) std::exit(2);

@@ -1,0 +1,211 @@
+{
+  "schema": 1,
+  "scope": "standalone x64 Windows probe under Wine/FEX; the allocator includes the real patched GuestArena implementation; not full game acceptance",
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "build": "24A446"
+  },
+  "base": "0x7400000000",
+  "jit_method": "builtIn",
+  "records": [
+    {
+      "schema": 1,
+      "probe": "memory",
+      "base": "0x7400000000",
+      "size": 4294967296,
+      "windows_page_size": 4096,
+      "allocation_granularity": 65536
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_range",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "region_base": "0x7400000000",
+      "region_size": 34359738368,
+      "state": 65536,
+      "protect": 1
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "required_apis",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_exact_placeholder",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "fixed_collision_refused",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "split_16k_placeholder",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "replace_private_write_watch",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "zero_commit",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "write_watch_dirty",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "write_watch_reset",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "protect_readonly",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "query_readonly",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "private_preserve_placeholder",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "create_shared_section",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "replace_shared_16k",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "shared_alias",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "alias_reads_primary",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "shared_protect_readonly",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "primary_reads_alias",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "alias_unmap",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "shared_preserve_placeholder",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "coalesce_placeholders",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "release_placeholder",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "reserve_same_range_again",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "case": "final_release",
+      "status": "pass",
+      "win32_error": 0
+    },
+    {
+      "schema": 1,
+      "probe": "memory",
+      "summary": true,
+      "failed": 0
+    }
+  ],
+  "raw_log_sha256": "8720120c45abcd2e69b7e7c8993c0e98b6fe71102559f1f6bf143cfb5a85b371",
+  "guest_exit_code": 0,
+  "limitation": "Memory test reserves 4 GiB and commits a 16 KiB replacement; allocator uses a controlled 1 MiB arena with 64 KiB chunks. Game runtime still uses 256 MiB chunks and requires its own execution test.",
+  "target_pid": 1146,
+  "helper_pid": 1147,
+  "helper_completion_success": true,
+  "executable_sha256": "cdb8d367bd9806408f75c84722a788e7bcbf9aaf65642377782d6495845eb65b",
+  "measured_app_sha256": "not collected for diagnostic rebuild; do not infer identity from the subsequently rebuilt local profile binary"
+}

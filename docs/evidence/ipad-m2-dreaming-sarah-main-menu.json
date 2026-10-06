@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app_build": 10,
+  "driver_ci_run": 37479161394,
+  "driver_root_commit": "a5138a9d37d1b1953f036731a3f2aac1032d5641",
+  "driver_sha256": "4148ca38cd2c40e0d504000923dbcfd2e142e430ea6eaf1fbe322051277385a6",
+  "package_manifest_sha256": "19294193491de6b9c59fa72e56e2c53a23f89413c92191f6978a4819a2454af9",
+  "private_log_sha256": "e9b89c58aec6f3279557029a02e968175a59dfe09140e4b7b723cb1f3a8e3bc3",
+  "duration_seconds": 91.42075250000016,
+  "changed_source_component": "libSceAgcDriver.prx only",
+  "game_assets_pe_index_guest_modules_unchanged": true,
+  "observations": {
+    "main_menu_visible": true,
+    "observed_menu_items": [
+      "New game",
+      "Continue",
+      "Options"
+    ],
+    "independently_inspected_screenshot_seconds": [
+      40,
+      90
+    ],
+    "screenshots_sha256": {
+      "40": "7f3672c6c02c59caae07fe601d086212d8c9b2f19fe86271677d9ef5e600401d",
+      "90": "526474d536ef435283c7573b9d94da1b4149a2ffa5069b25e0d4c3a5aad9acf0"
+    },
+    "interpolation_opt_in_selected": true,
+    "shader_skip_count": 0,
+    "PerVertexKHR_count": 0,
+    "redelivery_256_warnings": 2,
+    "redelivery_2000_terminal": false,
+    "swapchain": "768x432 stretch"
+  },
+  "private_request_count": 14,
+  "cleanup_own_processes_verified": true,
+  "limits": [
+    "Menu output is physical device evidence; gameplay, sound quality and save/load still require tests.",
+    "No ten-minute displayed-FPS claim for this commercial game.",
+    "Native protection faults and the old counter warnings remain; the separate counter fix has not run yet."
+  ]
+}

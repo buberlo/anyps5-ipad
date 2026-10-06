@@ -21,7 +21,7 @@
     "signal_source_sha256": "9fbd198f1f651e12096f793b7910247598bd55f9a8787896e3978100bf1f65ba",
     "counter_source_sha256": "f6fa60275b69c7643456e5fbe0230f3262050cb046b0fa838a39e125d5eb1253"
   },
-  "device_execution": "pending signed new app and isolated comparison",
+  "device_execution": "Signed Build 11 installed, with checked game/settings/library data and all embedded PE farms preserved. New game reaches credits and forest, then remaining consecutive fault reaches terminal. See ipad-m2-dreaming-sarah-entry-scene.json.",
   "limitations": [
     "This corrects a proven accumulation error; it does not prove every logged native protection fault is legitimate.",
     "Repeated same-PC/address work without intervening guest exception deliveries can still reach the threshold.",

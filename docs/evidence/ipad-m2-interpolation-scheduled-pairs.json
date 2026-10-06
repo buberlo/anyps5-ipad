@@ -113,6 +113,6 @@
     ]
   },
   "privacy": "Requests and derived shader code stay local, outside GitHub and CI. Only metadata and hashes recorded here.",
-  "extended_guard_device_execution": "pending new CI driver artifact",
+  "extended_guard_device_execution": "Build 10 with CI driver a5138a9 reaches visible main menu; no shader skips or PerVertexKHR errors during 91-second diagnostic. See ipad-m2-dreaming-sarah-main-menu.json.",
   "gameplay_verified": false
 }

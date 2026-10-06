@@ -390,8 +390,14 @@ ALU reads or writes a partial result, changes EXEC, or reads raw I/J. Memory,
 compare, unknown and control-flow instructions between pairs still reject.
 Forty-three compiled production-guard cases pass. Rebuilding the production
 recompiler locally changes this capture from rejection to success; all twelve
-local requests pass pinned SPIRV-Cross and Apple's Metal compiler. The extended guard has not yet run on
-the iPad. See [scheduled-pair diagnosis](evidence/ipad-m2-interpolation-scheduled-pairs.json).
+local requests pass pinned SPIRV-Cross and Apple's Metal compiler. The extended
+guard now executes on the iPad: an isolated driver update on
+Build 10 reaches the visible New game / Continue / Options menu. The 91-second
+observation has zero shader skips and zero PerVertexKHR errors, with successful
+own-process cleanup. Old native fault-counter warnings remain; gameplay and
+save/load still need tests. See
+[main menu proof](evidence/ipad-m2-dreaming-sarah-main-menu.json) and
+[scheduled-pair diagnosis](evidence/ipad-m2-interpolation-scheduled-pairs.json).
 
 The exception-delivery terminal also contains a separate accumulation defect:
 its PC/address hash counts recurring visits even when that thread has delivered
@@ -400,8 +406,21 @@ successful changed stores before its 2000-count termination. Patch 0016 counts
 consecutive identical deliveries per exact Mach-thread identity instead, retaining
 the 256 warning, 2000 terminal and all memory protection/write tracking. The actual
 counter passes host checks and the iPhoneOS signal handler compiles. Device
-validation is pending; this does not establish that every observed fault is valid.
+validation now confirms Build 11 is installed with byte-preserved embedded PE
+farms and checked game/settings/library data. Touch starts New game and the
+credits plus forest appear. A remaining consecutive native fault still reaches
+the retained terminal, so the memory issue is not resolved.
 See [fault-counter diagnosis](evidence/ipad-m2-consecutive-fault-counter.json).
+
+The entry-scene capture adds one rejected fragment with three basic blocks:
+its complete center interpolation occurs in the unconditional entry prefix,
+and a texture result overwrites raw I/J before the first branch. The guard now
+permits this precise shape, requires a valid entry starting at instruction zero
+with no incoming edges, and rejects surviving raw inputs, partial pairs or later
+interpolation. Fifty-three production cases and all seventeen captured shader
+replays/Apple Metal compilations pass. The new prefix guard needs a device run;
+the character remains absent in the current on-device scene. See
+[entry scene diagnostic](evidence/ipad-m2-dreaming-sarah-entry-scene.json).
 
 Private shader requests, assets and complete game logs remain outside Git and CI.
 

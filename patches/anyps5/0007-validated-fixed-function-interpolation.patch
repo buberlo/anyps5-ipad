@@ -2,7 +2,7 @@ diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctio
 new file mode 100644
 --- /dev/null
 +++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,127 @@
 +#pragma once
 +#include "ControlFlow/ControlFlowGraph.hpp"
 +#include "Optimization/ShaderStageInputInfo.hpp"
@@ -33,12 +33,22 @@ new file mode 100644
 +        if (input == PixelInput::PerspectiveCenter || input == PixelInput::LinearCenter) centers.insert(base);
 +    }
 +    std::uint32_t pc = 0;
-+    const auto fail = [&] { throw std::runtime_error("fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences in one basic block (pc=" + std::to_string(pc) + ")"); };
++    const auto fail = [&] { throw std::runtime_error("fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences in an unconditional entry block (pc=" + std::to_string(pc) + ")"); };
 +    const bool hasInterpolation = std::any_of(decoded.instructions.begin(), decoded.instructions.end(), [](const auto& i) {
 +        return i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32 || i.op == RdnaOpcode::VInterpMovF32;
 +    });
 +    if (!hasInterpolation && live.empty()) return;
-+    if (cfg.blocks.size() != 1u) fail();
++    const BasicBlock* entry = nullptr;
++    if (cfg.blocks.size() != 1u) {
++        // A branch after an unconditional interpolation prefix is harmless
++        // only when every raw I/J register has been overwritten on entry.
++        // Reject loops into the prefix and interpolation in later blocks.
++        const auto found = std::find_if(cfg.blocks.begin(), cfg.blocks.end(), [&](const auto& b) { return b.id == cfg.entryBlock; });
++        if (cfg.unsupported || cfg.irreducible || found == cfg.blocks.end() ||
++            found->instructionBegin != 0u || !found->instructionEnd ||
++            found->instructionEnd > decoded.instructions.size() || !found->predecessors.empty()) fail();
++        entry = &*found;
++    }
 +    struct Pair { std::uint32_t base, attribute, component; };
 +    std::map<std::uint32_t, Pair> pending;
 +    bool vectorWritten = false;
@@ -48,8 +58,11 @@ new file mode 100644
 +    };
 +    for (const auto& i : decoded.instructions) {
 +        pc = i.programCounter;
++        const auto index = static_cast<std::size_t>(&i - decoded.instructions.data());
++        if (entry && index >= entry->instructionEnd && (!live.empty() || !pending.empty())) fail();
 +        if (i.op == RdnaOpcode::VInterpMovF32) fail(); // Requires original vertex values.
 +        if (i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32) {
++            if (entry && index >= entry->instructionEnd) fail();
 +            if (i.source0.kind != RdnaOperandKind::VectorRegister || i.destination.kind != RdnaOperandKind::VectorRegister ||
 +                !plain(i.source0) || !plain(i.destination) || i.clampResult || i.source1.value >= 32u ||
 +                i.source1.value >= pixel.inputNum || i.source2.value >= 4u || pixel.InputIsCustom(i.source1.value)) fail();

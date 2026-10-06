@@ -71,8 +71,20 @@ independent vector ALU between P1 and P2. The guard supports this sequence
 while rejecting partial-result accesses, raw I/J arithmetic and EXEC changes.
 Forty-three production-guard cases, twelve local shader replays and twelve Apple
 Metal shader compilations pass.
-The extended guard still requires an updated driver and a device run.
-See [early draw diagnosis](docs/evidence/ipad-m2-interpolation-scheduled-pairs.json).
+The extended guard now executes on iPad: the isolated updated driver reaches
+the visible main menu, including New game, Continue and Options, with no shader
+skips or PerVertexKHR errors in the 91-second observation. The previous black
+output limitation is resolved for this menu. Gameplay and save/load remain open.
+See [main menu proof](docs/evidence/ipad-m2-dreaming-sarah-main-menu.json) and
+[early draw diagnosis](docs/evidence/ipad-m2-interpolation-scheduled-pairs.json).
+Build 11 preserves the embedded PE farms and changes only the native exception
+counter. Real touch starts New game and renders credits plus the forest, but the
+character is absent, a further entry-prefix shader rejects, and a remaining
+consecutive native fault reaches the retained terminal. A targeted shader proof
+now accepts only an unconditional completed interpolation prefix with raw I/J
+overwritten before branching; 53 guard cases and 17 shader/Metal compilations
+pass locally. That further guard change still needs a device run.
+See [entry scene and remaining blockers](docs/evidence/ipad-m2-dreaming-sarah-entry-scene.json).
 Game assets, shader requests and complete game logs stay outside this repository.
 
 ## Historical foundation status

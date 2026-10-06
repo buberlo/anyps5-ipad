@@ -68,5 +68,22 @@ int main() {
     test("memory side effects between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::MIMG;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
     test("compare between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOPC;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
     test("independent ALU still reads raw J",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.destination=reg(12);i.source0=reg(1);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    const auto branching = [](Case& c) {
+        RdnaInstruction write; write.family=RdnaInstructionFamily::MIMG; write.destination=reg(0); write.dataDwordCount=4; c.code.instructions.push_back(write);
+        RdnaInstruction branch; branch.op=RdnaOpcode::SBranch; c.code.instructions.push_back(branch);
+        RdnaInstruction use; use.family=RdnaInstructionFamily::VOP1; use.destination=reg(8); use.source0=reg(0); c.code.instructions.push_back(use);
+        c.cfg.entryBlock=0; c.cfg.blocks[0].instructionBegin=0; c.cfg.blocks[0].instructionEnd=6;
+        c.cfg.blocks.emplace_back(); c.cfg.blocks[1].id=1; c.cfg.blocks[1].instructionBegin=6; c.cfg.blocks[1].instructionEnd=7;
+    };
+    test("branch after complete consumed entry prefix",true,branching);
+    test("branch retains raw J",false,[&](Case& c){branching(c);c.code.instructions[4].dataDwordCount=1;});
+    test("pair crosses entry boundary",false,[&](Case& c){branching(c);c.cfg.blocks[0].instructionEnd=2;});
+    test("later interpolation block",false,[&](Case& c){branching(c);c.code.instructions.push_back(interp(RdnaOpcode::VInterpP1F32,8,0));});
+    test("loop back into interpolation entry",false,[&](Case& c){branching(c);c.cfg.blocks[0].predecessors.push_back(1);});
+    test("unknown entry block",false,[&](Case& c){branching(c);c.cfg.entryBlock=99;});
+    test("entry skips initial code",false,[&](Case& c){branching(c);c.cfg.blocks[0].instructionBegin=1;});
+    test("entry exceeds decoded code",false,[&](Case& c){branching(c);c.cfg.blocks[0].instructionEnd=99;});
+    test("irreducible continuation",false,[&](Case& c){branching(c);c.cfg.irreducible=true;});
+    test("unsupported continuation",false,[&](Case& c){branching(c);c.cfg.unsupported=true;});
     std::cout<<"PASS "<<passed<<" actual fixed-function interpolation validation cases\n";
 }

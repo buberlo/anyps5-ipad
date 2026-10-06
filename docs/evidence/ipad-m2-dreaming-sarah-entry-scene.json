@@ -39,7 +39,8 @@
     "entry_prefix_guard_device_execution": "pending CI driver"
   },
   "limits": [
-    "Environment and touch-triggered start are device evidence; missing character prevents a playability claim.",
+    "Build 11 only. The character was missing in this observation. Later M2 results with a visible character are ipad-m2-dreaming-sarah-player.json, ipad-m2-dreaming-sarah-held-input.json, and ipad-m2-dreaming-sarah-gameplay-recording.json.",
+    "Environment and touch-triggered start are device evidence; the missing character in this run prevents a playability claim for Build 11.",
     "The consecutive counter corrects lifetime accumulation but does not resolve the remaining repeated native fault.",
     "Movement taps ran, but character movement cannot be assessed without a visible character.",
     "Audio quality, save/load, sustained display FPS and background recovery remain unverified."

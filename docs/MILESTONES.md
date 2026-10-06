@@ -1,7 +1,11 @@
 # Milestones
 
-For the current implementation and executable probes see
-[IMPLEMENTATION.md](IMPLEMENTATION.md). The foundation log below is historical.
+The current device result is in the [README](../README.md): the PS5 build of
+Dreaming Sarah boots on an M2 iPad and is playable in a basic sense. Details
+and the open gates are in [IMPLEMENTATION.md](IMPLEMENTATION.md). The foundation
+log below is the 2026-10-05 run. Its notes that M1 was not closed, and that
+the iOS build was not run from that Linux VM, describe that run.
+
 Main's ARM64 run 37386696225 executed `sample.exe` with exit 42 after the Wine
 tree bind-mount fix. That closes the synthetic CPU startup check only; it does
 not execute AnyPS5 PRX, Vulkan or a title. The former M1 exit-53 report below
@@ -11,7 +15,8 @@ Acceptance is observational. A milestone is done when the check below has
 been run and the result recorded, including a failure with a log. Guessing
 that a later stage will pass does not close an earlier one.
 
-This foundation run closed none of M0–M5 end to end. It added the repo, the
+This 2026-10-05 foundation run closed none of M0–M5 end to end. M5's later
+device result is recorded in that section. The run added the repo, the
 capability tool (run on lavapipe, `hard_fail=0`), a Linux AnyPS5 build, and
 the M4 patch drafts. Per-item status is in [PATCHES.md](PATCHES.md).
 
@@ -154,4 +159,13 @@ before any hard line, on that image's paravirtual Metal device. No
   in AnyPS5's `docs/user/COMPATIBILITY.md` at the pinned commit is Dreaming
   Sarah) reaches its menu.
 - Frame time, missing Vulkan features, and FEX faults are written down.
-  Reaching the menu once is the bar, not playability.
+  The milestone bar is one menu reached on device.
+
+**Recorded.** Build 10 reached the New game / Continue / Options menu on the
+M2 iPad. On 2026-10-06 a maintainer screen recording went further: library
+launch, the title and Options screens, New game, and about 60 seconds of
+touch-controlled gameplay with the character visible. Displayed frame time
+was not measured on that recording. The open gates (displayed FPS, long
+sessions, full background recovery, save/load, formal audio acceptance,
+other iPads, no public IPA) are in the README status table. Meeting the menu
+bar, and the later basic-gameplay observation, leave those gates open.

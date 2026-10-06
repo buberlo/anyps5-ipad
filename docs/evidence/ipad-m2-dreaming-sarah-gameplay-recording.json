@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "time_utc": "about 16:11",
+  "time_local": "about 23:11 WIB",
+  "device": "iPad Air 13-inch M2",
+  "os": "iPadOS 27.0.1",
+  "source": "maintainer screen recording",
+  "observer": "Konrad Kern",
+  "kind": "observation",
+  "status": "basic gameplay observed; displayed FPS not measured",
+  "library_entry": "Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB",
+  "launch": "AnyPS5 iPad app library",
+  "jit": "enabled via the StikDebug-style flow",
+  "app_build": "not recorded",
+  "recording_duration": "about 2 minutes",
+  "gameplay_duration": "about 60 seconds",
+  "crash": false,
+  "displayed_fps": "not measured",
+  "observations": [
+    "Ratalaika Games publisher logo plays with audio.",
+    "Title screen works.",
+    "Options menu works.",
+    "New game starts.",
+    "Asteristic studio intro plays, with music.",
+    "Player character is visible.",
+    "Character walks and jumps through the forest.",
+    "Music plays during gameplay.",
+    "Dialogue box renders while the character talks to an NPC.",
+    "Input is the on-screen touch controller."
+  ],
+  "private_media": {
+    "committed": false,
+    "hashes": "not recorded"
+  },
+  "limits": [
+    "Maintainer screen recording. Not an instrumented device log.",
+    "Displayed FPS was not measured. Do not infer a frame rate.",
+    "App build number, device model identifier, and OS build number were not recorded for this observation.",
+    "Private media hashes were not recorded. The evidence schema does not require them; leave this placeholder rather than inventing digests.",
+    "Not a long-session, save/load, or full background-recovery result.",
+    "Logo audio, intro music, and gameplay music were heard. Formal audio acceptance from PR #3 remains open.",
+    "One iPad only. No public IPA."
+  ]
+}

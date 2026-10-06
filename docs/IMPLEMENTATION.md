@@ -1,9 +1,37 @@
 # Runtime implementation and verification
 
-The source baseline is main `20bb9809e5f19624c7ae27fd129c32ebfad055e8` and
-its pinned upstream commits. Selected build repairs from PR #2 are included;
-the pins themselves have not moved. This document distinguishes source work,
-build artifacts, host execution and physical-device acceptance.
+The source baseline for this implementation log is main
+`20bb9809e5f19624c7ae27fd129c32ebfad055e8` and its pinned upstream commits.
+Selected build repairs from PR #2 are included; the pins themselves have not
+moved. PR #3 merged the runtime work into main. This document distinguishes
+source work, build artifacts, host execution and physical-device acceptance.
+
+## Current device result
+
+On 2026-10-06 at about 16:11 UTC (23:11 WIB), Konrad Kern recorded the iPad
+screen for about two minutes. The device was an iPad Air 13-inch M2 running
+iPadOS 27.0.1. The AnyPS5 iPad app library entry
+`Dreaming Sarah (PS5) 01.000.000, 64-bit, Vulkan, 5.26 GB` launched, JIT came
+up through the StikDebug-style flow, and the session did not crash.
+
+Observed, in order: the Ratalaika Games publisher logo with audio, a working
+title screen and Options menu, New game, the Asteristic studio intro with
+music, then about 60 seconds of gameplay. The player character was visible,
+walked and jumped through the forest, music continued, and a dialogue box
+rendered while she spoke with an NPC. Control was the on-screen touch
+controller. Displayed FPS was not measured. The app build, model identifier,
+OS build, and private-media hashes were not recorded for this observation.
+
+See [gameplay recording](evidence/ipad-m2-dreaming-sarah-gameplay-recording.json).
+
+This is a basic playability observation of the PS5 build's own relinked
+binary. Displayed FPS, long sessions, full background recovery, save/load,
+formal audio acceptance, other iPad models, and a public IPA remain open.
+Build 12's six-minute forest traversal and Build 13's brief Vulkan inactivity
+drain are the instrumented results later in this file.
+
+Headings below this note are the chronological log. Paragraphs about a black
+image or a missing character describe the build named in that paragraph.
 
 ## Implemented paths
 
@@ -153,7 +181,8 @@ a failed demo is a failure. These logs prove only native Windows execution.
   a standalone x64 AVX2 probe. The built-in run logged its own helper PID,
   successful completion, six exact vector comparisons and guest exit code 0.
   See [Wine/FEX CPU evidence](evidence/ipad-m2-wine-fex-cpu.json). This exercises
-  Windows PE CPU execution; relinked PS5 HLE and graphics remain separate gates.
+  Windows PE CPU execution. Relinked PS5 HLE and graphics were still separate
+  gates at this stage.
 - The separate native probe was built, signed, installed and run on the physical
   iPad Air 13-inch M2 (`iPad14,10`, iPadOS 27.0.1 / 24A446). Actual device
   creation, BDA/8-bit/int64 shader readback and BC1 texture sampling all passed.
@@ -184,7 +213,8 @@ a failed demo is a failure. These logs prove only native Windows execution.
   initialized libc heap, typed nested rethrow and unwind destructors. The runs
   use the configured 464–468 GiB arena with 256 MiB lazy chunks and exit 0.
   See [relinked HLE evidence](evidence/ipad-m2-relinked-hle-cpu-exceptions.json).
-  RDNA/SDL, scene interaction and full acceptance still need their own tests.
+  At this stage RDNA/SDL, scene interaction and full acceptance still needed
+  their own tests.
 - The local Homebrew GCC 16 HLE cross-build fails at libc's SjLj unwind symbols.
   No complete HLE package or Windows guest execution has been claimed from it.
   Use the pinned Windows toolchain for that build.
@@ -222,14 +252,16 @@ Additional local evidence lives under ignored `build/logs/`,
 `build/ios-runtime/logs/` and the fixture directories. The signed probe,
 installation/launch receipts, final executable hashes and screenshot are in
 `build/ipad-probe/`. Its process was closed and the shared-device reservation
-released after the test. The standalone CPU/GPU probes and relinked CPU/exception HLE tests pass; the
-RDNA scene and full iPad acceptance below remain open. Draft PR #3 runs the prepared CI.
+released after the test. At this point in the log the standalone CPU/GPU probes and relinked
+CPU/exception HLE tests had passed, and the RDNA scene was still open. PR #3
+was still a draft running the prepared CI; it has since merged. Device results
+are in the current device result above and in the sections below.
 The corrected Windows CI at `a7a9950` builds the full real HLE closure and
 passes relinked CPU callbacks/threads/TLS, initialized libc heap and nested
 exceptions/destructors, plus standalone AVX2/memory/allocator probes. See
 [Windows reference](evidence/windows-reference-a7a9950.json). Graphics is
 explicitly `not_run` because the hosted Windows runner lacks a Vulkan driver.
-The physical iPad graphics demo still needs that reference and its own run.
+At this point in the log the physical iPad graphics demo had not yet had its own run.
 A private UM790 Pro run with the AMD Radeon 780M passed the CPU, exception,
 AVX2, mapping and allocator checks. After adding the missing original demo
 metadata, RDNA readback and VideoOut acknowledged all 120 frames, but the
@@ -278,11 +310,11 @@ an uncaught parse error. The preparer had incorrectly excluded the dumped
 `~INDEX` VFS asset. Packaging now retains it with an immutable-source hash
 check and a synthetic regression test. The game binaries and libraries are
 unchanged in the repaired package. The repaired native Windows run reaches the animated title and readable
-main menu without an unhandled exception. Gameplay, audio and save/load are
-still unverified. See [Windows menu evidence](evidence/windows-um790-dreaming-sarah-menu.json).
+main menu without an unhandled exception. On that Windows menu run, gameplay,
+audio and save/load were not verified. See [Windows menu evidence](evidence/windows-um790-dreaming-sarah-menu.json).
 
 The same repaired package was verified on iPad and launched with successful
-built-in JIT. The foreground game surface stays black. Shared guest pages
+built-in JIT. The foreground game surface stayed black on that launch. Shared guest pages
 initially mapped RWX consume all 4,096 anonymous JIT aliases and overflow the
 pool ledger before their requested RW rights are applied. The initial change to SDK mapping rights was rejected after the real device probe
 found that it prevented a later read-only → read-write transition. The SDK's
@@ -305,8 +337,8 @@ the screenshots occurred after guest exit, so this run alone does not prove
 foreground scene visibility or display FPS. See [SDK mapping proof](evidence/ipad-m2-sdk-shared-mapping.json)
 and [corrected RDNA result](evidence/ipad-m2-rdna-shared-mapping-fixed.json).
 
-Dreaming Sarah Build 7 also avoids the former JIT alias exhaustion, but
-remains black and recreates 5,222 swapchains during its bounded startup.
+Dreaming Sarah Build 7 also avoided the former JIT alias exhaustion, but
+remained black and recreated 5,222 swapchains during its bounded startup.
 See [post-memory-fix startup](evidence/ipad-m2-dreaming-sarah-shared-mapping-fixed.json).
 The iOS Vulkan adapter now negotiates advertised surface/device maintenance,
 queries and enables the maintenance feature, and requests supported stretch
@@ -329,13 +361,13 @@ explicit layout; existing controls and named layouts retain their settings.
 Signed installed Build 9 repeats 900 GPU comparisons and exits 0. Its active
 log and completed named archive both export directly with one filesystem link.
 A fresh foreground screenshot shows the scene and Xbox controls; the saved game
-profile contains 18 controls. Actual touch input remains unverified. Two independent Build 9 demo restarts
+profile contains 18 controls. Actual touch input was still unverified on that Build 9 run. Two independent Build 9 demo restarts
 pass; a third attempt fails JIT pool placement before Wine. Three-successful-
 restart acceptance is still open. See [restart evidence](evidence/ipad-m2-build9-restarts.json). The original
 runner failed parsing an interleaved diagnostic line; a separate bounded collection
 verified the completion, archive and own-process cleanup. See [log and layout proof](evidence/ipad-m2-independent-logs-touch-layout.json).
 
-Dreaming Sarah still remains black in fresh 10/30/60-second screenshots. The
+At that stage Dreaming Sarah remained black in fresh 10/30/60-second screenshots. The
 recovered Build 8 log confirms JIT, enabled maintenance/stretch scaling and exactly
 one swapchain creation. Draw validation rejects vertex GroupNonUniform capability
 61 because M2/MoltenVK does not support subgroups in that stage. A private IR capture
@@ -368,18 +400,19 @@ custom/sample/centroid interpolation and unsupported control flow. Thirty
 compiled guard cases pass. All six captured shaders replay through this guard
 and pinned SPIRV-Cross, and Apple's actual Metal compiler accepts all six MSL
 outputs. See [interpolation compiler proof](evidence/ipad-m2-fixed-function-interpolation-compiler.json).
-The repaired Windows CI driver now runs on the installed Build 10. The opt-in
-is selected, and the prior PerVertexKHR error is absent. The user reports the
-first logo and then sound over a black screen; inspected 10/30-second captures
-show black game output. A new draw is rejected at pc 84, and repeated native
-write faults still terminate the process. A short control with the original
-barycentric path shows no logo and restores PerVertexKHR errors. The opt-in
-is restored afterwards. See [device diagnostic](evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
+The repaired Windows CI driver was installed on Build 10. The opt-in
+was selected, and the prior PerVertexKHR error was absent. In that diagnostic
+the user reported the first logo and then sound over a black screen; inspected
+10/30-second captures showed black game output. A new draw was rejected at
+pc 84, and repeated native
+write faults still terminated the process. A short control with the original
+barycentric path showed no logo and restored PerVertexKHR errors. The opt-in
+was restored afterwards. See [device diagnostic](evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
 Patch 0008 extends the existing opt-in APS5_DUMP_SHADERS to draw requests
 before source analysis. A fresh Build 10 run changes only the graphics driver,
 records the first logo independently and captures the previously rejected draw.
 All game assets, guest modules, PE and ~INDEX remain unchanged. The 40-second
-observation still shows black output after the logo and a pc-84 guard rejection;
+observation still showed black output after the logo and a pc-84 guard rejection;
 its shorter duration cannot establish that the later repeated memory fault is
 fixed.
 
@@ -394,8 +427,8 @@ local requests pass pinned SPIRV-Cross and Apple's Metal compiler. The extended
 guard now executes on the iPad: an isolated driver update on
 Build 10 reaches the visible New game / Continue / Options menu. The 91-second
 observation has zero shader skips and zero PerVertexKHR errors, with successful
-own-process cleanup. Old native fault-counter warnings remain; gameplay and
-save/load still need tests. See
+own-process cleanup. Old native fault-counter warnings remained on that menu
+run; gameplay and save/load still needed their own tests. See
 [main menu proof](evidence/ipad-m2-dreaming-sarah-main-menu.json) and
 [scheduled-pair diagnosis](evidence/ipad-m2-interpolation-scheduled-pairs.json).
 
@@ -417,8 +450,9 @@ its complete center interpolation occurs in the unconditional entry prefix,
 and a texture result overwrites raw I/J before the first branch. The guard now
 permits this precise shape, requires a valid entry starting at instruction zero
 with no incoming edges, and rejects surviving raw inputs, partial pairs or later
-interpolation. Fifty-three production cases pass. The earlier Build 11 scene lacks the
-character and predates the qualified driver/device run below. See
+interpolation. Fifty-three production cases pass. The earlier Build 11 scene lacked the
+character. It predates the Build 12 rendering below and the 2026-10-06
+gameplay recording. See
 [entry scene diagnostic](evidence/ipad-m2-dreaming-sarah-entry-scene.json).
 
 Build 12 completes the remaining two targeted repairs. The entry-prefix guard
@@ -574,7 +608,11 @@ coordination record. Use the isolated app IDs and preserve other apps and data.
 For bounded command phases, use the [fail-closed lease wrapper](IPAD-LEASE.md),
 which starts no child process after a rejected claim and preserves newer leases.
 Verify built/signed, installed, launched, JIT-enabled and benchmarked states
-separately. Bounded physical-iPad gameplay is recorded above; the complete acceptance gates remain open.
+separately. Bounded physical-iPad gameplay is recorded above, including the
+2026-10-06 maintainer screen recording of library launch, menus, and about
+60 seconds of touch-controlled play. Displayed FPS, long sessions, full
+background recovery, save/load, formal audio acceptance, other iPads, and a
+public IPA remain open.
 
 Dreaming Sarah can now be prepared from a local decrypted dump with the
 [private game preparer](PRIVATE-GAME-PACKAGING.md). It inventories the exact

@@ -1,6 +1,7 @@
 # Legal and licensing
 
-This is an interoperability research prototype. It does not contain, and
+This is an interoperability research prototype. It is not affiliated with
+Sony Interactive Entertainment or Apple. It does not contain, and
 must not gain:
 
 - PS5 or other game dumps, pkg files, or extracted assets

@@ -438,11 +438,12 @@ archives, and `libmadeira_rppairing.a` are still absent.
 `build/wineserver/build.sh` exits with `No base libwineserver.a
 found` on a clean tree. That `xcodebuild` is not recorded yet.
 
-## Left for Konrad
+## Device boot
 
-Sign a build, install it with StikDebug on a real iPad, and boot a tiny
-AnyPS5 PE (`MADEIRA_FEX_AVX=1`, `APS5_GUEST_ARENA_LAZY=1`). Read
-`EntitlementChecker`'s `address-map` line (512 GB with the extended
-virtual-addressing entitlement, 63 GB without). The plist key in
-`patches/madeira/0002` does not grant the entitlement by itself. No
-game dump.
+The signed runtime has booted on an iPad Air 13-inch M2. The PS5 build of
+Dreaming Sarah launches from the app library and is playable in a basic
+sense. See the [README](../README.md) and
+[IMPLEMENTATION.md](IMPLEMENTATION.md). The plist key in
+`patches/madeira/0002` still does not grant extended virtual addressing by
+itself; the provisioning profile has to include it. No game dump belongs in
+this repository.

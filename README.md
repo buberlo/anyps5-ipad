@@ -1,8 +1,18 @@
 # madeira-anyps5
 
-This repository preserves the Madeira-menu integration through the playable
-Dreaming Sarah baseline (`abe64be`). The app is named **madeira-anyps5**.
-Builds and checks run locally; GitHub Actions is disabled for this project.
+This public repository contains **madeira-anyps5**, the Madeira-menu version
+of the AnyPS5 iPad integration. Its playable baseline is `abe64be`; the later
+direct-start and Dreaming Sarah branding changes were removed with ordinary
+revert commits. The history remains intact.
+
+The separate **[Penta](https://github.com/buberlo/penta)** project is private.
+Its slim multi-game library, on-device import and performance work continue
+there. This repository keeps the Madeira menus and the existing graphics,
+memory, input and lifecycle fixes. Penta results are not evidence for this app.
+
+**No GitHub Actions:** builds and checks run locally. Actions is disabled in
+repository settings and the workflow files have been removed. Do not re-enable
+Actions or add automatic workflows.
 
 The original published URL, <https://github.com/buberlo/anyps5-ipad>, redirects
 here. **Do not create another repository named `buberlo/anyps5-ipad`:** that
@@ -45,6 +55,23 @@ This repository adds the pieces the pinned upstreams do not ship:
 - RDNA shader fixes for M2/MoltenVK: masked-shift folding that drops unsupported subgroup use, and validated fixed-function interpolation.
 
 Longer form: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PATCHES.md](docs/PATCHES.md), [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
+
+## Current installation — 2026-10-07
+
+The restored menu app **0.1.8 (17)** was built and development-signed locally,
+then installed on the test iPad as `com.buberlo.anyps5ipad`. Its provisioning
+profile grants debugging, increased memory and extended virtual addressing.
+It is installed alongside Penta; the apps have separate data containers.
+
+The earlier Dreaming Sarah installation and pairing remain in Penta's existing
+test container (`com.konradkern.anyps5ipad`). The menu app has now been prepared separately: all 843 packaged game files
+(120,496,264 bytes) were transferred and checked against the private manifest,
+its library shows Dreaming Sarah, and its own pairing record was migrated into
+the Keychain. Private files and credentials were not published.
+
+A fresh menu-to-game launch and gameplay check of this separate build remain
+open. Earlier gameplay evidence below belongs to the preserved baseline,
+not a completed re-test of build 17.
 
 ## Status
 

@@ -17,8 +17,19 @@
       320,
       192
     ],
-    "gpu_completion_and_timing": "log collection blocked; not accepted",
-    "private_screenshot_sha256": "7c0fd8d2951cd176b23c8d070efb2747c742302714ddd1d12a90a0a4d31269f7"
+    "gpu_completion_and_timing": {
+      "status": "pass",
+      "gpu_comparisons": 900,
+      "flip_acknowledgments": 900,
+      "guest_exit": 0,
+      "elapsed_us": 30477123,
+      "guest_loop_rate_per_second": 29.53,
+      "frame_time_p95_us": 34248,
+      "scope": "guest loop including GPU readback and flip acknowledgment; not display timestamps or ten-minute acceptance"
+    },
+    "private_screenshot_sha256": "7c0fd8d2951cd176b23c8d070efb2747c742302714ddd1d12a90a0a4d31269f7",
+    "private_log_sha256": "2e01b4bfeaf42d53a19b49332b8fde1942c0aeb14ccb5f4876bea30c00e6e15e",
+    "original_runner_status": "diagnostic_timeout due to unreadable linked log; corrected only by subsequent recovered log"
   },
   "dreaming_sarah": {
     "title_id": "PPSA02929",
@@ -30,10 +41,31 @@
     ],
     "menu": "not_visible",
     "result": "black_surface",
-    "jit_and_swapchain_negotiation": "requires fresh log verification",
-    "gameplay": "not_verified"
+    "jit_and_swapchain_negotiation": {
+      "jit_helper": "enabled in fresh run",
+      "stretch_extent": [
+        768,
+        432
+      ],
+      "maintenance_feature": "enabled",
+      "swapchain_creations": 1,
+      "jit_alias_exhaustion": false
+    },
+    "gameplay": "not_verified",
+    "rendering_blocker": {
+      "stage": "vertex",
+      "spirv_capability": 61,
+      "name": "GroupNonUniform",
+      "validation": "rejected because device subgroup supportedStages excludes vertex",
+      "followup": "private IR capture proves invariant all-set-mask lane queries survive constant folding; checked compiler optimization being implemented; no validation bypass"
+    },
+    "private_log_sha256": "b99ff76db805d2af406d894cdf72c401abe5773f5a79e63148e9378f9dee3481"
   },
-  "file_service": "coredevice app-data read and listing timed out even after process termination",
+  "file_service": {
+    "initial_failure": "CoreDevice timed out; AFC refused opening the two newest logs with st_nlink=2",
+    "recovery": "preserved original inode, replaced only redundant archive links with byte-identical independent copies; exports verified by hash",
+    "status": "existing logs recovered; future archive source fix pending"
+  },
   "cleanup": "SIGKILL own application receipt successful; no own app/helper in final process list",
   "private_evidence_sha256": {
     "operation.json": "2f23c957a35d4d08df9641ecf8a1d77e451b2d0dadf93f49de3794b4e9532d96",

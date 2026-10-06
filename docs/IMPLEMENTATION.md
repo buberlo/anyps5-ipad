@@ -313,13 +313,25 @@ queries and enables the maintenance feature, and requests supported stretch
 scaling for the HWND inside the iPad layer. It preserves application chains
 and propagates capability errors; it does not suppress SUBOPTIMAL/OUT_OF_DATE.
 Compiled adapter tests cover unsupported features/scaling and host errors.
-Build 8 is built, signed and installed. Its longer original demo is visibly
-rendered on iPad, but its log export timed out and execution completion is not
-accepted. Dreaming Sarah remains black in fresh 10/30/60-second screenshots.
-The app-data file service also times out after confirmed own-process cleanup;
-fresh JIT/scaling logs and a diagnosis of the remaining game rendering issue
-are pending. See [Build 8 visibility limits](evidence/ipad-m2-vulkan-scaling-visibility.json). Private assets
-and complete game logs remain outside Git and CI.
+Build 8 is built, signed and installed. Its longer original 320×192 demo is
+visible in a fresh foreground screenshot, passes all 900 GPU comparisons and
+flip acknowledgments and exits 0. The recovered log measures 29.530 guest loops/s;
+this includes GPU readback and is not presented-frame FPS or ten-minute acceptance.
+The initial runner timed out because the two newest archived logs were hard-linked.
+AFC refused opening those files; replacing only the redundant archive links with
+byte-identical independent copies recovered both full logs without losing data.
+
+Dreaming Sarah still remains black in fresh 10/30/60-second screenshots. The
+recovered Build 8 log confirms JIT, enabled maintenance/stretch scaling and exactly
+one swapchain creation. Draw validation rejects vertex GroupNonUniform capability
+61 because M2/MoltenVK does not support subgroups in that stage. A private IR capture
+shows fully set export masks retaining unnecessary LaneId queries. The new compiler
+patch proves masked constant shifts invariant before folding them; dead-code removal
+then removes those lane queries and their subgroup requirement. Compiled tests exercise
+20 real IR/pass cases including genuinely varying masks, unbounded shifts and invalid
+bounds. A fresh game test with the updated HLE is still required. Validation stays enabled.
+See [Build 8 results and limits](evidence/ipad-m2-vulkan-scaling-visibility.json).
+Private shader requests, assets and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits
 

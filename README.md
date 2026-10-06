@@ -69,9 +69,16 @@ test container (`com.konradkern.anyps5ipad`). The menu app has now been prepared
 its library shows Dreaming Sarah, and its own pairing record was migrated into
 the Keychain. Private files and credentials were not published.
 
-A fresh menu-to-game launch and gameplay check of this separate build remain
-open. Earlier gameplay evidence below belongs to the preserved baseline,
-not a completed re-test of build 17.
+A fresh menu launch now reaches the Dreaming Sarah title screen with all 18
+controls visible. On this installation, select **Settings → JIT method →
+Built-in StikJIT** and keep LocalDevVPN connected: Play successfully enabled JIT,
+allocated its pool, detached the debugger and started the game. The default
+Automatic setting selects installed StikDebug, whose disconnected-VPN attempt
+failed before this successful run.
+
+This proves startup and title-screen rendering for build 17. Gameplay, audio,
+save/load and background recovery still need a fresh check for this separate
+installation. [Build 17 evidence](docs/evidence/ipad-m2-menu-build17.json).
 
 ## Status
 

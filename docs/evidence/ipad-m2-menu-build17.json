@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date_local": "2026-10-07",
+  "project": "madeira-anyps5",
+  "bundle_id": "com.buberlo.anyps5ipad",
+  "version": "0.1.8",
+  "build": "17",
+  "source_commit": "8f94658e99c48ed5297257e7c17849f6bbd1f4cb",
+  "build_environment": "local Xcode, no GitHub Actions",
+  "device": {
+    "model": "iPad Air 13-inch M2",
+    "product_type": "iPad14,10",
+    "os": "iPadOS 27.0.1 (24A446)"
+  },
+  "checks": {
+    "development_signature_verified": true,
+    "increased_memory_and_extended_va_entitlements": true,
+    "installed_alongside_penta": true,
+    "private_package_files_verified": 843,
+    "private_package_bytes_verified": 120496264,
+    "own_pairing_migrated_to_keychain": true,
+    "madeira_library_visible": true,
+    "selected_jit_method": "Built-in StikJIT",
+    "localdevvpn_connected": true,
+    "jit_helper_finished_successfully": true,
+    "debugger_detached_before_wine": true,
+    "title_screen_visible": true,
+    "visible_touch_controls": 18
+  },
+  "limits": {
+    "gameplay_verified_this_build": false,
+    "audio_verified_this_build": false,
+    "save_load_verified_this_build": false,
+    "background_recovery_verified_this_build": false,
+    "displayed_fps_measured_this_build": false,
+    "stable_60_fps_verified": false
+  },
+  "notes": [
+    "The Automatic setting initially selected StikDebug and failed without a local VPN route. The settings flow was then switched to Built-in StikJIT with LocalDevVPN connected.",
+    "Raw logs, screenshots, private manifest, game files and pairing material remain local and are not published.",
+    "The original anyps5-ipad GitHub URL redirects to madeira-anyps5."
+  ]
+}

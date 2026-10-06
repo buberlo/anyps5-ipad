@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app_build": 10,
+  "capture_ci_run": 37475183200,
+  "capture_driver_source_commit": "3ca67bfe2643e6ff44c5ae9e092c88531027fa9e",
+  "package_manifest_sha256": "71076d43d342ea92418c9466109c529462c44c2390e109f2d2251de7b21061d1",
+  "private_log_sha256": "5983b5c910ae37a4c84844f78a816aec8f68e3cf6894b509e9b6576177a24976",
+  "game_assets_pe_index_guest_modules_unchanged": true,
+  "capture_device": {
+    "initial_logo_independently_observed": true,
+    "logo_screenshot_sha256": "4c5a4fcee10a31b29f52cc2f79b3bc9725b2822a37e8f99d074f52ea0019213a",
+    "later_output_black": true,
+    "guard_rejects_pc84": true,
+    "PerVertexKHR_count": 0,
+    "observation_seconds": 41.67841425000006,
+    "memory_fault_fixed": false,
+    "duration_limitation": "Short explicitly stopped diagnostic does not disprove the later repeated fault from the previous 90-second attempt."
+  },
+  "guard_extension": {
+    "cases_passed": 43,
+    "supports": "In-place consumption of center I after other P1s; independent explicit vector ALU between matching P1/P2 pairs.",
+    "still_rejects": [
+      "partial-result reads or writes including 64-bit overlap",
+      "raw I/J arithmetic or use of consumed I",
+      "EXEC changes in primary/secondary destinations",
+      "memory, compare, unknown and control-flow effects while partials remain",
+      "custom/sample/centroid interpolation and multiple basic blocks"
+    ]
+  },
+  "local_replay": {
+    "previous_guard_passed": 11,
+    "previous_guard_rejected": 1,
+    "extended_guard_passed": 12,
+    "extended_guard_rejected": 0,
+    "apple_metal_compiler": "32023.921 (metalfe-32023.921.6), ios-metal2.4",
+    "apple_metal_compilations_passed": 12,
+    "requests": [
+      {
+        "input_sha256": "0cda501e630d8c2983786fbe0d9d5d7aca85a80bb9ff9ea1a4d5df89cf9ca32a",
+        "output_spirv_sha256": "e0be47cdae25aaf26ecf3d315fffdc42734d47158f16034b43a260a3a3f0ec40",
+        "output_msl_sha256": "2f14aa943bdde585d17ee2218467225ca4c6a524fe37a4be6b88c4992f0041ee",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "3fd58f9a9c3d954bfb352b38a672f27211a7a45d4cc3f1de1fdc9dab143a7924",
+        "output_spirv_sha256": "1ce7a1922088197343b5bacc74de6ae49ee398dc9c4789a9b7c246302a7a86fe",
+        "output_msl_sha256": "482ab39f9fec9111c6c7db82fa3bf71a51a39ed67c6bdd82e151c7f0bbe81b5c",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "47d72a43b0573c0323cbc164178c86c06fcd23d2a542d145b9900be31a55e425",
+        "output_spirv_sha256": "e0be47cdae25aaf26ecf3d315fffdc42734d47158f16034b43a260a3a3f0ec40",
+        "output_msl_sha256": "2f14aa943bdde585d17ee2218467225ca4c6a524fe37a4be6b88c4992f0041ee",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "972c3229a2b9b2eb546763b9a654f6c0c2574c92de60d7b734ba0f87d2bfc51e",
+        "output_spirv_sha256": "1ce7a1922088197343b5bacc74de6ae49ee398dc9c4789a9b7c246302a7a86fe",
+        "output_msl_sha256": "482ab39f9fec9111c6c7db82fa3bf71a51a39ed67c6bdd82e151c7f0bbe81b5c",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "356e093d49f2dba056081d5b07b2b78b4931f0ac755068e79a6429656c1627d2",
+        "output_spirv_sha256": "caad39101e8d975463bc6f8fe0ff3a829d1eaad89ef90b97a8211a867196852a",
+        "output_msl_sha256": "cf45acaa07e6f519bcbbc3c8e64643761cc7629ea52319ef3724c076b722f06d",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "ae6750941afad928f70f19b8e160d0bcbf4ec25fa64b389bf25519e316803961",
+        "output_spirv_sha256": "6a2476173b5f38f03304982e6b126a39f16370afa71eddf1035fba185dfc2f43",
+        "output_msl_sha256": "54bbb6af21b84912da3075a6b9596c5900daa6177269c74712afe718ad80ed39",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "3e7b8a0c284b59d78de7da5ca2cae937620aaac827819bf6b82868efb16ea4f7",
+        "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+        "output_msl_sha256": "3e5851f349a5c948354ae12083d75106c2ec8d4b5cb980ccd4392686f834b37b",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "14ef0b63e3de11d7affdae6358150b6a2bb34fb9f6f38e45171c27adb6aefeb4",
+        "output_spirv_sha256": "8571e6a1cb59dea1dcc7624b2336fd2526b4826b658288755beae76c87f0f76f",
+        "output_msl_sha256": "fb122b4a75d1b56f6291d07cb1d79ad3aeb79223c6b570c5e9c3a2d9700601d6",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "08d6ebf852fd32c0f359ff903874de901cbce007b4056e9a1270f0a52b07a740",
+        "output_spirv_sha256": "81d38fc47b560bc4ec58ec583d66fd139fab50cf4210d3f194656066b33e90b4",
+        "output_msl_sha256": "3e5851f349a5c948354ae12083d75106c2ec8d4b5cb980ccd4392686f834b37b",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "a2bb1afee077c72c5ee5e463f0c104c7e6081a6f9908b9df0554d752a41c59d6",
+        "output_spirv_sha256": "8571e6a1cb59dea1dcc7624b2336fd2526b4826b658288755beae76c87f0f76f",
+        "output_msl_sha256": "fb122b4a75d1b56f6291d07cb1d79ad3aeb79223c6b570c5e9c3a2d9700601d6",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "77f64f2d6027c0aa179c75af395966dffe720167d42ea9b85eabdd964223cb1a",
+        "output_spirv_sha256": "e88cd0587b684dd958995cf7a355ddfa665f497fd2eccf69811083a5e6849037",
+        "output_msl_sha256": "b01381901cf1cc8ad40920a6ec423fd12a9d29af52ab8f68b509fbc9c647617a",
+        "metal_compile_passed": true
+      },
+      {
+        "input_sha256": "a4f32b3c2d36d18b84d5034539f8b58cd31c3a2d37e0b347a544bc0085436260",
+        "output_spirv_sha256": "bbb38925f47a15178ec93196f951f4a555ee629fe2eab4ee194e9753eaf50a6c",
+        "output_msl_sha256": "dea27835732e49f781c450c56d3a3784f4461e338662d29980db95f7ca4e9b89",
+        "metal_compile_passed": true
+      }
+    ]
+  },
+  "privacy": "Requests and derived shader code stay local, outside GitHub and CI. Only metadata and hashes recorded here.",
+  "extended_guard_device_execution": "pending new CI driver artifact",
+  "gameplay_verified": false
+}

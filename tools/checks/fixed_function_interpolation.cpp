@@ -55,5 +55,18 @@ int main() {
     test("partial memory write retains J",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::MIMG;i.dataDwordCount=1;i.destination=reg(0);c.code.instructions.push_back(i);i.family=RdnaInstructionFamily::VOP3;i.source0=reg(1);i.destination=reg(4);c.code.instructions.push_back(i);});
     test("EXEC reactivation after writes",false,[](Case& c){RdnaInstruction i;i.destination=reg(0);c.code.instructions.push_back(i);i.destination.kind=RdnaOperandKind::ExecLo;c.code.instructions.push_back(i);});
     test("DPP reads possibly inactive lane",false,[](Case& c){RdnaInstruction i;i.source0=reg(4);i.source0.dpp=true;c.code.instructions.push_back(i);});
+    test("P1 consumes I after other components",true,[](Case& c){c.code.instructions[1].destination=reg(0);c.code.instructions[3].destination=reg(0);});
+    test("P1 consumes J cannot complete",false,[](Case& c){c.code.instructions[1].destination=reg(1);c.code.instructions[3].destination=reg(1);});
+    test("raw I reused after in-place P1",false,[](Case& c){c.code.instructions[0].destination=reg(0);c.code.instructions[2].destination=reg(0);});
+    test("independent ALU between pairs",true,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP3;i.destination=reg(12);i.source0=reg(8);i.source1=reg(9);i.source2=reg(10);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("ALU observes partial",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.destination=reg(12);i.source0=reg(4);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("ALU overwrites partial",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.destination=reg(5);i.source0=reg(9);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("wide ALU observes partial",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.is64Bit=true;i.destination=reg(12);i.source0=reg(3);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("wide ALU overwrites partial",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.is64Bit=true;i.destination=reg(3);i.source0=reg(8);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("secondary destination overwrites partial",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP3;i.destination=reg(12);i.destination2=reg(4);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("secondary destination changes EXEC",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP3;i.destination=reg(12);i.destination2.kind=RdnaOperandKind::ExecLo;c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("memory side effects between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::MIMG;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("compare between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOPC;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    test("independent ALU still reads raw J",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.destination=reg(12);i.source0=reg(1);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
     std::cout<<"PASS "<<passed<<" actual fixed-function interpolation validation cases\n";
 }

@@ -40,6 +40,13 @@ loop averages 26.379/s. See [full surface proof](docs/evidence/ipad-m2-demo-720-
 With global `env.MADEIRA_PAD_EARLY_SLOT = 1`, actual UI touch taps now reach
 `scePad` through XInput/SDL: left/right move the paddle and A serves twice.
 See [bounded input proof](docs/evidence/ipad-m2-touch-input-early-slot.json).
+A subsequent 600-second run at the actual 1280×720 swapchain completes 32,252
+full-pixel comparisons with Wine exit 0 and working touch input. Nine foreground
+HUD samples show stable memory at displayed precision. Its 53.753 guest loops/s
+are not displayed FPS; the touch overlay obscures those HUD numbers, so the
+sustained display-rate and background/resume gates remain open. An initial
+cleanup check fails on an own helper; a separate verified cleanup succeeds.
+See [ten-minute execution evidence](docs/evidence/ipad-m2-demo-720-ten-minute.json).
 
 See [implementation and verification](docs/IMPLEMENTATION.md) for build commands
 and the remaining device gates. The tables below are the **foundation's
@@ -58,9 +65,14 @@ no longer reports the vertex subgroup error. The optional native interpolation p
 sound and a black screen. A further shader is conservatively rejected at pc 84,
 and repeated native write faults later terminate the process. Gameplay remains
 unverified. See [interpolation device diagnostic](docs/evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
-Thirty production-guard cases and six Apple Metal shader compilations pass.
-Opt-in shader capture now occurs before source validation so newly rejected
-draws can be diagnosed; that capture change awaits a new build/device run.
+Early draw capture now runs on device and independently records the initial
+logo and the rejected shader. That shader consumes I in place and schedules
+independent vector ALU between P1 and P2. The guard supports this sequence
+while rejecting partial-result accesses, raw I/J arithmetic and EXEC changes.
+Forty-three production-guard cases, twelve local shader replays and twelve Apple
+Metal shader compilations pass.
+The extended guard still requires an updated driver and a device run.
+See [early draw diagnosis](docs/evidence/ipad-m2-interpolation-scheduled-pairs.json).
 Game assets, shader requests and complete game logs stay outside this repository.
 
 ## Historical foundation status

@@ -375,11 +375,23 @@ show black game output. A new draw is rejected at pc 84, and repeated native
 write faults still terminate the process. A short control with the original
 barycentric path shows no logo and restores PerVertexKHR errors. The opt-in
 is restored afterwards. See [device diagnostic](evidence/ipad-m2-dreaming-sarah-interpolation-device.json).
-The six old shader requests copied locally all replay successfully; they do
-not explain the new rejection. Patch 0008 extends the existing opt-in
-APS5_DUMP_SHADERS to draw requests before source analysis, where the guard
-can throw before target-specific captures. It changes no translation or
-memory protections. Its build/device diagnostic is pending.
+Patch 0008 extends the existing opt-in APS5_DUMP_SHADERS to draw requests
+before source analysis. A fresh Build 10 run changes only the graphics driver,
+records the first logo independently and captures the previously rejected draw.
+All game assets, guest modules, PE and ~INDEX remain unchanged. The 40-second
+observation still shows black output after the logo and a pc-84 guard rejection;
+its shorter duration cannot establish that the later repeated memory fault is
+fixed.
+
+The newly captured fragment consumes the center I register in place after other
+P1 instructions and schedules independent vector ALU before matching P2s.
+The guard now permits that sequence only while J stays live and no intervening
+ALU reads or writes a partial result, changes EXEC, or reads raw I/J. Memory,
+compare, unknown and control-flow instructions between pairs still reject.
+Forty-three compiled production-guard cases pass. Rebuilding the production
+recompiler locally changes this capture from rejection to success; all twelve
+local requests pass pinned SPIRV-Cross and Apple's Metal compiler. The extended guard has not yet run on
+the iPad. See [scheduled-pair diagnosis](evidence/ipad-m2-interpolation-scheduled-pairs.json).
 
 Private shader requests, assets and complete game logs remain outside Git and CI.
 
@@ -401,6 +413,18 @@ a fresh foreground screenshot and Metal HUD confirm the full swapchain size.
 The short guest loop averages 26.379/s, with 5.702 of 6.823 seconds attributed
 to flip submission/acknowledgment. This does not establish a ten-minute displayed
 FPS average. See [full 720p surface proof](evidence/ipad-m2-demo-720-full-surface.json).
+
+A subsequent run completes 600.002 guest seconds on the same actual 1280×720
+surface with 32,252 full-pixel comparisons, zero guest-reported failures and Wine
+exit 0. Scripted real UI taps reach scePad; further input changes occur while
+the user watches the device. Nine minute-spaced foreground screenshots show
+stable 28.20 MB Metal and 1.65 GB app memory at HUD precision. The guest loop
+averages 53.753/s; this is not displayed FPS. A/B controls obscure numerical
+frame metrics and no continuous Metal HUD intervals are collected. The initial
+runner cleanup check fails because an own helper remains; a separate fresh
+path-verified cleanup confirms no own processes. Background/resume and the
+sustained displayed-rate gate remain open. See
+[ten-minute execution evidence](evidence/ipad-m2-demo-720-ten-minute.json).
 
 The original guest now reports aggregate timings for drawing/input, dispatch
 and GPU waiting, full readback/checkpoints, flip acknowledgment and post-flip

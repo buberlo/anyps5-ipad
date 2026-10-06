@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app_build": 10,
+  "package_manifest_sha256": "ab1d86aa35e751c7eddf1ad5d08aaa2e63fd078b0b63c7c983846e84c1c84bef",
+  "private_log_sha256": "37888859299d71bb1ad9ca25fcc75cc7d512adba66a55c68afcfb6d91c4932fb",
+  "guest_duration_us": 600001605,
+  "gpu_full_pixel_comparisons": 32252,
+  "guest_loops_per_second": 53.753,
+  "guest_frame_time_us": {
+    "min": 7723,
+    "p95": 33779,
+    "max": 922065
+  },
+  "guest_reported_failures": 0,
+  "wine_exit_0": true,
+  "complete": "pass (execution_only)",
+  "actual_swapchain": "1280x720, two images",
+  "synthetic_desktop": "2134x1200",
+  "input": {
+    "scripted_real_ui_taps": {
+      "right": 4,
+      "left": 4,
+      "A": 2
+    },
+    "initial_guest_button_transitions": [
+      32,
+      0,
+      32,
+      0,
+      32,
+      0,
+      32,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      16384,
+      0,
+      16384,
+      0
+    ],
+    "total_button_and_stick_changes": 120,
+    "additional_input_scope": "Additional changes after the scripted UI taps were not isolated; user was watching/controlling device.",
+    "serve_actions": 2,
+    "final_button_state": 0,
+    "ui_test_passed": true
+  },
+  "foreground_and_memory_samples": [
+    {
+      "screenshot_sha256": "399c11ec09ac27e3916971352e52289ecb90bdefae3e55a7f0d24d51945dc5c8",
+      "screenshot_name": "scene-1.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "4015a80126b8b3fa1e2104679106e8b4d4d367d139b689984900577a98d360f6",
+      "screenshot_name": "scene-2.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "a5a48101006cd6941150c8e4372a8c53fbd0526494b157df9735f94367950c4f",
+      "screenshot_name": "scene-3.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "7e50d4ef886aa2466c7002439c38908a3dc74942aa45134f6a6a3905d3f7420d",
+      "screenshot_name": "scene-4.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "52a8b3585b27c2dd50d7c734949756c265fbfeaf17489aa827aa95777aa545c9",
+      "screenshot_name": "scene-5.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "35cc39c1c00d554f52849c186ed921eed27a4672f4d5661a79e78b72cd6d9631",
+      "screenshot_name": "scene-6.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "df971676afbd4e319b640d33e7cd88933ff63759b3ed394a72e0f803c80c74a4",
+      "screenshot_name": "scene-7.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "3268b77f52812ea7868449afa654963f84017cc49858507ea9eb25d6d3e6c487",
+      "screenshot_name": "scene-8.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    },
+    {
+      "screenshot_sha256": "8cbd61844bb986cd641c1ce2a82757a3b65e1b65dd711681250873c3d4964416",
+      "screenshot_name": "scene-9.png",
+      "layer_size": "1280x720",
+      "metal_memory": "28.20 MB",
+      "app_memory": "1.65 GB",
+      "available_memory": "6.94 GB",
+      "display_fps_readable": false
+    }
+  ],
+  "memory_scope": "Nine minute-spaced HUD samples are stable at displayed precision. This does not establish zero growth below HUD precision or identify all resource types.",
+  "cleanup": {
+    "initial_runner_after_check_passed": false,
+    "initial_remaining_own_helper_pid": 1881,
+    "recovery": "Fresh path-verified own process cleanup; after-cleanup.json confirms no own app/helper.",
+    "final_cleanup_verified": true
+  },
+  "acceptance": {
+    "guest_600_second_duration_passed": true,
+    "guest_average_30_loops_per_second_passed": true,
+    "ten_minute_displayed_fps_average_verified": false,
+    "display_fps_limitation": "A/B overlay obscures numerical HUD frame metrics; no continuous Metal HUD present-interval log collected. Guest avg_fps_milli is not displayed FPS.",
+    "background_resume_verified": false,
+    "full_acceptance_passed": false
+  }
+}

@@ -23,7 +23,8 @@ The preparer selects decrypted ELF files by magic. A `.esbak` copy is used only
 when it is an ELF; conflicting decrypted originals/backups cause an error.
 Original files are immutable. Relinking processes all bundled modules and checks
 syscalls; no deprecated skip switches are enabled. Assets are copied into
-`app0/`, and the converted bundled `libc` remains a guest module.
+`app0/`, including the runtime VFS `~INDEX`; this is a game asset, not a
+dumper sidecar. The converted bundled `libc` remains a guest module.
 
 The script recursively packages real native dependencies, NID-patches fresh HLE
 copies, validates their PE imports/forwarders and checks the generated guest NIDs
@@ -43,5 +44,6 @@ iPad actions must use `scripts/with-ipad-lease.py`.
 
 Validation: `python3 tools/runtime-probes/test_private_game.py` covers malformed
 ELF tables, original/backup selection, unsafe dependency paths, archive hashes
-and unexpected game data in an HLE archive. The actual game is never used as a
+unexpected game data in an HLE archive, and preservation of the runtime
+index while excluding dump executables and backups. The actual game is never used as a
 public test fixture.

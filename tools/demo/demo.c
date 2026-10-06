@@ -102,7 +102,11 @@ static void complete(const char* status, u64 frames) {
     write_text("{\"schema\":1,\"probe\":\"demo\",\"stage\":\"complete\",\"scope\":\"execution_only\",\"status\":\"");
     write_text(status); write_text("\",\"value\":"); number(frames); write_text("}\n");
 }
-static int fail(const char* stage, int value) { event(stage, "fail", (u32)value); return 1; }
+static int fail(const char* stage, int value) {
+    event(stage, "fail", (u32)value);
+    exit(1);
+    __builtin_unreachable();
+}
 static u32 percentile95(unsigned count) {
     // In-place quickselect runs only after the timed frame loop has ended.
     int low = 0, high = (int)count - 1;
@@ -134,10 +138,18 @@ static void game_rectangle(int x, int y, int width, int height, u32 color) {
     rectangle(x * WIDTH / 320, y * HEIGHT / 192,
               (width * WIDTH + 319) / 320, (height * HEIGHT + 191) / 192, color);
 }
-static u32 checksum(const volatile u32* pixels) {
+static u32 checksum_xor(const volatile u32* pixels, u32 mask) {
     u32 hash = 2166136261u;
-    for (unsigned i = 0; i < PIXELS; ++i) { hash ^= pixels[i]; hash *= 16777619u; }
+    for (unsigned i = 0; i < PIXELS; ++i) { hash ^= pixels[i] ^ mask; hash *= 16777619u; }
     return hash;
+}
+static u32 checksum(const volatile u32* pixels) { return checksum_xor(pixels, 0); }
+static void snapshot(const char* path, const void* pixels) {
+    const int fd = sceKernelOpen(path, 0x601, 0600); // WRONLY | CREAT | TRUNC
+    if (fd < 0) { event("diagnostic_snapshot", "unavailable", (u32)fd); return; }
+    const i64 written = sceKernelWrite(fd, pixels, FRAME_BYTES);
+    sceKernelClose(fd);
+    event("diagnostic_snapshot", written == FRAME_BYTES ? "saved" : "incomplete", (u64)written);
 }
 static void descriptor(u32* to, const void* address) {
     u64 pointer = (u64)address;
@@ -235,6 +247,12 @@ int demo_entry(void) {
         if (*label != frame + 1) return fail("gpu_timeout", frame);
         for (unsigned i = 0; i < PIXELS; ++i)
             if (output[i] != (source[i] ^ 1u)) return fail("gpu_readback", i);
+        u32 before_flip = 0;
+        if (frame % 60 == 0) {
+            before_flip = checksum(output);
+            event("gpu_checksum_before_flip", "sample", before_flip);
+            event("source_xor_checksum", "sample", checksum_xor(source, 1));
+        }
         error = sceVideoOutSubmitFlip(video, 0, 1, frame + 1);
         if (error) return fail("flip_submit", error);
         FlipStatus status = {0}; polls = 0;
@@ -246,7 +264,29 @@ int demo_entry(void) {
         } while (++polls < 30000);
         if (polls >= 30000) return fail("flip_timeout", frame);
         frames_done = frame + 1;
-        if (frame % 60 == 0) { event("frame", "pass", frame); event("gpu_checksum", "pass", checksum(output)); }
+        if (frame % 60 == 0) {
+            const u32 actual = checksum(output);
+            event("frame", "pass", frame);
+            event("gpu_checksum", "pass", actual);
+            event("paddle_x", "sample", paddle);
+            event("ball_x", "sample", ball_x);
+            event("ball_y", "sample", ball_y);
+            event("score", "sample", score);
+            if (actual != before_flip) return fail("presentation_changed_guest_buffer", actual);
+            // The qualified Windows neutral-input smoke and an independent
+            // integer scene model agree on these checkpoints. Checking only
+            // output == source ^ 1 cannot catch a divergent CPU scene.
+            if (DEMO_SMOKE_PROFILE && WIDTH == 320 && HEIGHT == 192 && !input_changes) {
+                const u32 expected = frame == 0 ? 1745292961u :
+                                     frame == 60 ? 3237446373u : actual;
+                if (actual != expected) {
+                    snapshot("/app0/demo-source.rgba", source);
+                    snapshot("/app0/demo-output.rgba", (const void*)output);
+                    return fail("neutral_scene_reference", actual);
+                }
+                event("neutral_scene_reference", "pass", frame);
+            }
+        }
         // Target60Hz using the guest monotonic clock. Catch up after a slow
         // frame without introducing another full-frame sleep.
         const u64 next_frame = started + ((u64)frames_done * 1000000 + 59) / 60;

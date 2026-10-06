@@ -234,8 +234,9 @@ A private UM790 Pro run with the AMD Radeon 780M passed the CPU, exception,
 AVX2, mapping and allocator checks. After adding the missing original demo
 metadata, RDNA readback and VideoOut acknowledged all 120 frames, but the
 process timed out during exit. That run remains a **failure**; the normal libc
-exit fix requires a fresh reference run. Input and foreground visibility were
-not verified. See [UM790 diagnostic](evidence/windows-um790-demo-exit-timeout.json).
+exit fix passed a fresh reference run with exit code 0 and no timeout.
+All 120 readback and presentation acknowledgments passed again. Input and
+foreground visibility were not verified. See the [passing short reference](evidence/windows-um790-demo-exit-fixed.json). See [UM790 diagnostic](evidence/windows-um790-demo-exit-timeout.json).
 Linux checks, ARM64 Wine/FEX and macOS GPU execution passed. Initial iOS jobs
 exposed missing modern Bison and the separate Xcode Metal compiler component;
 the workflow now explicitly installs both.
@@ -248,9 +249,41 @@ unsigned export remains separately labelled. iOS signing does not embed the
 macOS `allow-jit` entitlement; a working debugger and actual JIT execution are
 still required and cannot be inferred from successful signing.
 
+## Physical iPad RDNA smoke and private-game reference
+
+The M2 ran the corrected Windows demo PE and its unchanged real PRX closure
+with built-in JIT. The scene is visible in iPad screenshots, all 120 per-frame
+GPU XOR comparisons and flip acknowledgments completed, and Wine reported
+exit code 0. This is a short 320×192 diagnostic, not full acceptance.
+
+The loop measured 18.569 seconds for 120 frames (6.462 per second), including
+CPU draw, full GPU readback and presentation acknowledgment. These are guest
+loop timings, not display timestamps. Input was not observed. The neutral
+scene checksum at frame 0 matches Windows; frame 60 differs (Windows
+3237446373, iPad 2612983613). Per-frame GPU/input comparisons alone do not
+validate the CPU-rendered scene. A new neutral-input checksum guard and
+position samples reproduce this divergence as a failure on M2. Paddle and
+ball simulation coordinates match the neutral scene. Before/after-flip checks
+and host analysis of both pixel snapshots confirm the difference already
+exists in the CPU source buffer: the ball remains drawn at its first-frame
+position, differing in exactly 72 pixels from the frame-60 model. GPU output
+still matches every source pixel XOR 1. This is an unresolved CPU/render-store
+issue; it cannot be accepted as correct scene execution. Failure paths now
+use normal libc shutdown too, and retain original-demo pixel snapshots.
+See [M2 RDNA diagnostic](evidence/ipad-m2-rdna-smoke.json).
+
+The first private Dreaming Sarah Windows diagnostic loaded its libraries and
+created an AMD hardware Vulkan swapchain, but displayed black and reported
+an uncaught parse error. The preparer had incorrectly excluded the dumped
+`~INDEX` VFS asset. Packaging now retains it with an immutable-source hash
+check and a synthetic regression test. The game binaries and libraries are
+unchanged in the repaired package. A new Windows run is required before
+claiming that this fixes startup or running the game on iPad. Private assets
+and complete game logs remain outside Git and CI.
+
 ## Acceptance and current limits
 
-The initial guest-arena candidate is base `0x200000000`, size `0x100000000`,
+The rejected initial guest-arena candidate was base `0x200000000`, size `0x100000000`,
 with lazy 256-MiB reservations. A 512-GiB entitlement does not make the entire
 space usable: Madeira has GPU, JIT and runtime reservations. Confirm the exact
 map and placeholder/alias semantics on the device before relying on it.

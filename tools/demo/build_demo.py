@@ -18,6 +18,8 @@ IMPORTS = {
     "libc.prx": [("exit", "void", "int")],
     "libkernel.prx": [
         ("sceKernelWrite", "i64", "int, const void*, usize"),
+        ("sceKernelOpen", "int", "const char*, int, u16"),
+        ("sceKernelClose", "int", "int"),
         ("sceKernelUsleep", "int", "unsigned"),
         ("sceKernelGetProcessTime", "u64", "void"),
         ("sceKernelAllocateDirectMemory", "int", "i64, i64, usize, usize, int, i64*"),

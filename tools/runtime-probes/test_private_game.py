@@ -45,6 +45,24 @@ class PrivateGameTests(unittest.TestCase):
         path.write_bytes(data)
         return game.needed_libraries(path)
 
+    def test_runtime_index_is_preserved_but_dump_executables_are_not_assets(self):
+        dump = self.root / "dump"
+        contents = {"~INDEX": b"original runtime index", "data.js": b'{"project":[]}',
+                    "eboot.bin": b"SELF", "eboot.bin.esbak": b"ELF backup",
+                    "dump.complete": b"", "sce_module/libc.prx": b"SELF module"}
+        inventory = {}
+        for name, data in contents.items():
+            path = dump / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            inventory[name] = {"sha256": hashlib.sha256(data).hexdigest()}
+        app0 = self.root / "package/app0"
+        game.stage_assets(dump, app0, inventory)
+        self.assertEqual({p.relative_to(app0).as_posix() for p in app0.rglob("*") if p.is_file()},
+                         {"~INDEX", "data.js"})
+        self.assertEqual((app0 / "~INDEX").read_bytes(), contents["~INDEX"])
+        self.assertEqual((dump / "eboot.bin").read_bytes(), contents["eboot.bin"])
+
     def test_sysv_and_os_string_offsets(self):
         for os_tags in (False, True):
             self.assertEqual(self.read(elf(os_tags=os_tags)), ["libkernel.prx"])

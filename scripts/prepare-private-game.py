@@ -216,6 +216,21 @@ def audit_hle(stage, roots, patcher, archive_path):
     return audit
 
 
+def stage_assets(dump, app0, inventory):
+    for relative, info in inventory.items():
+        path = Path(relative)
+        # ~INDEX is a runtime VFS index, not a dumper sidecar. Keep it and
+        # other asset names, including names starting with a tilde.
+        if (path.parts[0] in ("sce_module", "sce_modules", "prx") or
+                relative == "eboot.bin" or path.name.endswith((".esbak", ".complete"))):
+            continue
+        destination = app0 / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dump / path, destination)
+        if digest(destination) != info["sha256"]:
+            raise ValueError("Dump changed while staging assets")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dump", required=True, type=Path)
@@ -277,16 +292,7 @@ def main():
         shutil.rmtree(input_dir)
         app0 = stage / "app0"
         app0.mkdir(exist_ok=True)
-        excluded = {"eboot.bin", "~INDEX"}
-        for relative in inventory:
-            path = Path(relative)
-            if path.parts[0] in ("sce_module", "sce_modules", "prx") or relative in excluded or path.name.endswith((".esbak", ".complete")):
-                continue
-            destination = app0 / path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(dump / path, destination)
-            if digest(destination) != inventory[relative]["sha256"]:
-                raise ValueError("Dump changed while staging assets")
+        stage_assets(dump, app0, inventory)
         audit = audit_hle(stage, roots, args.nid_patcher.resolve(), args.hle.resolve()) if args.hle else {
             "passed": False, "missing_libraries": roots, "reason": "hle_archive_not_supplied"}
         (stage / "REFERENCE.md").write_text(

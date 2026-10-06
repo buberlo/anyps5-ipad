@@ -114,7 +114,7 @@ guard bytes, then samples a known BC1 texture and compares the returned color.
 CPU Vulkan implementations cannot pass the hardware gate. Its JSON Lines report and
 artifact manifest are retained. This is an **offscreen native GPU test**,
 not a Wine presentation or game test. The separate iPad probe ID is
-`com.konradkern.anyps5ipad.probe`; its report is in Documents/gpu-probe.jsonl.
+`com.buberlo.anyps5ipad.probe`; its report is in Documents/gpu-probe.jsonl.
 The probe uses a single `UIWindowScene`; active start and completion are recorded,
 and any intervening loss of foreground invalidates device acceptance. Metadata
 includes source hashes, model/OS, memory, thermal state and Low Power Mode.

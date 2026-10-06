@@ -2,7 +2,7 @@
   "schema": 1,
   "date": "2026-10-06",
   "app": {
-    "bundle_id": "com.konradkern.anyps5ipad",
+    "bundle_id": "com.buberlo.anyps5ipad",
     "build": 8
   },
   "device": {

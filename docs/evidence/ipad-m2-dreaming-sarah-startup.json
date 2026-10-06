@@ -3,7 +3,7 @@
   "scope": "private Dreaming Sarah bounded startup on existing signed iPad runtime",
   "device": "iPad14,10",
   "os": "iPadOS 27.0.1 (24A446)",
-  "app": "com.konradkern.anyps5ipad",
+  "app": "com.buberlo.anyps5ipad",
   "manifest_sha256": "190a9548020dcac6686c09ddb215a4dc652168ba71390b92127ea62d3b5b0529",
   "duration_seconds": 177.3118269443512,
   "jit_helper_pid": 1289,

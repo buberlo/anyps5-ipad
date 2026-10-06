@@ -10,7 +10,7 @@
     "physical_memory_bytes": 7993868288,
     "native_page_size": 16384
   },
-  "bundle_id": "com.konradkern.anyps5ipad",
+  "bundle_id": "com.buberlo.anyps5ipad",
   "strict_signatures_verified": true,
   "memory_entitlements": {
     "com.apple.developer.kernel.extended-virtual-addressing": true,
@@ -21,7 +21,7 @@
   "active_context": {
     "application_state": 0,
     "build_stamp": "v0.1.3 (4)",
-    "bundle_identifier": "com.konradkern.anyps5ipad",
+    "bundle_identifier": "com.buberlo.anyps5ipad",
     "bundle_version": "4",
     "context_captured_unix_seconds": 1791251407.465119,
     "cs_debugged": false,

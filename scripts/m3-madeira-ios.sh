@@ -93,7 +93,7 @@ args=(
     -project "$root/upstreams/Madeira/app/Madeira.xcodeproj"
     -scheme Madeira -destination 'generic/platform=iOS' -configuration Debug
     -derivedDataPath "$root/build/ios-runtime/DerivedData"
-    MADEIRA_BUNDLE_IDENTIFIER=com.konradkern.anyps5ipad
+    MADEIRA_BUNDLE_IDENTIFIER=com.buberlo.anyps5ipad
     'OTHER_SWIFT_FLAGS=$(inherited) -j'"$JOBS -driver-batch-count $JOBS"
 )
 if [ "${APS5_CODE_SIGNING:-NO}" = YES ]; then

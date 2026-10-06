@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "scope": "native_app_start_and_pre_wine_mapping_only",
+  "recorded_utc": "2026-10-06T01:58:33.255118+00:00",
+  "source_commit": "d80f908",
+  "device": {
+    "hardware_model": "iPad14,10",
+    "os_product_version": "27.0.1",
+    "os_build": "24A446",
+    "physical_memory_bytes": 7993868288,
+    "native_page_size": 16384
+  },
+  "bundle_id": "com.konradkern.anyps5ipad",
+  "strict_signatures_verified": true,
+  "memory_entitlements": {
+    "com.apple.developer.kernel.extended-virtual-addressing": true,
+    "com.apple.developer.kernel.increased-memory-limit": true
+  },
+  "installed": true,
+  "launched": true,
+  "active_context": {
+    "application_state": 0,
+    "build_stamp": "v0.1.3 (4)",
+    "bundle_identifier": "com.konradkern.anyps5ipad",
+    "bundle_version": "4",
+    "context_captured_unix_seconds": 1791251407.465119,
+    "cs_debugged": false,
+    "cs_flags": 570438405,
+    "cs_flags_known": true,
+    "debugger_attached": false,
+    "jit_pool_taken": false,
+    "jit_ready_for_launch": false,
+    "jit_state_scope": "existing signing/debugger/pool flags; not an execution test",
+    "low_power_mode": false,
+    "present_scope": "Vulkan present results; not proof of visible gameplay",
+    "scene_activation_states": [
+      0
+    ],
+    "thermal_state": 0,
+    "wine_process_running_flag": false,
+    "winevulkan_present_count": 0
+  },
+  "candidate": {
+    "intersecting_native_leaves": 102,
+    "layout_sha256": "c769dc884f077713cfe7043bd8d2e840f555cfb6a6ad110992b3d0ee3579f099",
+    "occupied_bytes": 4294967296,
+    "observed_unmapped_bytes": 0,
+    "observed_unmapped_intervals": [],
+    "coverage_union": [
+      [
+        "0x200000000",
+        "0x300000000"
+      ]
+    ],
+    "protection_bytes": [
+      {
+        "protection": 0,
+        "max_protection": 0,
+        "bytes": 364494848
+      },
+      {
+        "protection": 1,
+        "max_protection": 1,
+        "bytes": 677773312
+      },
+      {
+        "protection": 1,
+        "max_protection": 3,
+        "bytes": 217563136
+      },
+      {
+        "protection": 3,
+        "max_protection": 3,
+        "bytes": 152829952
+      },
+      {
+        "protection": 5,
+        "max_protection": 5,
+        "bytes": 2882306048
+      }
+    ]
+  },
+  "conclusion": "All four complete live snapshots show the entire candidate covered by native VM leaf regions; zero observed unmapped gaps within the candidate.",
+  "jit": {
+    "external_stikdebug_version": "3.1.13",
+    "first_loopback": "unreachable_no_vpn",
+    "second_loopback": "reachable_utun",
+    "external_debugger_attach_verified": false,
+    "builtin_helper_tested": false
+  },
+  "windows_cpu_avx2": "not_run",
+  "windows_memory": "not_run",
+  "windows_vulkan": "not_run",
+  "demo_acceptance": "not_run",
+  "evidence_sha256": {
+    "device-native-va.jsonl": "75ab823c6518288475fe550867e33e4df7a9063f0ff217ab85847b02a92b1602",
+    "native-va-analysis.json": "b1935c7682e3e282b59363371a8bda2a067fde102aa2a529f91fda92c5a4292a",
+    "device-runtime-log-3.txt": "0b214fbb36f85a986b823c799251ef6de32f90b1e3f3e95e0a1d4e9673a536f3",
+    "signing-verification.json": "73f9ea854b7df170b1ae8c76b2626be2a8e5f3293320f44cab87cf4cc42b81d5",
+    "AnyPS5-iPad-SIGNED.ipa": "c1baad51b3768038d76769027673b3828b6ed3fb468e3be364ca026a4be89e61"
+  },
+  "limitations": [
+    "Live walks are non-atomic; foreground/JIT flags were captured before the walk, not continuously through it.",
+    "Mapped virtual bytes are not resident physical memory; resident and footprint values are separate task metrics.",
+    "Zero protection or zero resident pages do not make an existing native region an unmapped hole.",
+    "Region owners, image paths, and Wine reserved_areas/free_ranges were not captured.",
+    "This analysis performed no allocation, remap, JIT execution, guest launch, or guest arena safety test.",
+    "Observed gaps are bounded snapshot observations, not guarantees of successful later Wine or fixed-address allocations."
+  ]
+}

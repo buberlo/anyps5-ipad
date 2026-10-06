@@ -130,13 +130,20 @@ a failed demo is a failure. These logs prove only native Windows execution.
 - All four patch stacks apply and reverse on pristine pinned source. Static
   dispatch, Binder ABI, extension forwarding, surface lifetime and accepted
   presentation-count tests pass with controlled test drivers.
-- The full unsigned iPhoneOS app now links successfully with real FEX,
+- The full iPhoneOS app now links successfully with real FEX,
   `ntdll`, `win32u`, `winevulkan`, wineserver, Rust pairing, font, crypto and
   media archives plus pinned MoltenVK and the real JIT helper. Its three
   embedded ARM64EC DLLs pass SHA-256 and CHPE code-map verification. The pinned
   LLVM-MinGW toolchain needs ThinLTO disabled for the ARM64EC FEX module;
-  a small reproducer confirmed that link incompatibility. This is a full build,
-  not proof that the app or guest runtime has started on iPad.
+  a small reproducer confirmed that link incompatibility.
+- After developer-account setup, both the app and real JIT helper are signed.
+  Strict recursive signature verification passes; the main app's signature and
+  provisioning profile both include Extended Virtual Addressing and Increased
+  Memory Limit. The full app is installed and its library has started on the
+  physical iPad. The first external JIT attempt found no VPN route. After the
+  user enabled LocalDevVPN, the route was reachable, but StikDebug 3.1.13 still
+  did not establish a verified live debugger. The app correctly withheld the
+  guest launch. App launch is therefore not yet Wine/FEX execution evidence.
 - The separate native probe was built, signed, installed and run on the physical
   iPad Air 13-inch M2 (`iPad14,10`, iPadOS 27.0.1 / 24A446). Actual device
   creation, BDA/8-bit/int64 shader readback and BC1 texture sampling all passed.
@@ -155,7 +162,15 @@ Runtime diagnostics capture the process's real native Mach regions and resident,
 virtual and compressed memory, with existing JIT/debugger flags. Hooks record
 app lifecycle, running Wine and the first new Vulkan present. The native map
 is a bounded, live, non-atomic observation; it cannot prove a hole safe for a
-fixed guest allocation. iPad runtime mapping behavior still needs the probes.
+fixed guest allocation. On the actual device, all four pre-Wine walks found
+the entire 8–12 GiB candidate window already covered by 102 native leaf
+regions. This includes executable/readable host mappings as well as existing
+no-access regions; none is an unmapped hole. The proposed default is therefore
+**not a usable arena on this observed device launch**. Preserve that collision
+as a failing diagnostic and qualify another range against both native mappings
+and Wine's own reserved-area bookkeeping before changing the runtime profile.
+See [app-start and address-map evidence](evidence/ipad-m2-runtime-start.json).
+iPad runtime mapping behavior still needs the guest probes.
 
 Additional local evidence lives under ignored `build/logs/`,
 `build/ios-runtime/logs/` and the fixture directories. The signed probe,
@@ -164,13 +179,13 @@ installation/launch receipts, final executable hashes and screenshot are in
 released after the test. Wine/FEX execution and the full iPad acceptance below
 remain open; prepared CI has not established them.
 
-The attempted full-app signing step is blocked by Xcode's **"No Accounts"**
-error. The available wildcard provisioning profile also lacks **Extended
-Virtual Addressing** and **Increased Memory Limit**. Sign in to the developer
-team in Xcode's Accounts settings, or supply profiles covering the isolated
-app and its helper with the required capabilities. The build has retained
-these requirements. Only the separate native GPU probe is currently signed
-and device-tested.
+The initial Xcode **"No Accounts"** signing failure was resolved by signing in
+to the developer account and generating the app's explicit capability profile.
+The signed export is `build/ios-runtime/AnyPS5-iPad-SIGNED.ipa`, with a separate
+archive/component hash manifest and `signing-verification.json`. The earlier
+unsigned export remains separately labelled. iOS signing does not embed the
+macOS `allow-jit` entitlement; a working debugger and actual JIT execution are
+still required and cannot be inferred from successful signing.
 
 ## Acceptance and current limits
 
@@ -188,6 +203,8 @@ test, headless result or cumulative present counter is not visible gameplay.
 
 Before installation or launch, claim the shared iPad through its existing
 coordination record. Use the isolated app IDs and preserve other apps and data.
+For bounded command phases, use the [fail-closed lease wrapper](IPAD-LEASE.md),
+which starts no child process after a rejected claim and preserves newer leases.
 Verify built/signed, installed, launched, JIT-enabled and benchmarked states
 separately. No physical-iPad gameplay result is asserted by this source change.
 

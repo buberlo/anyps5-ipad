@@ -5,12 +5,12 @@ Research prototype for running AnyPS5-relinked PS5 titles on an iPad.
 The chain is AnyPS5 (`--windows --to-intel`) producing an x86-64 Windows PE,
 then [Madeira](https://github.com/willfaust/Madeira) on iOS 26: Wine 11
 ARM64EC plus a FEX fork, JIT via StikDebug. AnyPS5's GPU path is Vulkan.
-Madeira's GPU path today is DXMT and Metal, and its Wine build is
-configured without Vulkan. The work in this tree is to put MoltenVK under
-`winevulkan` and to make the guest address space fit an iPad.
+The pinned Madeira upstream uses DXMT and Metal; this tree adds a Vulkan-only
+build connecting `winevulkan` to MoltenVK and tests guest memory placement.
 
 Owner: Konrad Kern. This is a long-term research project. The current tree
-is a foundation and the first patch drafts, not a title running on a device.
+has a complete signed iPad runtime build and a native GPU device proof.
+No PS5 title or complete AnyPS5 guest session has yet been verified on iPad.
 
 ## Runtime implementation
 
@@ -19,6 +19,11 @@ static MoltenVK surface-loader fixes, transactional lazy GuestArena, executable
 CPU/memory/GPU probes, and an original relinkable 2D guest. The complete iPhoneOS
 build keeps the real JIT helper and pairing/FFmpeg libraries. The private app's
 bundle ID is `com.konradkern.anyps5ipad`.
+
+On the physical M2 iPad, the separate native probe passed device creation,
+buffer-device-address, 8-bit and 64-bit compute readbacks, and BC1 sampling.
+The full app is signed, installed and opens its library; Wine/FEX execution,
+visible Vulkan presentation and the ten-minute game acceptance remain open.
 
 See [implementation and verification](docs/IMPLEMENTATION.md) for build commands
 and the remaining device gates. The tables below are the **foundation's
@@ -32,7 +37,7 @@ import stubs are kept separate from the real runtime PRX files.
 Dreaming Sarah still requires user-supplied input and a separate Windows/iPad
 compatibility run.
 
-## Status
+## Historical foundation status
 
 | Piece | State |
 | --- | --- |

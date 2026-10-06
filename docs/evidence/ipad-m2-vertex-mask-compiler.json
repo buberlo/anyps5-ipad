@@ -95,5 +95,6 @@
   "vertex_subgroup_queries": "removed by proved invariant folding and dead-code elimination",
   "real_fragment_ballot_requirements": "retained",
   "validation_bypass": false,
-  "updated_hle_game_execution_on_ipad": "pending"
+  "updated_hle_game_execution_on_ipad": "Build 10 single-driver comparison reaches Vulkan with no vertex subgroup rejection; fragment PerVertexKHR translation and later host fault block game output",
+  "device_followup": "ipad-m2-dreaming-sarah-shader-mask-device.json"
 }

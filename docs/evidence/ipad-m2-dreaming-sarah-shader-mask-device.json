@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "device": "iPad Air 13 M2 / iPad14,10",
+  "os": "iPadOS 27.0.1 (24A446)",
+  "app_build": 10,
+  "app_installed": true,
+  "scope": "Bounded 90-second old-HLE versus single-driver comparison; no game acceptance",
+  "changes": "Only libSceAgcDriver.prx runtime binary changed; game PE, dump assets, guest modules, compiler DLLs and all other HLE byte-identical",
+  "driver_source_ci_run": 37424934958,
+  "driver_source_commit": "7303c9ae4a8760987b5c95162b186af2e0dbc966",
+  "validation_bypass": false,
+  "baseline": {
+    "package_manifest_sha256": "190a9548020dcac6686c09ddb215a4dc652168ba71390b92127ea62d3b5b0529",
+    "private_log_sha256": "d56433d444e11ff3a0e589d5fe0c247052b11e3991b32ca79ea3d1651fb99421",
+    "duration_seconds": 91.487,
+    "wine_jit_and_vulkan_started": true,
+    "vertex_subgroup_rejection_messages": 8,
+    "per_vertex_msl_rejection_messages": 0,
+    "swapchain_creations": 1,
+    "visible_game_output": false,
+    "own_process_cleanup_verified": true,
+    "termination": "bounded explicit stop"
+  },
+  "updated_driver": {
+    "package_manifest_sha256": "00cd8bff7efb9e740d7eb5b398d1e283e3fd65a27446dce5583989b918c9e8b8",
+    "private_log_sha256": "07b78198fd65171e5ac32bd287f8bc45ca00c4a09986da9673462e17d0dbf2bb",
+    "duration_seconds": 93.384,
+    "wine_jit_and_vulkan_started": true,
+    "vertex_subgroup_rejection_messages": 0,
+    "per_vertex_msl_rejection_messages": 4,
+    "swapchain_creations": 1,
+    "visible_game_output": false,
+    "own_process_cleanup_verified": true,
+    "termination": "native fault repeated 2000 times; runtime terminated process before bounded stop",
+    "fragment_pipeline_result": "VK_ERROR_INITIALIZATION_FAILED (-3): PerVertexKHR decoration is not supported in MSL",
+    "startup_stall_reproduced": false
+  },
+  "earlier_build9_attempts": {
+    "full_new_hle": "CPU startup stall before Vulkan",
+    "driver_only": "CPU startup stall before Vulkan; three threads sampled inside fex_ios_rpm_lock",
+    "old_hle_control": "JIT placement failed before Wine; invalid control",
+    "cause_resolved": false
+  },
+  "limits": [
+    "No visible game scene",
+    "Repeated host fault remains to investigate",
+    "Earlier allocator stall and JIT placement instability are not proven fixed by Build 10",
+    "Windows comparison of updated driver pending",
+    "Touch/background/audio/save and performance acceptance remain open"
+  ]
+}

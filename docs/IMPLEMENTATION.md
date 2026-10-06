@@ -329,7 +329,9 @@ explicit layout; existing controls and named layouts retain their settings.
 Signed installed Build 9 repeats 900 GPU comparisons and exits 0. Its active
 log and completed named archive both export directly with one filesystem link.
 A fresh foreground screenshot shows the scene and Xbox controls; the saved game
-profile contains 18 controls. Actual touch input remains unverified. The original
+profile contains 18 controls. Actual touch input remains unverified. Two independent Build 9 demo restarts
+pass; a third attempt fails JIT pool placement before Wine. Three-successful-
+restart acceptance is still open. See [restart evidence](evidence/ipad-m2-build9-restarts.json). The original
 runner failed parsing an interleaved diagnostic line; a separate bounded collection
 verified the completion, archive and own-process cleanup. See [log and layout proof](evidence/ipad-m2-independent-logs-touch-layout.json).
 
@@ -344,8 +346,30 @@ then removes those lane queries and their subgroup requirement. Compiled tests e
 bounds. Native replay of six private on-device requests produces three vertex
 shaders without subgroup capabilities; genuine fragment ballot requirements
 remain. See [compiler proof](evidence/ipad-m2-vertex-mask-compiler.json).
-A fresh game test with the updated HLE is still required. Validation stays enabled.
+A Build 10 comparison now tests the old HLE and a package changing only the
+graphics runtime. Both start Wine/JIT and Vulkan. The updated driver reports no
+vertex subgroup rejection, but fails fragment SPIR-V-to-MSL conversion on
+`PerVertexKHR`; a later repeatedly redelivered native memory fault terminates
+the process. Both runs show no game scene. Earlier Build 9 attempts stalled
+inside the FEX allocator before GPU initialization, and an old-HLE control
+failed JIT pool placement before Wine; their root causes remain open. Build
+10 uses Foundation file copies instead of loading entire log archives into
+heap buffers. Its build, signing and installation are confirmed; causation
+between archive allocation and the earlier failures has not been established.
+See [single-driver comparison](evidence/ipad-m2-dreaming-sarah-shader-mask-device.json).
+Validation stays enabled.
 See [Build 8 results and limits](evidence/ipad-m2-vulkan-scaling-visibility.json).
+
+The optional `APS5_FIXED_FUNCTION_INTERPOLATION=1` selects the existing native
+interpolated-attribute lowering instead of emitting unsupported per-vertex
+fragment inputs. The production translator now verifies complete unmodified
+center P1/P2 pairs and rejects partial results, raw barycentric arithmetic,
+custom/sample/centroid interpolation and unsupported control flow. Thirty
+compiled guard cases pass. All six captured shaders replay through this guard
+and pinned SPIRV-Cross, and Apple's actual Metal compiler accepts all six MSL
+outputs. This is compiler evidence; the updated driver and visible device
+rendering are still pending. See [interpolation compiler proof](evidence/ipad-m2-fixed-function-interpolation-compiler.json).
+
 Private shader requests, assets and complete game logs remain outside Git and CI.
 
 ## Acceptance and current limits

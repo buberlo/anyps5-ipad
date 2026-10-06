@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "build": 9,
+  "successful_bounded_restarts": 2,
+  "target_successful_restarts": 3,
+  "acceptance": "not_met",
+  "successes": [
+    {
+      "gpu_comparisons": 900,
+      "jit_helper_pid": 1543,
+      "guest_exit": 0,
+      "private_log_sha256": "fabeca84ef7680cdd25c9aa3f6e88f5fe66bca2ee2e415575f1be2fa4a9b157e"
+    },
+    {
+      "restart": 2,
+      "app_pid": 1548,
+      "jit_helpers": [
+        "1549"
+      ],
+      "gpu_comparisons": 900,
+      "guest_exit": 0,
+      "guest_loop_rate_per_second": 29.511,
+      "private_log_sha256": "ad67421febfaa2e13ee05657ce3fc22f78960af35968d663557c415f47fa26bd",
+      "scope": "bounded 320x192 execution; input and full acceptance remain open"
+    }
+  ],
+  "failed_attempt": {
+    "jit_attached": true,
+    "wine_started": false,
+    "cause": "native executable window occupied and no usable JIT pool placement after three allocation retries",
+    "app_behavior": "diagnostic then exits; no guest run",
+    "private_log_sha256": "a5d66a6ff11f1d332acef2bc6ceb2d297318b8d102ee22adb9de6eb2aca53360"
+  },
+  "cleanup": "verified no own app/helper remains"
+}

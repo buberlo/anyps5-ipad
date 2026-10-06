@@ -25,10 +25,10 @@ index 8f01a4b..28ca05d 100644
  }
  
 diff --git a/app/Madeira/LogStore.swift b/app/Madeira/LogStore.swift
-index 73b0817..574a7e5 100644
+index 73b0817..5ba3a6c 100644
 --- a/app/Madeira/LogStore.swift
 +++ b/app/Madeira/LogStore.swift
-@@ -1,6 +1,34 @@
+@@ -1,6 +1,45 @@
  import Foundation
  import SwiftUI
  
@@ -49,7 +49,18 @@ index 73b0817..574a7e5 100644
 +        }
 +        let dir = log.deletingLastPathComponent().appendingPathComponent("logs")
 +        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-+        try Data(contentsOf: log).write(to: dir.appendingPathComponent(name), options: .atomic)
++        // Avoid buffering a potentially large log in the app's early heap:
++        // JIT and guest images still need their fixed virtual address windows.
++        let fm = FileManager.default
++        let target = dir.appendingPathComponent(name)
++        let temporary = dir.appendingPathComponent(UUID().uuidString + ".archive-tmp")
++        defer { try? fm.removeItem(at: temporary) }
++        try fm.copyItem(at: log, to: temporary)
++        if fm.fileExists(atPath: target.path) {
++            _ = try fm.replaceItemAt(target, withItemAt: temporary)
++        } else {
++            try fm.moveItem(at: temporary, to: target)
++        }
 +        if clearPending { try FileManager.default.removeItem(at: pending) }
 +    }
 +    static func begin(_ log: URL, name: String) throws {
@@ -63,7 +74,7 @@ index 73b0817..574a7e5 100644
  final class LogStore: ObservableObject {
      static let shared = LogStore()
  
-@@ -81,6 +109,8 @@ final class LogStore: ObservableObject {
+@@ -81,6 +120,8 @@ final class LogStore: ObservableObject {
          //
          // Pull the previous run with the usual devicectl command, substituting
          // Documents/madeira-log.prev.txt for Documents/madeira-log.txt.
@@ -72,7 +83,7 @@ index 73b0817..574a7e5 100644
          let prevLogURL = docs.appendingPathComponent("madeira-log.prev.txt")
          if FileManager.default.fileExists(atPath: logFileURL.path) {
              try? FileManager.default.removeItem(at: prevLogURL)
-@@ -124,12 +154,11 @@ final class LogStore: ObservableObject {
+@@ -124,12 +165,11 @@ final class LogStore: ObservableObject {
      /// Crysis64.exe-2026-09-26_12-05-00.txt, so a run can be found and sent
      /// without renaming madeira-log.txt by hand.
      ///
@@ -90,7 +101,7 @@ index 73b0817..574a7e5 100644
      func startSessionLog(program: String, keep: Int = 40) {
          let fm = FileManager.default
          let dir = logFileURL.deletingLastPathComponent().appendingPathComponent("logs")
-@@ -139,10 +168,14 @@ final class LogStore: ObservableObject {
+@@ -139,10 +179,14 @@ final class LogStore: ObservableObject {
          let safe = program.map { "/\\:*?\"<>|".contains($0) ? "_" : $0 }
          let url = dir.appendingPathComponent(String(safe) + "-" + stamp.string(from: Date()) + ".txt")
          do {
@@ -107,7 +118,7 @@ index 73b0817..574a7e5 100644
          }
          let runs = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
              .filter { $0.pathExtension == "txt" }
-@@ -154,6 +187,11 @@ final class LogStore: ObservableObject {
+@@ -154,6 +198,11 @@ final class LogStore: ObservableObject {
          for old in runs.dropFirst(keep) { try? fm.removeItem(at: old) }
      }
  

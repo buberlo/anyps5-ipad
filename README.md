@@ -3,7 +3,7 @@
 Research prototype for running AnyPS5-relinked PS5 titles on an iPad.
 
 The chain is AnyPS5 (`--windows --to-intel`) producing an x86-64 Windows PE,
-then [Madeira](https://github.com/willfaust/Madeira) on iOS 26: Wine 11
+then [Madeira](https://github.com/willfaust/Madeira) on iPadOS: Wine 11
 ARM64EC plus a FEX fork, JIT via StikDebug. AnyPS5's GPU path is Vulkan.
 The pinned Madeira upstream uses DXMT and Metal; this tree adds a Vulkan-only
 build connecting `winevulkan` to MoltenVK and tests guest memory placement.
@@ -12,8 +12,8 @@ Owner: Konrad Kern. This is a long-term research project. The current tree
 has a complete signed iPad runtime build and a native GPU device proof.
 Standalone x64 AVX2 and GPU readbacks now pass through Wine/FEX on iPad;
 a short Win32 swapchain test has visible output. The 464–468 GiB candidate
-passes mapping/allocator probes; PS5 HLE and gameplay are still separate gates.
-PS5 HLE and full-game acceptance remain open.
+passes mapping/allocator probes. Real relinked PS5 HLE CPU/exception tests and
+the original RDNA scene now pass on the device; full-game acceptance remains open.
 
 ## Runtime implementation
 
@@ -26,8 +26,10 @@ bundle ID is `com.konradkern.anyps5ipad`.
 On the physical M2 iPad, the separate native probe passed device creation,
 buffer-device-address, 8-bit and 64-bit compute readbacks, and BC1 sampling.
 The full app is signed and installed; a standalone Windows AVX2 probe passes
-through Wine/FEX with built-in StikJIT. Visible Vulkan presentation and the
-ten-minute game acceptance remain open.
+through Wine/FEX with built-in StikJIT. The original 320×192 RDNA scene has
+visible output and a clean 900-frame GPU/readback run. Build 9 shows Xbox touch
+controls and exports complete session logs directly. These bounded tests do not
+prove touch input, presented FPS or the 1280×720 ten-minute acceptance.
 
 See [implementation and verification](docs/IMPLEMENTATION.md) for build commands
 and the remaining device gates. The tables below are the **foundation's
@@ -38,8 +40,14 @@ exit 42; the old `kernel32.dll` failure is resolved for that fixture.
 The original demo needs no game data. It exercises public PS5 HLE imports and
 a hand-written RDNA compute program before presenting frames. Linker-only
 import stubs are kept separate from the real runtime PRX files.
-Dreaming Sarah still requires user-supplied input and a separate Windows/iPad
-compatibility run.
+Dreaming Sarah requires a privately supplied decrypted dump. The tested private
+version reaches the main menu on Windows. On iPad its scaling/swapchain issue
+is repaired. Build 10 reaches Vulkan with the shader-fixed graphics library and
+no longer reports the vertex subgroup error. Fragment translation now rejects
+`PerVertexKHR`, and a later repeated host fault terminates the run; visible game
+output remains unverified. The private shader replay can translate through
+native interpolation. Thirty production-guard cases and six Apple Metal shader
+compilations pass; execution with that interpolation path is pending. Game assets and shader requests stay outside this repository.
 
 ## Historical foundation status
 

@@ -8,6 +8,34 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+libraries=(libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad
+    libSceAudioOut libSceCommonDialog libSceIme libSceImeBackend libSceImeDialog
+    libSceLibcInternal libSceNpGameIntent libSceNpTrophy2 libSceNpUniversalDataSystem
+    libSceSaveData.native libSceSaveDataDialog.native libSceSysmodule
+    libSceSystemService libSceUlt libSceUserService)
+# A private dependency audit can request additional real upstream libraries.
+# Never interpret the target file as shell code or fabricate missing modules.
+if [ -n "${APS5_HLE_TARGETS_FILE:-}" ]; then
+    [ -f "$APS5_HLE_TARGETS_FILE" ] || { echo "Missing HLE target file" >&2; exit 1; }
+    while IFS= read -r library || [ -n "$library" ]; do
+        library="${library%$'\r'}"
+        [ -n "$library" ] || continue
+        if [[ ! "$library" =~ ^lib[A-Za-z0-9_.]+$ ]] ||
+            [ ! -d "$root/upstreams/AnyPS5/core/libs/prx/$library" ]; then
+            echo "Unknown or unsafe HLE target: $library" >&2
+            exit 1
+        fi
+        case " ${libraries[*]} " in
+            *" $library "*) ;;
+            *) libraries+=("$library") ;;
+        esac
+    done < "$APS5_HLE_TARGETS_FILE"
+fi
+if [ "${1:-}" = --print-hle-targets ] && [ "$#" = 1 ]; then
+    printf '%s\n' "${libraries[@]}"
+    exit 0
+fi
+[ "$#" = 0 ] || { echo "Usage: $0 [--print-hle-targets]" >&2; exit 1; }
 "$root/scripts/apply-patches.sh"
 
 url="https://github.com/brechtsanders/winlibs_mingw/releases/download/15.2.0posix-14.0.0-ucrt-r7/winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
@@ -55,8 +83,8 @@ echo "Windows compiler: $($gcc --version | head -1)"
 # FFmpeg download inside AnyPS5's configure. GitHub's CMake is ahead of
 # that directory when we call it by path. gcc, objcopy, and windres stay
 # on PATH from mingw64/bin.
-cmake_bin="cmake"
-if [ -x "/c/Program Files/CMake/bin/cmake.exe" ]; then
+cmake_bin="${APS5_CMAKE:-cmake}"
+if [ -z "${APS5_CMAKE:-}" ] && [ -x "/c/Program Files/CMake/bin/cmake.exe" ]; then
     cmake_bin="/c/Program Files/CMake/bin/cmake.exe"
 fi
 echo "cmake: $cmake_bin"
@@ -79,11 +107,6 @@ if [ -z "$jobs" ]; then
         jobs=4
     fi
 fi
-libraries=(libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad
-    libSceAudioOut libSceCommonDialog libSceIme libSceImeBackend libSceImeDialog
-    libSceLibcInternal libSceNpGameIntent libSceNpTrophy2 libSceNpUniversalDataSystem
-    libSceSaveData.native libSceSaveDataDialog.native libSceSysmodule
-    libSceSystemService libSceUlt libSceUserService)
 "$cmake_bin" --build "$build" --target relinker nid_patcher "${libraries[@]}" --parallel "$jobs"
 
 for library in "${libraries[@]}"; do

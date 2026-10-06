@@ -15,6 +15,24 @@ GitHub Actions.
 If preparing on another host, copy that archive to the same local path there.
 Then prepare a new local output directory:
 
+The default Windows build covers the demo and Dreaming Sarah. For another title,
+`APS5_HLE_TARGETS_FILE` can name additional existing upstream CMake library
+targets, one per line. It accepts only library directories under
+`upstreams/AnyPS5/core/libs/prx`, deduplicates them, and rejects unknown names or
+shell/path syntax. This builds the actual upstream implementation; functions
+that upstream leaves unimplemented still throw when called.
+
+```sh
+APS5_HLE_TARGETS_FILE=/path/to/private-hle-targets.txt \
+    scripts/m0-build-anyps5-winlibs.sh --print-hle-targets
+APS5_HLE_TARGETS_FILE=/path/to/private-hle-targets.txt \
+    scripts/windows-runtime-build.sh
+```
+
+`APS5_CMAKE` can select a specific CMake executable when using portable build
+tools. The dependency audit, rather than the number of built libraries, decides
+whether a package is complete.
+
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/prepare-private-game.py \
     --dump PPSA02929-app0 \

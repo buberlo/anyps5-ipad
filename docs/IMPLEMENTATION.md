@@ -409,8 +409,21 @@ four left and two A taps into the actual touch controls. The guest sees the
 corresponding `scePad` button states, moves the paddle and serves twice. Zero
 button states follow the taps. At least 1,861 full-pixel GPU comparisons succeed
 before the bounded runner stops the app. This is physical input proof; sticks,
-background/resume, ten-minute performance and clean guest exit need separate
-checks. See [touch input proof](evidence/ipad-m2-touch-input-early-slot.json).
+background/resume and ten-minute performance need separate checks. A second
+fresh launch repeats the ten taps, then taps B/Circle: the guest records 21
+input changes, two serves and 310 successful GPU comparisons, closes VideoOut
+and exits Wine with code 0. Its timing probe attributes 9.562 of 10.817 seconds
+to flip submission/acknowledgment, compared with 0.731 seconds for compute
+submission/wait and 0.024 seconds for readback/checkpoints. This narrows the
+performance investigation to the flip path without establishing display FPS.
+See [touch input proof](evidence/ipad-m2-touch-input-early-slot.json).
+Three fresh Build 10 launches of the same interactive package now initialize
+JIT, open SDL's virtual controller and deliver touch input. The first is stopped
+externally after its bounded observation; the next two stop through B/Circle
+with Wine exit 0. The third verifies 315 full-pixel GPU comparisons and 33 input
+changes. These three startup successes supersede the earlier Build 9 restart
+limit for this configuration; full-resolution duration and background recovery
+remain unverified.
 
 The rejected initial guest-arena candidate was base `0x200000000`, size `0x100000000`,
 with lazy 256-MiB reservations. A 512-GiB entitlement does not make the entire

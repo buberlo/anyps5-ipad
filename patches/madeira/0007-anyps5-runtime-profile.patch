@@ -149,7 +149,7 @@ index 651ac88..4a26222 100644
  	<string>en</string>
  	<key>CFBundleDisplayName</key>
 -	<string>Madeira</string>
-+	<string>AnyPS5 iPad</string>
++	<string>madeira-anyps5</string>
  	<key>CFBundleExecutable</key>
  	<string>$(EXECUTABLE_NAME)</string>
  	<key>CFBundleIdentifier</key>

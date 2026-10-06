@@ -1,4 +1,8 @@
-# anyps5-ipad
+# madeira-anyps5
+
+This repository preserves the Madeira-menu integration through the playable
+Dreaming Sarah baseline (`abe64be`). The app is named **madeira-anyps5**.
+Builds and checks run locally; GitHub Actions is disabled for this project.
 
 **The PS5 build of Dreaming Sarah boots on an M2 iPad and is playable in a basic sense.**
 

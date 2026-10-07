@@ -28,6 +28,10 @@ src="$root/tools/runtime-probes"
     "$src/negative_arithmetic_probe.c" -o "$out/negative-arithmetic-probe.exe"
 "$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -Wno-cast-function-type -O2 -static-libgcc \
     "$src/native_write_fault_probe.c" -o "$out/native-write-fault-probe.exe"
+"$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -static-libgcc \
+    "$src/redzone_fault_probe.c" -o "$out/redzone-fault-probe.exe"
+"$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -mavx2 -static-libgcc \
+    "$src/write_watch_probe.c" -o "$out/write-watch-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'
 printf 'A compiled probe or scalar reference does not establish AVX or memory behavior on iPad.\n'

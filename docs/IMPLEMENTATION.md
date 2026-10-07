@@ -883,3 +883,71 @@ Raw IR and logs remain private. Production files/configuration are restored
 and verified after this additional run as well.
 
 See the [Build 26 record](evidence/solitaire-build26-native-write-and-teardown.json).
+
+### Compiler capture ownership and SysV red zone, Builds 27–28
+
+The compile-time IR capture mark now belongs to each thread's `PassManager`,
+instead of a process-global RIP. A capture gets a session number carried through
+frontend IR, optimization/RA output, guest-to-host mappings and emitted ARM64
+bytes. Only that compiler's nonzero session can produce the host-code capture.
+The process-wide limit still bounds the number of captures. All instrumentation
+remains disabled by default, and this change inserts no live guest instructions.
+
+Build 27's private graphics capture contains one complete matching session:
+4,772 emitted bytes, 180 mappings, and a reconstructed byte hash equal to the
+compile-time hash. The failing virtual-call sequence loads the guest object,
+vtable and function in the expected order; its object pointer is already invalid.
+This is evidence about one compiled block, not proof that all guest translation
+or object producers are correct. Raw game IR and code remain private.
+
+A separate synthetic SysV leaf function stores 16 qwords in the full 128-byte
+red zone below RSP, then writes a protected page. On Build 27 all four writable
+controls pass, but each of four handled write faults overwrites 12 of those
+qwords. FEX's guest exception frame was aligned and placed immediately below
+RSP. Relinked PS5 leaf functions use that space for live scratch even though
+the exception dispatcher follows the Windows frame layout.
+
+The iOS FEX exception path now subtracts 128 bytes before aligning/placing its
+dispatcher frame. The saved guest context still contains the original RSP;
+fault handling and instruction retry remain active. On Build 28 the same
+fixture passes all eight checks, observes exactly four handled faults, exits 0
+and returns to the library. A separate macOS x86 Wine run still clobbers one
+slot through its different SEH path; it is not a passing reference for this fix.
+
+### Private write-watch isolation, Build 28
+
+The controlled game run still fails at `game.exe+0x1426827`, reading `0x20`.
+The red-zone repair therefore fixes a reproduced ABI bug without resolving the
+graphics-worker failure. A separate 60-second run uses the existing diagnostic
+`APS5_NO_WRITE_WATCH=1`. It disables write watching for private guest arena
+commits; shared-view tracking remains enabled. That run has no equivalent fatal
+graphics access but presents only a white game area. Draw validation rejects
+multisampling/coverage register `0x2f8 = 0x0030e003` and subgroup capability 61
+in vertex stage 1. Avoiding a fault is not correct rendering, and this switch is
+not adopted in the installed production configuration. Disabling private dirty
+tracking can itself cause stale GPU resources.
+
+To test the transparent Wine write-watch path independently,
+`write_watch_probe.c` allocates 64 KiB at the same high guest address, checks
+unwatched controls, and repeatedly rearms `MEM_WRITE_WATCH`. Two distinct AVX
+vectors test all eight 64-bit lanes, including upper halves; a leaf function
+checks SysV red-zone scratch around the faulting stores. The fixture compares
+every allocation byte before and after `GetWriteWatch(WRITE_WATCH_FLAG_RESET)`,
+checks dirty-address coverage and verifies an empty subsequent query. Boundary
+cases cross 4-KiB and 16-KiB pages. Four additional event-synchronized threads
+write distinct regions concurrently; rearming occurs while those threads are
+waiting. Coarse host-page dirty reporting is accepted, missing written pages
+are rejected.
+
+The fixture passes 768 checks on both local x86 Wine and the iPad, exits 0 and
+returns to the library on device. This does not test racing reset against an
+active writer, AnyPS5's resource/cache integration, shared write tracking or
+game object lifetimes. Those remain distinct possible causes. It provides no
+basis for broadly disabling write watching in production.
+
+After all bounded game experiments, the original 138-file installation is
+hash-verified, the private cooperative kernel is removed, and configuration and
+library are preserved byte-for-byte. Production Unity GC signal delivery and
+the rejected graphics operations remain open. Solitaire is installed, with no
+qualified visible gameplay, control acceptance or performance measurement.
+See the [Build 28 record](evidence/solitaire-build28-redzone-and-write-watch.json).

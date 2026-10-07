@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "app_build": "28",
+  "title": "15in1 Solitaire",
+  "device_model": "iPad14,10",
+  "os": "27.0.1 (24A446)",
+  "status": "installed_not_playable_graphics_worker_fault_and_rejected_draws_remain",
+  "latest_shared_runtime_pr": {
+    "adoption_commit": "54e36f670bc7993f5829b2fcc1435f87bcca0be8",
+    "upstream_head": "e783c4f1f8baf987cba33145ca32481a6fa6c645",
+    "latest_head_rechecked": true
+  },
+  "compiler_capture": {
+    "app_build": "27",
+    "ownership": "per-thread PassManager",
+    "matching_sessions": 1,
+    "emitted_bytes": 4772,
+    "guest_host_mappings": 180,
+    "reconstructed_compile_hash_match": true,
+    "live_guest_instrumentation_inserted": false,
+    "diagnostics_default_enabled": false,
+    "conclusion": "The captured virtual-call block loads the guest object and vtable normally; the input pointer is invalid. This does not qualify all compiler paths or object producers."
+  },
+  "redzone_probe": {
+    "source": "tools/runtime-probes/redzone_fault_probe.c",
+    "source_sha256": "2864dc7d2847a188d876b2c3e1b710d8c7086117cc479494bf4aa7060982267d",
+    "tested_build28_exe_sha256": "67a06c352513c83193d916ba2faeee46e019d7ab0f42e422e3c350ceb5968f61",
+    "scratch_bytes": 128,
+    "writable_controls": 4,
+    "protected_writes": 4,
+    "build27_checks": 8,
+    "build27_failures": 4,
+    "build27_clobbered_slots_per_fault": 12,
+    "build28_checks": 8,
+    "build28_failures": 0,
+    "build28_handled_faults": 4,
+    "build28_exit_code": 0,
+    "build28_returned_to_library": true,
+    "before_after_leaf_assembly_identical": true,
+    "build28_source_adds_fault_count_assertion": true,
+    "macos_x86_wine_original_fixture_failures": 4,
+    "macos_x86_wine_clobbered_slots_per_fault": 1,
+    "macos_x86_wine_is_passing_reference": false,
+    "change": "iOS guest exception frame leaves the complete SysV red zone intact; original guest RSP is retained in saved context."
+  },
+  "write_watch_probe": {
+    "source": "tools/runtime-probes/write_watch_probe.c",
+    "source_sha256": "e9613c416b9b24643965e9c789d53fb440302af46f287fb67057e7af8d8b5895",
+    "tested_exe_sha256": "456d832c7310fcce3ad5e11d32bd01479d4a1e9d1e33b38884cdaab862c56d4b",
+    "allocation_base": "0x7400000000",
+    "allocation_bytes": 65536,
+    "avx_vectors": 2,
+    "distinct_u64_lanes": 8,
+    "redzone_bytes": 128,
+    "unwatched_control_checks": 128,
+    "watched_single_thread_checks": 128,
+    "watched_concurrent_checks": 512,
+    "concurrent_writers": 4,
+    "total_checks": 768,
+    "failures": 0,
+    "host_exit_code": 0,
+    "device_exit_code": 0,
+    "device_returned_to_library": true,
+    "host_environment": "macOS x86 Wine; not Windows GPU reference",
+    "checks_all_allocation_bytes": true,
+    "checks_dirty_page_coverage": true,
+    "accepts_coarser_host_page_reporting": true,
+    "checks_empty_query_after_reset": true,
+    "reset_occurs_while_writers_parked": true,
+    "not_qualified": [
+      "reset racing with active writes",
+      "AnyPS5 cache/resource integration",
+      "shared alias dirty tracking",
+      "game object lifetimes"
+    ]
+  },
+  "game_controls": {
+    "same_private_cooperative_kernel_and_gc_trace_package": true,
+    "normal_tracking_fault": "game.exe+0x1426827 reads 0x20",
+    "no_private_write_watch_diagnostic": {
+      "environment": "APS5_NO_WRITE_WATCH=1",
+      "bounded_seconds": 60,
+      "equivalent_graphics_fault_observed": false,
+      "visible_output": "white game area",
+      "visible_gameplay": false,
+      "production_fix": false,
+      "rejected_draws": [
+        "multisampling/coverage register 0x2f8=0x0030e003",
+        "subgroup capability 61 unsupported for vertex stage 1"
+      ],
+      "conclusion": "Behavior changes, but missing private dirty tracking may produce stale GPU resources. No demonstrated root cause or gameplay improvement."
+    },
+    "production_gc_signal_delivery_implemented": false,
+    "gameplay_qualified": false,
+    "performance_qualified": false
+  },
+  "embedded_pe_components": {
+    "ntdll.dll": {
+      "sha256": "0c595afa3887b3dcebf827811dce303009ea1f21eb43098969290a9a09747184",
+      "bytes": 1572864,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "xtajit64.dll": {
+      "sha256": "f839ca7f7f7a51c93733bd1236dbef51c43a163d7468e471039e022f37256d73",
+      "bytes": 5427200,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "winevulkan.dll": {
+      "sha256": "993b43f4fb1b165fcd9edceaeed99d21773c6369037520305c4729b47913800e",
+      "bytes": 917504,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "vulkan-1.dll": {
+      "sha256": "936895102beaa70c16c154745127bceebe62fe4877c1f9490acc39e58ab70b20",
+      "bytes": 655360,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "app_build": "28"
+  },
+  "production_restoration": {
+    "verified_files": 138,
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "private_kernel_removed": true,
+    "config_restored_byte_for_byte": true,
+    "library_preserved": true,
+    "own_app_processes_closed": true,
+    "write_watch_diagnostic_left_enabled": false
+  },
+  "patch_validation": [
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 10,
+      "files_verified": 8,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 25,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "raw_log_sha256": {
+    "capture_build27": "79b396de91503aefc5c1af15950c012198c5b8e974110949b880794b2dcae862",
+    "redzone_build27": "b1541d3af9b3f80e2a322cadf4dcd8dffba8b7454aae081758505cf3c1cdcba5",
+    "redzone_build28": "ef3268f01779a637af7b0446511cf9af389bc05462526eda218d360e421bd936",
+    "normal_tracking_game_build28": "2e96e0bdb7dc2c1b80c1a1cce61c3d4c536285ed5b3a563cb91c0d664fa72c54",
+    "no_private_watch_game_build28": "c6a0ce0f95f53c619ee56d14feb766f26868b66379bb6685e6804c3614802e24",
+    "write_watch_build28": "bc031521a5df93db5e22b73112bf429dc5cf7f07216ac9413fbed21a3e701560",
+    "write_watch_host": "48cbc2f10e6289027416e5b69b0d4fb9c2fae8811d529ff591d4b3432e9bbad3"
+  }
+}

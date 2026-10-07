@@ -1,0 +1,15 @@
+diff --git a/FEXCore/Source/Interface/Core/OpcodeDispatcher.cpp b/FEXCore/Source/Interface/Core/OpcodeDispatcher.cpp
+--- a/FEXCore/Source/Interface/Core/OpcodeDispatcher.cpp
++++ b/FEXCore/Source/Interface/Core/OpcodeDispatcher.cpp
+@@ -4752,6 +4752,11 @@
+     Result = _Not(OpSize, Dest);
+   } else if (IsConst && Const == Mask && !DestIsLockedMem(Op) && ALUIROp == IR::IROps::OP_AND) {
+     Result = Dest;
++  } else if (ALUIROp == IR::IROps::OP_ADD || ALUIROp == IR::IROps::OP_SUB) {
++    // CalculateFlags_ADD/SUB below already produce the architectural result.
++    // Do not emit an unused logical placeholder and retag it as arithmetic:
++    // logical immediates such as -128 are not valid add/sub immediates, and
++    // this dead node can survive when flag elimination is disabled.
+   } else {
+     DeriveOp(ALUOp, ALUIROp, _AndWithFlags(OpSize, Dest, Src));
+     Result = ALUOp;

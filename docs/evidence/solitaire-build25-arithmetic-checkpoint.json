@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "app_build": "25",
+  "title": "15in1 Solitaire",
+  "status": "installed_runtime_faults_remain_not_playable",
+  "fex_config_diagnostics": {
+    "default_enabled": false,
+    "resolved_multiblock_and_maxinst_logged": true
+  },
+  "full_block_capture": {
+    "default_enabled": false,
+    "requires_existing_module_rva_target": true,
+    "environment_switch": "MADEIRA_IRCAP_FULL_BLOCK=1",
+    "ir_lines_per_stage_limit": 4096,
+    "host_code_bytes_limit": 65536,
+    "compile_sessions_limit": 4,
+    "generated_ir_unchanged": true,
+    "not_a_performance_measurement": true
+  },
+  "build24_block_comparison": {
+    "same_private_runtime_package": true,
+    "maxinst": 5000,
+    "multiblock_on_fault": "game.exe+0x1426ac4 reads 0x2",
+    "multiblock_off_fault": "game.exe+0x1461222 reads 0x30",
+    "cause_isolated": false
+  },
+  "arithmetic_repair": {
+    "affected_component": "FEX x86 ALU frontend",
+    "trigger": "Unneeded logical placeholder retagged as Add/Sub can keep an invalid arithmetic immediate when flag elimination is disabled.",
+    "native_fault_word": "0xfffe02e7",
+    "actual_block": "libwinpthread-1.dll+0xb302",
+    "guest_instruction": "add rsp, -128",
+    "stale_state_rip": "libwinpthread-1.dll+0x12ef",
+    "block_identified_from_jit_tail": true,
+    "invalid_word_observed_at_compile_time": true,
+    "change": "Do not emit the unused Add/Sub placeholder; CalculateFlags_ADD/SUB already produce the architectural result.",
+    "default_flag_elimination_setting_unchanged": true
+  },
+  "synthetic_arithmetic_probe": {
+    "source_sha256": "b2e71cb36030e6b09ea081f2c421234c89b90e508ccad5fbf1ad6e7832149941",
+    "exe_sha256": "0d9ff87b662c4fb2d47b41606fef5d4cc20f0775e0625ae9a588a02587b2c30c",
+    "operations": 10,
+    "inputs_per_operation": 16,
+    "checks": 160,
+    "results_and_flags_compared": [
+      "result",
+      "CF",
+      "PF",
+      "AF",
+      "ZF",
+      "SF",
+      "OF"
+    ],
+    "host_reference_failures": 0,
+    "build24_no_dfe": "Fails with invalid ARM instruction before completing the checks.",
+    "build25_no_dfe_arithmetic_failures": 0,
+    "build25_default_arithmetic_failures": 0,
+    "build25_process_exit_code": 1,
+    "build25_post_checks_native_cleanup_faults": true,
+    "full_process_lifecycle_qualified": false
+  },
+  "build25_game_comparison": {
+    "private_cooperative_kernel_used_for_bounded_tests_only": true,
+    "live_argument_tracer_enabled": false,
+    "multiblock": true,
+    "maxinst": 5000,
+    "no_dfe_elf_entry_reached": true,
+    "no_dfe_fault": "game.exe+0x1461222 reads 0x30",
+    "default_flag_elimination_elf_entry_reached": true,
+    "default_flag_elimination_fault": "game.exe+0x1426827 reads 0x20",
+    "loader_invalid_instruction_removed": true,
+    "visible_gameplay_qualified": false,
+    "performance_qualified": false
+  },
+  "installed_fex_dll_sha256": "d2f9c14783029db407e9e7d17d50f0d57aab27f4c418f3abcdeca17b24289d76",
+  "production_restoration": {
+    "verified_files": 138,
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "private_kernel_removed": true,
+    "config_restored_byte_for_byte": true,
+    "library_and_assets_preserved": true,
+    "own_app_processes_closed": true
+  },
+  "raw_log_sha256": {
+    "build24_multiblock_on": "efde79c43be73849a261586614e08dce4291acebb62f65c286f9022784674d0a",
+    "build24_multiblock_off": "9f37f8b500cb74126ea91c1dd88fcf91780be799340544cc28ad322e592bf81c",
+    "build24_negative_ir": "895506f88a5de638e294a0b75797d6a5ead3bf26e44f0fc5f3a01d22529627bf",
+    "probe24_no_dfe": "f0674a06fb7032ed9df1dc1d0fb76e6254514448f865f6e2df7cf18f319fcd6e",
+    "probe25_no_dfe": "dc8c3b3743101cbccc733e67e9c1b22921f09074da9652e94642fb1f2a7c04f3",
+    "probe25_default": "efa3387ba24b65d843aee6949e3906962b5675436a1675835f0e027607d6ec37",
+    "game25_no_dfe": "5fc5b14d49390621074283a98940a20b7538aba823f0224193b19f8fac9186a2",
+    "game25_default": "832e6309b1b28e52546d624caea9283e7a4c143c166c07593f987d49e9b67bfb"
+  },
+  "patch_validation": [
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 7,
+      "files_verified": 7,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 22,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "github_actions_used": false,
+  "private_data_published": false
+}

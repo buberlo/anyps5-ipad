@@ -1,0 +1,15 @@
+diff --git a/Source/Windows/ARM64EC/Module.cpp b/Source/Windows/ARM64EC/Module.cpp
+--- a/Source/Windows/ARM64EC/Module.cpp
++++ b/Source/Windows/ARM64EC/Module.cpp
+@@ -1007,8 +1007,11 @@
+       FEX_CONFIG_OPT(VectorTSO, VECTORTSOENABLED);
+       FEX_CONFIG_OPT(MemcpyTSO, MEMCPYSETTSOENABLED);
+       FEX_CONFIG_OPT(HalfBarrierTSO, HALFBARRIERTSOENABLED);
++      FEX_CONFIG_OPT(Multiblock, MULTIBLOCK);
++      FEX_CONFIG_OPT(MaxInst, MAXINST);
+       LogMan::Msg::EFmt("[fex-config] tso={} vector-tso={} memcpy-set-tso={} half-barrier-tso={}",
+                        bool(TSO()), bool(VectorTSO()), bool(MemcpyTSO()), bool(HalfBarrierTSO()));
++      LogMan::Msg::EFmt("[fex-block-config] multiblock={} maxinst={}", bool(Multiblock()), MaxInst());
+     }
+ #endif
+     CTX = FEXCore::Context::Context::CreateNewContext(HostFeatures);

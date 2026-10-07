@@ -24,6 +24,8 @@ src="$root/tools/runtime-probes"
     "$src/atomic_protection_probe.c" -o "$out/atomic-protection-probe.exe"
 "$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -mavx2 -static-libgcc \
     "$src/guest_argument_probe.c" -o "$out/guest-argument-probe.exe"
+"$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -mno-red-zone -static-libgcc \
+    "$src/negative_arithmetic_probe.c" -o "$out/negative-arithmetic-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'
 printf 'A compiled probe or scalar reference does not establish AVX or memory behavior on iPad.\n'

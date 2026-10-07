@@ -1,0 +1,43 @@
+diff --git a/FEXCore/Source/Interface/IR/PassManager.cpp b/FEXCore/Source/Interface/IR/PassManager.cpp
+--- a/FEXCore/Source/Interface/IR/PassManager.cpp
++++ b/FEXCore/Source/Interface/IR/PassManager.cpp
+@@ -361,8 +361,12 @@
+     return;
+   }
+ 
+-  const int From = std::max(0, Start - IRCapLinesBefore);
+-  const int To = std::min(Stop, Start + IRCapLinesAfter);
++  // Opt-in whole-block view for failures after the target instruction's marker.
++  // Keep capture count and output bounded; this does not alter generated IR.
++  const char* FullBlockEnv = getenv("MADEIRA_IRCAP_FULL_BLOCK");
++  const bool FullBlock = FullBlockEnv && strcmp(FullBlockEnv, "1") == 0;
++  const int From = FullBlock ? 0 : std::max(0, Start - IRCapLinesBefore);
++  const int To = FullBlock ? std::min(static_cast<int>(Lines.size()), 4096) : std::min(Stop, Start + IRCapLinesAfter);
+ 
+   LogMan::Msg::EFmt("[ircap] ml623 s{} stage={} postra={} rip={:#x} target={:#x} off={:#x} "
+                     "ssa={} window=[{},{}) marker@{}",
+diff --git a/FEXCore/Source/Interface/Core/Core.cpp b/FEXCore/Source/Interface/Core/Core.cpp
+--- a/FEXCore/Source/Interface/Core/Core.cpp
++++ b/FEXCore/Source/Interface/Core/Core.cpp
+@@ -1300,14 +1300,17 @@
+                           "(rip={:#x} hostsize={})",
+                           WantOffset, GO.size(), CapRIP, DebugData->HostCodeSize);
+       } else {
+-        const ptrdiff_t HostFrom = GO[Idx].HostEntryOffset;
+-        const ptrdiff_t HostTo = (Idx + 1 < GO.size()) ? GO[Idx + 1].HostEntryOffset : static_cast<ptrdiff_t>(DebugData->HostCodeSize);
++        const char* FullBlockEnv = getenv("MADEIRA_IRCAP_FULL_BLOCK");
++        const bool FullBlock = FullBlockEnv && strcmp(FullBlockEnv, "1") == 0;
++        const ptrdiff_t HostFrom = FullBlock ? 0 : GO[Idx].HostEntryOffset;
++        const ptrdiff_t HostTo = FullBlock ? std::min<ptrdiff_t>(DebugData->HostCodeSize, 65536) :
++          ((Idx + 1 < GO.size()) ? GO[Idx + 1].HostEntryOffset : static_cast<ptrdiff_t>(DebugData->HostCodeSize));
+         // Neighbours give the `or al,0x44` that shares the clobbered register.
+-        for (size_t i = (Idx > 1 ? Idx - 2 : 0); i < GO.size() && i <= Idx + 1; ++i) {
++        for (size_t i = (Idx > 1 ? Idx - 2 : 0); i < GO.size() && (FullBlock || i <= Idx + 1); ++i) {
+           LogMan::Msg::EFmt("[ircap] ml623 HOST map guest+{:#x} -> host+{:#x}{}", GO[i].GuestEntryOffset, GO[i].HostEntryOffset,
+                             i == Idx ? "   <== TARGET" : "");
+         }
+-        if (HostTo > HostFrom && (HostTo - HostFrom) < 4096) {
++        if (HostTo > HostFrom && (HostTo - HostFrom) <= (FullBlock ? 65536 : 4095)) {
+           const uint32_t* Words = reinterpret_cast<const uint32_t*>(CompiledCode.BlockBegin + HostFrom);
+           const size_t NumWords = static_cast<size_t>(HostTo - HostFrom) / 4;
+           uint64_t Hash = 1469598103934665603ull; // FNV-1a

@@ -783,3 +783,49 @@ ELFs and assets, retains bundled modules, builds and validates the real HLE
 closure, and never uploads game data. Establish the same version on Windows
 before comparing menu/gameplay/audio/saves on iPad. Packaging is not execution;
 the original demo is not commercial-title compatibility evidence.
+
+
+### FEX block and arithmetic checkpoint, Build 25
+
+Build 24 added resolved `MULTIBLOCK` and `MAXINST` values to the existing
+default-off `MADEIRA_TRACE_FEX_CONFIG=1` report. With the same private runtime
+package and `MAXINST=5000`, disabling multiblock moves the graphics worker's
+failure from an invalid small resource pointer to a later null resource. This
+is an observed change in the failure, not proof that multiblock is its cause.
+
+Disabling flag elimination initially fails before the game starts. The fault
+report's saved guest RIP points to an earlier loader function. Reading the JIT
+block tail identifies the actual block as `libwinpthread-1.dll+0xb302`, containing
+`add rsp, -128`. Targeted frontend, post-RA and emitted-code capture proves that
+an unused `Add` receives the logical immediate `-128` and emits the invalid
+ARM64 word `0xfffe02e7`. `ALUOp` previously built a logical placeholder and
+retagged it as arithmetic, although `CalculateFlags_ADD/SUB` already supplied
+the result. The repair omits that unused placeholder for Add/Sub; it preserves
+the result and flag calculation and leaves default optimizer settings intact.
+
+For investigations beyond the first marker, `MADEIRA_IRCAP_FULL_BLOCK=1` extends
+the existing explicit module/RVA capture. Output is bounded to 4096 IR lines
+per stage and 64 KiB of host code per block, within the existing four compilation
+sessions. It only reports compilation data and does not insert operations into
+the guest IR. Keep it disabled during performance measurements. Raw guest IR,
+JIT dumps and game logs remain private.
+
+`negative_arithmetic_probe.c` checks ten real x86 operations against an
+independent integer oracle, using sixteen boundary inputs each. It compares
+32/64-bit results and CF, PF, AF, ZF, SF and OF, including positive/negative 128
+and a large immediate that cannot fit the ARM immediate encoding. The host
+reference completes 160 checks without mismatch. Before the repair, the iPad
+run with flag elimination disabled faults at the malformed instruction. Build
+25 completes all 160 checks with flag elimination enabled and disabled. Both
+then fault in native cleanup and exit with code 1, so the arithmetic checks
+pass but full process lifecycle remains unqualified.
+
+The repaired disabled-pass path now reaches Solitaire's ELF entry point, then
+fails at `game.exe+0x1461222` reading `0x30`. With normal flag elimination enabled,
+the controlled prototype fails at `game.exe+0x1426827` reading `0x20`. These
+experiments still use the private cooperative signal kernel; neither is a
+production gameplay pass. The regular 138-file package is restored and verified
+by device readback afterward, along with the original configuration. The native
+app's menus, existing library and assets are preserved.
+
+See the [Build 25 checkpoint](evidence/solitaire-build25-arithmetic-checkpoint.json).

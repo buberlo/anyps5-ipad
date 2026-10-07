@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "app_build": "23",
+  "fex_diagnostic": {
+    "default_enabled": false,
+    "explicit_module_and_rva_required": true,
+    "memory_words_default": 0,
+    "memory_words_maximum": 8,
+    "record_limit": 4096,
+    "reads_require_valid_guest_pointers": true,
+    "changes_generated_code_when_enabled": true,
+    "not_a_performance_measurement": true
+  },
+  "synthetic_probe": {
+    "status": "synthetic_guest_argument_trace_passed_on_ipad",
+    "build": "23",
+    "trace_calls": 10,
+    "pointer_checks": 210,
+    "callee_saved_registers": [
+      "r12",
+      "r13",
+      "r14",
+      "r15"
+    ],
+    "failures": 0,
+    "log_sha256": "acd7c603a4aa68169973ee8ae28b05bec6810d5dd7967299ab07be413039f2e0",
+    "tracer_dll_sha256": "bdb3f29189b8da1ba321635d8686d8ac6199c9a540504d9c0c791c31ae5a3088",
+    "game_runtime_proven": false,
+    "probe_exe_sha256": "6cc869070267e46d911c7389d0723df68929c5403cf5ac653ffae34087f81b69",
+    "strict_public_source_build_passed": true,
+    "source_sha256": "dfe367a86678ddf63961796ffc415a8feda86d7904d237a7eeba134e2d0d5511"
+  },
+  "game_trace": {
+    "jit_enabled": true,
+    "elf_entry_reached": true,
+    "callsite_runtime_observations": 1,
+    "resource_pointer_words": 7,
+    "null_resource_slots": 6,
+    "non_null_resource_slots": 1,
+    "small_integer_resource_pointers_observed": false,
+    "resource_object_contents_fully_verified": false,
+    "fault": "game.exe+0x1461222 reads address 0x30 in UnityGfxDeviceWorker",
+    "cause_isolated": false,
+    "gameplay_qualified": false,
+    "raw_log_sha256": "3cb05c55111568edff7a35c868a2e8b10ff1593fc9f195b90f02644b26b5e963"
+  },
+  "first_trace_restoration": {
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "verified_files": 138,
+    "library_config_assets_preserved": true,
+    "private_kernel_removed": true
+  },
+  "subsequent_control": {
+    "tracer_enabled": false,
+    "result": "Native in-app recovery retrieved the prior untraced fault despite the app file service timeout.",
+    "fault": "game.exe+0x1426ac4 reads address 0x2 in UnityGfxDeviceWorker",
+    "same_package_manifest_as_traced_run": true,
+    "conclusion": "Trace insertion changes the observed failure. A single pair does not distinguish register allocation from timing or other causes.",
+    "production_and_config_restoration": {
+      "status": "production_runtime_and_config_restored_verified_in_app",
+      "verified_files": 138,
+      "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+      "library_preserved": true,
+      "config_restored": true,
+      "launch_exit_code": 0,
+      "gameplay_qualified": false
+    },
+    "raw_recovery_console_sha256": "99b2a86ecab41619a9eba8221c9a6a55da72197799d19311f0af853499ee525e",
+    "external_restoration_readback": {
+      "status": "production_runtime_and_preserved_library_verified_by_external_readback",
+      "verified_files": 138,
+      "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+      "library_sha256": "fbde3569eecf3f1106b752d7363def750527f4d045f581444278b895fc670d98",
+      "raw_control_log_sha256": "6340fc8d23f15846c8fda349777e83a88326864f5b23b24355413fcb761da25c"
+    },
+    "raw_control_log_sha256": "6340fc8d23f15846c8fda349777e83a88326864f5b23b24355413fcb761da25c",
+    "argument_trace_records": 0,
+    "runtime_config_matches_traced_run": true
+  },
+  "patch_validation": [
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 4,
+      "files_verified": 5,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 20,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "privacy": "Raw traces, game instruction listings and private diagnostic kernel remain in ignored local build directories.",
+  "github_actions_used": false,
+  "normal_app_reinstalled": {
+    "status": "normal_build23_installed_after_in_app_runtime_and_configuration_recovery",
+    "app_build": "23",
+    "bundle": "com.buberlo.anyps5ipad",
+    "private_recovery_code_and_payload_removed": true,
+    "tracer_default_enabled": false,
+    "external_config_readback": true,
+    "production_runtime_restoration_evidence": "solitaire-native-private-restore/receipt.json",
+    "gameplay_qualified": false
+  },
+  "device_lease_released": true
+}

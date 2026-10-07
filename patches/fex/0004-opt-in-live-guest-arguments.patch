@@ -1,0 +1,95 @@
+diff --git a/FEXCore/Source/Interface/Core/Core.cpp b/FEXCore/Source/Interface/Core/Core.cpp
+--- a/FEXCore/Source/Interface/Core/Core.cpp
++++ b/FEXCore/Source/Interface/Core/Core.cpp
+@@ -1014,6 +1014,40 @@
+         if (ExtendedDebugInfo || Thread->OpDispatcher->CanHaveSideEffects(TableInfo, DecodedInfo)) {
+           Thread->OpDispatcher->_GuestOpcode(InstAddress - GuestRIP);
+         }
++
++#ifdef FEX_IOS_HOST
++        // Read-only runtime argument tracing at an explicitly selected guest
++        // instruction. This is separate from compile-time IR capture. Memory
++        // words are optional and require valid caller-provided array pointers.
++        static const bool TraceGuestArgs = [] {
++          const auto* enabled = getenv("MADEIRA_TRACE_GUEST_ARGS");
++          const auto* module = getenv("MADEIRA_IRCAP_MODULE");
++          const auto* rva = getenv("MADEIRA_IRCAP_RVA");
++          return enabled && strcmp(enabled, "1") == 0 && module && *module && rva && strtoull(rva, nullptr, 0) != 0;
++        }();
++        static const unsigned TraceGuestWords = [] {
++          const auto* value = getenv("MADEIRA_TRACE_GUEST_ARGS_WORDS");
++          return value ? static_cast<unsigned>(std::min<unsigned long>(strtoul(value, nullptr, 10), 8)) : 0;
++        }();
++        if (TraceGuestArgs && FEX_MadeiraIRCapTarget && InstAddress == FEX_MadeiraIRCapTarget) {
++          auto* emitter = Thread->OpDispatcher.get();
++          emitter->_PrintMsg("[guest-args] begin: rip,rdi,rsi,rdx,rcx,rbx,rsp");
++          emitter->_Print(emitter->_EntrypointOffset(GPRSize, InstAddress - GuestRIP));
++          for (auto reg : {X86State::REG_RDI, X86State::REG_RSI, X86State::REG_RDX, X86State::REG_RCX, X86State::REG_RBX, X86State::REG_RSP}) {
++            emitter->_Print(emitter->_LoadRegister(reg, IR::RegClass::GPR, GPRSize));
++          }
++          for (auto reg : {X86State::REG_RSI, X86State::REG_RDX, X86State::REG_RCX}) {
++            if (!TraceGuestWords) break;
++            emitter->_PrintMsg(reg == X86State::REG_RSI ? "[guest-args] rsi words" : reg == X86State::REG_RDX ? "[guest-args] rdx words" : "[guest-args] rcx words");
++            auto address = emitter->_LoadRegister(reg, IR::RegClass::GPR, GPRSize);
++            for (unsigned word = 0; word < TraceGuestWords; ++word) {
++              auto offset = emitter->_InlineConstant(word * 8);
++              emitter->_Print(emitter->_LoadMem(IR::RegClass::GPR, GPRSize, address, offset, IR::OpSize::i64Bit, IR::MemOffsetType::SXTX, 1));
++            }
++          }
++          emitter->_PrintMsg("[guest-args] end");
++        }
++#endif
+ 
+         if (Config.SMCChecks == FEXCore::Config::CONFIG_SMC_FULL || Block.ForceFullSMCDetection) {
+           // Guest window: snapshotting the guest's code bytes is a guest read. The address handed to
+diff --git a/FEXCore/Source/Interface/Core/JIT/JIT.cpp b/FEXCore/Source/Interface/Core/JIT/JIT.cpp
+--- a/FEXCore/Source/Interface/Core/JIT/JIT.cpp
++++ b/FEXCore/Source/Interface/Core/JIT/JIT.cpp
+@@ -32,6 +32,9 @@
+ }  // namespace
+ #endif
+ 
++#include <atomic>
++#include <cstdlib>
++#include <cstring>
+ #include "Interface/Context/Context.h"
+ #include "Interface/Core/LookupCache.h"
+ #include "Interface/Core/Dispatcher/Dispatcher.h"
+@@ -85,12 +88,37 @@
+   };
+ }
+ 
++#ifdef FEX_IOS_HOST
++static bool GuestArgsTraceActive() {
++  static const bool enabled = [] { const auto* value = getenv("MADEIRA_TRACE_GUEST_ARGS"); return value && strcmp(value, "1") == 0; }();
++  return enabled;
++}
++static bool GuestArgsTraceRecord() {
++  static std::atomic<unsigned> records{0};
++  const auto count = records.fetch_add(1, std::memory_order_relaxed);
++  if (count == 4096) LogMan::Msg::EFmt("[guest-args] record limit reached");
++  return count < 4096;
++}
++#endif
++
+ static void
+ PrintValue(uint64_t Value) {
++#ifdef FEX_IOS_HOST
++  if (GuestArgsTraceActive()) {
++    if (GuestArgsTraceRecord()) LogMan::Msg::EFmt("[guest-args] value={:#018x}", Value);
++    return;
++  }
++#endif
+   LogMan::Msg::DFmt("Value: 0x{:x}", Value);
+ }
+ 
+ static void PrintMsg(const char* Value) {
++#ifdef FEX_IOS_HOST
++  if (GuestArgsTraceActive()) {
++    if (GuestArgsTraceRecord()) LogMan::Msg::EFmt("{}", Value);
++    return;
++  }
++#endif
+   LogMan::Msg::DFmt("{}", Value);
+ }
+ 

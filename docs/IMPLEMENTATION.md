@@ -281,6 +281,41 @@ not a matching native Windows reference. Both runs are bounded and stopped.
 The production package and source are restored; 138 installed files are verified.
 See the [GC and pointer checkpoint](evidence/solitaire-build22-gc-pointer-checkpoint.json).
 
+Build 23 adds a default-off live argument tracer, separate from compile-time
+IR listings. Set `MADEIRA_TRACE_GUEST_ARGS=1` with an explicit
+`MADEIRA_IRCAP_MODULE` and nonzero `MADEIRA_IRCAP_RVA`. It records RIP, RDI,
+RSI, RDX, RCX, RBX and RSP at that instruction. Optional
+`MADEIRA_TRACE_GUEST_ARGS_WORDS` reads up to eight words from each of RSI, RDX
+and RCX; its default is zero. Only enable these reads for known valid guest
+arrays. Runtime logging is capped at 4,096 records. Trace insertion changes
+register allocation and execution timing; it must not be treated as a fix or
+used during performance acceptance.
+
+The reproducible Windows fixture in `tools/runtime-probes/guest_argument_probe.c`
+uses an actual unaligned AVX pointer copy, a SysV call and native alertable wait.
+On the iPad, ten traced calls preserve 210 pointers, the result checksum, and
+R12–R15 sentinels. Obtain the `TraceAnchor` RVA from the compiled PE symbols;
+do not assume a fixed compiler layout. Validate its complete raw log with
+`python3 tools/runtime-probes/check_guest_argument_trace.py <local-log>`.
+The verifier ignores IR string listings and rejects incomplete runtime records.
+These are synthetic tracer checks, not relinked-game or GC acceptance.
+
+One traced game call now contains null slots and high-address resource pointers
+before the virtual dispatch, without the previously observed small integer
+values. The run proceeds further and faults at `game.exe+0x1461222`, reading
+`0x30`. The untraced control still reads `0x2` at
+`game.exe+0x1426ac4`. Its app-file service timed out; a temporary, private native
+recovery path retrieved that prior fault through the launch console, restored
+the regular package, and checked all 138 file hashes inside the app. It restored
+the original global configuration and preserved the current library, including
+launch metadata. The recovery source and payload are removed afterward. The
+normal app is reinstalled without the private recovery code or payload. External
+readback now verifies all 138 production files, the restored global configuration
+and the preserved library. The complete untraced log is recovered as well. This
+single traced/untraced pair does not distinguish register allocation effects
+from timing or other causes. Tracing is not a runtime fix. No gameplay is qualified.
+See the [live argument checkpoint](evidence/solitaire-build23-live-arguments.json).
+
 ## Local evidence, 2026-10-06
 
 - The native host relinker and NID patcher build; all 17 existing relinker tests

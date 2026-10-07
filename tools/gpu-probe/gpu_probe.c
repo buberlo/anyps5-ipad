@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 buberlo */
 #include "gpu_probe.h"
 #include <vulkan/vulkan.h>
 #include <stdint.h>

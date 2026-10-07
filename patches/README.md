@@ -14,3 +14,5 @@ submodule by hand and forget to refresh the patch.
 | `moltenvk` | empty. No MoltenVK source change in this round. |
 
 Status, including what was compiled and what was not: [../docs/PATCHES.md](../docs/PATCHES.md).
+
+Each series is a derivative work of its upstream and is distributed under that upstream's license, not under the GPL-2.0-or-later grant in the repository [LICENSE](../LICENSE). `anyps5` stays GPL-2.0-only, `madeira` and `fex` stay GPL-3.0-or-later, and `wine` stays LGPL-2.1-or-later. `moltenvk` has no source patch. See [NOTICE](../NOTICE).

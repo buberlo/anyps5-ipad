@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 buberlo */
 /* Compile-check and behavior check for Madeira's MoltenVK dlopen fallback.
  * Links upstreams/Madeira/build/win32u-unix/moltenvk_static_loader.c, which
  * the patch series adds. Run after scripts/apply-patches.sh.

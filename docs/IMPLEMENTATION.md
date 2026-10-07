@@ -829,3 +829,57 @@ by device readback afterward, along with the original configuration. The native
 app's menus, existing library and assets are preserved.
 
 See the [Build 25 checkpoint](evidence/solitaire-build25-arithmetic-checkpoint.json).
+
+
+### Native write faults and CRT detach, Build 26
+
+The independent `native_write_fault_probe.c` calls the actual `ucrtbase.dll`
+`memcpy` and `memset` exports through a SysV x86-64 caller. A Windows vectored
+handler opens only the faulting 16-KiB page. Nine sizes cross page boundaries
+in both private memory and two views of one shared section. The test checks
+returned pointers, every copied/filled byte in both aliases, R12–R15 and the
+expected number of faults. It uses no game code or assets.
+
+The basic Build 25 fixture passes 16 checks and exits with code 0. The extended
+fixture passes all 36 checks and 68 faults, then faults during process cleanup;
+the arithmetic fixture also fails only after its checks. Disassembly locates
+the cleanup caller in `InvalidationTracker::InvalidateAlignedInterval`, calling
+the context's virtual `GetCodeInvalidationMutex` during DLL/CRT destruction.
+Checking an engaged global `optional` cannot establish object lifetime once
+global destruction has begun. Heap frees during that destruction still call
+Wine's allocation/free/protection notification hooks.
+
+For the iOS ARM64EC build, an early `.CRT$XLB` PE TLS callback closes those three
+notification hooks on `DLL_PROCESS_DETACH`, before MinGW TLS callbacks and global
+destructors. The callback uses a static atomic flag, allocates nothing and does
+not read TEB/TLS. The final DLL's TLS array is checked for callback order. This
+terminal gate leaves all memory protection and code invalidation active during
+guest execution; it does not suppress a game exception or alter optimizer flags.
+
+With Build 26 installed on the M2 iPad, the extended write fixture passes all
+36 checks/68 faults and the arithmetic fixture passes 160 checks. Both exit
+with code 0 and return to the library. Temporary profiles and configuration are
+restored byte-for-byte. Recompiling the final write-probe source reproduces the
+tested PE section contents; the local host reference also exits with code 0.
+
+A controlled Solitaire run with the same private cooperative signal kernel and
+GC diagnostics still reaches the ELF entry point and faults at
+`game.exe+0x1426827`, reading `0x20`, matching Build 25's default-pass control.
+The detach repair is therefore a separate runtime fix. These independent
+fixtures do not qualify concurrent AnyPS5 write tracking, game rendering or
+performance. All 138 regular game files are restored and hash-verified by
+closed-app readback afterward; the private kernel is removed and the original
+library/configuration remain intact.
+
+A further compile-time capture at `game.exe+0x1426824` obtains frontend and
+optimized IR without live argument instrumentation. Logging changes the run's
+failure to `game.exe+0x1461222`, reading `0x30`; this is not a gameplay pass.
+Two threads compile concurrently. The existing process-global capture mark can
+be overwritten by another compilation, and the emitted-host-code arm reports
+no matching marker. Until capture ownership is per compilation/thread, this
+run cannot qualify the native code associated with that guest instruction.
+Timing changed; neither a compiler defect nor a game race is established.
+Raw IR and logs remain private. Production files/configuration are restored
+and verified after this additional run as well.
+
+See the [Build 26 record](evidence/solitaire-build26-native-write-and-teardown.json).

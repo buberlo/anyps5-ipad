@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "app_build": "26",
+  "title": "15in1 Solitaire",
+  "device_model": "iPad14,10",
+  "os": "27.0.1 (24A446)",
+  "status": "installed_graphics_worker_fault_remains_not_playable",
+  "latest_shared_runtime_pr": {
+    "adoption_commit": "54e36f6",
+    "upstream_head": "e783c4f1f8baf987cba33145ca32481a6fa6c645"
+  },
+  "native_write_probe": {
+    "source": "tools/runtime-probes/native_write_fault_probe.c",
+    "source_sha256": "21c633fdf9794957f74ffff8c11d5f87ab0597cc5aaf0c8f8f63575783d31c69",
+    "tested_exe_sha256": "34c3b4db7b59a57a7fea2ced7912b5e5de101811819cd934068ef438603a6c77",
+    "final_rebuilt_exe_sha256": "74b134907c03f7290e83c65cc1686182d59a5f2bcd3e4fb890099c2933dcf0b6",
+    "final_rebuild_pe_sections_match_tested_binary": true,
+    "crt_exports": [
+      "memcpy",
+      "memset"
+    ],
+    "caller_abi": "SysV x86-64",
+    "destination_base": "0x7400000000",
+    "protection_page_bytes": 16384,
+    "private_memory_and_shared_aliases": true,
+    "checks": 36,
+    "handled_write_faults": 68,
+    "data_pointer_and_r12_r15_failures": 0,
+    "host_reference_exit_code": 0,
+    "build25_exit_code": 1,
+    "build26_exit_code": 0,
+    "build26_returned_to_library": true,
+    "basic_build25_checks": 16,
+    "basic_build25_exit_code": 0,
+    "conclusion": "Native write-fault delivery and retry pass this independent fixture. This does not qualify concurrent AnyPS5 write tracking or game graphics.",
+    "host_reference_environment": "macOS x86-64 Wine; not the UM790 Windows GPU reference"
+  },
+  "detach_repair": {
+    "component": "FEX ARM64EC on iOS",
+    "observed_failing_caller": "InvalidationTracker::InvalidateAlignedInterval -> Context::GetCodeInvalidationMutex",
+    "trigger": "Heap decommit notifications during DLL/CRT teardown after all probe checks pass.",
+    "change": "Early PE TLS process-detach callback closes allocation/free/protection notification gate before CRT and global destruction.",
+    "tls_callback_precedes_mingw_callbacks": true,
+    "active_game_invalidation_enabled": true,
+    "no_game_exception_ignored": true
+  },
+  "arithmetic_probe": {
+    "checks": 160,
+    "failures": 0,
+    "flag_elimination": "default_enabled",
+    "exit_code": 0,
+    "returned_to_library": true
+  },
+  "game_control": {
+    "same_private_cooperative_kernel_and_gc_trace_package": true,
+    "manifest_sha256": "2fd060a0b09add71391ef56d3af5480de6852d21109234df52bb8ac109909ee8",
+    "elf_entry_reached": true,
+    "fault": "game.exe+0x1426827 reads 0x20",
+    "matches_build25_default_failure": true,
+    "visible_gameplay_qualified": false,
+    "performance_qualified": false,
+    "native_teardown_repair_does_not_fix_graphics_fault": true
+  },
+  "installed_fex_dll_sha256": "1d2bc2def28a4fd0cbf1ef1a5ec5827d0775d87f10bf3110c85a2187c67256fc",
+  "production_restoration": {
+    "verified_files": 138,
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "private_kernel_removed": true,
+    "config_restored_byte_for_byte": true,
+    "library_preserved": true,
+    "own_app_processes_closed": true
+  },
+  "raw_log_sha256": {
+    "basic_write_build25": "e046737b6ae57ed9b4fc65554089ca8cd5a799170ee49f300b872e024fec8362",
+    "alias_write_build25": "340679147e6d2af20b5d37b335ae99db62d3dde913bdd5a7d1f13393b9929418",
+    "alias_write_build26": "face11aca972542fe94de6ce373500a4d5596af1786b6825d9ee30107452d111",
+    "arithmetic_build26": "fdb4a33394a24723e64d2d344c510048339084952bccab817b97b7ba1ef132cd",
+    "game_build26": "4c53278db0f791e671f91636579b86bed035ac7a8aca5bb9bd8c7d9b828d9433",
+    "targeted_resource_capture_build26": "aed5b6def6d72416b54e095e93d75043c36efee4f8eab60a2858f9559762d587"
+  },
+  "patch_validation": [
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 8,
+      "files_verified": 7,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 23,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "github_actions_used": false,
+  "private_data_published": false,
+  "local_checks": {
+    "runtime_packaging_tests": 7,
+    "runtime_packaging_failures": 0,
+    "shell_syntax_passed": true,
+    "app_codesign_verified": true,
+    "embedded_arm64ec_components_match_build_outputs": [
+      "ntdll.dll",
+      "xtajit64.dll",
+      "winevulkan.dll",
+      "vulkan-1.dll"
+    ]
+  },
+  "targeted_resource_capture": {
+    "target": "game.exe+0x1426824",
+    "live_argument_instrumentation_enabled": false,
+    "full_block_logging_enabled": true,
+    "frontend_and_optimized_ir_captured": true,
+    "concurrent_compilation_observed": true,
+    "process_global_capture_mark_can_be_overwritten": true,
+    "emitted_host_code_qualified": false,
+    "capture_run_fault": "game.exe+0x1461222 reads 0x30",
+    "diagnostic_logging_can_change_timing": true,
+    "miscompilation_or_race_cause_proven": false,
+    "next_diagnostic_requirement": "Associate capture marks with the compilation/thread rather than one process-global variable."
+  }
+}

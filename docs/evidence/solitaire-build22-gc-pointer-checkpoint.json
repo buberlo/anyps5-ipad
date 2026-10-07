@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "app_build": "22",
+  "diagnostic_scope": "Read-only private kernel tracing and bounded FEX IR capture; actual game code and assets unchanged.",
+  "ipad": {
+    "jit_enabled": true,
+    "elf_entry_reached": true,
+    "gc_context_observations": 71,
+    "distinct_signal_threads": 22,
+    "all_observed_stack_pointers_within_registered_stack": true,
+    "graphics_worker_signal_delivery_observed": false,
+    "gc_callback_module": "Il2cppUserAssemblies.prx.guest.prx",
+    "gc_callback_consumes": "Private instruction analysis: copies context prefix [0,0xd8), records separately supplied interrupted RSP. No FPU/context-tail loads in this callback.",
+    "later_fault": "game.exe+0x1426ac4 reads address 0x2 in UnityGfxDeviceWorker",
+    "invalid_pointer_values_observed": [
+      2,
+      3
+    ],
+    "pointer_array_fault_scope": "Guest stack argument array used by virtual method calls. Does not identify the producer or prove the cause.",
+    "fex_capture_armed": true,
+    "target_guest_instruction_seen_in_frontend_and_after_passes": true,
+    "machine_code_correctness_qualified": false,
+    "gameplay_qualified": false
+  },
+  "host_signal_contract": "Passed under native x86-64 Wine with fixed high guest arena; private context diagnostics do not change callback or wait semantics.",
+  "mac_comparison": {
+    "duration_seconds": 60,
+    "device": "Apple M3 Pro",
+    "native_windows_reference": false,
+    "first_terminal_gpu_error": "Metal command-buffer out of memory, followed by VK_ERROR_DEVICE_LOST and abort in VideoOut",
+    "matching_ipad_null_fault_reproduced_before_gpu_failure": false,
+    "result": "Does not isolate or qualify the iPad CPU failure.",
+    "own_prefix_processes_stopped": true
+  },
+  "restoration": {
+    "production_manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "verified_files": 138,
+    "library_config_assets_preserved": true,
+    "private_kernel_removed": true,
+    "production_source_restored": true,
+    "own_app_processes_closed": true,
+    "device_lease_released": true
+  },
+  "next_investigation": "Trace production/copy of the stack pointer array and compare the same command on native Windows and Wine/FEX. Do not patch around invalid pointers, disable GC, or bypass Vulkan validation.",
+  "privacy": "Raw logs, game instruction listings, callback traces, shader inputs and diagnostic kernel remain in ignored local build directories.",
+  "github_actions_used": false
+}

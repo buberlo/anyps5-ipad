@@ -262,6 +262,25 @@ remain byte-identical, and the device lease is released. Solitaire is installed;
 visible iPad gameplay remains unqualified. See the
 [context and ordering checkpoint](evidence/solitaire-build22-context-and-ordering.json).
 
+A follow-up read-only private trace identifies the actual GC callback inside
+`Il2cppUserAssemblies.prx.guest.prx`. Instruction analysis shows that it copies
+only the context prefix `[0,0xd8)` and records the separately supplied interrupted
+RSP; this callback does not load the FPU area or later context fields. All
+observed interrupted stack pointers lie within the registered thread stacks.
+No signal delivery to the graphics worker appears in this trace. These facts
+narrow the callback hypothesis, rather than qualifying full GC correctness.
+
+The traced game run later reads address `0x2` at `game.exe+0x1426ac4`. The stack
+argument array used by its virtual method calls contains small integer values
+`2` and `3` where pointers are consumed. The producer of those values is not yet
+identified. FEX captures the earlier virtual-call target in frontend and
+post-pass IR, but these dumps do not establish machine-code correctness.
+A separate native x86-64 Wine run on the M3 Pro loses the Metal device to a
+command-buffer out-of-memory error before isolating the iPad null fault; it is
+not a matching native Windows reference. Both runs are bounded and stopped.
+The production package and source are restored; 138 installed files are verified.
+See the [GC and pointer checkpoint](evidence/solitaire-build22-gc-pointer-checkpoint.json).
+
 ## Local evidence, 2026-10-06
 
 - The native host relinker and NID patcher build; all 17 existing relinker tests

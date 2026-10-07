@@ -183,7 +183,10 @@ single-sample `STENCIL_CLEAR_ENABLE` is admitted only when its normal stencil
 state already replaces every covered sample with `DB_STENCIL_CLEAR`: both active
 faces must always pass, every operation must replace, write masks must be full,
 depth/bounds tests must be disabled, the stencil plane must be writable, and
-shader execution must use late Z without kill. This does not implement general
+shader kill must be disabled. The initial guard admitted Z order 1,
+`EARLY_Z_THEN_LATE_Z`; its earlier `LATE_Z` comment was incorrect. The follow-up
+also admits actual `LATE_Z` (0), while retaining all no-test/no-kill and
+coverage constraints. Re-Z modes stay rejected. This does not implement general
 depth/stencil maintenance or MSAA.
 
 The fixed-function interpolation proof also permits a plain read-only 2D
@@ -205,8 +208,35 @@ ELF entry but again faulted in the graphics worker at `game.exe+0x1426827`.
 The production kernel and updated graphics runtime were restored with 138 files
 verified; the library, game assets and global configuration were preserved.
 The restored package was not launched again. See the
-[updated checkpoint](evidence/solitaire-runtime-checkpoint-build21.json).
-See the [bounded comparison record](evidence/solitaire-runtime-checkpoint-build21.json).
+[bounded comparison record](evidence/solitaire-runtime-checkpoint-build21.json).
+
+The next bounded repair proves a specific three-block alpha-discard diamond:
+entry, a surviving continuation, and an exit that only clears EXEC, emits an
+empty final export and ends. Original center I/J registers must remain unchanged
+through the branch; complete P1/P2 pairs cannot cross it. Disjoint read-only
+scalar descriptor loads, wait counters and NOPs may occur between pairs. Scalar
+write ranges exclude M0 and EXEC, and VCC writes may not exceed its two words.
+Other merges, loops, stores, barriers and ambiguous effects remain rejected.
+Ninety-eight portable guard cases pass, also with ASan/UBSan. The two earlier
+interpolation rejections disappear; 14 of 15 old captures compile, with the
+remaining capture failing resource-descriptor evaluation rather than the guard.
+
+The Z-order correction follows Mesa's
+[GFX10.3 register enumeration](https://chromium.googlesource.com/chromiumos/third_party/mesa/+/a11d1bd247df18057ecb9945e01bf39ff85d8d9d/src/amd/registers/gfx103.json):
+0 is late, 1 is early-then-late, and 2/3 are re-Z modes.
+Depth/stencil state contracts and all 12 HLE host contracts pass. All 26 patches
+apply to the pinned source, match the isolated build checkout, and reverse to
+the original bytes. These checks do not establish GPU correctness.
+
+A driver-only native Windows comparison now visibly reaches the Solitaire
+start image and the Yukon/Canfield/Golf selection menu. Unsupported MSAA draws
+remain in its error log; neither full rendering fidelity nor gameplay is
+qualified. The same private signal/renderer comparison on iPad reaches JIT and
+the ELF entry, then faults in `UnityGfxDeviceWorker` at `game.exe+0x1461222`.
+The production kernel and new renderer were restored, all 138 files verified,
+and global settings, library and game assets preserved. The signal experiment
+remains private and absent from the installed production package.
+See the [follow-up checkpoint](evidence/solitaire-discard-continuation-checkpoint.json).
 
 ## Local evidence, 2026-10-06
 

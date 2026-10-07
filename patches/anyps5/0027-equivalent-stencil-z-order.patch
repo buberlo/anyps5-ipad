@@ -1,0 +1,51 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+index f1335477..79223dad 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -148,7 +148,8 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
+ // A single-sample stencil clear can follow the ordinary stencil pipeline only
+ // when that pipeline already replaces every covered stencil sample with exactly
+ // DB_STENCIL_CLEAR. No depth/bounds test, partial write mask, shader kill, or
+-// early depth/stencil side effects may change which samples are written.
++// re-Z side effects may change which samples are written. Both LATE_Z (0) and
++// EARLY_Z_THEN_LATE_Z (1) are equivalent under these no-test/no-kill constraints.
+ // This is not a general DB clear implementation: other maintenance draws remain
+ // rejected, and geometry, scissor and sample coverage still run normally.
+ void validateEquivalentStencilClear(const Registers& cx, std::uint32_t depthControl) {
+@@ -161,11 +162,11 @@ void validateEquivalentStencilClear(const Registers& cx, std::uint32_t depthCont
+     const auto shader = read(cx, 0x203);
+     Require((depthControl & 0xfu) == 1u && (read(cx, 0x011) & 1u) != 0 &&
+             (read(cx, 0x002) & 0x02000000u) == 0 &&
+-            (shader & 0x70u) == 0x10u && // Z_ORDER=LATE_Z, KILL_ENABLE=0
++            (shader & 0x40u) == 0u && ((shader >> 4u) & 3u) <= 1u && // no KILL or re-Z
+             face((depthControl >> 8u) & 7u, ops, read(cx, 0x10c)) &&
+             ((depthControl & 0x80u) == 0 ||
+              face((depthControl >> 20u) & 7u, ops >> 12u, read(cx, 0x10d))),
+-            "stencil clear is not equivalent to a late, always-pass full-mask replacement draw (DB_RENDER_CONTROL)");
++            "stencil clear is not equivalent to an always-pass full-mask replacement draw (DB_RENDER_CONTROL)");
+ }
+ 
+ void decodeDepth(const Registers& cx, std::uint32_t depthControl, State& result) {
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+index ffccf65e..e6595b49 100644
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -542,6 +542,8 @@ void equivalentStencilClearTests() {
+                     face.depthFailOp == VK_STENCIL_OP_REPLACE, "equivalent stencil clear lost replacement state");
+         }
+     };
++    verify(); // EARLY_Z_THEN_LATE_Z = 1
++    queue.context[0x203] = 0; // LATE_Z = 0
+     verify();
+     queue.context[0x00a] = 0x7a;
+     queue.context[0x10c] |= 0x7a;
+@@ -572,7 +574,8 @@ void equivalentStencilClearTests() {
+     reject(0x200, 0x7002f1, "stencil clear"); // front compare is equal
+     reject(0x200, 0x2007f1, "stencil clear"); // back compare is equal
+     reject(0x203, 0x50, "stencil clear"); // shader kill enabled
+-    reject(0x203, 0x00, "stencil clear"); // early Z order
++    reject(0x203, 0x20, "stencil clear"); // RE_Z
++    reject(0x203, 0x30, "stencil clear"); // EARLY_Z_THEN_RE_Z
+     reject(0x002, 0x02000000, "stencil clear"); // read-only stencil
+     reject(0x011, 0x20000180, "stencil clear"); // no stencil plane
+     reject(0x010, 0xa000018f, "multisampled");

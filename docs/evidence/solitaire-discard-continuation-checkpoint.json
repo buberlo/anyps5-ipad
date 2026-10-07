@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "version": "01.000.000",
+  "source_pin": "ee391a5614246338aec9cb7a3a3dd4f479aec9f3",
+  "repairs": {
+    "interpolation": "exact three-block terminating alpha-discard diamond with unchanged original I/J; complete pairs; independent scalar descriptor loads and waits; no unsafe special-register writes",
+    "stencil_z_order": "corrected Z_ORDER enum: LATE_Z=0, EARLY_Z_THEN_LATE_Z=1. Both equivalent only under the retained always-pass/full-replace/no-depth/no-kill guards. Re-Z rejected.",
+    "public_patches": [
+      "0026-fixed-function-discard-continuations.patch",
+      "0027-equivalent-stencil-z-order.patch"
+    ]
+  },
+  "local_validation": {
+    "interpolation_cases": 98,
+    "passed": true,
+    "asan_ubsan": "passed",
+    "graphics_state_only": "passed",
+    "graphics_depth_state_only": "passed",
+    "host_hle_contracts": 12,
+    "pinned_patch_validation": {
+      "pin": "ee391a5614246338aec9cb7a3a3dd4f479aec9f3",
+      "patches": 26,
+      "source_files_verified": 55,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    "captured_shader_replay": {
+      "requests": 15,
+      "compiled": 14,
+      "previous_interpolation_rejections_removed": 2,
+      "remaining_failure": "resource descriptor runtime-source evaluation in old captured inputs",
+      "gpu_execution_verified": false
+    }
+  },
+  "native_windows_comparison": {
+    "os": "Windows 11 Pro 10.0.26300",
+    "selected_gpu": "AMD Radeon 780M Graphics",
+    "driver": "31.0.21029.6002",
+    "duration_seconds": [
+      60,
+      120
+    ],
+    "verified_guest_files": 137,
+    "non_graphics_guest_binaries_unchanged": true,
+    "visual_observation": "CUA RDP screenshots show startup card image and game-selection menu (Yukon, Canfield, Golf)",
+    "menu_visible": true,
+    "confirmed_input_response": false,
+    "gameplay_qualified": false,
+    "full_rendering_fidelity_qualified": false,
+    "remaining_draw_rejection": "multisampling/coverage conversion PA_SC_AA_CONFIG=0x0030e003",
+    "own_process_stopped": true,
+    "submitted_counter_is_not_display_fps": true
+  },
+  "ipad_private_experiment": {
+    "app_build": "21",
+    "device": "iPad Air 13-inch M2",
+    "os": "27.0.1 (24A446)",
+    "duration_seconds": 22.59829325,
+    "jit_enabled": true,
+    "elf_entry_reached": true,
+    "result": "read access violation at address 0x30 in UnityGfxDeviceWorker, game.exe+0x1461222",
+    "visible_gameplay_qualified": false,
+    "additional_draw_rejection": "viewport depth outside [0,1] requires VK_EXT_depth_range_unrestricted",
+    "original_global_pool_restored_byte_for_byte": true,
+    "own_processes_closed": true
+  },
+  "production_restoration": {
+    "app_build": "21",
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "verified_files": 138,
+    "private_signal_kernel_removed": true,
+    "game_assets_library_and_global_configuration_preserved": true,
+    "updated_package_launched_after_restoration": false,
+    "kernel_signal_delivery": "not implemented",
+    "gameplay_qualified": false
+  },
+  "limits": [
+    "Private signal prototype is diagnostic only; standalone context/APC tests do not prove Unity GC completeness.",
+    "No graphics validation, MSAA or resolution checks were disabled.",
+    "Game files, shader requests, instruction listings, pairing data and raw diagnostics remain outside Git.",
+    "No GitHub Actions were used."
+  ]
+}

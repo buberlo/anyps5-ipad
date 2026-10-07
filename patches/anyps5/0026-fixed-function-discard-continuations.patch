@@ -1,0 +1,147 @@
+diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+index d4bdd068..5cf5f434 100644
+--- a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
++++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+@@ -28,16 +28,58 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+         if (input == PixelInput::PerspectiveCenter || input == PixelInput::LinearCenter) centers.insert(base);
+     }
+     std::uint32_t pc = 0;
+-    const auto fail = [&] { throw std::runtime_error("fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences in an unconditional entry block (pc=" + std::to_string(pc) + ")"); };
++    const auto fail = [&] { throw std::runtime_error("fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences on a proven entry/discard path (pc=" + std::to_string(pc) + ")"); };
+     const bool hasInterpolation = std::any_of(decoded.instructions.begin(), decoded.instructions.end(), [](const auto& i) {
+         return i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32 || i.op == RdnaOpcode::VInterpMovF32;
+     });
+     if (!hasInterpolation && live.empty()) return;
++    const auto plain = [](const RdnaOperand& o) {
++        return !o.negate && !o.negateHi && !o.absolute && !o.clamp && !o.omod && !o.opSel && !o.opSelHi &&
++               !o.dpp && !o.dpp8 && !o.explicitSdwaDst && !o.sdwaSext && o.sdwaSel == 6u;
++    };
++    // A conditional alpha-test exit does not merge altered registers back into
++    // the surviving path. Admit exactly one forward diamond: the entry, one
++    // continuation, and an exit consisting of EXEC=0 / empty final export / END.
++    // P1/P2 pairs may not cross the branch, and all I/J checks still apply.
++    std::size_t discardBegin = decoded.instructions.size();
++    const bool discardContinuation = [&] {
++        if (cfg.blocks.size() != 3u || cfg.unsupported || cfg.irreducible ||
++            !cfg.backEdges.empty() || !cfg.naturalLoops.empty()) return false;
++        std::vector<const BasicBlock*> blocks;
++        for (const auto& block : cfg.blocks) blocks.push_back(&block);
++        std::sort(blocks.begin(), blocks.end(), [](const auto* a, const auto* b) { return a->instructionBegin < b->instructionBegin; });
++        const auto& a = *blocks[0]; const auto& b = *blocks[1]; const auto& c = *blocks[2];
++        if (a.id != cfg.entryBlock || a.id == b.id || a.id == c.id || b.id == c.id ||
++            a.instructionBegin != 0u || !a.instructionEnd || a.instructionEnd != b.instructionBegin ||
++            b.instructionBegin >= b.instructionEnd || b.instructionEnd != c.instructionBegin ||
++            c.instructionEnd != decoded.instructions.size() || c.instructionEnd - c.instructionBegin != 3u ||
++            !a.predecessors.empty() || b.predecessors != std::vector<std::uint32_t>{a.id} ||
++            c.predecessors != std::vector<std::uint32_t>{a.id} || a.successors.size() != 2u ||
++            std::set<std::uint32_t>(a.successors.begin(), a.successors.end()) != std::set<std::uint32_t>{b.id,c.id} ||
++            !b.successors.empty() || !c.successors.empty() ||
++            a.terminator.kind != TerminatorKind::ConditionalBranch ||
++            std::set<std::uint32_t>{a.terminator.trueBlock,a.terminator.falseBlock} != std::set<std::uint32_t>{b.id,c.id} ||
++            b.terminator.kind != TerminatorKind::Return || c.terminator.kind != TerminatorKind::Return ||
++            decoded.instructions[b.instructionEnd-1u].op != RdnaOpcode::SEndpgm) return false;
++        const auto branch = decoded.instructions[a.instructionEnd-1u].op;
++        if (branch != RdnaOpcode::SCbranchScc0 && branch != RdnaOpcode::SCbranchScc1 &&
++            branch != RdnaOpcode::SCbranchVccz && branch != RdnaOpcode::SCbranchVccnz &&
++            branch != RdnaOpcode::SCbranchExecz && branch != RdnaOpcode::SCbranchExecnz) return false;
++        const auto& mask = decoded.instructions[c.instructionBegin];
++        const auto& output = decoded.instructions[c.instructionBegin+1u];
++        const auto& end = decoded.instructions[c.instructionBegin+2u];
++        if (mask.op != RdnaOpcode::SMovB64 || mask.destination.kind != RdnaOperandKind::ExecLo ||
++            mask.source0.kind != RdnaOperandKind::IntegerInlineConstant || mask.source0.value != 0u ||
++            !plain(mask.source0) || !plain(mask.destination) ||
++            output.op != RdnaOpcode::Exp || output.exportTarget != 0u || output.exportEnableMask != 0u ||
++            !output.exportIsLast || !output.exportValidMask || output.sourceCount != 0u ||
++            end.op != RdnaOpcode::SEndpgm) return false;
++        discardBegin = c.instructionBegin;
++        return true;
++    }();
+     const BasicBlock* entry = nullptr;
+-    if (cfg.blocks.size() != 1u) {
+-        // A branch after an unconditional interpolation prefix is harmless
+-        // only when every raw I/J register has been overwritten on entry.
+-        // Reject loops into the prefix and interpolation in later blocks.
++    if (cfg.blocks.size() != 1u && !discardContinuation) {
++        // Other control flow still requires a complete unconditional prefix.
+         const auto found = std::find_if(cfg.blocks.begin(), cfg.blocks.end(), [&](const auto& b) { return b.id == cfg.entryBlock; });
+         if (cfg.unsupported || cfg.irreducible || found == cfg.blocks.end() ||
+             found->instructionBegin != 0u || !found->instructionEnd ||
+@@ -46,14 +88,13 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+     }
+     struct Pair { std::uint32_t base, attribute, component; };
+     std::map<std::uint32_t, Pair> pending;
++    const auto originalRaw = live;
++    bool rawWritten = false;
+     bool vectorWritten = false;
+-    const auto plain = [](const RdnaOperand& o) {
+-        return !o.negate && !o.negateHi && !o.absolute && !o.clamp && !o.omod && !o.opSel && !o.opSelHi &&
+-               !o.dpp && !o.dpp8 && !o.explicitSdwaDst && !o.sdwaSext && o.sdwaSel == 6u;
+-    };
+     for (const auto& i : decoded.instructions) {
+         pc = i.programCounter;
+         const auto index = static_cast<std::size_t>(&i - decoded.instructions.data());
++        if (discardContinuation && index >= discardBegin) break; // Proven no-input terminating exit.
+         if (entry && index >= entry->instructionEnd && (!live.empty() || !pending.empty())) fail();
+         if (i.op == RdnaOpcode::VInterpMovF32) fail(); // Requires original vertex values.
+         if (i.op == RdnaOpcode::VInterpP1F32 || i.op == RdnaOpcode::VInterpP2F32) {
+@@ -68,6 +109,7 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+                 pending.emplace(i.destination.reg, Pair{i.source0.reg, i.source1.value, i.source2.value});
+                 // P1 may consume I in place after the other P1 instructions.
+                 // Its original raw value cannot be used by another pair.
++                if (originalRaw.contains(i.destination.reg)) rawWritten = true;
+                 live.erase(i.destination.reg);
+             } else {
+                 const auto p = pending.find(i.destination.reg);
+@@ -80,8 +122,32 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+         const auto writesExec = [](const RdnaOperand& o) {
+             return o.kind == RdnaOperandKind::ExecLo || o.kind == RdnaOperandKind::ExecHi;
+         };
+-        if ((!pending.empty() || (vectorWritten && !live.empty())) &&
++        if ((!pending.empty() || (vectorWritten && !live.empty() && (!discardContinuation || rawWritten))) &&
+             (writesExec(i.destination) || writesExec(i.destination2))) fail();
++        // Read-only scalar descriptor loads and wait counters do not touch any
++        // vector partial or I/J value. Exclude scalar writes reaching M0/EXEC,
++        // vector operands, barriers, stores, atomics and unknown opcodes.
++        const bool scalarLoad = i.family == RdnaInstructionFamily::SMEM &&
++            (i.op == RdnaOpcode::SLoadDword || i.op == RdnaOpcode::SLoadDwordx2 ||
++             i.op == RdnaOpcode::SLoadDwordx4 || i.op == RdnaOpcode::SLoadDwordx8 || i.op == RdnaOpcode::SLoadDwordx16 ||
++             i.op == RdnaOpcode::SBufferLoadDword || i.op == RdnaOpcode::SBufferLoadDwordx2 ||
++             i.op == RdnaOpcode::SBufferLoadDwordx4 || i.op == RdnaOpcode::SBufferLoadDwordx8 || i.op == RdnaOpcode::SBufferLoadDwordx16);
++        const bool scalarWait = i.family == RdnaInstructionFamily::SOPP &&
++            (i.op == RdnaOpcode::SWaitcnt || i.op == RdnaOpcode::SNop);
++        const auto scalarResult = [](const RdnaOperand& o, std::uint32_t count) {
++            if (o.kind == RdnaOperandKind::None || o.kind == RdnaOperandKind::Null) return true;
++            if (o.kind == RdnaOperandKind::VccLo) return count <= 2u;
++            if (o.kind == RdnaOperandKind::VccHi) return count == 1u;
++            return o.kind == RdnaOperandKind::ScalarRegister && o.reg < 106u && count <= 106u-o.reg;
++        };
++        if (!pending.empty() && (scalarLoad || scalarWait)) {
++            if (i.dataDwordCount == 0u || i.dataDwordCount > 16u ||
++                !(scalarResult(i.destination, i.dataDwordCount) || (scalarWait && i.destination.kind == RdnaOperandKind::Unknown)) ||
++                (i.destination2.kind != RdnaOperandKind::Unknown && i.destination2.kind != RdnaOperandKind::None)) fail();
++            for (const auto& source : {i.source0,i.source1,i.source2,i.source3})
++                if (source.kind == RdnaOperandKind::VectorRegister || source.dpp || source.dpp8) fail();
++            continue;
++        }
+         // Independent vector ALU and a plain read-only 2D IMAGE_SAMPLE can
+         // be scheduled between P1 and P2. Prove their complete register footprint
+         // is disjoint from all partial P1 results; the raw I/J check below still
+@@ -131,10 +197,16 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+             const bool memory = i.family == RdnaInstructionFamily::MIMG || i.family == RdnaInstructionFamily::MUBUF ||
+                                 i.family == RdnaInstructionFamily::MTBUF || i.family == RdnaInstructionFamily::FLAT || i.family == RdnaInstructionFamily::DS;
+             const auto count = memory ? std::max(i.dataDwordCount, 1u) : 1u;
+-            for (std::uint32_t j = 0; j < count; ++j) live.erase(i.destination.reg + j);
++            for (std::uint32_t j = 0; j < count; ++j) {
++                if (originalRaw.contains(i.destination.reg+j)) rawWritten = true;
++                live.erase(i.destination.reg + j);
++            }
+             vectorWritten = true;
+         }
+-        if (i.destination2.kind == RdnaOperandKind::VectorRegister) live.erase(i.destination2.reg);
++        if (i.destination2.kind == RdnaOperandKind::VectorRegister) {
++            if (originalRaw.contains(i.destination2.reg)) rawWritten = true;
++            live.erase(i.destination2.reg);
++        }
+     }
+     if (!pending.empty()) fail();
+ }

@@ -111,5 +111,58 @@ int main() {
     test("entry exceeds decoded code",false,[&](Case& c){branching(c);c.cfg.blocks[0].instructionEnd=99;});
     test("irreducible continuation",false,[&](Case& c){branching(c);c.cfg.irreducible=true;});
     test("unsupported continuation",false,[&](Case& c){branching(c);c.cfg.unsupported=true;});
+    const auto scalarBetween = [](Case& c, RdnaOpcode op, RdnaInstructionFamily family) {
+        RdnaInstruction i; i.op=op; i.family=family;
+        i.destination.kind=RdnaOperandKind::ScalarRegister; i.destination.reg=16;
+        i.source0.kind=RdnaOperandKind::ScalarRegister; i.source0.reg=12;
+        c.code.instructions.insert(c.code.instructions.begin()+2,i);
+    };
+    test("scalar descriptor load between pairs",true,[&](Case& c){scalarBetween(c,RdnaOpcode::SBufferLoadDwordx4,RdnaInstructionFamily::SMEM);c.code.instructions[2].dataDwordCount=4;});
+    test("two-word scalar load into VCC",true,[&](Case& c){scalarBetween(c,RdnaOpcode::SBufferLoadDwordx2,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.kind=RdnaOperandKind::VccLo;c.code.instructions[2].dataDwordCount=2;});
+    test("scalar load may not overrun VCC low",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SBufferLoadDwordx4,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.kind=RdnaOperandKind::VccLo;c.code.instructions[2].dataDwordCount=4;});
+    test("scalar load may not overrun VCC high",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SBufferLoadDwordx2,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.kind=RdnaOperandKind::VccHi;c.code.instructions[2].dataDwordCount=2;});
+    test("wait counter between pairs",true,[&](Case& c){scalarBetween(c,RdnaOpcode::SWaitcnt,RdnaInstructionFamily::SOPP);c.code.instructions[2].destination={};});
+    test("NOP between pairs",true,[&](Case& c){scalarBetween(c,RdnaOpcode::SNop,RdnaInstructionFamily::SOPP);c.code.instructions[2].destination={};});
+    test("scalar load cannot read vector partial",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SLoadDword,RdnaInstructionFamily::SMEM);c.code.instructions[2].source0=reg(4);});
+    test("scalar load cannot change M0",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SLoadDword,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.kind=RdnaOperandKind::M0;});
+    test("scalar load cannot reach special registers",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SLoadDwordx16,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.reg=100;c.code.instructions[2].dataDwordCount=16;});
+    test("scalar load cannot change EXEC",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SLoadDword,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination.kind=RdnaOperandKind::ExecLo;});
+    test("scalar load secondary write cannot change EXEC",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SLoadDword,RdnaInstructionFamily::SMEM);c.code.instructions[2].destination2.kind=RdnaOperandKind::ExecLo;});
+    test("scalar unknown memory opcode stays rejected",false,[&](Case& c){scalarBetween(c,RdnaOpcode::Unknown,RdnaInstructionFamily::SMEM);});
+    test("barrier between pairs stays rejected",false,[&](Case& c){scalarBetween(c,RdnaOpcode::SBarrier,RdnaInstructionFamily::SOPP);});
+    const auto discardDiamond = [](Case& c) {
+        RdnaInstruction alu; alu.family=RdnaInstructionFamily::VOP1; alu.destination=reg(12); alu.source0=reg(4);
+        RdnaInstruction branch; branch.op=RdnaOpcode::SCbranchScc0;
+        RdnaInstruction exec; exec.op=RdnaOpcode::SWqmB64; exec.family=RdnaInstructionFamily::SOP1;
+        exec.destination.kind=RdnaOperandKind::ExecLo; exec.source0.kind=RdnaOperandKind::ScalarRegister;
+        RdnaInstruction end; end.op=RdnaOpcode::SEndpgm;
+        RdnaInstruction zero; zero.op=RdnaOpcode::SMovB64; zero.destination.kind=RdnaOperandKind::ExecLo;
+        zero.source0.kind=RdnaOperandKind::IntegerInlineConstant;
+        RdnaInstruction output; output.op=RdnaOpcode::Exp; output.exportIsLast=true; output.exportValidMask=true;
+        c.code.instructions.insert(c.code.instructions.end(),{alu,branch,exec,
+            interp(RdnaOpcode::VInterpP1F32,8,0),interp(RdnaOpcode::VInterpP2F32,8,1),end,zero,output,end});
+        c.cfg.entryBlock=0; c.cfg.blocks.resize(3);
+        auto& a=c.cfg.blocks[0]; auto& b=c.cfg.blocks[1]; auto& d=c.cfg.blocks[2];
+        a.id=0; a.instructionBegin=0; a.instructionEnd=6; a.successors={1,2};
+        a.terminator.kind=TerminatorKind::ConditionalBranch; a.terminator.condition=BranchCondition::SccZero;
+        a.terminator.trueBlock=2; a.terminator.falseBlock=1;
+        b.id=1; b.instructionBegin=6; b.instructionEnd=10; b.predecessors={0}; b.terminator.kind=TerminatorKind::Return;
+        d.id=2; d.instructionBegin=10; d.instructionEnd=13; d.predecessors={0}; d.terminator.kind=TerminatorKind::Return;
+    };
+    test("discard-only branch preserves I/J for later interpolation",true,discardDiamond);
+    test("discard diamond with changed I stays rejected",false,[&](Case& c){discardDiamond(c);c.code.instructions[4].destination=reg(0);});
+    test("discard diamond with changed J stays rejected",false,[&](Case& c){discardDiamond(c);c.code.instructions[4].destination=reg(1);});
+    test("discard cannot keep active EXEC",false,[&](Case& c){discardDiamond(c);c.code.instructions[10].source0.value=1;});
+    test("discard cannot export a color component",false,[&](Case& c){discardDiamond(c);c.code.instructions[11].exportEnableMask=1;});
+    test("discard cannot consume raw inputs",false,[&](Case& c){discardDiamond(c);c.code.instructions[11].sourceCount=1;});
+    test("discard must perform a final export",false,[&](Case& c){discardDiamond(c);c.code.instructions[11].exportIsLast=false;});
+    test("discard must terminate",false,[&](Case& c){discardDiamond(c);c.code.instructions[12].op=RdnaOpcode::SBranch;});
+    test("surviving path must terminate",false,[&](Case& c){discardDiamond(c);c.code.instructions[9].op=RdnaOpcode::SBranch;});
+    test("discard diamond may not merge back",false,[&](Case& c){discardDiamond(c);c.cfg.blocks[2].successors={1};c.cfg.blocks[1].predecessors={0,2};});
+    test("discard diamond may not loop",false,[&](Case& c){discardDiamond(c);c.cfg.backEdges.push_back({1,0,false});c.cfg.blocks[0].predecessors={1};});
+    test("discard branch may not split P1/P2",false,[&](Case& c){discardDiamond(c);c.code.instructions[4]=interp(RdnaOpcode::VInterpP1F32,12,0);});
+    test("discard diamond must cover every instruction",false,[&](Case& c){discardDiamond(c);c.cfg.blocks[1].instructionBegin=7;});
+    test("discard diamond cannot alias block ids",false,[&](Case& c){discardDiamond(c);c.cfg.blocks[2].id=1;});
+    test("discard branch must match decoded control flow",false,[&](Case& c){discardDiamond(c);c.code.instructions[5].op=RdnaOpcode::SSetpcB64;});
     std::cout<<"PASS "<<passed<<" actual fixed-function interpolation validation cases\n";
 }

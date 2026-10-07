@@ -61,7 +61,7 @@
     "startup_smoke": "JIT enabled, ELF entry reached, then explicit sceKernelRaiseException not implemented abort; own processes closed"
   },
   "bounded_graphics_repairs": {
-    "stencil_clear": "DB_RENDER_CONTROL bit 1 accepted only when ordinary single-sample stencil replacement already writes DB_STENCIL_CLEAR, both active faces always pass, all operations replace, masks are full, no depth/bounds test or shader kill, and Z_ORDER is late",
+    "stencil_clear": "DB_RENDER_CONTROL bit 1 accepted only when ordinary single-sample stencil replacement already writes DB_STENCIL_CLEAR, both active faces always pass, all operations replace, masks are full, no depth/bounds test or shader kill, and Z_ORDER is late; correction: the original 0x10 guard was EARLY_Z_THEN_LATE_Z, not LATE_Z (0). See the discard-continuation follow-up for corrected support of both encodings.",
     "interpolation": "a plain read-only 2D IMAGE_SAMPLE may occur between P1/P2 only with a proven disjoint register footprint; original I/J validation, pairing, masks and entry-block checks remain active",
     "state_tests": "graphics --state-only and --depth-state-only pass, including negative clear cases",
     "interpolation_tests": {
@@ -108,5 +108,6 @@
       "launched_after_final_restoration": false
     },
     "private_diagnostics": "requests, register snapshots, game files, source experiments and raw logs remain in ignored build/ only"
-  }
+  },
+  "follow_up": "solitaire-discard-continuation-checkpoint.json"
 }

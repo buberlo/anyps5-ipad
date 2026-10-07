@@ -1,0 +1,102 @@
+diff --git a/core/libs/prx/libc/src/Strings.cpp b/core/libs/prx/libc/src/Strings.cpp
+index 5bcad4d2..18035227 100644
+--- a/core/libs/prx/libc/src/Strings.cpp
++++ b/core/libs/prx/libc/src/Strings.cpp
+@@ -7,9 +7,21 @@
+ #include <cwchar>
+ #include <cstdio>
+ #include <limits>
++#include <cerrno>
+ 
+ #include "prx/libc/include/General.hpp"
+ 
++static unsigned long long GuestUnsignedConversion(const char* text, char** end, int base) {
++    // Some Windows CRTs negate a saturated negative magnitude, returning 1
++    // with ERANGE. The guest requires ULLONG_MAX on overflow of either sign.
++    const int saved = errno;
++    errno = 0;
++    const auto value = std::strtoull(text, end, base);
++    const int error = errno;
++    if (!error) errno = saved;
++    return error == ERANGE ? std::numeric_limits<unsigned long long>::max() : value;
++}
++
+ extern "C" {
+ 
+ void* APS5_VABI memset_nid_postfix(void* s, int c, size_t n) {
+@@ -88,7 +100,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
+ }
+ 
+ std::uint64_t APS5_VABI strtoul_nid_postfix(const char* str, char** endptr, int base) {
+-    return std::strtoull(str, endptr, base);
++    return GuestUnsignedConversion(str, endptr, base);
+ }
+ 
+ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base) {
+@@ -96,7 +108,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
+ }
+ 
+ unsigned long long APS5_VABI strtoull_nid_postfix(const char* str, char** endptr, int base) {
+-    return std::strtoull(str, endptr, base);
++    return GuestUnsignedConversion(str, endptr, base);
+ }
+ 
+ double APS5_VABI strtod_nid_postfix(const char* str, char** endptr) {
+@@ -268,7 +280,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
+ }
+ 
+ unsigned long long APS5_VABI _Stoull_nid_postfix(const char* str, char** endptr, int base) {
+-    return std::strtoull(str, endptr, base);
++    return GuestUnsignedConversion(str, endptr, base);
+ }
+ 
+ size_t APS5_VABI wcslen_nid_postfix(const wchar_t* s) {
+diff --git a/core/libs/tests/GuestMath.cpp b/core/libs/tests/GuestMath.cpp
+index 7ef93b7e..e02ce4dd 100644
+--- a/core/libs/tests/GuestMath.cpp
++++ b/core/libs/tests/GuestMath.cpp
+@@ -10,6 +10,8 @@ float APS5_VABI strtof_nid_postfix(const char*, char**);
+ long double APS5_VABI strtold_nid_postfix(const char*, char**);
+ std::int64_t APS5_VABI strtol_nid_postfix(const char*, char**, int);
+ std::uint64_t APS5_VABI strtoul_nid_postfix(const char*, char**, int);
++unsigned long long APS5_VABI strtoull_nid_postfix(const char*, char**, int);
++unsigned long long APS5_VABI _Stoull_nid_postfix(const char*, char**, int);
+ int* APS5_VABI __error_nid_postfix();
+ float APS5_VABI fmodf_nid_postfix(float, float);
+ float APS5_VABI asinf_nid_postfix(float);
+@@ -97,19 +99,28 @@ static void CheckIntegerConversions() {
+         {"123!", 10, 123, 3, 0}
+     };
+     for (const auto& test : unsignedCases) {
+-        char* end = nullptr;
+-        *__error_nid_postfix() = 0;
+-        const auto value = strtoul_nid_postfix(test.text, &end, test.base);
+-        if (value != test.value || end != test.text + test.consumed || *__error_nid_postfix() != test.error) {
+-            std::fprintf(stderr, "Guest strtoul failed for '%s' in base %d\n", test.text, test.base);
+-            std::abort();
+-        }
++        const auto check = [&](auto convert, const char* name) {
++            char* end = nullptr;
++            *__error_nid_postfix() = 0;
++            const auto value = convert(test.text, &end, test.base);
++            if (value != test.value || end != test.text + test.consumed || *__error_nid_postfix() != test.error) {
++                std::fprintf(stderr, "Guest %s failed for '%s' in base %d\n", name, test.text, test.base);
++                std::abort();
++            }
++        };
++        check(strtoul_nid_postfix, "strtoul");
++        check(strtoull_nid_postfix, "strtoull");
++        check(_Stoull_nid_postfix, "_Stoull");
+     }
+     *__error_nid_postfix() = 13;
+     Require(strtol_nid_postfix("-4294967296", nullptr, 10) == -INT64_C(4294967296));
+     Require(*__error_nid_postfix() == 13);
+     Require(strtoul_nid_postfix("4294967296", nullptr, 10) == UINT64_C(4294967296));
+     Require(*__error_nid_postfix() == 13);
++    *__error_nid_postfix() = 34;
++    Require(strtoul_nid_postfix("42", nullptr, 10) == 42 && *__error_nid_postfix() == 34);
++    Require(strtoull_nid_postfix("42", nullptr, 10) == 42 && *__error_nid_postfix() == 34);
++    Require(_Stoull_nid_postfix("42", nullptr, 10) == 42 && *__error_nid_postfix() == 34);
+     *__error_nid_postfix() = 0;
+ }
+ 

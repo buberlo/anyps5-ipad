@@ -1,0 +1,134 @@
+diff --git a/core/libs/prx/libkernel/File/src/Open.cpp b/core/libs/prx/libkernel/File/src/Open.cpp
+index 49d2b44..9ec9dd1 100644
+--- a/core/libs/prx/libkernel/File/src/Open.cpp
++++ b/core/libs/prx/libkernel/File/src/Open.cpp
+@@ -13,11 +13,43 @@
+ #include <string>
+ 
+ #ifdef _WIN32
++#include <windows.h>
+ #include <fcntl.h>
+ #include <io.h>
+ #include <sys/stat.h>
+ static int NativeOpen(const std::filesystem::path& p, int nativeFlags, std::uint16_t mode) {
+-    return ::_wopen(p.wstring().c_str(), nativeFlags, static_cast<int>(mode));
++    // CRT _wopen omits FILE_SHARE_DELETE, preventing POSIX rename/unlink while
++    // a descriptor is open. Keep descriptor ownership, with native delete sharing.
++    DWORD access = (nativeFlags & _O_RDWR) ? GENERIC_READ | GENERIC_WRITE :
++        (nativeFlags & _O_WRONLY) ? GENERIC_WRITE : GENERIC_READ;
++    if (nativeFlags & _O_TRUNC) access |= GENERIC_WRITE;
++    const DWORD creation = (nativeFlags & _O_CREAT) ?
++        ((nativeFlags & _O_EXCL) ? CREATE_NEW : (nativeFlags & _O_TRUNC) ? CREATE_ALWAYS : OPEN_ALWAYS) :
++        (nativeFlags & _O_TRUNC) ? TRUNCATE_EXISTING : OPEN_EXISTING;
++    SECURITY_ATTRIBUTES security{sizeof(security), nullptr, !(nativeFlags & _O_NOINHERIT)};
++    const DWORD attributes = (mode & _S_IWRITE) ? FILE_ATTRIBUTE_NORMAL : FILE_ATTRIBUTE_READONLY;
++    HANDLE handle = CreateFileW(p.wstring().c_str(), access | FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES,
++        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, &security, creation, attributes, nullptr);
++    // Metadata rights must not prevent an otherwise permitted data-only open.
++    if (handle == INVALID_HANDLE_VALUE && GetLastError() == ERROR_ACCESS_DENIED)
++        handle = CreateFileW(p.wstring().c_str(), access,
++            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, &security, creation, attributes, nullptr);
++    if (handle == INVALID_HANDLE_VALUE) {
++        switch (GetLastError()) {
++        case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND: case ERROR_INVALID_NAME: errno = ENOENT; break;
++        case ERROR_ALREADY_EXISTS: case ERROR_FILE_EXISTS: errno = EEXIST; break;
++        case ERROR_ACCESS_DENIED: case ERROR_SHARING_VIOLATION: case ERROR_LOCK_VIOLATION: errno = EACCES; break;
++        case ERROR_TOO_MANY_OPEN_FILES: errno = EMFILE; break;
++        case ERROR_NOT_ENOUGH_MEMORY: case ERROR_OUTOFMEMORY: errno = ENOMEM; break;
++        case ERROR_DIRECTORY: errno = ENOTDIR; break;
++        default: errno = EIO; break;
++        }
++        return -1;
++    }
++    const int descriptor = ::_open_osfhandle(reinterpret_cast<std::intptr_t>(handle),
++        nativeFlags & (_O_RDONLY | _O_WRONLY | _O_RDWR | _O_APPEND | _O_BINARY | _O_NOINHERIT));
++    if (descriptor < 0) { const int saved = errno; CloseHandle(handle); errno = saved; }
++    return descriptor;
+ }
+ static std::int64_t NativeLseek(int fd, std::int64_t offset, int whence) {
+     return ::_lseeki64(fd, offset, whence);
+diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
+index f33fb10..05d6a32 100644
+--- a/core/libs/prx/libkernel/File/src/Stdio.cpp
++++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
+@@ -52,7 +52,7 @@ static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
+         constexpr std::int64_t epoch = 11644473600LL;
+         if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000 || times[i].tv_sec < -epoch ||
+             times[i].tv_sec > static_cast<std::int64_t>(INT64_MAX / 10000000ULL) - epoch) {
+-            errno = EINVAL; return -1;
++            SetLastError(ERROR_INVALID_PARAMETER); errno = EINVAL; return -1;
+         }
+         const std::uint64_t ticks = static_cast<std::uint64_t>(times[i].tv_sec + epoch) * 10000000ULL +
+             static_cast<std::uint64_t>(times[i].tv_usec) * 10ULL;
+@@ -74,7 +74,16 @@ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+     if (descriptor < 0) { errno = EBADF; return -1; }
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+     if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
+-    return NativeSetTimes(handle, times);
++    const int direct = NativeSetTimes(handle, times);
++    if (direct == 0 || GetLastError() != ERROR_ACCESS_DENIED) return direct;
++    // Obtain attribute access through the same file object, not its pathname.
++    // A read-only descriptor can still change owned-file metadata under POSIX.
++    HANDLE attributes = ReOpenFile(handle, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES,
++        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0);
++    if (attributes == INVALID_HANDLE_VALUE) return NativeWindowsError();
++    const int result = NativeSetTimes(attributes, times);
++    const int saved = errno; CloseHandle(attributes); errno = saved;
++    return result;
+ }
+ static int NativeFchmod(int descriptor, std::uint16_t mode) {
+     if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
+@@ -82,12 +91,22 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
+     if (descriptor < 0) { errno = EBADF; return -1; }
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+     if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
+-    FILE_BASIC_INFO basic{};
+-    if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
+-    if (mode & _S_IWRITE) basic.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
+-    else basic.FileAttributes |= FILE_ATTRIBUTE_READONLY;
+-    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
+-    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
++    const auto apply = [&](HANDLE target) {
++        FILE_BASIC_INFO basic{};
++        if (!GetFileInformationByHandleEx(target, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
++        if (mode & _S_IWRITE) basic.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
++        else basic.FileAttributes |= FILE_ATTRIBUTE_READONLY;
++        if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
++        return SetFileInformationByHandle(target, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
++    };
++    const int direct = apply(handle);
++    if (direct == 0 || GetLastError() != ERROR_ACCESS_DENIED) return direct;
++    HANDLE attributes = ReOpenFile(handle, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES,
++        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0);
++    if (attributes == INVALID_HANDLE_VALUE) return NativeWindowsError();
++    const int result = apply(attributes);
++    const int saved = errno; CloseHandle(attributes); errno = saved;
++    return result;
+ }
+ static int NativeFlock(int descriptor, int operation) {
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
+index 9661c76..0f543d1 100644
+--- a/core/libs/tests/GuestFilesystem.cpp
++++ b/core/libs/tests/GuestFilesystem.cpp
+@@ -151,10 +151,19 @@ int main() {
+     Require(utimes_nid_postfix(nullptr,times) == -1 && *__error_nid_postfix() == 14);
+     Require(utimes_nid_postfix(moved.string().c_str(),invalidTimes) == -1 && *__error_nid_postfix() == 22);
+     Require(close_nid_postfix(timedFD) == 0);
++    const int readFD = open_nid_postfix(moved.string().c_str(), 0, 0);
++    Require(readFD >= 0 && fchmod_nid_postfix(readFD, 0600) == 0 && futimes_nid_postfix(readFD, times) == 0);
++    Require(unlink_nid_postfix(moved.string().c_str()) == 0);
++#ifndef _WIN32
++    Require(!std::filesystem::exists(moved));
++#endif
++    // Win32 DeleteFile retains the name until the final descriptor closes.
++    Require(fchmod_nid_postfix(readFD, 0600) == 0 && futimes_nid_postfix(readFD, times) == 0);
++    Require(close_nid_postfix(readFD) == 0);
++    Require(!std::filesystem::exists(moved));
+     Require(fchmod_nid_postfix(-1,0600) == -1 && *__error_nid_postfix() == 9);
+     Require(sceKernelFchmod(-1,0600) == static_cast<int>(0x80020009));
+     Require(futimes_nid_postfix(-1,times) == -1 && *__error_nid_postfix() == 9);
+-    Require(remove_nid_postfix(moved.string().c_str()) == 0);
+     Require(remove_nid_postfix(root.string().c_str()) == 0);
+     Require(!std::filesystem::exists(root));
+ }

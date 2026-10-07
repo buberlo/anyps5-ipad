@@ -1,0 +1,1256 @@
+diff --git a/core/libs/CMakeLists.txt b/core/libs/CMakeLists.txt
+index 5101103..9809cbd 100644
+--- a/core/libs/CMakeLists.txt
++++ b/core/libs/CMakeLists.txt
+@@ -216,3 +216,17 @@ if(MINGW)
+         string(REPLACE "${runtimeLinkFlag}" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+     endforeach()
+ endif()
++
++if(BUILD_TESTING)
++    add_test_executable(guest_compatibility_api_tests tests/GuestCompatibilityApis.cpp)
++    target_include_directories(guest_compatibility_api_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
++    target_link_libraries(guest_compatibility_api_tests PRIVATE libSceSsl libSceHttp2
++        libSceNpEntitlementAccess libSceNpSessionSignaling libSceNpManager
++        libSceUserService libSceMsgDialog.native libkernel libc)
++    configure_windows_unwind(guest_compatibility_api_tests)
++    add_test(NAME guest_compatibility_apis COMMAND guest_compatibility_api_tests)
++    if(WIN32)
++        set_tests_properties(guest_compatibility_apis PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceSsl>")
++    endif()
++endif()
+diff --git a/core/libs/prx/libSceHttp2/Export.cpp b/core/libs/prx/libSceHttp2/Export.cpp
+index 911b657..8d935e9 100644
+--- a/core/libs/prx/libSceHttp2/Export.cpp
++++ b/core/libs/prx/libSceHttp2/Export.cpp
+@@ -3,11 +3,15 @@
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/General.hpp"
+ #include <atomic>
++#include <mutex>
++#include <set>
+ 
+ // No network is emulated: contexts, templates and requests can be created, but any request
+ // that would touch the network fails with the library's network error.
+ static constexpr int ERROR_NETWORK = static_cast<int>(0x80436063);
+ static std::atomic<int> g_nextHandle{1};
++static std::mutex g_contextMutex;
++static std::set<int> g_contexts;
+ 
+ extern "C" {
+ 
+@@ -70,7 +74,10 @@ int APS5_VABI sceHttp2Init(int libnet_mem_id, int libssl_ctx_id, size_t pool_siz
+     (void)libssl_ctx_id;
+     (void)pool_size;
+     (void)max_concurrent_request;
+-    return g_nextHandle.fetch_add(1, std::memory_order_relaxed);
++    const int handle = g_nextHandle.fetch_add(1, std::memory_order_relaxed);
++    std::lock_guard lock(g_contextMutex);
++    g_contexts.insert(handle);
++    return handle;
+ }
+ 
+ int APS5_VABI sceHttp2ReadData(int req_id, void* data, size_t size) {
+@@ -192,8 +199,8 @@ int APS5_VABI sceHttp2SslEnableOption(int id, uint32_t ssl_flags) {
+ }
+ 
+ int APS5_VABI sceHttp2Term(int lib_http2_ctx_id) {
+-    (void)lib_http2_ctx_id;
+-    return 0;
++    std::lock_guard lock(g_contextMutex);
++    return g_contexts.erase(lib_http2_ctx_id) ? 0 : ERROR_NETWORK;
+ }
+ 
+ int APS5_VABI sceHttp2WaitAsync(int req_id, Http2AsyncResult* result, uint32_t* timeout, void* option) {
+@@ -214,4 +221,11 @@ int APS5_VABI sceHttp2GetMemoryPoolStats() {
+     return 0;
+ }
+ 
++
++int APS5_VABI sceHttp2CookieFlush(int lib_http2_ctx_id) {
++    std::lock_guard lock(g_contextMutex);
++    // A valid offline context's cookie inventory is always empty.
++    return g_contexts.count(lib_http2_ctx_id) ? 0 : ERROR_NETWORK;
++}
++
+ }
+diff --git a/core/libs/prx/libSceJson2/CMakeLists.txt b/core/libs/prx/libSceJson2/CMakeLists.txt
+index d1cd90d..ae70074 100644
+--- a/core/libs/prx/libSceJson2/CMakeLists.txt
++++ b/core/libs/prx/libSceJson2/CMakeLists.txt
+@@ -18,3 +18,15 @@ if(BUILD_TESTING)
+             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceJson2>")
+     endif()
+ endif()
++
++if(BUILD_TESTING)
++    add_test_executable(guest_json2_initialization_tests ${LIBS_INCLUDE_DIR}/tests/GuestJson2Initialization.cpp)
++    target_include_directories(guest_json2_initialization_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(guest_json2_initialization_tests PRIVATE libSceJson2 libc)
++    configure_windows_unwind(guest_json2_initialization_tests)
++    add_test(NAME guest_json2_initialization COMMAND guest_json2_initialization_tests)
++    if(WIN32)
++        set_tests_properties(guest_json2_initialization PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceJson2>")
++    endif()
++endif()
+diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
+index a19fc32..2bbd986 100644
+--- a/core/libs/prx/libSceJson2/Export.cpp
++++ b/core/libs/prx/libSceJson2/Export.cpp
+@@ -5,6 +5,9 @@
+ #include <cstdio>
+ #include <cstring>
+ #include <list>
++#include <limits>
++#include <new>
++#include <utility>
+ #include <mutex>
+ #include <stdexcept>
+ #include <string>
+@@ -13,6 +16,70 @@
+ 
+ namespace {
+ 
++// RTTI allocator callbacks use the guest ABI. Copy configuration before invoking
++// callbacks: the parameter and callback table may be temporary stack objects.
++using JsonAllocate = void* (APS5_VABI*)(std::size_t, void*);
++using JsonDeallocate = void (APS5_VABI*)(void*, void*);
++using JsonNotify = void (APS5_VABI*)(int, std::size_t, void*);
++struct AllocParamRtti { JsonAllocate allocate; JsonDeallocate deallocate; JsonNotify notify; };
++struct JsonAllocationPolicy { AllocParamRtti callbacks{}; void* context = nullptr; };
++struct InitParameter2 { const AllocParamRtti* allocator = nullptr; void* context = nullptr; std::size_t fileBufferSize = 0; };
++static_assert(sizeof(InitParameter2) == 24);
++static_assert(sizeof(AllocParamRtti) == 24);
++std::mutex allocationMutex;
++JsonAllocationPolicy allocationPolicy;
++struct alignas(std::max_align_t) AllocationHeader { JsonDeallocate free; void* context; };
++
++void* JsonAllocateBytes(std::size_t bytes) {
++    JsonAllocationPolicy policy;
++    { std::lock_guard lock(allocationMutex); policy = allocationPolicy; }
++    if (bytes > std::numeric_limits<std::size_t>::max() - sizeof(AllocationHeader)) throw std::bad_alloc();
++    const std::size_t total = bytes + sizeof(AllocationHeader);
++    void* raw = policy.callbacks.allocate ? policy.callbacks.allocate(total, policy.context) : ::operator new(total);
++    if (!raw) {
++        if (policy.callbacks.notify) policy.callbacks.notify(static_cast<int>(0x80848102), total, policy.context);
++        throw std::bad_alloc();
++    }
++    if (reinterpret_cast<std::uintptr_t>(raw) % alignof(AllocationHeader)) {
++        policy.callbacks.deallocate(raw, policy.context);
++        throw std::runtime_error("sce::Json allocator returned unaligned storage");
++    }
++    auto* header = new (raw) AllocationHeader{policy.callbacks.deallocate, policy.context};
++    return header + 1;
++}
++void JsonFreeBytes(void* memory) noexcept {
++    if (!memory) return;
++    auto* header = static_cast<AllocationHeader*>(memory) - 1;
++    // Match the allocator that created this block even after terminate/reinitialize.
++    if (header->free) header->free(header, header->context);
++    else ::operator delete(header);
++}
++template<class T> struct JsonAllocator {
++    using value_type = T;
++    JsonAllocator() = default;
++    template<class U> JsonAllocator(const JsonAllocator<U>&) noexcept {}
++    T* allocate(std::size_t n) {
++        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T)) throw std::bad_alloc();
++        return static_cast<T*>(JsonAllocateBytes(n * sizeof(T)));
++    }
++    void deallocate(T* p, std::size_t) noexcept { JsonFreeBytes(p); }
++    template<class U> bool operator==(const JsonAllocator<U>&) const noexcept { return true; }
++    template<class U> bool operator!=(const JsonAllocator<U>&) const noexcept { return false; }
++};
++using JsonText = std::basic_string<char, std::char_traits<char>, JsonAllocator<char>>;
++template<class T> using JsonList = std::list<T, JsonAllocator<T>>;
++template<class T, class... Args> T* JsonNew(Args&&... args) {
++    void* memory = JsonAllocateBytes(sizeof(T));
++    try { return new (memory) T(std::forward<Args>(args)...); }
++    catch (...) { JsonFreeBytes(memory); throw; }
++}
++template<class T> void JsonDelete(T* memory) noexcept {
++    if (!memory) return;
++    memory->~T();
++    JsonFreeBytes(memory);
++}
++
++
+ enum ValueType : std::int32_t {
+     TypeNull = 0,
+     TypeBoolean = 1,
+@@ -28,12 +95,12 @@ constexpr int JsonErrorParse = static_cast<int>(0x80920101);
+ 
+ struct Node;
+ struct Value { Node* node; };
+-struct String { std::string* text; };
+-struct Array { std::list<Value>* items; };
++struct String { JsonText* text; };
++struct Array { JsonList<Value>* items; };
+ struct Pair;
+-struct Object { std::list<Pair>* items; };
+-struct ArrayIterator { std::list<Value>::iterator it; };
+-struct ObjectIterator { std::list<Pair>::iterator it; };
++struct Object { JsonList<Pair>* items; };
++struct ArrayIterator { JsonList<Value>::iterator it; };
++struct ObjectIterator { JsonList<Pair>::iterator it; };
+ struct Pair {
+     String key;
+     std::uint64_t reserved;
+@@ -67,17 +134,17 @@ Globals& State() {
+     return globals;
+ }
+ 
+-void Construct(String& s, const std::string& text) { s.text = new std::string(text); }
+-void Construct(Array& a) { a.items = new std::list<Value>(); }
+-void Construct(Object& o) { o.items = new std::list<Pair>(); }
++void Construct(String& s, const JsonText& text) { s.text = JsonNew<JsonText>(text); }
++void Construct(Array& a) { a.items = JsonNew<JsonList<Value>>(); }
++void Construct(Object& o) { o.items = JsonNew<JsonList<Pair>>(); }
+ void Destroy(Value& v);
+ void CopyInto(Value& destination, const Value& source);
+ 
+-void Destroy(String& s) { delete s.text; s.text = nullptr; }
++void Destroy(String& s) { JsonDelete(s.text); s.text = nullptr; }
+ void Destroy(Array& a) {
+     if (!a.items) return;
+     for (auto& item : *a.items) Destroy(item);
+-    delete a.items;
++    JsonDelete(a.items);
+     a.items = nullptr;
+ }
+ void Destroy(Object& o) {
+@@ -86,7 +153,7 @@ void Destroy(Object& o) {
+         Destroy(pair.key);
+         Destroy(pair.value);
+     }
+-    delete o.items;
++    JsonDelete(o.items);
+     o.items = nullptr;
+ }
+ 
+@@ -100,7 +167,7 @@ void Clear(Node& n) {
+ void Destroy(Value& v) {
+     if (!v.node) return;
+     Clear(*v.node);
+-    delete v.node;
++    JsonDelete(v.node);
+     v.node = nullptr;
+ }
+ 
+@@ -109,7 +176,7 @@ Node& NodeOf(const Value& v) {
+     return *v.node;
+ }
+ 
+-void Construct(Value& v) { v.node = new Node(); }
++void Construct(Value& v) { v.node = JsonNew<Node>(); }
+ 
+ void CopyArray(Array& destination, const Array& source) {
+     Construct(destination);
+@@ -152,7 +219,7 @@ void CopyInto(Value& destination, const Value& source) {
+ void SetType(Node& n, ValueType type) {
+     Clear(n);
+     n.type = type;
+-    if (type == TypeString) Construct(n.string, std::string());
++    if (type == TypeString) Construct(n.string, JsonText());
+     if (type == TypeArray) Construct(n.array);
+     if (type == TypeObject) Construct(n.object);
+     if (type < TypeNull || type > TypeObject) throw std::invalid_argument("sce::Json::Value::set: invalid value type");
+@@ -192,7 +259,7 @@ const Node& Typed(const Value* self, ValueType requested) {
+     return NodeOf(NullAccess(requested, self));
+ }
+ 
+-void AppendEscaped(std::string& out, const std::string& text) {
++void AppendEscaped(JsonText& out, const JsonText& text) {
+     out += '"';
+     for (const unsigned char c : text) {
+         switch (c) {
+@@ -214,14 +281,14 @@ void AppendEscaped(std::string& out, const std::string& text) {
+     out += '"';
+ }
+ 
+-std::string RealText(double value) {
++JsonText RealText(double value) {
+     if (!std::isfinite(value)) throw std::runtime_error("sce::Json: cannot serialize a non-finite number");
+     char buffer[32];
+     std::snprintf(buffer, sizeof(buffer), "%.17g", value);
+     return buffer;
+ }
+ 
+-void Serialize(std::string& out, const Node& n) {
++void Serialize(JsonText& out, const Node& n) {
+     switch (n.type) {
+         case TypeNull: out += "null"; return;
+         case TypeBoolean: out += n.boolean ? "true" : "false"; return;
+@@ -282,7 +349,7 @@ private:
+         _text += length;
+         return true;
+     }
+-    static void appendUtf8(std::string& out, std::uint32_t code) {
++    static void appendUtf8(JsonText& out, std::uint32_t code) {
+         if (code < 0x80) out += static_cast<char>(code);
+         else if (code < 0x800) { out += static_cast<char>(0xc0 | (code >> 6)); out += static_cast<char>(0x80 | (code & 0x3f)); }
+         else if (code < 0x10000) { out += static_cast<char>(0xe0 | (code >> 12)); out += static_cast<char>(0x80 | ((code >> 6) & 0x3f)); out += static_cast<char>(0x80 | (code & 0x3f)); }
+@@ -301,7 +368,7 @@ private:
+         }
+         return true;
+     }
+-    bool string(std::string& out) {
++    bool string(JsonText& out) {
+         if (_text >= _end || *_text != '"') return false;
+         ++_text;
+         while (_text < _end && *_text != '"') {
+@@ -356,7 +423,7 @@ private:
+             if (_text >= _end || *_text < '0' || *_text > '9') return false;
+             while (_text < _end && *_text >= '0' && *_text <= '9') ++_text;
+         }
+-        const std::string text(start, _text);
++        const JsonText text(start, _text);
+         if (integral) {
+             errno = 0;
+             if (text[0] == '-') {
+@@ -382,7 +449,7 @@ private:
+             case 't': if (!literal("true")) return false; SetType(out, TypeBoolean); out.boolean = true; return true;
+             case 'f': if (!literal("false")) return false; SetType(out, TypeBoolean); return true;
+             case '"': {
+-                std::string text;
++                JsonText text;
+                 if (!string(text)) return false;
+                 SetType(out, TypeString);
+                 *out.string.text = std::move(text);
+@@ -416,7 +483,7 @@ private:
+                 if (_text < _end && *_text == '}') { ++_text; --_depth; return true; }
+                 for (;;) {
+                     skip();
+-                    std::string key;
++                    JsonText key;
+                     if (!string(key)) return false;
+                     skip();
+                     if (_text >= _end || *_text != ':') return false;
+@@ -450,7 +517,7 @@ void* const JsonMemAllocatorVtable[] = {
+     reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual), reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual),
+ };
+ 
+-Value& ObjectEntry(Object& object, const std::string& key) {
++Value& ObjectEntry(Object& object, const JsonText& key) {
+     for (auto& pair : *object.items)
+         if (*pair.key.text == key) return pair.value;
+     Pair pair{};
+@@ -464,6 +531,42 @@ Value& ObjectEntry(Object& object, const std::string& key) {
+ 
+ extern "C" {
+ 
++
++void APS5_VABI _ZN3sce4Json14InitParameter2C2Ev(InitParameter2* self) {
++    if (!self) throw std::invalid_argument("sce::Json::InitParameter2: null self");
++    *self = InitParameter2{};
++}
++void APS5_VABI _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(
++    InitParameter2* self, const AllocParamRtti* allocator, void* context) {
++    if (!self) throw std::invalid_argument("sce::Json::setAllocatorRtti: null self");
++    self->allocator = allocator;
++    self->context = context;
++}
++void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter2* self, std::size_t size) {
++    if (!self) throw std::invalid_argument("sce::Json::setFileBufferSize: null self");
++    self->fileBufferSize = size;
++}
++int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void* self, const InitParameter2* parameter) {
++    (void)self;
++    if (!parameter) throw std::invalid_argument("sce::Json::initialize: null InitParameter2");
++    JsonAllocationPolicy policy;
++    if (parameter->allocator) {
++        policy = {*parameter->allocator, parameter->context};
++        if (!policy.callbacks.allocate || !policy.callbacks.deallocate)
++            throw std::invalid_argument("sce::Json::initialize: allocator needs allocate and deallocate callbacks");
++    }
++    // This implementation parses memory buffers only; do not accept a custom
++    // file buffering promise. Nonzero sizes are retained configuration and are
++    // irrelevant to the existing memory Parser API (there is no file parser).
++    std::lock_guard lock(allocationMutex);
++    allocationPolicy = policy;
++    return 0;
++}
++std::size_t APS5_VABI _ZNK3sce4Json6Object4sizeEv(const Object* self) {
++    if (!self || !self->items) throw std::invalid_argument("sce::Json::Object::size: unconstructed object");
++    return self->items->size();
++}
++
+ int APS5_VABI _ZN3sce4Json11InitializerC1Ev(void* self) {
+     (void)self;
+     return 0;
+@@ -482,6 +585,7 @@ int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_13InitParameterE(void*
+ 
+ int APS5_VABI _ZN3sce4Json11Initializer9terminateEv(void* self) {
+     (void)self;
++    { std::lock_guard lock(allocationMutex); allocationPolicy = {}; }
+     auto& state = State();
+     std::lock_guard lock(state.mutex);
+     state.callback = nullptr;
+@@ -506,7 +610,7 @@ void APS5_VABI _ZN3sce4Json12MemAllocatorD2Ev(void* self) {
+     *static_cast<void* const**>(self) = &JsonMemAllocatorVtable[2];
+ }
+ 
+-void APS5_VABI _ZN3sce4Json6StringC1Ev(String* self) { Construct(*self, std::string()); }
++void APS5_VABI _ZN3sce4Json6StringC1Ev(String* self) { Construct(*self, JsonText()); }
+ void APS5_VABI _ZN3sce4Json6StringC1EPKc(String* self, const char* text) {
+     if (text == nullptr) throw std::invalid_argument("sce::Json::String: null text");
+     Construct(*self, text);
+@@ -608,13 +712,13 @@ int APS5_VABI _ZN3sce4Json5Value3setEm(Value* self, std::uint64_t value) { SetTy
+ int APS5_VABI _ZN3sce4Json5Value3setEd(Value* self, double value) { SetType(NodeOf(*self), TypeReal); self->node->real = value; return 0; }
+ int APS5_VABI _ZN3sce4Json5Value3setEPKc(Value* self, const char* text) {
+     if (text == nullptr) throw std::invalid_argument("sce::Json::Value::set: null text");
+-    const std::string copy(text);
++    const JsonText copy(text);
+     SetType(NodeOf(*self), TypeString);
+     *self->node->string.text = copy;
+     return 0;
+ }
+ int APS5_VABI _ZN3sce4Json5Value3setERKNS0_6StringE(Value* self, const String* text) {
+-    const std::string copy(*text->text);
++    const JsonText copy(*text->text);
+     SetType(NodeOf(*self), TypeString);
+     *self->node->string.text = copy;
+     return 0;
+@@ -711,7 +815,7 @@ Object* APS5_VABI _ZN3sce4Json5Value11referObjectEv(Value* self) {
+     return &n.object;
+ }
+ int APS5_VABI _ZN3sce4Json5Value9serializeERNS0_6StringE(Value* self, String* out) {
+-    std::string text;
++    JsonText text;
+     Serialize(text, NodeOf(*self));
+     *out->text = std::move(text);
+     return 0;
+@@ -722,7 +826,7 @@ int APS5_VABI _ZNK3sce4Json5Value8toStringERNS0_6StringE(const Value* self, Stri
+         *out->text = *n.string.text;
+         return 0;
+     }
+-    std::string text;
++    JsonText text;
+     Serialize(text, n);
+     *out->text = std::move(text);
+     return 0;
+diff --git a/core/libs/prx/libSceMsgDialog.native/Export.cpp b/core/libs/prx/libSceMsgDialog.native/Export.cpp
+index 1423e8f..5882e29 100644
+--- a/core/libs/prx/libSceMsgDialog.native/Export.cpp
++++ b/core/libs/prx/libSceMsgDialog.native/Export.cpp
+@@ -1,4 +1,7 @@
+-#include <atomic>
++#include <mutex>
++#include <string>
++#include <cstring>
++#include <algorithm>
+ #include <cstdint>
+ #include <stdexcept>
+ #include <cstddef>
+@@ -6,9 +9,16 @@
+ #include "prx/libc/include/General.hpp"
+ 
+ namespace {
+-std::atomic<int> g_status{0};
++std::mutex g_lock;
++int g_status = 0;
++std::uint32_t g_progress = 0;
++std::string g_progressMessage;
+ 
++constexpr int COMMON_DIALOG_STATUS_RUNNING = 2;
+ constexpr int COMMON_DIALOG_STATUS_FINISHED = 3;
++constexpr int COMMON_DIALOG_ERROR_BUSY = static_cast<int>(0x80B80008u);
++constexpr int COMMON_DIALOG_ERROR_NOT_RUNNING = static_cast<int>(0x80B8000Bu);
++constexpr int COMMON_DIALOG_ERROR_INVALID_ARG = static_cast<int>(0x80B8000Au);
+ constexpr int COMMON_DIALOG_RESULT_OK = 0;
+ constexpr int COMMON_DIALOG_ERROR_NOT_INITIALIZED = static_cast<int>(0x80B80003u);
+ constexpr int COMMON_DIALOG_ERROR_NOT_FINISHED = static_cast<int>(0x80B80005u);
+@@ -21,7 +31,8 @@ extern "C" {
+ int SceMsgDialogNativeModuleLoaded_nid_no_patch = 1;
+ 
+ int APS5_VABI sceMsgDialogGetResult(MsgDialogResult* result) {
+- const int status = g_status.load();
++ std::lock_guard lock(g_lock);
++ const int status = g_status;
+  if (status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
+  if (result == nullptr) return COMMON_DIALOG_ERROR_ARG_NULL;
+  if (status != COMMON_DIALOG_STATUS_FINISHED) return COMMON_DIALOG_ERROR_NOT_FINISHED;
+@@ -32,34 +43,65 @@ int APS5_VABI sceMsgDialogGetResult(MsgDialogResult* result) {
+ }
+ 
+ int APS5_VABI sceMsgDialogInitialize(void) {
+-    int expected = 0;
+-    if (!g_status.compare_exchange_strong(expected, 1)) throw std::logic_error("sceMsgDialogInitialize: already initialized");
++    std::lock_guard lock(g_lock);
++    if (g_status != 0) return COMMON_DIALOG_ERROR_BUSY;
++    g_status = 1;
+     return 0;
+ }
+ 
+ int APS5_VABI sceMsgDialogOpen(const void* param) {
+- const int status = g_status.load();
++ std::lock_guard lock(g_lock);
++ const int status = g_status;
+  if (status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
+  if (param == nullptr) return COMMON_DIALOG_ERROR_ARG_NULL;
+- g_status = COMMON_DIALOG_STATUS_FINISHED;
++ if (status == COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_BUSY;
++ // Same established SDK layout as the non-native dialog adapter.
++ std::int32_t mode = 0;
++ std::memcpy(&mode, static_cast<const unsigned char*>(param) + 0x38, sizeof(mode));
++ g_progress = 0; g_progressMessage.clear();
++ g_status = mode == 2 ? COMMON_DIALOG_STATUS_RUNNING : COMMON_DIALOG_STATUS_FINISHED;
+  return 0;
+ }
+ 
+ int APS5_VABI sceMsgDialogTerminate(void) {
+-    int expected = 1;
+-    if (g_status.compare_exchange_strong(expected, 0)) return 0;
+-    expected = COMMON_DIALOG_STATUS_FINISHED;
+-    if (!g_status.compare_exchange_strong(expected, 0)) throw std::logic_error("sceMsgDialogTerminate: not initialized or still running");
++    std::lock_guard lock(g_lock);
++    if (g_status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
++    if (g_status == COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_BUSY;
++    g_status = 0; g_progress = 0; g_progressMessage.clear();
+     return 0;
+ }
+ 
+ int APS5_VABI sceMsgDialogUpdateStatus(void) {
+-    return g_status.load();
++    std::lock_guard lock(g_lock);
++    return g_status;
+ }
+-
+-APS5_EXPORT("CWVW78Qc3fI", sceMsgDialogUnknown00);
+-int APS5_VABI sceMsgDialogUnknown00(void) {
+-    NotImplemented_nid_no_patch("CWVW78Qc3fI");
++int APS5_VABI sceMsgDialogGetStatus(void) { return sceMsgDialogUpdateStatus(); }
++int APS5_VABI sceMsgDialogClose(void) {
++    std::lock_guard lock(g_lock);
++    if (g_status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
++    g_status = COMMON_DIALOG_STATUS_FINISHED;
++    return 0;
++}
++int APS5_VABI sceMsgDialogProgressBarInc(int target, std::uint32_t delta) {
++    std::lock_guard lock(g_lock);
++    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
++    if (target != 0) return COMMON_DIALOG_ERROR_INVALID_ARG;
++    g_progress += std::min(delta, 100u - g_progress);
++    return 0;
++}
++int APS5_VABI sceMsgDialogProgressBarSetValue(int target, std::uint32_t value) {
++    std::lock_guard lock(g_lock);
++    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
++    if (target != 0 || value > 100) return COMMON_DIALOG_ERROR_INVALID_ARG;
++    g_progress = value;
++    return 0;
++}
++int APS5_VABI sceMsgDialogProgressBarSetMsg(int target, const char* message) {
++    std::lock_guard lock(g_lock);
++    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
++    if (!message) return COMMON_DIALOG_ERROR_ARG_NULL;
++    if (target != 0) return COMMON_DIALOG_ERROR_INVALID_ARG;
++    g_progressMessage = message;
+     return 0;
+ }
+ 
+diff --git a/core/libs/prx/libSceNpCommerce/Export.cpp b/core/libs/prx/libSceNpCommerce/Export.cpp
+index 6d8f3f5..fac1bbc 100644
+--- a/core/libs/prx/libSceNpCommerce/Export.cpp
++++ b/core/libs/prx/libSceNpCommerce/Export.cpp
+@@ -1,6 +1,7 @@
+ #include <cstdint>
+ #include <cstddef>
+ #include <cstring>
++#include <atomic>
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/General.hpp"
+ 
+@@ -16,6 +17,7 @@ constexpr int COMMON_DIALOG_ERROR_NOT_FINISHED = static_cast<int>(0x80B80006u);
+ constexpr int COMMON_DIALOG_ERROR_ARG_NULL = static_cast<int>(0x80B80009u);
+ 
+ int g_status = COMMON_DIALOG_STATUS_NONE;
++std::atomic<int> g_storeIconLayout{0};
+ 
+ }
+ 
+@@ -74,4 +76,10 @@ int APS5_VABI sceNpCommerceShowPsStoreIcon(int pos) {
+  return 0;
+ }
+ 
++int APS5_VABI sceNpCommerceSetPsStoreIconLayout(int layout) {
++    // Configuration only. The existing offline store dialog stays cancelled.
++    g_storeIconLayout.store(layout, std::memory_order_relaxed);
++    return 0;
++}
++
+ }
+diff --git a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
+index 05fc693..687ee79 100644
+--- a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
++++ b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
+@@ -118,4 +118,22 @@ int APS5_VABI sceNpEntitlementAccessRequestConsumeUnifiedEntitlement(void) {
+  return SCE_NP_ERROR_SIGNED_OUT;
+ }
+ 
++
++int APS5_VABI sceNpEntitlementAccessGetEntitlementKey(uint32_t service_label, const NpUnifiedEntitlementLabel* label, void* key) {
++    (void)service_label;
++    if (!label || !key) return SCE_NP_ENTITLEMENT_ACCESS_ERROR_PARAMETER;
++    return SCE_NP_ERROR_SIGNED_OUT;
++}
++// Unavailable PSN request entry points intentionally do not inspect opaque request
++// structures or create successful asynchronous work. Polling fails too.
++int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfo(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfo(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfo(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++int APS5_VABI sceNpEntitlementAccessRequestConsumeServiceEntitlement(void) { return SCE_NP_ERROR_SIGNED_OUT; }
++
+ }
+diff --git a/core/libs/prx/libSceNpManager/Export.cpp b/core/libs/prx/libSceNpManager/Export.cpp
+index ca76483..79649fb 100644
+--- a/core/libs/prx/libSceNpManager/Export.cpp
++++ b/core/libs/prx/libSceNpManager/Export.cpp
+@@ -3,6 +3,7 @@
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/General.hpp"
+ #include <atomic>
++#include <mutex>
+ 
+ // PSN is not emulated: the user is reported as signed out and online queries fail.
+ static constexpr int SCE_NP_ERROR_INVALID_ARGUMENT = static_cast<int>(0x80550003);
+@@ -12,6 +13,9 @@ static constexpr int NP_POLL_ASYNC_FINISHED = 0;
+ static constexpr uint32_t NP_REACHABILITY_STATE_UNAVAILABLE = 0;
+ 
+ static std::atomic<int> g_nextRequest{1};
++static std::mutex g_reachabilityMutex;
++static void* g_reachabilityCallback = nullptr;
++static void* g_reachabilityUserdata = nullptr;
+ 
+ extern "C" {
+ 
+@@ -125,8 +129,10 @@ void APS5_VABI sceNpRegisterGamePresenceCallback(void* callback, void* userdata)
+ }
+ 
+ int APS5_VABI sceNpRegisterNpReachabilityStateCallback(void* callback, void* userdata) {
+-    (void)userdata;
+     if (!callback) return SCE_NP_ERROR_INVALID_ARGUMENT;
++    std::lock_guard lock(g_reachabilityMutex);
++    g_reachabilityCallback = callback;
++    g_reachabilityUserdata = userdata;
+     return 0;
+ }
+ 
+@@ -191,4 +197,12 @@ int APS5_VABI sceNpUnregisterPremiumEventCallback(void) {
+     return 0;
+ }
+ 
++
++int APS5_VABI sceNpUnregisterNpReachabilityStateCallback(void) {
++    std::lock_guard lock(g_reachabilityMutex);
++    g_reachabilityCallback = nullptr;
++    g_reachabilityUserdata = nullptr;
++    return 0;
++}
++
+ }
+diff --git a/core/libs/prx/libSceNpSessionSignaling/Export.cpp b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
+index d140181..82e391f 100644
+--- a/core/libs/prx/libSceNpSessionSignaling/Export.cpp
++++ b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
+@@ -83,4 +83,11 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
+     NotImplemented_nid_no_patch(__func__);
+     return 0;
+ }
++
++int APS5_VABI sceNpSessionSignalingRequestPrepare(uint32_t context_id, uint32_t* request_id) {
++    (void)context_id;
++    if (!request_id) return SCE_NP_SESSION_SIGNALING_ERROR_INVALID_ARGUMENT;
++    return SCE_NP_SESSION_SIGNALING_ERROR_UNAVAILABLE;
++}
++
+ }
+diff --git a/core/libs/prx/libSceNpTrophy2/src/Context.cpp b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
+index 097a8fe..ee02845 100644
+--- a/core/libs/prx/libSceNpTrophy2/src/Context.cpp
++++ b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include "prx/libSceNpTrophy2/include/NpTrophy2.hpp"
+ #include "prx/libc/include/General.hpp"
++#include "prx/libkernel/KernelErrors.hpp"
+ 
+ extern "C" {
+ 
+@@ -35,4 +36,13 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback() {
+     return 0;
+ }
+ 
++int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
++    return SCE_NP_TROPHY2_ERROR_ICON_FILE_NOT_FOUND;
++}
++
++int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
++    // Local compatibility result: no console overlay backend is available.
++    return SCE_KERNEL_ERROR_ENOSYS;
++}
++
+ }
+diff --git a/core/libs/prx/libSceSsl/Export.cpp b/core/libs/prx/libSceSsl/Export.cpp
+index 4cca48f..ef86a2b 100644
+--- a/core/libs/prx/libSceSsl/Export.cpp
++++ b/core/libs/prx/libSceSsl/Export.cpp
+@@ -73,4 +73,33 @@ int APS5_VABI sceSslGetMemoryPoolStats() {
+     return 0;
+ }
+ 
++
++int APS5_VABI sceSslGetNameEntryCount(int context, const void* name) {
++    (void)context;
++    return name ? ERROR_NOT_FOUND : ERROR_INVALID_ARG;
++}
++int APS5_VABI sceSslGetNameEntryInfo(int context, const void* name, int index, char* oid,
++    size_t oid_capacity, char* value, size_t value_capacity, size_t* value_length) {
++    (void)context;
++    if (!name || index < 0 || !oid || !oid_capacity || !value || !value_capacity || !value_length) return ERROR_INVALID_ARG;
++    return ERROR_NOT_FOUND;
++}
++int APS5_VABI sceSslFreeSslCertName(int context, void* name) {
++    (void)context;
++    return name ? ERROR_NOT_FOUND : 0; // Releasing an absent name is harmless.
++}
++void* APS5_VABI sceSslGetIssuerName(int context, const void* certificate) {
++    (void)context; (void)certificate;
++    return nullptr;
++}
++void* APS5_VABI sceSslGetSubjectName(int context, const void* certificate) {
++    (void)context; (void)certificate;
++    return nullptr;
++}
++int APS5_VABI sceSslGetPem(int context, const void* certificate, char* buffer, size_t* size) {
++    (void)context; (void)buffer;
++    if (!certificate || !size) return ERROR_INVALID_ARG;
++    return ERROR_NOT_FOUND;
++}
++
+ }
+diff --git a/core/libs/prx/libSceSystemService/Export.cpp b/core/libs/prx/libSceSystemService/Export.cpp
+index 01a6365..949795a 100644
+--- a/core/libs/prx/libSceSystemService/Export.cpp
++++ b/core/libs/prx/libSceSystemService/Export.cpp
+@@ -2,11 +2,15 @@
+ #include <cstdint>
+ #include <cstring>
+ #include <cstdlib>
++#include <atomic>
+ #include "prx/libc/include/Shutdown.hpp"
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/General.hpp"
++#include "prx/libkernel/KernelErrors.hpp"
+ #include "prx/libSceSystemService/SystemService.hpp"
+ 
++static std::atomic<bool> g_musicPlayerAllowed{true};
++
+ extern "C" {
+ 
+ int APS5_VABI sceSystemServiceLoadExec(const char* path, const char* const* arguments) {
+@@ -130,4 +134,26 @@ int APS5_VABI sceSystemServiceLaunchPlayerDialog(const void* param) {
+  return SYSTEM_SERVICE_OK;
+ }
+ 
++int APS5_VABI sceSystemServiceShowControllerSettings(void) {
++    // Local compatibility result: no console overlay backend is available.
++    return SCE_KERNEL_ERROR_ENOSYS;
++}
++
++int APS5_VABI sceSystemServiceOpenChallengeActivity(void) {
++    // Local compatibility result: no console overlay backend is available.
++    return SCE_KERNEL_ERROR_ENOSYS;
++}
++
++int APS5_VABI sceSystemServiceReenableMusicPlayer(void) {
++    // This controls local system-player permission, not game audio.
++    g_musicPlayerAllowed.store(true, std::memory_order_relaxed);
++    return SYSTEM_SERVICE_OK;
++}
++
++int APS5_VABI sceSystemServiceDisableMusicPlayer(void) {
++    // This controls local system-player permission, not game audio.
++    g_musicPlayerAllowed.store(false, std::memory_order_relaxed);
++    return SYSTEM_SERVICE_OK;
++}
++
+ }
+diff --git a/core/libs/prx/libSceUserService/Export.cpp b/core/libs/prx/libSceUserService/Export.cpp
+index 1695f45..80a350c 100644
+--- a/core/libs/prx/libSceUserService/Export.cpp
++++ b/core/libs/prx/libSceUserService/Export.cpp
+@@ -147,4 +147,11 @@ int APS5_VABI sceUserServiceGetPlatformPrivacyWs1(int32_t user_id, int32_t* valu
+     return 0;
+ }
+ 
++
++int APS5_VABI sceUserServiceGetAccessibilityZoomFollowFocus(int user_id, int32_t* enabled) {
++    if (!enabled || user_id != USER_SERVICE_INITIAL_USER_ID) return USER_SERVICE_ERROR_INVALID_ARGUMENT;
++    *enabled = 0; // The local user profile has accessibility zoom disabled.
++    return USER_SERVICE_OK;
++}
++
+ }
+diff --git a/core/libs/prx/libSceVideoOut/src/Output.cpp b/core/libs/prx/libSceVideoOut/src/Output.cpp
+index c595e30..ae5c642 100644
+--- a/core/libs/prx/libSceVideoOut/src/Output.cpp
++++ b/core/libs/prx/libSceVideoOut/src/Output.cpp
+@@ -270,4 +270,14 @@ int APS5_VABI sceVideoOutAdjustColor(int handle, const VideoOutColorSettings* se
+     LibcAwaitExit_nid_postfix();
+ }
+ 
++int APS5_VABI sceVideoOutVrrPegToFixedRate(void) {
++    // The current host output does not advertise VRR support.
++    return VIDEO_OUT_ERROR_UNSUPPORTED_OUTPUT_MODE;
++}
++
++int APS5_VABI sceVideoOutVrrUnpegFromFixedRate(void) {
++    // The current host output does not advertise VRR support.
++    return VIDEO_OUT_ERROR_UNSUPPORTED_OUTPUT_MODE;
++}
++
+ }
+diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
+index cf4c3a3..f33fb10 100644
+--- a/core/libs/prx/libkernel/File/src/Stdio.cpp
++++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
+@@ -35,10 +35,59 @@ static int NativeChmod(const std::filesystem::path& path, int mode) {
+ static int NativeFtruncate(int descriptor, std::int64_t length) {
+     return static_cast<int>(::_chsize_s(descriptor, length));
+ }
++static int NativeWindowsError() {
++    switch (GetLastError()) {
++    case ERROR_ACCESS_DENIED: errno = EACCES; break;
++    case ERROR_INVALID_HANDLE: errno = EBADF; break;
++    case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND: errno = ENOENT; break;
++    default: errno = EIO; break;
++    }
++    return -1;
++}
++static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
++    FILETIME values[2];
++    if (!times) {
++        GetSystemTimeAsFileTime(&values[0]); values[1] = values[0];
++    } else for (unsigned i = 0; i < 2; ++i) {
++        constexpr std::int64_t epoch = 11644473600LL;
++        if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000 || times[i].tv_sec < -epoch ||
++            times[i].tv_sec > static_cast<std::int64_t>(INT64_MAX / 10000000ULL) - epoch) {
++            errno = EINVAL; return -1;
++        }
++        const std::uint64_t ticks = static_cast<std::uint64_t>(times[i].tv_sec + epoch) * 10000000ULL +
++            static_cast<std::uint64_t>(times[i].tv_usec) * 10ULL;
++        values[i] = {static_cast<DWORD>(ticks), static_cast<DWORD>(ticks >> 32)};
++    }
++    return SetFileTime(handle, nullptr, &values[0], &values[1]) ? 0 : NativeWindowsError();
++}
+ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
+-    if (times == nullptr) return ::_wutime(path.wstring().c_str(), nullptr);
+-    struct _utimbuf values{static_cast<time_t>(times[0].tv_sec), static_cast<time_t>(times[1].tv_sec)};
+-    return ::_wutime(path.wstring().c_str(), &values);
++    HANDLE handle = CreateFileW(path.wstring().c_str(), FILE_WRITE_ATTRIBUTES,
++        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
++    if (handle == INVALID_HANDLE_VALUE) return NativeWindowsError();
++    const int result = NativeSetTimes(handle, times);
++    const int saved = errno;
++    CloseHandle(handle); errno = saved;
++    return result;
++}
++static int NativeFutimes(int descriptor, const KernelTimeval* times) {
++    if (const auto path = File::DirectoryDescriptorPath(descriptor); path) return NativeUtimes(*path, times);
++    if (descriptor < 0) { errno = EBADF; return -1; }
++    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
++    if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
++    return NativeSetTimes(handle, times);
++}
++static int NativeFchmod(int descriptor, std::uint16_t mode) {
++    if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
++        return NativeChmod(*path, mode & (_S_IREAD | _S_IWRITE));
++    if (descriptor < 0) { errno = EBADF; return -1; }
++    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
++    if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
++    FILE_BASIC_INFO basic{};
++    if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
++    if (mode & _S_IWRITE) basic.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
++    else basic.FileAttributes |= FILE_ATTRIBUTE_READONLY;
++    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
++    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
+ }
+ static int NativeFlock(int descriptor, int operation) {
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+@@ -108,6 +157,13 @@ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval*
+         {static_cast<time_t>(times[1].tv_sec), static_cast<suseconds_t>(times[1].tv_usec)}};
+     return ::utimes(path.c_str(), values);
+ }
++static int NativeFchmod(int descriptor, std::uint16_t mode) { return ::fchmod(descriptor, mode); }
++static int NativeFutimes(int descriptor, const KernelTimeval* times) {
++    if (!times) return ::futimes(descriptor, nullptr);
++    struct timeval values[2]{{static_cast<time_t>(times[0].tv_sec), static_cast<suseconds_t>(times[0].tv_usec)},
++        {static_cast<time_t>(times[1].tv_sec), static_cast<suseconds_t>(times[1].tv_usec)}};
++    return ::futimes(descriptor, values);
++}
+ static int NativeFlock(int descriptor, int operation) {
+     return ::flock(descriptor, operation);
+ }
+@@ -121,6 +177,7 @@ static std::int64_t NativePwrite(int descriptor, const void* buf, std::size_t nb
+ 
+ static constexpr int GUEST_ENOENT = 2;
+ static constexpr int GUEST_EIO = 5;
++static constexpr int GUEST_EBADF = 9;
+ static constexpr int GUEST_EFAULT = 14;
+ static constexpr int GUEST_EEXIST = 17;
+ static constexpr int GUEST_EINVAL = 22;
+@@ -487,4 +544,26 @@ int APS5_VABI sceKernelUtimes_nid_postfix(const char* path, const KernelTimeval*
+     return 0;
+ }
+ 
++int APS5_VABI sceKernelFchmod(int descriptor, std::uint16_t mode) {
++    if (descriptor >= GuestSockets::FirstDescriptor)
++        return SceErrorFromErrno(GuestSockets::IsOpen(descriptor) ? GUEST_EINVAL : GUEST_EBADF);
++    return NativeFchmod(descriptor, mode & 07777) == 0 ? 0 : SceErrorFromErrno(errno);
++}
++int APS5_VABI fchmod_nid_postfix(int descriptor, int mode) {
++    return PosixResult(sceKernelFchmod(descriptor, static_cast<std::uint16_t>(mode)));
++}
++int APS5_VABI utimes_nid_postfix(const char* path, const KernelTimeval* times) {
++    if (const int error = PathError(path)) return PosixFailure(error);
++    if (times) for (int i = 0; i < 2; ++i)
++        if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000) return PosixFailure(GUEST_EINVAL);
++    return PosixResult(sceKernelUtimes_nid_postfix(path, times));
++}
++int APS5_VABI futimes_nid_postfix(int descriptor, const KernelTimeval* times) {
++    if (descriptor >= GuestSockets::FirstDescriptor)
++        return PosixFailure(GuestSockets::IsOpen(descriptor) ? GUEST_EINVAL : GUEST_EBADF);
++    if (times) for (int i = 0; i < 2; ++i)
++        if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000) return PosixFailure(GUEST_EINVAL);
++    return NativeFutimes(descriptor, times) == 0 ? 0 : PosixResult(SceErrorFromErrno(errno));
++}
++
+ }
+diff --git a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
+index fc9fd94..a699867 100644
+--- a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
++++ b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
+@@ -5,6 +5,7 @@
+ #include "prx/libc/include/General.hpp"
+ #include "../include/Pthread.hpp"
+ #include "Common.hpp"
++#include "prx/libkernel/KernelErrors.hpp"
+ #include <thread>
+ 
+ extern "C" {
+@@ -84,4 +85,19 @@ void APS5_VABI pthread_yield_nid_postfix(void) {
+     std::this_thread::yield();
+ }
+ 
++
++int APS5_VABI scePthreadGetschedparam(Pthread thread, int* policy, KernelSchedParam* param) {
++    if (!policy || !param) return SCE_KERNEL_ERROR_EINVAL;
++    int priority = 0;
++    const int result = scePthreadGetprio(thread, &priority);
++    if (result != 0) return result;
++    *policy = GUEST_SCHED_FIFO;
++    param->sched_priority = priority;
++    return 0;
++}
++int APS5_VABI scePthreadSetschedparam(Pthread thread, int policy, const KernelSchedParam* param) {
++    if (!param || policy != GUEST_SCHED_FIFO) return SCE_KERNEL_ERROR_EINVAL;
++    return scePthreadSetprio(thread, param->sched_priority);
++}
++
+ }
+diff --git a/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp b/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
+index ee08990..0ef89de 100644
+--- a/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
++++ b/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
+@@ -2,4 +2,5 @@
+ namespace GuestSockets {
+ constexpr int FirstDescriptor = 0x10000000;
+ int Close(int descriptor);
++bool IsOpen(int descriptor);
+ }
+diff --git a/core/libs/prx/libkernel/Socket/src/Udp.cpp b/core/libs/prx/libkernel/Socket/src/Udp.cpp
+index 5462087..0fc610c 100644
+--- a/core/libs/prx/libkernel/Socket/src/Udp.cpp
++++ b/core/libs/prx/libkernel/Socket/src/Udp.cpp
+@@ -148,6 +148,11 @@ void GuestAddress(const sockaddr_storage& native, void* output, std::uint32_t* l
+ }
+ }
+ 
++bool GuestSockets::IsOpen(int descriptor) {
++    std::lock_guard lock(socketsMutex);
++    return sockets.count(descriptor) != 0;
++}
++
+ int GuestSockets::Close(int descriptor) {
+     std::lock_guard lock(socketsMutex);
+     return sockets.erase(descriptor) ? 0 : Fail(9);
+diff --git a/core/libs/tests/GuestCompatibilityApis.cpp b/core/libs/tests/GuestCompatibilityApis.cpp
+new file mode 100644
+index 0000000..d6c6523
+--- /dev/null
++++ b/core/libs/tests/GuestCompatibilityApis.cpp
+@@ -0,0 +1,88 @@
++#include "SceTypes.hpp"
++#include "prx/libSceUserService/UserService.hpp"
++#include "prx/libc/include/general/VabiMacros.hpp"
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <array>
++#include <cstring>
++extern "C" {
++int APS5_VABI sceSslInit_nid_postfix(std::uint64_t);
++int APS5_VABI sceSslGetNameEntryCount(int,const void*);
++int APS5_VABI sceSslGetNameEntryInfo(int,const void*,int,char*,std::size_t,char*,std::size_t,std::size_t*);
++int APS5_VABI sceSslGetPem(int,const void*,char*,std::size_t*);
++void* APS5_VABI sceSslGetIssuerName(int,const void*);
++void* APS5_VABI sceSslGetSubjectName(int,const void*);
++int APS5_VABI sceSslFreeSslCertName(int,void*);
++int APS5_VABI sceHttp2Init(int,int,std::size_t,int);
++int APS5_VABI sceHttp2Term(int);
++int APS5_VABI sceHttp2CookieFlush(int);
++int APS5_VABI sceNpEntitlementAccessGetEntitlementKey(std::uint32_t,const NpUnifiedEntitlementLabel*,void*);
++int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void);
++int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfo(void);
++int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfoList(void);
++int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfoList(void);
++int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfo(void);
++int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfo(void);
++int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfoList(void);
++int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfoList(void);
++int APS5_VABI sceNpEntitlementAccessRequestConsumeServiceEntitlement(void);
++int APS5_VABI sceNpSessionSignalingRequestPrepare(std::uint32_t,std::uint32_t*);
++int APS5_VABI sceNpUnregisterNpReachabilityStateCallback(void);
++int APS5_VABI sceUserServiceGetAccessibilityZoomFollowFocus(int,std::int32_t*);
++int APS5_VABI sceMsgDialogInitialize(void);
++int APS5_VABI sceMsgDialogOpen(const void*);
++int APS5_VABI sceMsgDialogGetStatus(void);
++int APS5_VABI sceMsgDialogClose(void);
++int APS5_VABI sceMsgDialogTerminate(void);
++int APS5_VABI sceMsgDialogProgressBarInc(int,std::uint32_t);
++int APS5_VABI sceMsgDialogProgressBarSetValue(int,std::uint32_t);
++int APS5_VABI sceMsgDialogProgressBarSetMsg(int,const char*);
++}
++static void Check(bool good,int line) { if(!good) { std::fprintf(stderr,"Compatibility API check failed at %d\n",line);std::abort(); } }
++#define CHECK(x) Check((x),__LINE__)
++int main() {
++    const int ssl=sceSslInit_nid_postfix(4096); CHECK(ssl>0);
++    char fake; char oid[8]="keep",value[8]="keep"; std::size_t size=123;
++    CHECK(sceSslGetNameEntryCount(ssl,nullptr)<0);
++    CHECK(sceSslGetNameEntryCount(ssl,&fake)<0);
++    CHECK(sceSslGetNameEntryInfo(ssl,&fake,0,oid,sizeof(oid),value,sizeof(value),&size)<0);
++    CHECK(size==123 && std::strcmp(oid,"keep")==0 && std::strcmp(value,"keep")==0);
++    CHECK(sceSslGetPem(ssl,&fake,nullptr,&size)<0 && size==123);
++    CHECK(!sceSslGetIssuerName(ssl,&fake) && !sceSslGetSubjectName(ssl,&fake));
++    CHECK(sceSslFreeSslCertName(ssl,nullptr)==0 && sceSslFreeSslCertName(ssl,&fake)<0);
++    const int http=sceHttp2Init(1,ssl,4096,2);CHECK(http>0);
++    CHECK(sceHttp2CookieFlush(http)==0 && sceHttp2CookieFlush(-1)<0);
++    CHECK(sceHttp2Term(http)==0 && sceHttp2CookieFlush(http)<0);
++    std::array<unsigned char,16> key;key.fill(0xaa);NpUnifiedEntitlementLabel label{};
++    CHECK(sceNpEntitlementAccessGetEntitlementKey(0,&label,key.data())<0);
++    for(auto byte:key) CHECK(byte==0xaa);
++    CHECK(sceNpEntitlementAccessGetEntitlementKey(0,nullptr,key.data())<0);
++    int (APS5_VABI *const requests[])()={sceNpEntitlementAccessRequestUnifiedEntitlementInfo,
++      sceNpEntitlementAccessPollUnifiedEntitlementInfo,sceNpEntitlementAccessRequestUnifiedEntitlementInfoList,
++      sceNpEntitlementAccessPollUnifiedEntitlementInfoList,sceNpEntitlementAccessRequestServiceEntitlementInfo,
++      sceNpEntitlementAccessPollServiceEntitlementInfo,sceNpEntitlementAccessRequestServiceEntitlementInfoList,
++      sceNpEntitlementAccessPollServiceEntitlementInfoList,sceNpEntitlementAccessRequestConsumeServiceEntitlement};
++    for(auto request:requests) CHECK(request()==static_cast<int>(0x80550006));
++    std::uint32_t id=0xdeadbeef;CHECK(sceNpSessionSignalingRequestPrepare(1,&id)<0 && id==0xdeadbeef);
++    CHECK(sceNpSessionSignalingRequestPrepare(1,nullptr)<0);
++    CHECK(sceNpUnregisterNpReachabilityStateCallback()==0);
++    std::int32_t zoom=-1; CHECK(sceUserServiceGetAccessibilityZoomFollowFocus(USER_SERVICE_INITIAL_USER_ID,&zoom)==0 && zoom==0);
++    CHECK(sceUserServiceGetAccessibilityZoomFollowFocus(-1,&zoom)<0);
++    CHECK(sceUserServiceGetAccessibilityZoomFollowFocus(USER_SERVICE_INITIAL_USER_ID,nullptr)<0);
++    CHECK(sceMsgDialogProgressBarSetValue(0,0)<0);
++    CHECK(sceMsgDialogInitialize()==0);
++    CHECK(sceMsgDialogOpen(nullptr)<0);
++    alignas(8) std::array<unsigned char,96> parameter{};std::int32_t mode=2;
++    std::memcpy(parameter.data()+0x38,&mode,sizeof(mode));
++    CHECK(sceMsgDialogOpen(parameter.data())==0 && sceMsgDialogGetStatus()==2);
++    CHECK(sceMsgDialogProgressBarSetValue(0,99)==0);
++    CHECK(sceMsgDialogProgressBarInc(0,0xffffffffu)==0);
++    CHECK(sceMsgDialogProgressBarSetValue(0,101)<0 && sceMsgDialogProgressBarSetValue(1,0)<0);
++    CHECK(sceMsgDialogProgressBarSetMsg(0,nullptr)<0 && sceMsgDialogProgressBarSetMsg(0,"Loading")==0);
++    CHECK(sceMsgDialogTerminate()<0 && sceMsgDialogClose()==0);
++    CHECK(sceMsgDialogGetStatus()==3 && sceMsgDialogProgressBarInc(0,1)<0);
++    CHECK(sceMsgDialogTerminate()==0 && sceMsgDialogGetStatus()==0);
++    std::puts("PASS offline service failures, immutable error outputs, context lifetime, accessibility and progress dialog lifecycle");
++}
+diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
+index d99ae96..9661c76 100644
+--- a/core/libs/tests/GuestFilesystem.cpp
++++ b/core/libs/tests/GuestFilesystem.cpp
+@@ -5,7 +5,14 @@
+ #include <filesystem>
+ #include <fstream>
+ #include <cstdio>
++#ifdef _WIN32
++#include <windows.h>
++#endif
+ extern "C" {
++int APS5_VABI fchmod_nid_postfix(int,int);
++int APS5_VABI sceKernelFchmod(int,unsigned short);
++int APS5_VABI futimes_nid_postfix(int,const KernelTimeval*);
++int APS5_VABI utimes_nid_postfix(const char*,const KernelTimeval*);
+ int APS5_VABI remove_nid_postfix(const char*);
+ int APS5_VABI rename_nid_postfix(const char*, const char*);
+ int APS5_VABI sceKernelChmod_nid_postfix(const char*, unsigned short);
+@@ -117,6 +124,37 @@ int main() {
+     const auto empty = root / "empty";
+     Require(std::filesystem::create_directory(empty));
+     Require(rmdir_nid_postfix(empty.string().c_str()) == 0 && !std::filesystem::exists(empty));
++    // Descriptor operations must survive rename and preserve microsecond times.
++    const auto timed = root / "timed.txt"; const auto moved = root / "timed-moved.txt";
++    { std::ofstream stream(timed); stream << "descriptor-owned file"; }
++    const int timedFD = open_nid_postfix(timed.string().c_str(), 2, 0600);
++    Require(timedFD >= 0 && rename_nid_postfix(timed.string().c_str(), moved.string().c_str()) == 0);
++    Require(fchmod_nid_postfix(timedFD, 0600) == 0);
++    const KernelTimeval times[2]{{1700000000,123456},{1700000001,654321}};
++    Require(futimes_nid_postfix(timedFD, times) == 0);
++    FileStat timedStat{}; Require(stat_nid_postfix(moved.string().c_str(), &timedStat) == 0);
++    Require(timedStat.st_mtim.tv_sec == 1700000001);
++#ifdef _WIN32
++    // Existing CRT stat truncates subsecond precision. Check the actual host
++    // file timestamp independently rather than relaxing the requested time.
++    WIN32_FILE_ATTRIBUTE_DATA attributes{};
++    Require(GetFileAttributesExW(moved.wstring().c_str(), GetFileExInfoStandard, &attributes));
++    const auto ticks = (static_cast<std::uint64_t>(attributes.ftLastWriteTime.dwHighDateTime) << 32) |
++        attributes.ftLastWriteTime.dwLowDateTime;
++    Require(ticks == (1700000001ULL + 11644473600ULL) * 10000000ULL + 6543210ULL);
++#else
++    Require(timedStat.st_mtim.tv_nsec == 654321000);
++#endif
++    const KernelTimeval invalidTimes[2]{{1700000000,-1},{1700000001,0}};
++    Require(futimes_nid_postfix(timedFD,invalidTimes) == -1 && *__error_nid_postfix() == 22);
++    Require(utimes_nid_postfix(moved.string().c_str(),times) == 0);
++    Require(utimes_nid_postfix(nullptr,times) == -1 && *__error_nid_postfix() == 14);
++    Require(utimes_nid_postfix(moved.string().c_str(),invalidTimes) == -1 && *__error_nid_postfix() == 22);
++    Require(close_nid_postfix(timedFD) == 0);
++    Require(fchmod_nid_postfix(-1,0600) == -1 && *__error_nid_postfix() == 9);
++    Require(sceKernelFchmod(-1,0600) == static_cast<int>(0x80020009));
++    Require(futimes_nid_postfix(-1,times) == -1 && *__error_nid_postfix() == 9);
++    Require(remove_nid_postfix(moved.string().c_str()) == 0);
+     Require(remove_nid_postfix(root.string().c_str()) == 0);
+     Require(!std::filesystem::exists(root));
+ }
+diff --git a/core/libs/tests/GuestJson2Initialization.cpp b/core/libs/tests/GuestJson2Initialization.cpp
+new file mode 100644
+index 0000000..db5e2b8
+--- /dev/null
++++ b/core/libs/tests/GuestJson2Initialization.cpp
+@@ -0,0 +1,79 @@
++#include "prx/libc/include/general/VabiMacros.hpp"
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <new>
++#include <stdexcept>
++struct Value { void* node; };
++struct Object { void* items; };
++struct JsonString { void* text; };
++struct AllocParam {
++    void* (APS5_VABI* allocate)(std::size_t, void*);
++    void (APS5_VABI* release)(void*, void*);
++    void (APS5_VABI* notify)(int, std::size_t, void*);
++};
++struct InitParameter { const AllocParam* allocator; void* context; std::size_t fileBuffer; };
++extern "C" {
++void APS5_VABI _ZN3sce4Json14InitParameter2C2Ev(InitParameter*);
++void APS5_VABI _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(InitParameter*, const AllocParam*, void*);
++void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter*, std::size_t);
++int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void*, const InitParameter*);
++int APS5_VABI _ZN3sce4Json11Initializer9terminateEv(void*);
++void APS5_VABI _ZN3sce4Json5ValueC1Ev(Value*);
++void APS5_VABI _ZN3sce4Json5ValueD1Ev(Value*);
++int APS5_VABI _ZN3sce4Json6Parser5parseERNS0_5ValueEPKcm(Value*, const char*, std::size_t);
++int APS5_VABI _ZN3sce4Json5Value9serializeERNS0_6StringE(Value*, JsonString*);
++void APS5_VABI _ZN3sce4Json6StringC1Ev(JsonString*);
++void APS5_VABI _ZN3sce4Json6StringD1Ev(JsonString*);
++const char* APS5_VABI _ZNK3sce4Json6String5c_strEv(const JsonString*);
++void APS5_VABI _ZN3sce4Json6ObjectC1Ev(Object*);
++void APS5_VABI _ZN3sce4Json6ObjectD1Ev(Object*);
++std::size_t APS5_VABI _ZNK3sce4Json6Object4sizeEv(const Object*);
++}
++static void Require(bool good, int line) { if (!good) { std::fprintf(stderr,"JSON2 initialization check failed at %d\n", line); std::abort(); } }
++#define CHECK(x) Require((x),__LINE__)
++struct Stats { int allocations=0, releases=0, failures=0; bool deny=false; };
++static void* APS5_VABI Allocate(std::size_t size, void* user) {
++    auto& s=*static_cast<Stats*>(user); if(s.deny) return nullptr;
++    ++s.allocations; return std::malloc(size);
++}
++static void APS5_VABI Release(void* memory, void* user) { ++static_cast<Stats*>(user)->releases; std::free(memory); }
++static void APS5_VABI Notify(int error, std::size_t size, void* user) {
++    CHECK(error==static_cast<int>(0x80848102) && size>0); ++static_cast<Stats*>(user)->failures;
++}
++int main() {
++    struct { InitParameter parameter; std::uint64_t canary=0xfedc123456789abcULL; } storage;
++    _ZN3sce4Json14InitParameter2C2Ev(&storage.parameter);
++    CHECK(!storage.parameter.allocator && !storage.parameter.context && !storage.parameter.fileBuffer);
++    CHECK(storage.canary==0xfedc123456789abcULL);
++    Stats stats; AllocParam callbacks{Allocate,Release,Notify};
++    _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(&storage.parameter,&callbacks,&stats);
++    _ZN3sce4Json14InitParameter217setFileBufferSizeEm(&storage.parameter,512);
++    CHECK(storage.parameter.fileBuffer==512);
++    CHECK(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(nullptr,&storage.parameter)==0);
++    callbacks={}; // initialization copied the temporary callback table
++    Value value{}; _ZN3sce4Json5ValueC1Ev(&value);
++    const char text[]="{\"long property with heap allocation\": [1, true, {\"other\": \"abcdefghijklmnopqrstuvwxyz0123456789\"}]}";
++    CHECK(_ZN3sce4Json6Parser5parseERNS0_5ValueEPKcm(&value,text,std::strlen(text))==0);
++    JsonString output{}; _ZN3sce4Json6StringC1Ev(&output);
++    CHECK(_ZN3sce4Json5Value9serializeERNS0_6StringE(&value,&output)==0);
++    CHECK(std::strstr(_ZNK3sce4Json6String5c_strEv(&output),"abcdefghijklmnopqrstuvwxyz0123456789"));
++    Object object{}; _ZN3sce4Json6ObjectC1Ev(&object);
++    CHECK(_ZNK3sce4Json6Object4sizeEv(&object)==0);
++    CHECK(stats.allocations>5);
++    CHECK(_ZN3sce4Json11Initializer9terminateEv(nullptr)==0);
++    // Outstanding storage must still be released by the original callback.
++    _ZN3sce4Json6ObjectD1Ev(&object); _ZN3sce4Json6StringD1Ev(&output); _ZN3sce4Json5ValueD1Ev(&value);
++    CHECK(stats.allocations==stats.releases);
++    callbacks={Allocate,Release,Notify};stats.deny=true;
++    CHECK(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(nullptr,&storage.parameter)==0);
++    bool oom=false; try { _ZN3sce4Json5ValueC1Ev(&value); } catch(const std::bad_alloc&) { oom=true; }
++    CHECK(oom && stats.failures==1 && !value.node);
++    callbacks.release=nullptr; bool invalid=false;
++    try { _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(nullptr,&storage.parameter); } catch(const std::invalid_argument&) { invalid=true; }
++    CHECK(invalid);
++    CHECK(_ZN3sce4Json11Initializer9terminateEv(nullptr)==0);
++    std::puts("PASS JSON2 allocator callbacks, temporary configuration, live object cleanup, parsing and allocation failure");
++}
+diff --git a/core/libs/tests/GuestPthreadAttr.cpp b/core/libs/tests/GuestPthreadAttr.cpp
+index 74368d7..ab1b962 100644
+--- a/core/libs/tests/GuestPthreadAttr.cpp
++++ b/core/libs/tests/GuestPthreadAttr.cpp
+@@ -60,7 +60,21 @@ static void* APS5_VABI Worker(void* arg) {
+     return nullptr;
+ }
+ 
++extern "C" {
++Pthread APS5_VABI scePthreadSelf();
++int APS5_VABI scePthreadGetschedparam(Pthread,int*,KernelSchedParam*);
++int APS5_VABI scePthreadSetschedparam(Pthread,int,const KernelSchedParam*);
++}
+ int main() {
++    int policy=-1;KernelSchedParam scheduling{};
++    const auto self=scePthreadSelf();
++    Require(scePthreadGetschedparam(self,&policy,&scheduling)==SCE_OK && policy==1);
++    Require(scePthreadSetschedparam(self,policy,&scheduling)==SCE_OK);
++    Require(scePthreadGetschedparam(self,nullptr,&scheduling)==static_cast<int>(0x80020016));
++    Require(scePthreadSetschedparam(self,99,&scheduling)==static_cast<int>(0x80020016));
++    const auto before=policy;
++    Require(scePthreadGetschedparam(nullptr,&policy,&scheduling)<0 && policy==before);
++
+     PthreadAttr attr = nullptr;
+     Require(scePthreadAttrInit(&attr) == SCE_OK);
+     Require(scePthreadAttrSetinheritsched(&attr, EXPLICIT_SCHED) == SCE_OK);

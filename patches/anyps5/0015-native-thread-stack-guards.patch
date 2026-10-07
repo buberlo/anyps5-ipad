@@ -1,0 +1,22 @@
+diff --git a/core/libs/prx/libkernel/Pthread/src/Thread.cpp b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
+index 3dc69cba..585633f7 100644
+--- a/core/libs/prx/libkernel/Pthread/src/Thread.cpp
++++ b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
+@@ -210,9 +210,15 @@ int APS5_VABI scePthreadCreate(Pthread* thread, const PthreadAttr* attr, Pthread
+ #ifdef _WIN32
+     SYSTEM_INFO system{};
+     GetSystemInfo(&system);
+-    const std::size_t nativeStack = (p->stackSize + system.dwPageSize - 1) / system.dwPageSize * system.dwPageSize;
+-    if (p->stackSize < 16384 || nativeStack > std::numeric_limits<unsigned>::max())
++    // Wine includes its no-access and guard pages in the requested native
++    // allocation. Keep them below the guest's fully writable stack slice.
++    // Allocation granularity also covers Darwin's larger host-page guards.
++    const std::size_t padding = std::max<std::size_t>(2ull * system.dwPageSize, system.dwAllocationGranularity);
++    if (!system.dwPageSize || p->stackSize < 16384 ||
++        padding + system.dwPageSize - 1 > std::numeric_limits<unsigned>::max() ||
++        p->stackSize > std::numeric_limits<unsigned>::max() - padding - (system.dwPageSize - 1))
+         throw std::runtime_error("scePthreadCreate: invalid Windows stack size");
++    const std::size_t nativeStack = (p->stackSize + padding + system.dwPageSize - 1) / system.dwPageSize * system.dwPageSize;
+     auto native = std::make_unique<NativeThreadArgs>(NativeThreadArgs{std::move(args), start.get_future(), {}});
+     auto initialized = native->initialized.get_future();
+     const auto handle = _beginthreadex(nullptr, static_cast<unsigned>(nativeStack), StartNativeThread, native.get(), 0, nullptr);

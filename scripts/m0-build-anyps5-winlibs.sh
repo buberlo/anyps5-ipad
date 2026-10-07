@@ -110,7 +110,9 @@ build="$root/build/anyps5-winlibs"
     -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
     -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES="$root/scripts/cmake/mingw-objcopy.cmake" \
-    -DBUILD_TESTING=OFF \
+    -DBUILD_TESTING="${APS5_HLE_TESTS:-OFF}" \
+    -DAPS5_ENABLE_TIMING_LOG=OFF \
+    -DAPS5_AGC_CREATE_LOG=OFF \
     -DAPS5_SLIM=ON
 jobs="${JOBS:-}"
 if [ -z "$jobs" ]; then
@@ -121,6 +123,22 @@ if [ -z "$jobs" ]; then
     fi
 fi
 "$cmake_bin" --build "$build" --target relinker nid_patcher "${libraries[@]}" --parallel "$jobs"
+
+if [ "${APS5_HLE_TESTS:-OFF}" = ON ]; then
+    tests=(guest_json_tests guest_json2_initialization_tests guest_compatibility_api_tests
+        guest_filesystem_tests guest_pthread_attr_tests windows_exception_tests)
+    "$cmake_bin" --build "$build" --target "${tests[@]}" --parallel "$jobs"
+    # Run actual linked, unpatched HLE contracts; the game's assets never enter tests.
+    export PATH="$build/core/libs/libs/unpatched:$build/tests:$PATH"
+    # CPU/API tests use a small lazy arena; this does not qualify a game's map.
+    export APS5_GUEST_ARENA_LAZY="${APS5_GUEST_ARENA_LAZY:-1}"
+    export APS5_GUEST_ARENA_BASE="${APS5_GUEST_ARENA_BASE:-0x200000000}"
+    export APS5_GUEST_ARENA_SIZE="${APS5_GUEST_ARENA_SIZE:-0x100000000}"
+    export APS5_GUEST_ARENA_CHUNK="${APS5_GUEST_ARENA_CHUNK:-0x10000000}"
+    "$cmake_bin" -E chdir "$build" ctest --output-on-failure \
+        -R '^(guest_json|guest_json2_initialization|guest_compatibility_apis|guest_filesystem|guest_pthread_attr)$'
+    "$build/tests/windows_exception_tests.exe"
+fi
 
 for library in "${libraries[@]}"; do
     prx="$build/core/libs/libs/unpatched/$library.prx"

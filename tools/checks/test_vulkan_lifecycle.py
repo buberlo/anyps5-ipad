@@ -8,7 +8,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 source = (root / "upstreams/Madeira/build/win32u-unix/vulkan_ios.c").read_text()
-start = source.index('#include "vulkan_lifecycle.h"')
+start = source.index('#include "aps5_display_timing.h"')
 end = source.index('\n#endif', start)
 loader_start = source.rindex('static void *madeira_vk_dlsym_ios(')
 loader_end = source.index('\n/* A Wine HWND', loader_start)
@@ -64,6 +64,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(VkDevice d,const VkAcquire
 VKAPI_ATTR void VKAPI_CALL vkDestroyDevice(VkDevice d,const VkAllocationCallbacks *a) {
  (void)a;assert(d==(VkDevice)(uintptr_t)0x1234);atomic_fetch_add(&destroyed,1);
 }
+VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(VkPhysicalDevice p,const char *n,uint32_t *c,VkExtensionProperties *e) {
+ (void)p;(void)n;(void)e;*c=0;return VK_SUCCESS;
+}
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice d,const char *n) { (void)d;(void)n;return NULL; }
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(VkDevice d,const VkSwapchainCreateInfoKHR *i,const VkAllocationCallbacks *a,VkSwapchainKHR *s) {
+ (void)d;(void)i;(void)a;(void)s;return VK_ERROR_INITIALIZATION_FAILED;
+}
+VKAPI_ATTR void VKAPI_CALL vkDestroySwapchainKHR(VkDevice d,VkSwapchainKHR s,const VkAllocationCallbacks *a) { (void)d;(void)s;(void)a; }
 static void other_proc(void) {}
 static PFN_vkVoidFunction VKAPI_CALL fake_get(VkDevice d,const char *n) {
  (void)d;return !strcmp(n,"absent")?NULL:other_proc;

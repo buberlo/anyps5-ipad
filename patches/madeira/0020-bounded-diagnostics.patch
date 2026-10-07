@@ -1,0 +1,267 @@
+diff --git a/build/ntdll-unix/server_ios.c b/build/ntdll-unix/server_ios.c
+--- a/build/ntdll-unix/server_ios.c
++++ b/build/ntdll-unix/server_ios.c
+@@ -34,6 +34,7 @@
+ #include <stdio.h>
+ #include <sys/time.h>
+ #include <time.h>
++#include "wine/madeira_diagnostics.h"
+ /* From signal_arm64_ios.c — written by __wine_syscall_dispatcher at entry */
+ extern volatile uint64_t g_wine_dispatcher_x18;
+ extern volatile uint64_t g_wine_dispatcher_count;
+@@ -822,7 +823,7 @@
+ #define ML979_GRAIN   0x40ull        /* 64-byte buckets */
+ #define ML979_MAXTHREADS 12          /* guest threads tracked per profile */
+ 
+-static void ios_guest_rip_profile( int gen )
++static void ios_guest_rip_profile( int gen, double diagnostic_deadline )
+ {
+     extern uint64_t ios_native_rip_from_hostpc( uint64_t, uint64_t, const char ** );
+     struct { uint64_t base; unsigned n; } b[ML979_BUCKETS];
+@@ -896,7 +897,7 @@
+     struct { uint64_t key; unsigned n; } ib[48], xnb[48], jb[64]; int nib = 0, nnb = 0, njb = 0;   /* ml1124: jb = JIT host pc /64 */
+     memset( rb, 0, sizeof(rb) ); memset( hb, 0, sizeof(hb) );
+     memset( b, 0, sizeof(b) );
+-    for (pass = 0; pass < ML979_PASSES; pass++) {
++    for (pass = 0; pass < ML979_PASSES && madeira_diagnostics_now() < diagnostic_deadline; pass++) {
+         int t;
+         for (t = 0; t < ntg; t++) {
+             arm_thread_state64_t st; mach_msg_type_number_t cnt = ARM_THREAD_STATE64_COUNT;
+@@ -1487,6 +1488,7 @@
+ 
+ static void ios_xprobe_main( void )
+ {
++    const double diagnostic_deadline = madeira_diagnostics_deadline();
+     static struct ios_xp_row rows[1024];
+     mach_timebase_info_data_t tb;
+     struct rusage_info_v6 ru, pru;
+@@ -1506,12 +1508,13 @@
+                     nlev, n0, n1, ru_rc, ru_rc ? errno : 0, tb.numer, tb.denom );
+     t_start = t_prev = mach_absolute_time();
+     memset( &ppe, 0, sizeof(ppe) );
+-    for (;;)
++    while (madeira_diagnostics_now() < diagnostic_deadline)
+     {
+         thread_act_array_t th = NULL; mach_msg_type_number_t nth = 0, k;
+         uint64_t now; double dt_ms, sum_thr_ms = 0; int nrows = 0, i, j;
+ #define XP_MS(ticks) ((double)(ticks) * tb.numer / tb.denom / 1e6)
+         usleep( 250000 );
++        if (madeira_diagnostics_now() >= diagnostic_deadline) break;
+         now = mach_absolute_time();
+         dt_ms = XP_MS( now - t_prev );
+         gen++;
+@@ -1696,14 +1699,16 @@
+ }
+ static void ios_wprof_main( void )
+ {
++    const double diagnostic_deadline = madeira_diagnostics_deadline();
+     static struct ios_wp_b leaf[400], inc[300], unx[200], cls[8];
+     if (ios_ts_tsd_off < 0) ios_ts_calibrate();
+-    for (;;)
++    while (madeira_diagnostics_now() < diagnostic_deadline)
+     {
+         thread_act_array_t th = NULL; mach_msg_type_number_t nth = 0, k;
+         mach_port_t tw[4]; uint64_t tw_teb[4]; int ntw = 0, s, i;
+         int nleaf = 0, ninc = 0, nunx = 0, ncls = 0; unsigned total = 0, walked = 0;
+         sleep( 15 );
++        if (madeira_diagnostics_now() >= diagnostic_deadline) break;
+         if (task_threads( mach_task_self(), &th, &nth ) != KERN_SUCCESS) continue;
+         for (k = 0; k < nth; k++)
+         {
+@@ -1719,7 +1724,7 @@
+         }
+         vm_deallocate( mach_task_self(), (vm_address_t)th, nth * sizeof(*th) );
+         if (!ntw) continue;
+-        for (s = 0; s < 3000; s++)
++        for (s = 0; s < 3000 && madeira_diagnostics_now() < diagnostic_deadline; s++)
+         {
+             int t;
+             for (t = 0; t < ntw; t++)
+@@ -1779,13 +1784,15 @@
+ 
+ static void ios_thread_sampler_main(void)
+ {
++    const double diagnostic_deadline = madeira_diagnostics_deadline();
+     int gen = 0;
+     ios_ts_calibrate();
+     wine_log_write("[thread-sample] ml876 armed (task-wide: burst of 4 passes / 250 ms every 20 s)");
+-    for (;;) {
++    while (madeira_diagnostics_now() < diagnostic_deadline) {
+         int b;
+         sleep(20);
+-        for (b = 0; b < 4; b++) { ios_thread_sampler_pass(b); usleep(250000); }
++        if (madeira_diagnostics_now() >= diagnostic_deadline) break;
++        for (b = 0; b < 4 && madeira_diagnostics_now() < diagnostic_deadline; b++) { ios_thread_sampler_pass(b); usleep(250000); }
+         wine_log_write("[thread-sample] ml876 burst done");
+         {   /* ml1115: alert (futex) traffic since the last burst, per second */
+             extern volatile long long ios_alert_wakes, ios_alert_waits, ios_qpc_syscalls, ios_affinity_sets; extern volatile int ios_srv_req_count;
+@@ -1817,7 +1824,7 @@
+         /* ml979: profile the guest every third burst (~once a minute). Two
+          * successive profiles are what distinguish a loop from a sweep: a
+          * sweep's span and bucket set move, a loop's do not. */
+-        ++gen; ios_guest_rip_profile( gen );   /* ml1123: every burst (was every third) */
++        ++gen; if (madeira_diagnostics_now() < diagnostic_deadline) ios_guest_rip_profile( gen, diagnostic_deadline );   /* ml1123: every burst (was every third) */
+     }
+ }
+ 
+@@ -4478,13 +4485,16 @@
+         ERR("signal_start_thread: teb=%p peb=%p TransferAddress=%p suspend=%d\n",
+             NtCurrentTeb(), peb, ios_cur_image_info()->TransferAddress, suspend);
+ 
+-        /* Watchdog: suspend thread and sample registers at 2s and 4s */
+-        {
++        /* Register sampling is diagnostic work, never a gameplay watchdog. */
++        if (madeira_diagnostics_enabled("MADEIRA_THREAD_SAMPLER"))
++        {
++            const double diagnostic_deadline = madeira_diagnostics_deadline();
+             pthread_t wine_pthread = pthread_self();
+             mach_port_t wine_mach_thread = pthread_mach_thread_np(wine_pthread);
+             uint64_t watchdog_teb_addr = (uint64_t)(uintptr_t)NtCurrentTeb();
+ 
+             void (^sample_thread)(int secs) = ^(int secs) {
++                if (madeira_diagnostics_now() >= diagnostic_deadline) return;
+                 int kill_ret = pthread_kill(wine_pthread, 0);
+                 wine_log_write("[Wine WATCHDOG %ds] thread alive=%d (0=yes)", secs, kill_ret);
+ 
+@@ -4559,7 +4569,7 @@
+         /* iOS-Madeira 2026-07-03 sampling profiler for the 30 FPS hunt.
+          * Every prior frame-cost theory (L1 misses, drawable stalls, DXMT
+          * encode) was eliminated by measurement; this samples the game
+-         * thread's PC at ~500Hz forever and prints a 256-byte-bucket
++         * thread's PC at ~500Hz and prints a 256-byte-bucket
+          * histogram every 4096 samples (~10s). Buckets land in one of:
+          * JIT pool (guest blocks / dispatcher / module copies), app binary
+          * (unix side), or elsewhere — mapping the hot buckets tells us
+@@ -4568,20 +4578,23 @@
+         /* ml875 [thread-sample]: ONE task-wide sampler (ml873 armed seven, one
+          * per pseudo-process, each suspending the others' threads). Body in
+          * ios_thread_sampler_main() above. */
+-        if (__sync_bool_compare_and_swap(&ios_ts_armed, 0, 1))
+-        {
+-            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_thread_sampler_main(); });
+-            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_xprobe_main(); });   /* ml1128 */
+-            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_wprof_main(); });   /* ml1129 */
+-        }
+-        if (!getenv("MADEIRA_QUIET"))
+-        {
+-            /* iOS-Madeira 2026-07-05 quiet mode: the sampler thread_suspends
+-             * the game thread ~500x/s (each suspend+get_state+resume steals
+-             * wall time and adds jitter) — a few %% of frame time plus heat,
+-             * and heat is what caps ProMotion at 60. MADEIRA_QUIET (set in
+-             * WineProcessBridge.m) skips the profiler entirely; comment the
+-             * setenv out for diagnostic sessions. */
++        if ((madeira_diagnostics_enabled("MADEIRA_THREAD_SAMPLER") ||
++             madeira_diagnostics_enabled("MADEIRA_XPROBE") ||
++             madeira_diagnostics_enabled("MADEIRA_WPROF")) &&
++            __sync_bool_compare_and_swap(&ios_ts_armed, 0, 1))
++        {
++            if (madeira_diagnostics_enabled("MADEIRA_THREAD_SAMPLER"))
++                dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_thread_sampler_main(); });
++            if (madeira_diagnostics_enabled("MADEIRA_XPROBE"))
++                dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_xprobe_main(); });
++            if (madeira_diagnostics_enabled("MADEIRA_WPROF"))
++                dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ ios_wprof_main(); });
++        }
++        if (madeira_diagnostics_enabled("MADEIRA_LEGACY_PROFILER"))
++        {
++            /* Suspending a game thread ~500 times/second disturbs frame time.
++             * This legacy profiler is opt-in and bounded like the other samplers;
++             * MADEIRA_QUIET alone never controlled all diagnostic workers. */
+             pthread_t prof_pthread = pthread_self();
+             mach_port_t prof_thread_initial = pthread_mach_thread_np(prof_pthread);
+             dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+@@ -4618,8 +4631,9 @@
+                  * suspending the task (StikDebug death/timeout), not a wedge.
+                  * A 2ms sleep that takes >3s = the task was stopped; log the
+                  * exact wall gap so freeze reports self-diagnose. */
++                const double diagnostic_deadline = madeira_diagnostics_deadline();
+                 uint64_t susp_last_ns = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
+-                for (;;) {
++                while (madeira_diagnostics_now() < diagnostic_deadline) {
+                     usleep(2000);
+                     {
+                         uint64_t now_ns = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
+@@ -4777,6 +4791,7 @@
+                         for (i = 0; i < PROF_SLOTS; i++) prof_lr_counts[i] >>= 1;
+                     }
+                 }
++                if (prof_held != MACH_PORT_NULL) mach_port_deallocate(mach_task_self(), prof_held);
+             });
+         }
+     }
+diff --git a/app/Madeira/Winios/Winios.m b/app/Madeira/Winios/Winios.m
+--- a/app/Madeira/Winios/Winios.m
++++ b/app/Madeira/Winios/Winios.m
+@@ -35,6 +35,7 @@
+ /* The window census struct is shared with Swift through this header;
+  * including it here keeps both sides' definitions the same. */
+ #include "Winios.h"
++#include "../../../../wine/include/wine/madeira_diagnostics.h"
+ 
+ /* csops syscall — CS_DEBUGGED is the flag StikDebug JIT rides on. Declared by
+  * hand for the same reason JITAllocator.c does: <sys/codesign.h> is not in the
+@@ -1581,10 +1582,14 @@
+         seqMinDim = 200;      /* skip taskbar/tooltip-sized windows */
+     }
+ 
++    const int surfaceDiagnostics = madeira_diagnostics_enabled("MADEIRA_SURFACE_DIAGNOSTICS");
++    static int sentinelMode = -1;
++    if (sentinelMode < 0) sentinelMode = getenv("MADEIRA_SURF_SENTINEL") != NULL;
+     unsigned mycnt = 0, dumpIdx = 0;
+     BOOL wantDump = NO;
++    int s = -1;
++    if (surfaceDiagnostics || seqFrames > 0 || sentinelMode) {
+     pthread_mutex_lock(&seq_lock);
+-    int s = -1;
+     for (int i = 0; i < seq_used; i++) if (seq[i].hwnd == hwnd) { s = i; break; }
+     if (s < 0 && seq_used < WINIOS_SEQ_SLOTS) { s = seq_used++; seq[s].hwnd = hwnd; }
+     if (s >= 0) {
+@@ -1606,6 +1611,7 @@
+         }
+     }
+     pthread_mutex_unlock(&seq_lock);
++    }
+ 
+     if (wantDump) {
+         winios_dump_surface_named(data, sw, sh, stride,
+@@ -1671,8 +1677,7 @@
+      * surface exactly as Chromium left it (surviving sentinels included).
+      * Writes go to our own DIB while wine holds the surface lock, and only
+      * ever to pixels that are currently invisible black. */
+-    static int sentinelMode = -1;
+-    if (sentinelMode < 0) sentinelMode = getenv("MADEIRA_SURF_SENTINEL") != NULL;
++
+     if (sentinelMode && s >= 0 && sw >= 400 && sh >= 400 && seq[s].sent_rounds < 10) {
+         const uint32_t SENT = 0x01FF00FFu;      /* B=FF G=00 R=FF A=01 */
+         uint32_t *px = (uint32_t *)(uintptr_t)bits;
+@@ -1697,8 +1702,8 @@
+         fflush(stderr);
+     }
+ 
+-    if (mycnt <= 16 || (mycnt % 200) == 0 ||
+-        (sw >= 400 && sh >= 400 && mycnt <= 2000)) {
++    if (surfaceDiagnostics && (mycnt <= 16 || (mycnt % 200) == 0 ||
++        (sw >= 400 && sh >= 400 && mycnt <= 2000))) {
+         /* ml504: bits pointer + content signature per present.
+          *
+          * ml503 showed ~200k pixels changing across the WHOLE window while
+diff --git a/app/Madeira/FEXBridge.mm b/app/Madeira/FEXBridge.mm
+--- a/app/Madeira/FEXBridge.mm
++++ b/app/Madeira/FEXBridge.mm
+@@ -3,6 +3,7 @@
+ 
+ #include "FEXBridge.h"
+ #include "JITAllocator.h"
++#include "../../../wine/include/wine/madeira_diagnostics.h"
+ 
+ // Xcode defines DEBUG=1 in debug builds which conflicts with FEX's LogMan::DEBUG enum
+ #ifdef DEBUG
+@@ -341,6 +342,8 @@
+ 
+ // LogManager handler for FEX's internal logging
+ static void FEXLogHandler(LogMan::DebugLevels Level, const char *Message) {
++    if ((Level == LogMan::DEBUG || Level == LogMan::INFO) &&
++        !madeira_diagnostics_enabled("MADEIRA_FEX_LOG")) return;
+     fex_log("[FEXCore:%s] %s", LogMan::DebugLevelStr(Level), Message);
+ }
+ 

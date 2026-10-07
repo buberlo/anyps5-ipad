@@ -1,0 +1,139 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
+index 6ce0b2d5..0e90ee38 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
+@@ -6,6 +6,8 @@
+ #include <cstddef>
+ #include <cstdint>
+ #include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <iomanip>
+ #include <locale>
+ #include <map>
+@@ -30,14 +32,26 @@ public:
+         std::uint64_t bytes = 0;
+     };
+ 
++    // Preserve the frame identity/completion contract with profiling disabled;
++    // skip metric maps, locks, timestamps and report construction on that path.
++    static bool Enabled() {
++        static const bool enabled = [] {
++            const char* value = std::getenv("APS5_FRAME_TIMING");
++            return APS5_ENABLE_TIMING_LOG || (value != nullptr && std::strcmp(value, "1") == 0);
++        }();
++        return enabled;
++    }
++
+     explicit FrameTiming(std::uint64_t id) : id(id) {}
+ 
+     Metric* Get(const char* scope, const char* stage) {
++        if (!Enabled()) return nullptr;
+         std::lock_guard lock(mutex);
+         return &metrics[{scope, stage}];
+     }
+ 
+     void Add(Metric* metric, Clock::duration elapsed, std::uint64_t bytes = 0) {
++        if (metric == nullptr) return;
+         std::lock_guard lock(mutex);
+         metric->total += elapsed;
+         metric->maximum = std::max(metric->maximum, elapsed);
+@@ -69,6 +83,7 @@ public:
+     }
+ 
+     Clock::time_point FlipReached() {
++        if (!Enabled()) return {};
+         std::lock_guard lock(mutex);
+         return flipReached;
+     }
+@@ -89,6 +104,7 @@ public:
+     // At the presentation's blit: the batches ahead of it, the newest batch's vkQueueSubmit time
+     // and the blit's own, both measured from the flip packet.
+     void NoteBlit(std::uint64_t atBlit, Clock::time_point lastSubmitted, Clock::time_point blitSubmitted) {
++        if (!Enabled()) return;
+         std::lock_guard lock(mutex);
+         batchesAtBlit = atBlit;
+         if (flipReached == Clock::time_point{}) return;
+@@ -101,6 +117,7 @@ public:
+     // have their completion record by this present (VulkanDevice's SettleRetired: usually one
+     // present later than the retire), the GPU's busy time and idle gaps over those batches.
+     void NoteRetired(std::uint64_t afterFlip, double busyMs, double gapMs) {
++        if (!Enabled()) return;
+         std::lock_guard lock(mutex);
+         batchesAfterFlip += afterFlip;
+         gpuBusyMs += busyMs;
+@@ -108,6 +125,7 @@ public:
+     }
+ 
+     void Print(std::uint32_t outputHandle, std::int32_t buffer, std::int64_t argument, Clock::time_point finished, Clock::duration interval) {
++        if (!Enabled()) return;
+         std::lock_guard lock(mutex);
+         if (firstSerial == 0 || flipSerial == 0) throw std::runtime_error("Frame timing: incomplete submission lineage");
+         std::ostringstream output;
+@@ -139,7 +157,8 @@ public:
+             if (metric.bytes != 0) output << ',' << metric.bytes;
+             output << ')';
+         }
+-        APS5_LOG_TIMING("%s", output.str().c_str());
++        // Runtime opt-in must also work in a build with timing logging off.
++        APS5_LOG_OUT("%s", output.str().c_str());
+     }
+ 
+ private:
+@@ -192,11 +211,11 @@ private:
+ 
+ class PerformanceTimer {
+ public:
+-    explicit PerformanceTimer(const char* scope) : frame(PerformanceContext::Current()), scope(scope) {
++    explicit PerformanceTimer(const char* scope) : frame(FrameTiming::Enabled() ? PerformanceContext::Current() : nullptr), scope(scope) {
+         if (frame != nullptr) {
+             total = frame->Get(scope, "total");
+         }
+-        start = Clock::now();
++        if (frame != nullptr) start = Clock::now();
+         previous = start;
+     }
+ 
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
+index 80355fc7..dc08ea09 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
+@@ -16,13 +16,14 @@ namespace AgcDriver::DriverDetail {
+ 
+ template <typename TWork>
+ void Driver::timed(double WorkerProfile::*bucket, TWork&& work) {
++    static const bool report = std::getenv("APS5_PROFILE_DRAW") != nullptr;
++    if (!report) { work(); return; }
+     static thread_local WorkerProfile profile;
+     const auto begin = std::chrono::steady_clock::now();
+     work();
+     const auto end = std::chrono::steady_clock::now();
+     profile.*bucket += std::chrono::duration<double, std::milli>(end - begin).count();
+-    static const bool report = std::getenv("APS5_PROFILE_DRAW") != nullptr;
+-    if (report && end - profile.reported > std::chrono::seconds(10)) {
++    if (end - profile.reported > std::chrono::seconds(10)) {
+         profile.reported = end;
+         std::fprintf(stderr, "[gpu] worker at %.0f s: dispatch %.1f s, draw %.1f s, wait %.1f s\n", std::chrono::duration<double>(end - profile.start).count(), profile.dispatchMs / 1000, profile.drawMs / 1000, profile.waitMs / 1000);
+     }
+diff --git a/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp b/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
+index 6717efe3..a20be9d4 100644
+--- a/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
++++ b/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
+@@ -4,6 +4,8 @@
+ #include "prx/libkernel/Time/include/Time.hpp"
+ #include "SDL_vulkan.h"
+ #include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <stdexcept>
+ #include <string>
+ 
+@@ -87,6 +89,8 @@ void DisplayWindow::DrawableSize(std::uint32_t& width, std::uint32_t& height) co
+ }
+ 
+ void DisplayWindow::UpdateTitle() {
++    static const bool hiddenTitle = [] { const char* v = std::getenv("APS5_NO_WINDOW_TITLE"); return v && std::strcmp(v, "1") == 0; }();
++    if (hiddenTitle) return;
+     require(window != nullptr, "window must exist before updating title");
+     static const AppTitle title = GetAppTitle_nid_postfix();
+     static std::uint64_t fpsStart = sceKernelGetProcessTimeCounter();

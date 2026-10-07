@@ -19,8 +19,9 @@ def main():
     parser.add_argument("--unpatched", required=True, type=Path)
     parser.add_argument("--runtime-dir", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--provenance", type=Path, help="Local build metadata to include in the manifest")
     args = parser.parse_args()
-    # An explicit allowlist keeps dumps and other build outputs out of CI.
+    # An explicit allowlist keeps dumps and unrelated build outputs out of the archive.
     libraries = sorted(args.unpatched.glob("*.prx"))
     if not libraries:
         raise ValueError("No built HLE PRXs")
@@ -36,10 +37,12 @@ def main():
             raise ValueError("HLE inputs must be unpatched")
         contents[name] = image.data
     metadata = {"schema": 1, "kind": "anyps5_unpatched_hle_runtime",
-                "source_commit": os.environ.get("GITHUB_SHA"),
+                "source_commit": os.environ.get("APS5_SOURCE_COMMIT") or os.environ.get("GITHUB_SHA"),
                 "toolchain": "WinLibs GCC 15.2.0 posix-seh UCRT r7",
                 "files": {name: hashlib.sha256(data).hexdigest() for name, data in contents.items()},
                 "contains_game_data": False, "runtime_verified": False}
+    if args.provenance:
+        metadata["build_provenance"] = json.loads(args.provenance.read_text())
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(dir=args.output.parent, suffix=".zip")
     os.close(fd)

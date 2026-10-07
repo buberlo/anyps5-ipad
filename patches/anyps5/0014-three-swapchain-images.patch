@@ -1,0 +1,74 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
+new file mode 100644
+index 0000000..9803292
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
+@@ -0,0 +1,20 @@
++#pragma once
++#include <algorithm>
++#include <cstdint>
++#include <cstring>
++#include <stdexcept>
++
++namespace AgcDriver {
++inline std::uint32_t SelectSwapchainImages(std::uint32_t minimum, std::uint32_t maximum, const char* option) {
++    if (!minimum || (maximum && maximum < minimum))
++        throw std::runtime_error("Invalid surface swapchain image limits");
++    std::uint32_t requested = 3;
++    if (option) {
++        if (std::strcmp(option, "2") == 0) requested = 2;
++        else if (std::strcmp(option, "3") != 0)
++            throw std::invalid_argument("APS5_SWAPCHAIN_IMAGES must be 2 or 3");
++    }
++    const auto count = std::max(minimum, requested);
++    return maximum ? std::min(count, maximum) : count;
++}
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+index 7a257cd..09cc038 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -2,6 +2,7 @@
+ #include "BdaAbi.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp"
++#include "prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/BdaFeatures.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/PresentationScaler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
+@@ -1089,7 +1090,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+         require(std::any_of(formats.begin(), formats.end(), [](const auto& format) { return format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; }), "BGRA8 sRGB-nonlinear surface format is unavailable");
+         VkSwapchainCreateInfoKHR swapchain{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
+         swapchain.surface = state->surface;
+-        swapchain.minImageCount = surface.minImageCount;
++        swapchain.minImageCount = SelectSwapchainImages(surface.minImageCount, surface.maxImageCount, std::getenv("APS5_SWAPCHAIN_IMAGES"));
+         swapchain.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+         swapchain.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+         swapchain.imageExtent = state->extent;
+@@ -1106,7 +1107,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+         check(getImages(state->device, state->swapchain, &imageCount, nullptr), "vkGetSwapchainImagesKHR");
+         state->images.resize(imageCount);
+         check(getImages(state->device, state->swapchain, &imageCount, state->images.data()), "vkGetSwapchainImagesKHR");
+-        APS5_LOG_OUT("Swapchain created swapchain=%p extent=%ux%u images=%u", reinterpret_cast<void*>(state->swapchain), state->extent.width, state->extent.height, imageCount);
++        APS5_LOG_OUT("Swapchain created swapchain=%p extent=%ux%u requestedImages=%u images=%u", reinterpret_cast<void*>(state->swapchain), state->extent.width, state->extent.height, swapchain.minImageCount, imageCount);
+         VkFenceCreateInfo fence{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+         const auto createFence = state->DeviceFunction<PFN_vkCreateFence>("vkCreateFence");
+         check(createFence(state->device, &fence, nullptr, &state->acquireFence), "vkCreateFence");
+@@ -1746,7 +1747,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+     require((surface.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0 && (surface.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) != 0 && (surface.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0, "resized surface capabilities are unsupported");
+     VkSwapchainCreateInfoKHR create{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
+     create.surface = state->surface;
+-    create.minImageCount = surface.minImageCount;
++    create.minImageCount = SelectSwapchainImages(surface.minImageCount, surface.maxImageCount, std::getenv("APS5_SWAPCHAIN_IMAGES"));
+     create.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+     create.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+     create.imageExtent = {width, height};
+@@ -1770,7 +1771,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+     check(getImages(state->device, replacement, &count, state->images.data()), "vkGetSwapchainImagesKHR resize");
+     state->images.resize(count);
+     state->rendered.assign(count, VK_NULL_HANDLE);
+-    APS5_LOG_OUT_DEBUG("Resize complete swapchain=%p extent=%ux%u images=%u", reinterpret_cast<void*>(state->swapchain), state->extent.width, state->extent.height, count);
++    APS5_LOG_OUT_DEBUG("Resize complete swapchain=%p extent=%ux%u requestedImages=%u images=%u", reinterpret_cast<void*>(state->swapchain), state->extent.width, state->extent.height, create.minImageCount, count);
+ }
+ 
+ bool VulkanDevice::Presentable() const {

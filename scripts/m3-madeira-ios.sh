@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Build the real AnyPS5 iPhoneOS runtime. This does not install or launch it.
-# Debug preserves Madeira's supported guest execution configuration.
+# Keep the qualified Debug/JIT configuration; optimize only the native app host.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [ "$(uname -s)" = Darwin ] || { echo "iPhoneOS builds require macOS" >&2; exit 1; }
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export JOBS="${JOBS:-2}"
+case "${APS5_BUILD_PROFILE:-performance}" in
+    performance|diagnostic) ;;
+    *) echo "APS5_BUILD_PROFILE must be performance or diagnostic" >&2; exit 2 ;;
+esac
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$JOBS}"
 export APS5_VULKAN_ONLY=1
 export MADEIRA_VK_STATIC_LINK=1
@@ -96,6 +100,9 @@ args=(
     MADEIRA_BUNDLE_IDENTIFIER=com.buberlo.anyps5ipad
     'OTHER_SWIFT_FLAGS=$(inherited) -j'"$JOBS -driver-batch-count $JOBS"
 )
+if [ "${APS5_BUILD_PROFILE:-performance}" = performance ]; then
+    args+=(GCC_OPTIMIZATION_LEVEL=2 SWIFT_OPTIMIZATION_LEVEL=-O DEBUG_INFORMATION_FORMAT=dwarf-with-dsym)
+fi
 if [ "${APS5_CODE_SIGNING:-NO}" = YES ]; then
     [ -n "${APS5_DEVELOPMENT_TEAM:-}" ] || { echo "Set APS5_DEVELOPMENT_TEAM for signing" >&2; exit 1; }
     args+=("DEVELOPMENT_TEAM=$APS5_DEVELOPMENT_TEAM" CODE_SIGNING_ALLOWED=YES)

@@ -10,7 +10,7 @@ import struct
 import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-NAMES = ("xtajit64.dll", "winevulkan.dll", "vulkan-1.dll")
+NAMES = ("ntdll.dll", "xtajit64.dll", "winevulkan.dll", "vulkan-1.dll")
 
 
 def digest(path):

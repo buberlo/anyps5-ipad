@@ -1,0 +1,36 @@
+diff --git a/build/win32u-unix/aps5_display_timing.h b/build/win32u-unix/aps5_display_timing.h
+index d466c8c..82f0002 100644
+--- a/build/win32u-unix/aps5_display_timing.h
++++ b/build/win32u-unix/aps5_display_timing.h
+@@ -36,6 +36,7 @@ static pthread_mutex_t aps5_timing_lock = PTHREAD_MUTEX_INITIALIZER;
+ static _Atomic(uint64_t) aps5_display_count;
+ static _Atomic(int) aps5_display_available;
+ static int aps5_display_active;
++static int aps5_primary_untracked;
+ static uint32_t aps5_present_id;
+ static uint64_t aps5_reported_ns, aps5_display_epoch, aps5_swapchain_serial, aps5_primary_identity;
+ struct aps5_phase_totals { _Atomic(uint64_t) calls, ns, max_ns; };
+@@ -88,6 +89,7 @@ static void aps5_update_available(void)
+     struct aps5_timed_swapchain *latest = NULL;
+     for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i)
+         if (aps5_swapchains[i].handle && aps5_swapchains[i].past && (!latest || latest->identity < aps5_swapchains[i].identity)) latest = &aps5_swapchains[i];
++    if (aps5_primary_untracked) latest = NULL;
+     uint64_t primary = latest ? latest->identity : 0;
+     if (primary != aps5_primary_identity) {
+         aps5_primary_identity = primary;
+@@ -174,12 +176,15 @@ static VkResult aps5_timing_create_swapchain(VkDevice device, const VkSwapchainC
+     VkResult result = vkCreateSwapchainKHR(device, info, allocator, out);
+     if (result != VK_SUCCESS) return result;
+     pthread_mutex_lock(&aps5_timing_lock);
++    // Do not keep reporting an old surface if the new one cannot be tracked.
++    aps5_primary_untracked = 1;
+     for (unsigned d = 0; d < APS5_MAX_TIMED_DEVICES; ++d) if (aps5_devices[d].handle == device) {
+         for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i) if (!aps5_swapchains[i].handle) {
+             struct aps5_timed_swapchain *s = &aps5_swapchains[i];
+             memset(s, 0, sizeof(*s));
+             s->handle = *out; s->device = device; s->past = aps5_devices[d].past;
+             s->identity = ++aps5_swapchain_serial;
++            aps5_primary_untracked = 0;
+             s->width = info->imageExtent.width; s->height = info->imageExtent.height;
+             struct aps5_refresh_cycle refresh = {0};
+             if (aps5_devices[d].refresh(device, *out, &refresh) == VK_SUCCESS) s->stats.refresh_ns = refresh.refreshDuration;

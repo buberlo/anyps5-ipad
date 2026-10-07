@@ -36,16 +36,17 @@ if [ ! -f "$build/config.status" ]; then
         --without-sdl --without-gphoto --without-pcap)
 fi
 make -C "$build" -j"$jobs" \
+    dlls/ntdll/arm64ec-windows/ntdll.dll \
     dlls/winevulkan/arm64ec-windows/winevulkan.dll \
     dlls/vulkan-1/arm64ec-windows/vulkan-1.dll
-for module in winevulkan vulkan-1; do
+for module in ntdll winevulkan vulkan-1; do
     source="$build/dlls/$module/arm64ec-windows/$module.dll"
     target="$madeira/app/Madeira/arm64ec-windows/$module.dll"
     cp "$source" "$target.tmp"
     "$tc/arm64ec-w64-mingw32-strip" --strip-debug "$target.tmp"
     mv "$target.tmp" "$target"
 done
-for module in xtajit64 winevulkan vulkan-1; do
+for module in ntdll xtajit64 winevulkan vulkan-1; do
     file "$madeira/app/Madeira/arm64ec-windows/$module.dll"
 done
 python3 "$root/scripts/check-ios-pe.py" record

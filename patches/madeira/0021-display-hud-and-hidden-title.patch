@@ -1,0 +1,103 @@
+diff --git a/app/Madeira/FPSOverlay.swift b/app/Madeira/FPSOverlay.swift
+index 93afb78..0d62506 100644
+--- a/app/Madeira/FPSOverlay.swift
++++ b/app/Madeira/FPSOverlay.swift
+@@ -99,6 +99,7 @@ struct FPSOverlay: View {
+     var compact: Bool = false
+     @State private var presentCount: UInt64 = 0
+     @State private var fps: Double = 0
++    @State private var displayMeasured = false
+     @State private var visible: Bool = true
+     @State private var timer: Timer? = nil
+     @State private var displayTimer: Timer? = nil
+@@ -175,7 +176,7 @@ struct FPSOverlay: View {
+                         .foregroundColor(.primary)
+                     Text("|")
+                         .foregroundColor(.secondary)
+-                    Text("FPS:")
++                    Text(displayMeasured ? "Present FPS:" : "Submit FPS:")
+                         .foregroundColor(.secondary)
+                     Text(String(format: "%.1f", fps))
+                         .foregroundColor(fpsColor)
+@@ -197,7 +198,8 @@ struct FPSOverlay: View {
+             }
+         }
+         .onTapGesture { visible.toggle() }
+-        .onAppear { startTimers() }
++        .accessibilityLabel(displayMeasured ? "Displayed frames per second" : "Submitted frames per second")
++            .onAppear { startTimers() }
+         .onDisappear { stopTimers() }
+     }
+ 
+@@ -346,7 +348,9 @@ struct FPSOverlay: View {
+         // 250ms display refresh — computes adaptive-window FPS
+         memMB = readFootprintMB()
+         displayTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
+-            fps = computeAdaptiveFPS()
++            let displayedFPS = aps5_vulkan_display_fps()
++            displayMeasured = displayedFPS >= 0
++            fps = displayMeasured ? displayedFPS : computeAdaptiveFPS()
+             // ml606: piggybacks on the existing tick, so it costs one extra
+             // task_info per 250ms and no additional SwiftUI invalidation.
+             memMB = readFootprintMB()
+diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
+index 28ca05d..e3cf6ae 100644
+--- a/app/Madeira/Library.swift
++++ b/app/Madeira/Library.swift
+@@ -3750,6 +3750,7 @@ struct LibraryMetrics: View {
+     @State private var lastCount: UInt64 = 0
+     @State private var lastTime = Date()
+     @State private var fps = 0.0
++    @State private var displayMeasured = false
+     @State private var memory = 0
+     @State private var battery = -1
+     /// iOS lowers clocks from .serious on, so a frame rate that sags after a few
+@@ -3775,7 +3776,10 @@ struct LibraryMetrics: View {
+             .onReceive(ticks) { now in
+                 let count = madeira_get_present_count(); let dt = now.timeIntervalSince(lastTime)
+                 let frames = count >= lastCount ? count - lastCount : 0
+-                fps = Double(frames) / max(0.001, dt); lastCount = count; lastTime = now
++                let displayedFPS = aps5_vulkan_display_fps()
++                displayMeasured = displayedFPS >= 0
++                fps = displayMeasured ? displayedFPS : Double(frames) / max(0.001, dt)
++                lastCount = count; lastTime = now
+                 var info = task_vm_info_data_t(); var size = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+                 let result = withUnsafeMutablePointer(to: &info) { $0.withMemoryRebound(to: integer_t.self, capacity: Int(size)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &size) } }
+                 if result == KERN_SUCCESS { memory = Int(info.phys_footprint / 1048576) }
+@@ -3802,7 +3806,7 @@ struct LibraryMetrics: View {
+     }
+     private var parts: [String] {
+         var result: [String] = []
+-        if model.overlayFields.contains("FPS") { result.append(String(format: "%.0f FPS", fps)) }
++        if model.overlayFields.contains("FPS") { result.append(String(format: displayMeasured ? "%.0f present FPS" : "%.0f submit FPS", fps)) }
+         if model.overlayFields.contains("Frame time") { result.append(fps > 0 ? String(format: "%.1f ms avg", 1000 / fps) : "— ms") }
+         if model.overlayFields.contains("CPU") {
+             result.append(cpu.map { String(format: "CPU %.0f%% (top %.0f%%)", $0.total, $0.top) } ?? "CPU —")
+diff --git a/app/Madeira/Madeira-Bridging-Header.h b/app/Madeira/Madeira-Bridging-Header.h
+index 5047beb..5547299 100644
+--- a/app/Madeira/Madeira-Bridging-Header.h
++++ b/app/Madeira/Madeira-Bridging-Header.h
+@@ -23,6 +23,10 @@ void wine_set_ui_log_callback(wine_ui_log_callback_t cb);
+ // DXMT present counter (winemetal_unix.c) — for SwiftUI FPS overlay
+ #include <stdint.h>
+ uint64_t madeira_get_present_count(void);
++// Native Vulkan display completion; submissions remain a separate counter.
++double aps5_vulkan_display_fps(void);
++uint64_t aps5_vulkan_displayed_count(void);
++int aps5_vulkan_display_timing_available(void);
+ // ml1174: GPU busy time for the performance overlay (winemetal_unix.c). While
+ // enabled, each committed command buffer adds its GPU time (union) on completion.
+ void madeira_gpu_meter_enable(int on);
+diff --git a/app/Madeira/WineProcessBridge.m b/app/Madeira/WineProcessBridge.m
+index 106cf49..18f4b85 100644
+--- a/app/Madeira/WineProcessBridge.m
++++ b/app/Madeira/WineProcessBridge.m
+@@ -913,6 +913,8 @@ static void madeira_publish_host_probe(void)
+          * HEAT — thermals are what cap ProMotion at 60. COMMENT THIS OUT
+          * for diagnostic/profiling sessions. */
+         setenv("MADEIRA_QUIET", "1", 1);
++        // iPad has no visible SDL title bar; retain an explicit diagnostic override.
++        setenv("APS5_NO_WINDOW_TITLE", "1", 0);
+ 
+         /* task #34 share/purge-probe experiments CONCLUDED 2026-07-14
+          * (remap-sharing dead; pool not purgeable; ml76 wall = mismatched

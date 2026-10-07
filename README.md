@@ -8,6 +8,8 @@ This repository contains the patches, build scripts, preparation tools, and devi
 
 **Dreaming Sarah's PS5 build has reached touch-controlled gameplay on an iPad Air 13-inch M2.** This is an experimental compatibility stack with a limited tested library. See [device results](#device-results) for the distinction between gameplay observations, component tests, and the latest app build.
 
+Runtime profiling is opt-in; the overlays distinguish Vulkan-reported presentation timing from accepted submissions. The runtime requests three swapchain images where supported, with a two-image comparison switch. See [runtime performance and measurement](docs/RUNTIME-PERFORMANCE.md) for switches, local tests and optimized host builds. A successful app build does not establish a speedup; matched physical-device measurements remain required.
+
 ## Execution architecture
 
 There are two separate stages. Relinking happens before launch; CPU translation happens while the game runs.
@@ -39,7 +41,7 @@ The PE wrapper does not change every guest function into a conventional Win64 fu
 
 PS5 imports identify functions through NIDs. The preparation tools NID-patch fresh HLE libraries and check the resulting import/export graph, including converted guest modules and Windows DLL dependencies. Resolving an import proves that a provider exists; it does not prove that every behavior required by a game is implemented.
 
-The current Windows HLE build selects the libraries needed for the synthetic demo and Dreaming Sarah. It is not an exhaustive implementation or packaging list for arbitrary PS5 games. See [AnyPS5's relinker usage](https://github.com/boykopovar/AnyPS5/blob/0518f0e02187b6c7c00e6f7e7a7265c848efb346/docs/user/USAGE.md) and this repository's [game preparation guide](docs/PRIVATE-GAME-PACKAGING.md).
+The existing Windows HLE closure covers the synthetic demo and Dreaming Sarah; validated extra targets can extend it. [Local HLE builds](docs/LOCAL-HLE-BUILD.md) can also select all available PRX targets. The added [Unity-facing API coverage](docs/HLE-API-COVERAGE.md) includes functional local APIs and explicit offline/unsupported service paths. This is not an exhaustive PS5 API implementation or a compatibility guarantee for arbitrary games. See [AnyPS5's relinker usage](https://github.com/boykopovar/AnyPS5/blob/0518f0e02187b6c7c00e6f7e7a7265c848efb346/docs/user/USAGE.md) and this repository's [game preparation guide](docs/PRIVATE-GAME-PACKAGING.md).
 
 ### 2. Wine and FEX: Windows services and CPU translation
 
@@ -120,7 +122,7 @@ Evidence currently covers an **iPad Air 13-inch M2 (`iPad14,10`), iPadOS 27.0.1*
 | Graphics demo | A 600-second synthetic RDNA/VideoOut scene ran with a 1280 × 720 surface and exited successfully. This is a component/demo result, not a Dreaming Sarah benchmark. [Demo record](docs/evidence/ipad-m2-demo-720-ten-minute.json). |
 | Lifecycle | A brief background cycle drained Vulkan work and resumed rendering. [Lifecycle record](docs/evidence/ipad-m2-vulkan-lifecycle-build13.json). |
 
-**Stable displayed 60 FPS is not established.** The Vulkan HUD integration counts successful present calls, not the timestamps at which the display actually shows each game frame. Guest-loop rates, nominal FPS labels, and an upstream Windows benchmark do not establish iPad display performance. Long-session stability, full background recovery, save/load, and broader game compatibility remain open.
+**Stable displayed 60 FPS is not established.** The HUD distinguishes Vulkan-reported presentation timing from successful present calls. The pinned MoltenVK may substitute a completion clock when a Metal presentation timestamp is missing, so neither counter alone proves unique displayed game frames. A reported 60.0 reading after requesting three swapchain images motivates the current candidate; it does not replace matched, sustained gameplay measurements. Long-session stability, full background recovery, save/load, and broader game compatibility remain open.
 
 ## Build and prepare a game
 

@@ -1,0 +1,404 @@
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+--- a/build/win32u-unix/vulkan_ios.c
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -87,6 +87,7 @@
+     return result;
+ }
+ 
++#include "aps5_display_timing.h"
+ #include "vulkan_lifecycle.h"
+ static struct aps5_gpu_gate aps5_gpu = APS5_GPU_GATE_INITIALIZER;
+ struct aps5_gpu_device { VkDevice host; struct aps5_gpu_device *next; };
+@@ -95,6 +96,7 @@
+ 
+ __attribute__((visibility("default"))) void aps5_vulkan_set_active(int active)
+ {
++    aps5_timing_set_active(active);
+     if (active) {
+         aps5_gpu_resume(&aps5_gpu);
+         fprintf(stderr, "[anyps5-vulkan-lifecycle] resumed\n");
+@@ -120,7 +122,7 @@
+     struct aps5_gpu_device *entry = calloc(1, sizeof(*entry));
+     if (!entry) return VK_ERROR_OUT_OF_HOST_MEMORY;
+     aps5_gpu_enter(&aps5_gpu);
+-    VkResult result = madeira_vkCreateDevice_base(physical, info, allocator, device);
++    VkResult result = aps5_timing_create_device(physical, info, allocator, device);
+     if (result == VK_SUCCESS) {
+         entry->host = *device;
+         pthread_mutex_lock(&aps5_gpu_devices_lock);
+@@ -140,16 +142,22 @@
+     while (*at && (*at)->host != device) at = &(*at)->next;
+     if (*at) { struct aps5_gpu_device *old = *at; *at = old->next; free(old); }
+     pthread_mutex_unlock(&aps5_gpu_devices_lock);
++    aps5_timing_destroy_device(device);
+     vkDestroyDevice(device, allocator);
+     aps5_gpu_leave(&aps5_gpu);
+ }
+ #define APS5_GPU_RESULT(name, signature, arguments) \
+ static VkResult VKAPI_CALL aps5_##name signature \
+-{ aps5_gpu_enter(&aps5_gpu); VkResult result = name arguments; aps5_gpu_leave(&aps5_gpu); return result; }
++{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = name arguments; aps5_phase_end(#name, started); aps5_gpu_leave(&aps5_gpu); return result; }
+ APS5_GPU_RESULT(vkQueueSubmit, (VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f), (q,n,s,f))
+ APS5_GPU_RESULT(vkQueueSubmit2, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
+ APS5_GPU_RESULT(vkQueueSubmit2KHR, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
+-APS5_GPU_RESULT(vkQueuePresentKHR, (VkQueue q, const VkPresentInfoKHR *i), (q,i))
++static VkResult VKAPI_CALL aps5_vkQueuePresentKHR(VkQueue q, const VkPresentInfoKHR *i)
++{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = aps5_timing_present(q, i); aps5_phase_end("vkQueuePresentKHR", started); aps5_gpu_leave(&aps5_gpu); return result; }
++static VkResult VKAPI_CALL aps5_vkCreateSwapchainKHR(VkDevice d, const VkSwapchainCreateInfoKHR *i, const VkAllocationCallbacks *a, VkSwapchainKHR *s)
++{ aps5_gpu_enter(&aps5_gpu); VkResult result = aps5_timing_create_swapchain(d, i, a, s); aps5_gpu_leave(&aps5_gpu); return result; }
++static void VKAPI_CALL aps5_vkDestroySwapchainKHR(VkDevice d, VkSwapchainKHR s, const VkAllocationCallbacks *a)
++{ aps5_gpu_enter(&aps5_gpu); aps5_timing_destroy_swapchain(d, s, a); aps5_gpu_leave(&aps5_gpu); }
+ APS5_GPU_RESULT(vkQueueWaitIdle, (VkQueue q), (q))
+ APS5_GPU_RESULT(vkDeviceWaitIdle, (VkDevice d), (d))
+ APS5_GPU_RESULT(vkAcquireNextImageKHR, (VkDevice d, VkSwapchainKHR s, uint64_t t, VkSemaphore m, VkFence f, uint32_t *i), (d,s,t,m,f,i))
+@@ -162,6 +170,7 @@
+ #define APS5_GPU_PROC(n) if (!strcmp(name, #n)) return (PFN_vkVoidFunction)aps5_##n
+     APS5_GPU_PROC(vkQueueSubmit); APS5_GPU_PROC(vkQueueSubmit2); APS5_GPU_PROC(vkQueueSubmit2KHR);
+     APS5_GPU_PROC(vkQueuePresentKHR); APS5_GPU_PROC(vkQueueWaitIdle); APS5_GPU_PROC(vkDeviceWaitIdle);
++    APS5_GPU_PROC(vkCreateSwapchainKHR); APS5_GPU_PROC(vkDestroySwapchainKHR);
+     APS5_GPU_PROC(vkAcquireNextImageKHR); APS5_GPU_PROC(vkAcquireNextImage2KHR); APS5_GPU_PROC(vkDestroyDevice);
+ #undef APS5_GPU_PROC
+     return proc;
+diff --git a/build/win32u-unix/aps5_display_stats.h b/build/win32u-unix/aps5_display_stats.h
+new file mode 100644
+--- /dev/null
++++ b/build/win32u-unix/aps5_display_stats.h
+@@ -0,0 +1,59 @@
++#ifndef APS5_DISPLAY_STATS_H
++#define APS5_DISPLAY_STATS_H
++#include <stdint.h>
++#include <stddef.h>
++#include <string.h>
++#include <stdlib.h>
++#define APS5_TIMING_WINDOW 256
++#define APS5_HISTOGRAM_BINS 257
++#define APS5_HISTOGRAM_STEP_NS 100000ULL
++struct aps5_display_stats {
++    uint64_t count, last_ns, refresh_ns, missed_vblanks;
++    uint64_t intervals[APS5_TIMING_WINDOW];
++    uint64_t histogram[APS5_HISTOGRAM_BINS];
++    unsigned used, cursor;
++};
++/* One timestamp per display event; duplicate/out-of-order reports cannot inflate FPS. */
++static int aps5_display_add(struct aps5_display_stats *s, uint64_t ns)
++{
++    if (!ns || (s->last_ns && ns <= s->last_ns)) return 0;
++    if (s->last_ns) {
++        uint64_t interval = ns - s->last_ns;
++        uint64_t bucket = (interval - 1) / APS5_HISTOGRAM_STEP_NS;
++        if (bucket >= APS5_HISTOGRAM_BINS) bucket = APS5_HISTOGRAM_BINS - 1;
++        ++s->histogram[bucket];
++        s->intervals[s->cursor++ % APS5_TIMING_WINDOW] = interval;
++        if (s->used < APS5_TIMING_WINDOW) ++s->used;
++        if (s->refresh_ns && interval > s->refresh_ns + s->refresh_ns / 2) {
++            uint64_t periods = (interval + s->refresh_ns / 2) / s->refresh_ns;
++            if (periods > 1) s->missed_vblanks += periods - 1;
++        }
++    }
++    s->last_ns = ns;
++    ++s->count;
++    return 1;
++}
++static void aps5_display_reset_window(struct aps5_display_stats *s)
++{
++    s->last_ns = 0; s->used = 0; s->cursor = 0; s->missed_vblanks = 0;
++    memset(s->histogram, 0, sizeof(s->histogram));
++}
++static int aps5_compare_u64(const void *a, const void *b)
++{
++    uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
++    return (x > y) - (x < y);
++}
++static void aps5_display_summary(const struct aps5_display_stats *s,
++                                  uint64_t *mean, uint64_t *p95, uint64_t *p99)
++{
++    *mean = *p95 = *p99 = 0;
++    if (!s->used) return;
++    uint64_t sorted[APS5_TIMING_WINDOW], total = 0;
++    memcpy(sorted, s->intervals, s->used * sizeof(*sorted));
++    for (unsigned i = 0; i < s->used; ++i) total += sorted[i];
++    qsort(sorted, s->used, sizeof(*sorted), aps5_compare_u64);
++    *mean = total / s->used;
++    *p95 = sorted[(s->used * 95 + 99) / 100 - 1];
++    *p99 = sorted[(s->used * 99 + 99) / 100 - 1];
++}
++#endif
+diff --git a/build/win32u-unix/aps5_display_timing.h b/build/win32u-unix/aps5_display_timing.h
+new file mode 100644
+--- /dev/null
++++ b/build/win32u-unix/aps5_display_timing.h
+@@ -0,0 +1,274 @@
++/* Native display telemetry, after Wine handle conversion. The pinned Wine headers
++ * omit VK_GOOGLE_display_timing, so use its exact native ABI under private names.
++ * The pinned MoltenVK device path records MTLDrawable.presentedTime here. This is
++ * display-completion timing, distinct from the unchanged accepted-present count.
++ * Foreground visible-surface verification is still required for an FPS verdict. */
++#ifndef APS5_DISPLAY_TIMING_H
++#define APS5_DISPLAY_TIMING_H
++#include <stdint.h>
++#include <stdatomic.h>
++#include <time.h>
++#include "aps5_display_stats.h"
++#define APS5_MAX_TIMED_DEVICES 8
++#define APS5_MAX_TIMED_SWAPCHAINS 8
++#define APS5_PAST_TIMINGS 64 /* Pinned MoltenVK holds at most 60. */
++#define APS5_GOOGLE_PRESENT_TIMES ((VkStructureType)1000092000)
++struct aps5_present_time { uint32_t presentID; uint64_t desiredPresentTime; };
++struct aps5_present_times { VkStructureType sType; const void *pNext; uint32_t swapchainCount; const struct aps5_present_time *pTimes; };
++struct aps5_past_timing { uint32_t presentID; uint64_t desiredPresentTime, actualPresentTime, earliestPresentTime, presentMargin; };
++struct aps5_refresh_cycle { uint64_t refreshDuration; };
++typedef VkResult (VKAPI_PTR *aps5_get_past)(VkDevice, VkSwapchainKHR, uint32_t *, struct aps5_past_timing *);
++typedef VkResult (VKAPI_PTR *aps5_get_refresh)(VkDevice, VkSwapchainKHR, struct aps5_refresh_cycle *);
++extern PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice, const char *);
++extern VkResult VKAPI_CALL vkCreateSwapchainKHR(VkDevice, const VkSwapchainCreateInfoKHR *, const VkAllocationCallbacks *, VkSwapchainKHR *);
++extern void VKAPI_CALL vkDestroySwapchainKHR(VkDevice, VkSwapchainKHR, const VkAllocationCallbacks *);
++struct aps5_timed_device { VkDevice handle; aps5_get_past past; aps5_get_refresh refresh; };
++struct aps5_timed_swapchain {
++    VkDevice device; VkSwapchainKHR handle; aps5_get_past past;
++    struct aps5_display_stats stats;
++    uint64_t last_poll_ns, last_completion_ns, discard_before_ns;
++    uint32_t width, height;
++    uint64_t identity;
++};
++static struct aps5_timed_device aps5_devices[APS5_MAX_TIMED_DEVICES];
++static struct aps5_timed_swapchain aps5_swapchains[APS5_MAX_TIMED_SWAPCHAINS];
++static pthread_mutex_t aps5_timing_lock = PTHREAD_MUTEX_INITIALIZER;
++static _Atomic(uint64_t) aps5_display_count;
++static _Atomic(int) aps5_display_available;
++static int aps5_display_active;
++static uint32_t aps5_present_id;
++static uint64_t aps5_reported_ns, aps5_display_epoch, aps5_swapchain_serial, aps5_primary_identity;
++struct aps5_phase_totals { _Atomic(uint64_t) calls, ns, max_ns; };
++static struct aps5_phase_totals aps5_phases[4];
++static pthread_once_t aps5_report_once = PTHREAD_ONCE_INIT;
++static int aps5_report_enabled;
++static void aps5_report_init(void) { const char *v = getenv("APS5_PERF_REPORT"); aps5_report_enabled = v && !strcmp(v, "1"); }
++static uint64_t aps5_now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; }
++static uint64_t aps5_phase_begin(void)
++{
++    pthread_once(&aps5_report_once, aps5_report_init);
++    return aps5_report_enabled ? aps5_now_ns() : 0;
++}
++static void aps5_phase_end(const char *name, uint64_t started)
++{
++    if (!started) return;
++    unsigned stage = !strncmp(name, "vkQueueSubmit", 13) ? 0 : !strcmp(name, "vkQueuePresentKHR") ? 1 : !strncmp(name, "vkAcquire", 9) ? 2 : 3;
++    uint64_t ns = aps5_now_ns() - started;
++    struct aps5_phase_totals *t = &aps5_phases[stage];
++    atomic_fetch_add_explicit(&t->calls, 1, memory_order_relaxed);
++    atomic_fetch_add_explicit(&t->ns, ns, memory_order_relaxed);
++    uint64_t previous = atomic_load_explicit(&t->max_ns, memory_order_relaxed);
++    while (ns > previous && !atomic_compare_exchange_weak_explicit(&t->max_ns, &previous, ns, memory_order_relaxed, memory_order_relaxed)) {}
++}
++__attribute__((visibility("default"))) uint64_t aps5_vulkan_displayed_count(void) { return atomic_load_explicit(&aps5_display_count, memory_order_relaxed); }
++__attribute__((visibility("default"))) int aps5_vulkan_display_timing_available(void) { return atomic_load_explicit(&aps5_display_available, memory_order_relaxed); }
++/* A count delta at the HUD's 1 Hz poll aliases the driver's 4 Hz history polls.
++ * Derive the displayed rate from actual presentation intervals instead. */
++__attribute__((visibility("default"))) double aps5_vulkan_display_fps(void)
++{
++    if (!aps5_vulkan_display_timing_available()) return -1.0;
++    double fps = 0.0;
++    pthread_mutex_lock(&aps5_timing_lock);
++    const struct aps5_timed_swapchain *latest = NULL;
++    for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i)
++        if (aps5_swapchains[i].handle && (!latest || latest->identity < aps5_swapchains[i].identity)) latest = &aps5_swapchains[i];
++    if (latest && latest->stats.used && aps5_now_ns() - latest->last_completion_ns <= 1500000000ULL) {
++        uint64_t total = 0;
++        for (unsigned i = 0; i < latest->stats.used; ++i) total += latest->stats.intervals[i];
++        if (total) fps = (double)latest->stats.used * 1.0e9 / (double)total;
++    }
++    pthread_mutex_unlock(&aps5_timing_lock);
++    return fps;
++}
++static void aps5_update_available(void)
++{
++    /* AnyPS5 has one game surface. A newly created/replacement swapchain becomes
++     * primary; initialization devices without a swapchain never contribute.
++     * Old swapchains can finish asynchronously but cannot inflate the HUD. */
++    struct aps5_timed_swapchain *latest = NULL;
++    for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i)
++        if (aps5_swapchains[i].handle && aps5_swapchains[i].past && (!latest || latest->identity < aps5_swapchains[i].identity)) latest = &aps5_swapchains[i];
++    uint64_t primary = latest ? latest->identity : 0;
++    if (primary != aps5_primary_identity) {
++        aps5_primary_identity = primary;
++        ++aps5_display_epoch;
++        if (latest) { aps5_display_reset_window(&latest->stats); latest->last_completion_ns = 0; latest->discard_before_ns = latest->stats.count != 0; }
++    }
++    atomic_store_explicit(&aps5_display_available, aps5_display_active && latest != NULL, memory_order_relaxed);
++}
++static void aps5_timing_set_active(int active)
++{
++    pthread_mutex_lock(&aps5_timing_lock);
++    if (aps5_display_active != !!active) {
++        aps5_display_active = !!active;
++        ++aps5_display_epoch;
++        for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i) {
++            struct aps5_timed_swapchain *s = &aps5_swapchains[i];
++            aps5_display_reset_window(&s->stats);
++            /* A clock threshold cannot compare host CLOCK_MONOTONIC with Metal's
++             * presentation clock portably. Drain pending history on the next poll. */
++            s->discard_before_ns = 1;
++            s->last_poll_ns = 0; s->last_completion_ns = 0;
++        }
++    }
++    aps5_update_available();
++    pthread_mutex_unlock(&aps5_timing_lock);
++}
++static int aps5_display_extension(VkPhysicalDevice physical)
++{
++    VkExtensionProperties *properties;
++    uint32_t count = 0;
++    if (vkEnumerateDeviceExtensionProperties(physical, NULL, &count, NULL) != VK_SUCCESS || !count || count > 1024) return 0;
++    properties = calloc(count, sizeof(*properties));
++    if (!properties) return 0;
++    VkResult result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, properties);
++    int supported = 0;
++    if (result == VK_SUCCESS) for (uint32_t i = 0; i < count; ++i)
++        if (!strcmp(properties[i].extensionName, "VK_GOOGLE_display_timing")) supported = 1;
++    free(properties);
++    return supported;
++}
++static VkResult aps5_timing_create_device(VkPhysicalDevice physical, const VkDeviceCreateInfo *info,
++                                           const VkAllocationCallbacks *allocator, VkDevice *out)
++{
++    static const char extension[] = "VK_GOOGLE_display_timing";
++    if (!info) return madeira_vkCreateDevice_base(physical, info, allocator, out);
++    int enabled = 0;
++    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) if (!strcmp(info->ppEnabledExtensionNames[i], extension)) enabled = 1;
++    const char **names = NULL;
++    VkDeviceCreateInfo host = *info;
++    if (!enabled && aps5_display_extension(physical) && info->enabledExtensionCount < 1024) {
++        names = calloc((size_t)info->enabledExtensionCount + 1, sizeof(*names));
++        if (names) {
++            for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) names[i] = info->ppEnabledExtensionNames[i];
++            names[info->enabledExtensionCount] = extension;
++            host.ppEnabledExtensionNames = names; ++host.enabledExtensionCount; enabled = 1;
++        }
++    }
++    VkResult result = madeira_vkCreateDevice_base(physical, &host, allocator, out);
++    free(names);
++    if (result == VK_SUCCESS && enabled) {
++        aps5_get_past past = (aps5_get_past)vkGetDeviceProcAddr(*out, "vkGetPastPresentationTimingGOOGLE");
++        aps5_get_refresh refresh = (aps5_get_refresh)vkGetDeviceProcAddr(*out, "vkGetRefreshCycleDurationGOOGLE");
++        if (past && refresh) {
++            pthread_mutex_lock(&aps5_timing_lock);
++            for (unsigned i = 0; i < APS5_MAX_TIMED_DEVICES; ++i) if (!aps5_devices[i].handle) {
++                aps5_devices[i] = (struct aps5_timed_device){*out, past, refresh}; break;
++            }
++            pthread_mutex_unlock(&aps5_timing_lock);
++        }
++    }
++    return result;
++}
++static void aps5_timing_destroy_device(VkDevice device)
++{
++    pthread_mutex_lock(&aps5_timing_lock);
++    for (unsigned i = 0; i < APS5_MAX_TIMED_DEVICES; ++i) if (aps5_devices[i].handle == device) memset(&aps5_devices[i], 0, sizeof(aps5_devices[i]));
++    for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i) if (aps5_swapchains[i].device == device) memset(&aps5_swapchains[i], 0, sizeof(aps5_swapchains[i]));
++    aps5_update_available();
++    pthread_mutex_unlock(&aps5_timing_lock);
++}
++static VkResult aps5_timing_create_swapchain(VkDevice device, const VkSwapchainCreateInfoKHR *info,
++                                              const VkAllocationCallbacks *allocator, VkSwapchainKHR *out)
++{
++    VkResult result = vkCreateSwapchainKHR(device, info, allocator, out);
++    if (result != VK_SUCCESS) return result;
++    pthread_mutex_lock(&aps5_timing_lock);
++    for (unsigned d = 0; d < APS5_MAX_TIMED_DEVICES; ++d) if (aps5_devices[d].handle == device) {
++        for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i) if (!aps5_swapchains[i].handle) {
++            struct aps5_timed_swapchain *s = &aps5_swapchains[i];
++            memset(s, 0, sizeof(*s));
++            s->handle = *out; s->device = device; s->past = aps5_devices[d].past;
++            s->identity = ++aps5_swapchain_serial;
++            s->width = info->imageExtent.width; s->height = info->imageExtent.height;
++            struct aps5_refresh_cycle refresh = {0};
++            if (aps5_devices[d].refresh(device, *out, &refresh) == VK_SUCCESS) s->stats.refresh_ns = refresh.refreshDuration;
++            break;
++        }
++        break;
++    }
++    aps5_update_available();
++    pthread_mutex_unlock(&aps5_timing_lock);
++    return result;
++}
++static void aps5_timing_destroy_swapchain(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks *allocator)
++{
++    pthread_mutex_lock(&aps5_timing_lock);
++    for (unsigned i = 0; i < APS5_MAX_TIMED_SWAPCHAINS; ++i) if (aps5_swapchains[i].handle == swapchain) memset(&aps5_swapchains[i], 0, sizeof(aps5_swapchains[i]));
++    aps5_update_available();
++    pthread_mutex_unlock(&aps5_timing_lock);
++    vkDestroySwapchainKHR(device, swapchain, allocator);
++}
++static int aps5_compare_past(const void *a, const void *b)
++{
++    const struct aps5_past_timing *x = a, *y = b;
++    return (x->actualPresentTime > y->actualPresentTime) - (x->actualPresentTime < y->actualPresentTime);
++}
++static void aps5_poll_display(struct aps5_timed_swapchain *s, uint64_t now)
++{
++    if (now - s->last_poll_ns < 250000000ULL) return;
++    s->last_poll_ns = now;
++    struct aps5_past_timing past[APS5_PAST_TIMINGS];
++    uint32_t count = APS5_PAST_TIMINGS;
++    VkResult result = s->past(s->device, s->handle, &count, past);
++    if (result != VK_SUCCESS && result != VK_INCOMPLETE) return;
++    if (count > APS5_PAST_TIMINGS) count = APS5_PAST_TIMINGS;
++    if (s->discard_before_ns) { s->discard_before_ns = 0; return; }
++    if (!aps5_display_active) return;
++    qsort(past, count, sizeof(*past), aps5_compare_past);
++    for (uint32_t i = 0; i < count; ++i) if (aps5_display_add(&s->stats, past[i].actualPresentTime)) {
++        s->last_completion_ns = now;
++        atomic_fetch_add_explicit(&aps5_display_count, 1, memory_order_relaxed);
++    }
++}
++static VkResult aps5_timing_present(VkQueue queue, const VkPresentInfoKHR *info)
++{
++    struct aps5_present_time times[APS5_MAX_TIMED_SWAPCHAINS];
++    int timed = info && info->swapchainCount && info->swapchainCount <= APS5_MAX_TIMED_SWAPCHAINS;
++    pthread_mutex_lock(&aps5_timing_lock);
++    if (timed) for (uint32_t i = 0; i < info->swapchainCount; ++i) {
++        int found = 0;
++        for (unsigned j = 0; j < APS5_MAX_TIMED_SWAPCHAINS; ++j) if (aps5_swapchains[j].handle == info->pSwapchains[i]) found = 1;
++        if (!found) { timed = 0; break; }
++        if (!++aps5_present_id) ++aps5_present_id;
++        times[i] = (struct aps5_present_time){aps5_present_id, 0};
++    }
++    pthread_mutex_unlock(&aps5_timing_lock);
++    /* Respect an application's existing timing chain and desired presentation times. */
++    if (timed) for (const VkBaseInStructure *next = info->pNext; next; next = next->pNext)
++        if (next->sType == APS5_GOOGLE_PRESENT_TIMES) { timed = 0; break; }
++    VkPresentInfoKHR host;
++    struct aps5_present_times timing;
++    if (timed) {
++        host = *info;
++        timing = (struct aps5_present_times){APS5_GOOGLE_PRESENT_TIMES, info->pNext, info->swapchainCount, times};
++        host.pNext = &timing;
++    }
++    VkResult result = vkQueuePresentKHR(queue, timed ? &host : info);
++    if (!info) return result;
++    pthread_once(&aps5_report_once, aps5_report_init);
++    uint64_t now = aps5_now_ns();
++    pthread_mutex_lock(&aps5_timing_lock);
++    for (uint32_t i = 0; i < info->swapchainCount; ++i)
++        for (unsigned j = 0; j < APS5_MAX_TIMED_SWAPCHAINS; ++j)
++            if (aps5_swapchains[j].handle == info->pSwapchains[i]) {
++                struct aps5_timed_swapchain *s = &aps5_swapchains[j];
++                if (s->identity != aps5_primary_identity) continue;
++                aps5_poll_display(s, now);
++                if (aps5_report_enabled && now - aps5_reported_ns >= 1000000000ULL) {
++                    uint64_t mean, p95, p99;
++                    aps5_display_summary(&s->stats, &mean, &p95, &p99);
++                    fprintf(stderr, "[anyps5-display] {\"schema\":1,\"source\":\"VK_GOOGLE_display_timing\",\"monotonic_ns\":%llu,\"displayed_total\":%llu,\"samples\":%u,\"mean_ns\":%llu,\"p95_ns\":%llu,\"p99_ns\":%llu,\"refresh_ns\":%llu,\"missed_vblanks\":%llu,\"width\":%u,\"height\":%u,\"active\":%d,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu,\"actual_ns\":%llu,\"histogram_step_ns\":%llu,\"interval_histogram\":[", (unsigned long long)now, (unsigned long long)aps5_vulkan_displayed_count(), s->stats.used, (unsigned long long)mean, (unsigned long long)p95, (unsigned long long)p99, (unsigned long long)s->stats.refresh_ns, (unsigned long long)s->stats.missed_vblanks, s->width, s->height, aps5_display_active, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count, (unsigned long long)s->stats.last_ns, (unsigned long long)APS5_HISTOGRAM_STEP_NS);
++                    for (unsigned bucket = 0; bucket < APS5_HISTOGRAM_BINS; ++bucket) fprintf(stderr, "%s%llu", bucket ? "," : "", (unsigned long long)s->stats.histogram[bucket]);
++                    fputs("]}\n", stderr);
++                    fprintf(stderr, "[anyps5-native] {\"schema\":1,\"monotonic_ns\":%llu,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu", (unsigned long long)now, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count);
++                    static const char *names[4] = {"submit", "present", "acquire", "idle"};
++                    for (unsigned phase = 0; phase < 4; ++phase) fprintf(stderr, ",\"%s_calls\":%llu,\"%s_ns\":%llu,\"%s_max_ns\":%llu", names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].calls), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].ns), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].max_ns));
++                    fputs("}\n", stderr);
++                    aps5_reported_ns = now;
++                }
++            }
++    pthread_mutex_unlock(&aps5_timing_lock);
++    return result;
++}
++#endif

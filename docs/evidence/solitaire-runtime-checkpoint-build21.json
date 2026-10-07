@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "version": "01.000.000",
+  "production_app": {
+    "version": "0.1.9",
+    "build": "21",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "installed": true,
+    "gameplay_qualified": false,
+    "kernel_signal_delivery": "not implemented"
+  },
+  "experimental_signal_path": {
+    "publication": "private ignored diagnostic source; not in production patch stack",
+    "opt_in": true,
+    "delivery": "cooperative, target-thread, alertable APC waits",
+    "arbitrary_asynchronous_delivery": "not implemented",
+    "host_contracts": "passed target-thread, context bounds, nonvolatile register preservation and unchanged condition-wait deadline/completion",
+    "ipad_contracts": "same standalone synthetic contract passed through Wine/FEX with original ARM64EC APC context",
+    "game_result": "advanced past Unity GC startup, then null dereference in UnityGfxDeviceWorker",
+    "original_context_variant": "did not resolve the game null dereference"
+  },
+  "native_windows_comparisons": {
+    "os": "Windows 11 Pro 10.0.26300",
+    "selected_vulkan_gpu": "AMD Radeon 780M Graphics",
+    "driver": "31.0.21029.6002",
+    "verified_guest_files": 137,
+    "same_hle_as_ipad_experiment": true,
+    "fixed_interpolation": {
+      "duration_seconds": 45,
+      "unhandled_cpu_exception_observed": false,
+      "gameplay_qualified": false
+    },
+    "normal_interpolation": {
+      "duration_seconds": 90,
+      "unhandled_cpu_exception_observed": false,
+      "visible_window": "black",
+      "gameplay_qualified": false
+    },
+    "cleanup": "only reference game processes stopped; process environment restored"
+  },
+  "graphics_blockers": [
+    "depth/stencil clear, copy, resummarize or decompress draws rejected for DB_RENDER_CONTROL=0x22",
+    "multisampling or coverage conversion rejected for PA_SC_AA_CONFIG=0x0030e003",
+    "existing fixed-function interpolation proof rejects a later shader at pc=60; validation remains enabled",
+    "default interpolation on iPad encounters MoltenVK PerVertexKHR MSL compilation errors"
+  ],
+  "measurement_limits": [
+    "Window-title counters represent submitted work, not measured display FPS.",
+    "Standalone signal tests do not qualify Unity GC completeness, arbitrary signal delivery or game stability.",
+    "Windows remained active during bounded runs; this does not prove iPad compatibility.",
+    "Private shader requests, game files, game-derived instruction listings and raw logs remain outside Git."
+  ],
+  "production_restoration": {
+    "verified_files": 138,
+    "library_and_global_configuration_byte_preserved": true,
+    "game_assets_unchanged": true,
+    "prototype_kernel_removed_from_installed_game_package": true,
+    "applied_source_patch_stack_reverse_check": "passed",
+    "startup_smoke": "JIT enabled, ELF entry reached, then explicit sceKernelRaiseException not implemented abort; own processes closed"
+  }
+}

@@ -153,6 +153,32 @@ hashes, imposes process timeouts and requires individual JSON result stages.
 Absent hardware Vulkan is an explicit graphics `not_run`; once a GPU is present,
 a failed demo is a failure. These logs prove only native Windows execution.
 
+## Solitaire diagnostic checkpoint, 2026-10-08
+
+Build 21 repairs ARM64 atomic read-modify-write fault classification and passes
+an independent protection-fault probe on the iPad. The installed Solitaire
+package still has no qualified visible scene. Production
+`sceKernelRaiseException` reports unsupported asynchronous delivery explicitly.
+
+A separate private cooperative SIGUSR1 experiment advances through Unity GC
+initialization. Its standalone contract passes on the iPad through Wine/FEX:
+target-thread identity, readable stack context, preserved nonvolatile register,
+and condition waits that keep their original completion/deadline. Using the
+original Wine ARM64EC APC context does not fix the subsequent graphics-worker
+null dereference. This experiment is not part of the production patch stack;
+its results do not prove complete GC roots or general asynchronous signal support.
+
+The same experimental HLE package was hash-verified on a native Windows 11
+UM790 Pro with the Radeon 780M selected by Vulkan. A 45-second fixed-interpolation
+run and a 90-second normal-interpolation run stayed active without the observed
+iPad CPU access violation. The inspected Windows game window was black.
+Unsupported depth/stencil maintenance and multisampling/coverage operations
+remain. The existing fixed-function interpolation proof also rejects a later
+shader; the normal iPad path reports unsupported `PerVertexKHR` MSL translation.
+No graphics validation was disabled. These are startup diagnostics, not gameplay
+or display-FPS acceptance. Private shader requests and raw logs stay outside Git.
+See the [bounded comparison record](evidence/solitaire-runtime-checkpoint-build21.json).
+
 ## Local evidence, 2026-10-06
 
 - The native host relinker and NID patcher build; all 17 existing relinker tests

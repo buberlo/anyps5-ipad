@@ -26,7 +26,7 @@ services can still fail at runtime after its imports resolve.
 
 The file/thread additions were originally compared with AnyPS5 commit
 `9ab937b261a5bfdf253dd0f0d3bf371ffbdfb1fa`. The current pin is
-`ee391a5614246338aec9cb7a3a3dd4f479aec9f3`; overlapping upstream definitions
+`df16c4c256be3c44e03eb9149a6ce5f8e8a038b2`; overlapping upstream definitions
 have been reconciled while retaining descriptor lifetime, allocator ownership
 and unavailable-service error checks.
 

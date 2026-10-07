@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
-index 099d6392..558f21d3 100644
+index 099d6392abc75609a7570d189d1359f9027f7661..558f21d3802e4769b9fd25d1cb31408491f3d1d2 100644
 --- a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
 +++ b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
 @@ -1,6 +1,11 @@

@@ -1,5 +1,5 @@
 diff --git a/core/libs/SceShaders.hpp b/core/libs/SceShaders.hpp
-index 49ec9e95..973665bf 100644
+index 49ec9e95138252698b3ef9f3beec62e1d2d336e4..973665bf0e087e0c09150b61a9d978f56d1ca359 100644
 --- a/core/libs/SceShaders.hpp
 +++ b/core/libs/SceShaders.hpp
 @@ -2,6 +2,11 @@
@@ -25,10 +25,10 @@ index 49ec9e95..973665bf 100644
 +
  #endif
 diff --git a/core/libs/prx/libSceAgc/CMakeLists.txt b/core/libs/prx/libSceAgc/CMakeLists.txt
-index cfcf3e4a..026bdf9b 100644
+index 2eb2c5aef3033da8b07435cdeecc2e30de76f540..34d3bc51c3c6eaeace3a03a3a7ff912b17f9dfac 100644
 --- a/core/libs/prx/libSceAgc/CMakeLists.txt
 +++ b/core/libs/prx/libSceAgc/CMakeLists.txt
-@@ -305,3 +305,13 @@ if(BUILD_TESTING)
+@@ -358,3 +358,13 @@ if(BUILD_TESTING)
              "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
      endif()
  endif()
@@ -43,7 +43,7 @@ index cfcf3e4a..026bdf9b 100644
 +    add_test(NAME guest_shader_alignment COMMAND guest_shader_alignment_tests)
 +endif()
 diff --git a/core/libs/prx/libSceAgc/Shader/include/ShaderUtils.hpp b/core/libs/prx/libSceAgc/Shader/include/ShaderUtils.hpp
-index f4cb9cb6..425eb822 100644
+index f4cb9cb6ec1153b8979c84aa8f99a9fd5ebec413..425eb822f6a67132481a7b44b10c2e1fd0bfbef3 100644
 --- a/core/libs/prx/libSceAgc/Shader/include/ShaderUtils.hpp
 +++ b/core/libs/prx/libSceAgc/Shader/include/ShaderUtils.hpp
 @@ -2,17 +2,18 @@
@@ -74,7 +74,7 @@ index f4cb9cb6..425eb822 100644
  
  bool GetProgramAddressRegisterOffset(std::uint8_t type, std::uint32_t& loOffset);
 diff --git a/core/libs/prx/libSceAgc/Shader/src/CreateShader.cpp b/core/libs/prx/libSceAgc/Shader/src/CreateShader.cpp
-index 068b2e69..7758afbd 100644
+index 068b2e691f12272f91fadc5bb2a9a6fd0fa4ce5d..7758afbd42b25d5b06908d1488d96722695b8604 100644
 --- a/core/libs/prx/libSceAgc/Shader/src/CreateShader.cpp
 +++ b/core/libs/prx/libSceAgc/Shader/src/CreateShader.cpp
 @@ -39,19 +39,19 @@ int APS5_VABI sceAgcCreateShader(Shader** dst, void* header, const volatile void
@@ -109,7 +109,7 @@ index 068b2e69..7758afbd 100644
  
      h->code = code;
 diff --git a/core/libs/prx/libSceAgc/Shader/src/ShaderUtils.cpp b/core/libs/prx/libSceAgc/Shader/src/ShaderUtils.cpp
-index 8a783ea2..5a67826f 100644
+index 8a783ea261e71c0be2b970b45e5887b60a7752c7..5a67826f8f2ada2bc1ddb3f0f322ed6d271b48e7 100644
 --- a/core/libs/prx/libSceAgc/Shader/src/ShaderUtils.cpp
 +++ b/core/libs/prx/libSceAgc/Shader/src/ShaderUtils.cpp
 @@ -1,4 +1,5 @@
@@ -119,7 +119,7 @@ index 8a783ea2..5a67826f 100644
  
  using namespace ShaderRegs;
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp
-index a9427ddc..27fcff27 100644
+index a9427ddc06bdca8796198271bd88b3c7c262a910..27fcff27d7cd8b4f1ddf1fdfdf279c74d43d2491 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp
 @@ -624,7 +624,13 @@ std::string verify(std::uintptr_t address, std::size_t bytes, bool writable) {
@@ -139,7 +139,7 @@ index a9427ddc..27fcff27 100644
      if (!reason.empty()) {
 diff --git a/core/libs/tests/GuestShaderAlignment.cpp b/core/libs/tests/GuestShaderAlignment.cpp
 new file mode 100644
-index 00000000..41a2051e
+index 0000000000000000000000000000000000000000..41a2051e911607448861193155fd3c5f26dbeedb
 --- /dev/null
 +++ b/core/libs/tests/GuestShaderAlignment.cpp
 @@ -0,0 +1,57 @@

@@ -1,12 +1,12 @@
 # Pinned upstreams
 
-Recorded 2026-10-07. `git submodule status` is the check. Dates below are the
+Recorded 2026-10-08. `git submodule status` checks local checkouts. Dates below are the
 commits we resolved while creating the pins, not a claim about later
 upstream movement.
 
 | Path | Remote | Commit | Branch |
 | --- | --- | --- | --- |
-| `upstreams/AnyPS5` | https://github.com/boykopovar/AnyPS5.git | `ee391a5614246338aec9cb7a3a3dd4f479aec9f3` | `main` |
+| `upstreams/AnyPS5` | https://github.com/boykopovar/AnyPS5.git | `df16c4c256be3c44e03eb9149a6ce5f8e8a038b2` | `main` |
 | `upstreams/Madeira` | https://github.com/willfaust/Madeira.git | `48f976429c189f8396e23d251d8a82f43c705922` | `main` |
 | `upstreams/FEX` | https://github.com/willfaust/FEX.git | `3bec2ac498bf78156ab47c0c194b0e8cb2849756` | `ios-port-2607` |
 | `upstreams/wine` | https://github.com/willfaust/wine.git | `257f271cfffed9f22f7987cac53bc00095d092fe` | `madeira-lgpl` |
@@ -35,6 +35,26 @@ commits AnyPS5 itself recorded. Vulkan-Headers inside that pin is
 Clones are shallow (`--depth 1`) except where a submodule add had already
 fetched a branch tip. The gitlink is the full commit id either way.
 
-The [2026-10-08 AnyPS5 refresh audit](UPSTREAM-REFRESH.md) tracks a newer
-merged-main candidate. Its integration and runtime checks are incomplete; the
-production pin above remains authoritative.
+The [2026-10-08 refresh report](UPSTREAM-REFRESH.md) documents the complete
+AnyPS5 update and reconciliation of the local patch series. Madeira, Wine, FEX
+and MoltenVK already match their live configured branches at this check.
+Installed game packages have separate provenance and do not change when this
+source pin is updated.
+
+## Checking for subsequent updates locally
+
+```sh
+python3 scripts/check-upstream-heads.py
+python3 scripts/check-upstream-heads.py --json
+```
+
+The check compares indexed pins with live branch heads and does not change
+sources or execute builds. Exit 0 means all five matched at the reported time,
+exit 1 means newer commits require integration, and exit 2 means at least one
+query failed. A failed network query is never reported as current.
+Run it before upstream refreshes. For updates, fetch the full merged branch
+snapshot, reconcile the entire local patch series, verify clean application and
+reversal, rebuild and run the affected local tests, then update the reviewed
+pin. Preserve historical device evidence and qualify newly built packages
+separately. Do not use floating branches as build inputs. No GitHub Actions are
+used; this command does not schedule automatic runs.

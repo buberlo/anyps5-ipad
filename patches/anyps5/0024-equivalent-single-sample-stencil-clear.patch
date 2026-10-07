@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-index 14057558..f1335477 100644
+index de7815014c783088cceb28a84aa19d46699274d8..96ec29c7dc8fa397b8109ea52b632bbcc1def879 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-@@ -145,8 +145,32 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
+@@ -158,8 +158,32 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
      return face;
  }
  
@@ -37,10 +37,10 @@ index 14057558..f1335477 100644
      zero(cx, 0x002, 0x3c000000u, "depth mips (DB_DEPTH_VIEW MIP_LEVEL)");
      zero(cx, 0x010, 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index 8c136be9..ffccf65e 100644
+index 498a9e259f4863fe83a86c557981827366989628..8ba8c9bc8ec52c389a59f3e4e6917e80fa5eb557 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -515,6 +515,72 @@ void CompactedExportTests() {
+@@ -522,6 +522,72 @@ void CompactedExportTests() {
      Require(state.blends[1].colorWriteMask == 0 && !state.blends[1].blendEnable && state.blends[2].blendEnable, "the write-masked export 1 was not left unused");
  }
  
@@ -113,7 +113,7 @@ index 8c136be9..ffccf65e 100644
  void DepthStencilTests() {
      auto queue = makeState();
      queue.context[0x000] = 0;
-@@ -2038,11 +2104,18 @@ int main(int argc, char** argv) {
+@@ -2154,11 +2220,18 @@ int main(int argc, char** argv) {
          }
          stateTests();
          shaderEnginePartitionTests();
@@ -131,4 +131,4 @@ index 8c136be9..ffccf65e 100644
 +        }
          DepthClipTests();
          DepthStencilTests();
-         DepthBoundsBiasTests();
+         ZExportTests();

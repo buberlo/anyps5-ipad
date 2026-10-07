@@ -22,7 +22,11 @@ unpatched PRXs, the pinned compiler runtime DLLs and a manifest with hashes,
 source/patch/toolchain provenance and test results. It contains no game data.
 
 The helper runs the existing exception/runtime tests and the new JSON2 allocator,
-offline API, filesystem and thread tests. Their required libraries are built as
+offline API, filesystem and thread tests. The upstream refresh also adds busy-thread
+exception delivery, memory, uniform/wide-subgroup shader emission and AudioOut2
+mix/latency/layout/timing contracts, each with a bounded execution time. These are
+host contracts and do not demonstrate audible output or physical GPU rendering.
+Their required libraries are built as
 test dependencies; only the explicitly selected distribution targets are exported.
 `--skip-tests` leaves the archive explicitly untested. Passing host tests never
 marks gameplay or the iPad runtime as verified.

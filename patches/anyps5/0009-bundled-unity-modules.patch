@@ -1,18 +1,5 @@
-diff --git a/core/relinker/main.cpp b/core/relinker/main.cpp
-index 2e3b6553..1b4db2e0 100644
---- a/core/relinker/main.cpp
-+++ b/core/relinker/main.cpp
-@@ -135,7 +135,7 @@ int main(const int argc, char* argv[]) {
-                   << std::filesystem::path(absPath).filename().string() << "\n"
-                   << "libs/\n    *.prx\napp0/\n    <game resources>\n";
-         for (const auto& artifact : guestArtifacts)
--            std::cout << "    " << artifact.Path.parent_path().filename().string() << "/" << artifact.Path.filename().string() << '\n';
-+            std::cout << "    " << artifact.Path.lexically_relative(std::filesystem::path(absPath).parent_path() / "app0").generic_string() << '\n';
-         std::cout << "Game resources and system libraries must be placed in this layout separately.\n";
-         if (args.runPath != "$ORIGIN/libs") std::cout << "Custom library search path (--rpath): " << args.runPath << '\n';
- 
 diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-index fe15abdd..8ca432b2 100644
+index 99368fb493ba7c50a164112cc24d9a800a375475..cec6b1cf158ebdb1ca9d2ddb9a6c2d047967297d 100644
 --- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 +++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 @@ -21,10 +21,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
@@ -30,13 +17,10 @@ index fe15abdd..8ca432b2 100644
 +    if (directories.empty()) throw Domain::RelinkerException("sce_module/sce_modules/prx or Media/Modules/Media/Plugins was not found beside the input executable: " + root.string() + ". Use --skip-sce-module only if this game can run without these modules.");
      std::vector<std::filesystem::path> paths;
      std::set<std::string> unmatchedExclusions = excludedModules;
-     for (const auto& directory : directories) {
-@@ -182,18 +186,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
-         Io::AppendU64(dynamic.DynamicSegmentData, dynamic.DynStrData.size());
-         Io::AppendString(dynamic.DynStrData, name);
+     const auto isElf = [](const std::filesystem::path& path) {
+@@ -224,12 +228,8 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
      };
--    for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().filename().generic_string() + "/" + images[index].OutputName);
-+    for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().lexically_relative(root).generic_string() + "/" + images[index].OutputName);
+     for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().lexically_relative(root).generic_string() + "/" + images[index].OutputName);
      for (const auto& name : hostLibraries) addNeeded(name);
 -    std::string guestRunPath = runPath;
 -    if (!windows) {
@@ -49,12 +33,7 @@ index fe15abdd..8ca432b2 100644
      std::vector<GuestArtifact> artifacts;
      for (const auto index : order) {
          const auto& image = images[index];
--        const auto relativeDirectory = "app0/" + image.SourcePath.parent_path().filename().generic_string();
-+        const auto relativeDirectory = "app0/" + image.SourcePath.parent_path().lexically_relative(root).generic_string();
-         const auto destination = std::filesystem::absolute(outputPath).parent_path() / relativeDirectory;
-         const auto target = destination / image.OutputName;
-         if (target.lexically_normal() == std::filesystem::absolute(outputPath).lexically_normal()) throw Domain::RelinkerException("Guest output collides with the executable output");
-@@ -205,6 +205,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -246,6 +246,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
          std::vector<std::uint8_t> output;
          if (windows) output = Elfpatcher::GuestModuleWriter().WriteWindows(image, runtime);
          else {
@@ -67,7 +46,7 @@ index fe15abdd..8ca432b2 100644
              for (const auto dependency : dependencies[index]) {
                  const auto dependencyPath = images[dependency].SourcePath.parent_path() / images[dependency].OutputName;
 diff --git a/core/relinker/relinker/tests/test_guest_module_directories.py b/core/relinker/relinker/tests/test_guest_module_directories.py
-index 992f89ab..ab5833f8 100644
+index e01b5dce08713e5e58cdd282de45e3f8722ef70d..6f3e20a9d80afd6225caebdeaf884bee24166c97 100644
 --- a/core/relinker/relinker/tests/test_guest_module_directories.py
 +++ b/core/relinker/relinker/tests/test_guest_module_directories.py
 @@ -23,7 +23,7 @@ def module_with_symbol(exported):
@@ -137,3 +116,16 @@ index 992f89ab..ab5833f8 100644
  
              case = work / f"{windows}-exclude"
              for name in ("sce_module", "prx"):
+diff --git a/core/relinker/relinker/tests/test_linux_load_alignment.py b/core/relinker/relinker/tests/test_linux_load_alignment.py
+index 5f9d3613d6fbc7dfb11c913e35d692fbbb3e38a0..a19bb0f92a6a501cda6212720979e30a76ef7432 100644
+--- a/core/relinker/relinker/tests/test_linux_load_alignment.py
++++ b/core/relinker/relinker/tests/test_linux_load_alignment.py
+@@ -43,7 +43,7 @@ def main():
+         source.write_bytes(fixture())
+         missing = subprocess.run([str(relinker), str(source), str(output)], capture_output=True, text=True, timeout=20)
+         assert missing.returncode != 0 and not output.exists(), missing
+-        assert "sce_module/sce_modules/prx was not found" in missing.stderr, missing.stderr
++        assert "sce_module/sce_modules/prx or Media/Modules/Media/Plugins was not found" in missing.stderr, missing.stderr
+         assert "--skip-sce-module only if this game" in missing.stderr, missing.stderr
+         result = subprocess.run([str(relinker), "--skip-sce-module", str(source), str(output)], capture_output=True, text=True, timeout=20)
+         if result.returncode != 0:

@@ -26,7 +26,12 @@ PYTHON_SHA = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3'
 TESTS = ('windows_exception_tests', 'guest_formatting_tests', 'host_thread_local_tests',
          'guest_environment_tests', 'file_position_tests', 'guest_math_tests',
          'guest_json_tests', 'guest_json2_initialization_tests', 'guest_compatibility_api_tests',
-         'guest_filesystem_tests', 'guest_pthread_attr_tests', 'guest_shader_alignment_tests')
+         'guest_filesystem_tests', 'guest_pthread_attr_tests', 'guest_shader_alignment_tests',
+         'guest_memory_tests', 'guest_raise_exception_tests',
+         'uniform_wave_branch_tests', 'wave32_wide_subgroup_tests',
+         'audio_out2_pad_mix_tests', 'audio_out_mix_level_pad_spk_tests',
+         'audio_out_last_output_time_tests', 'audio_out2_latency_tests',
+         'audio_out2_port_layouts_tests', 'audio_out2_timing_tests')
 
 
 def digest(path):
@@ -120,7 +125,7 @@ def main():
     if os.name != 'nt':
         environment.update(WINEPREFIX=str(ROOT / 'build/toolchains/winlibs-wine-prefix'),
                            WINEDEBUG='-all', WINEDLLOVERRIDES='winemenubuilder.exe=d')
-    def run(name, command, extra_path=(), extra_environment=None, working_directory=None):
+    def run(name, command, extra_path=(), extra_environment=None, working_directory=None, timeout=None):
         batch = args.build / (name + '.cmd')
         search = [args.toolchain / 'bin', *extra_path]
         body = '@echo off\r\nset "PATH=' + ';'.join(win(p) for p in search) + ';%PATH%"\r\n'
@@ -132,7 +137,7 @@ def main():
         print(name + ': ' + str(log), flush=True)
         with log.open('w') as stream:
             subprocess.run(invocation, cwd=working_directory or ROOT, env={**environment, **(extra_environment or {})},
-                           stdout=stream, stderr=subprocess.STDOUT, check=True)
+                           stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=timeout)
 
     run('compiler-version', ['g++', '--version'])
     if '15.2.0' not in (args.build / 'compiler-version.log').read_text():
@@ -155,7 +160,7 @@ def main():
     if not args.skip_tests:
         for target in TESTS:
             run('test-' + target, [win(args.build / 'tests' / (target + '.exe'))],
-                [args.build / 'core/libs/libs/unpatched', args.build / 'tests'], test_arena, args.build)
+                [args.build / 'core/libs/libs/unpatched', args.build / 'tests'], test_arena, args.build, timeout=45)
             passed.append(target)
     provenance = {
         'schema': 1, 'kind': 'local_anyps5_hle_build', 'targets': targets,

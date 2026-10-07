@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libc/src/Strings.cpp b/core/libs/prx/libc/src/Strings.cpp
-index 7c9be2a2..ff62baf2 100644
+index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab724493e492 100644
 --- a/core/libs/prx/libc/src/Strings.cpp
 +++ b/core/libs/prx/libc/src/Strings.cpp
 @@ -6,9 +6,21 @@
@@ -42,7 +42,7 @@ index 7c9be2a2..ff62baf2 100644
  }
  
  double APS5_VABI strtod_nid_postfix(const char* str, char** endptr) {
-@@ -264,7 +276,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
+@@ -271,7 +283,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
  }
  
  unsigned long long APS5_VABI _Stoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -52,7 +52,7 @@ index 7c9be2a2..ff62baf2 100644
  
  size_t APS5_VABI wcslen_nid_postfix(const wchar_t* s) {
 diff --git a/core/libs/tests/GuestMath.cpp b/core/libs/tests/GuestMath.cpp
-index 259aeb3d..aeefbecb 100644
+index 259aeb3d6bf8cab1450f6d660d0d2052b8814ea2..aeefbecb91608a9bbc41d0b05167ce668c2cb662 100644
 --- a/core/libs/tests/GuestMath.cpp
 +++ b/core/libs/tests/GuestMath.cpp
 @@ -13,6 +13,9 @@ long double APS5_VABI strtold_nid_postfix(const char*, char**);

@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libkernel/File/src/Open.cpp b/core/libs/prx/libkernel/File/src/Open.cpp
-index 49d2b44c..9ec9dd14 100644
+index 807fd4bbaf639b68ea7ecabef4f4ca6debeeee00..8f7e237a0e4655bce0b3c300468eeb8e3a2dd45b 100644
 --- a/core/libs/prx/libkernel/File/src/Open.cpp
 +++ b/core/libs/prx/libkernel/File/src/Open.cpp
 @@ -13,11 +13,43 @@
@@ -48,7 +48,7 @@ index 49d2b44c..9ec9dd14 100644
  static std::int64_t NativeLseek(int fd, std::int64_t offset, int whence) {
      return ::_lseeki64(fd, offset, whence);
 diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index ef1f1caa..6ccfd0b5 100644
+index ef1f1caa002c51d58c2550451d6a52ed1877c408..e3cab7880aa77895f1abeba87af011d6aad97125 100644
 --- a/core/libs/prx/libkernel/File/src/Stdio.cpp
 +++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
 @@ -62,7 +62,7 @@ static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
@@ -78,7 +78,7 @@ index ef1f1caa..6ccfd0b5 100644
  }
  static int NativeFchmod(int descriptor, std::uint16_t mode) {
      if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
-@@ -92,12 +101,22 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
+@@ -92,17 +101,24 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
      if (descriptor < 0) { errno = EBADF; return -1; }
      HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
      if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
@@ -88,6 +88,10 @@ index ef1f1caa..6ccfd0b5 100644
 -    else basic.FileAttributes |= FILE_ATTRIBUTE_READONLY;
 -    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
 -    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
+-}
+-static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+-    const auto path = NativeDescriptorPath(descriptor);
+-    return path ? NativeUtimes(*path, times) : -1;
 +    const auto apply = [&](HANDLE target) {
 +        FILE_BASIC_INFO basic{};
 +        if (!GetFileInformationByHandleEx(target, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
@@ -105,13 +109,31 @@ index ef1f1caa..6ccfd0b5 100644
 +    const int saved = errno; CloseHandle(attributes); errno = saved;
 +    return result;
  }
- static int NativeFutimes(int descriptor, const KernelTimeval* times) {
-     const auto path = NativeDescriptorPath(descriptor);
++
+ static int NativeFlock(int descriptor, int operation) {
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+     if (handle == INVALID_HANDLE_VALUE) {
 diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
-index 950f11e5..4ce4d6d6 100644
+index c8728c5f758362e7cd97d4f9b022a4e58d5180f7..1ba8cd3a961c4f545895657087e9adfc4c26b2aa 100644
 --- a/core/libs/tests/GuestFilesystem.cpp
 +++ b/core/libs/tests/GuestFilesystem.cpp
-@@ -226,10 +226,19 @@ int main() {
+@@ -135,12 +135,12 @@ int main() {
+     Require(sceKernelFchmod(descriptor, 0400) == 0 && !ownerWrite());
+     Require(fchmod_nid_postfix(descriptor, 0600) == 0 && ownerWrite());
+     Require(sceKernelFtruncate(descriptor, 3) == 0);
+-    FileStat times{};
++    FileStat fileTimes{};
+     const KernelTimeval past[2]{{1000000000, 0}, {1000000000, 500000}};
+     Require(futimes_nid_postfix(descriptor, past) == 0);
+-    Require(stat_nid_postfix(sized.string().c_str(), &times) == 0 && times.st_mtim.tv_sec == 1000000000);
++    Require(stat_nid_postfix(sized.string().c_str(), &fileTimes) == 0 && fileTimes.st_mtim.tv_sec == 1000000000);
+     Require(futimes_nid_postfix(descriptor, nullptr) == 0);
+-    Require(stat_nid_postfix(sized.string().c_str(), &times) == 0 && times.st_mtim.tv_sec > 1000000000);
++    Require(stat_nid_postfix(sized.string().c_str(), &fileTimes) == 0 && fileTimes.st_mtim.tv_sec > 1000000000);
+     const KernelTimeval overflow[2]{{0, 0}, {0, 1000000}};
+     Require(futimes_nid_postfix(descriptor, overflow) == -1 && *__error_nid_postfix() == 22);
+     const KernelTimeval negative[2]{{0, -1}, {0, 0}};
+@@ -231,10 +231,19 @@ int main() {
      Require(utimes_nid_postfix(nullptr,times) == -1 && *__error_nid_postfix() == 14);
      Require(utimes_nid_postfix(moved.string().c_str(),invalidTimes) == -1 && *__error_nid_postfix() == 22);
      Require(close_nid_postfix(timedFD) == 0);
@@ -132,39 +154,3 @@ index 950f11e5..4ce4d6d6 100644
      Require(remove_nid_postfix(root.string().c_str()) == 0);
      Require(!std::filesystem::exists(root));
  }
-diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index 6ccfd0b5..e3cab788 100644
---- a/core/libs/prx/libkernel/File/src/Stdio.cpp
-+++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
-@@ -118,10 +118,7 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
-     const int saved = errno; CloseHandle(attributes); errno = saved;
-     return result;
- }
--static int NativeFutimes(int descriptor, const KernelTimeval* times) {
--    const auto path = NativeDescriptorPath(descriptor);
--    return path ? NativeUtimes(*path, times) : -1;
--}
-+
- static int NativeFlock(int descriptor, int operation) {
-     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
-     if (handle == INVALID_HANDLE_VALUE) {
-diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
-index 4ce4d6d6..d02c4a86 100644
---- a/core/libs/tests/GuestFilesystem.cpp
-+++ b/core/libs/tests/GuestFilesystem.cpp
-@@ -134,12 +134,12 @@ int main() {
-     Require(sceKernelFchmod(descriptor, 0400) == 0 && !ownerWrite());
-     Require(fchmod_nid_postfix(descriptor, 0600) == 0 && ownerWrite());
-     Require(sceKernelFtruncate(descriptor, 3) == 0);
--    FileStat times{};
-+    FileStat fileTimes{};
-     const KernelTimeval past[2]{{1000000000, 0}, {1000000000, 500000}};
-     Require(futimes_nid_postfix(descriptor, past) == 0);
--    Require(stat_nid_postfix(sized.string().c_str(), &times) == 0 && times.st_mtim.tv_sec == 1000000000);
-+    Require(stat_nid_postfix(sized.string().c_str(), &fileTimes) == 0 && fileTimes.st_mtim.tv_sec == 1000000000);
-     Require(futimes_nid_postfix(descriptor, nullptr) == 0);
--    Require(stat_nid_postfix(sized.string().c_str(), &times) == 0 && times.st_mtim.tv_sec > 1000000000);
-+    Require(stat_nid_postfix(sized.string().c_str(), &fileTimes) == 0 && fileTimes.st_mtim.tv_sec > 1000000000);
-     const KernelTimeval overflow[2]{{0, 0}, {0, 1000000}};
-     Require(futimes_nid_postfix(descriptor, overflow) == -1 && *__error_nid_postfix() == 22);
-     const KernelTimeval negative[2]{{0, -1}, {0, 0}};

@@ -1,11 +1,11 @@
 diff --git a/core/libs/prx/libc/src/GuestArena.cpp b/core/libs/prx/libc/src/GuestArena.cpp
-index 92f4877d..c7d41dba 100644
+index ff7a0b4f06eba3c52a625ae80296ab2dbc439cf0..82d2b81662ca3bab54d7c656efffd6f7d0fe2ff0 100644
 --- a/core/libs/prx/libc/src/GuestArena.cpp
 +++ b/core/libs/prx/libc/src/GuestArena.cpp
-@@ -1,11 +1,16 @@
- #include "prx/libc/include/GuestArena.hpp"
+@@ -2,11 +2,16 @@
  #include "prx/libc/include/WindowsMappings.hpp"
  #include <algorithm>
+ #include <atomic>
 +#include <cerrno>
  #include <cstdint>
  #include <cstdio>
@@ -19,7 +19,7 @@ index 92f4877d..c7d41dba 100644
  #include <stdexcept>
  #include <system_error>
  #include <utility>
-@@ -18,15 +23,69 @@
+@@ -19,15 +24,69 @@
  namespace GuestArena {
  namespace {
  
@@ -91,7 +91,7 @@ index 92f4877d..c7d41dba 100644
  class Arena {
  public:
      static Arena& Get() {
-@@ -49,6 +108,7 @@ public:
+@@ -50,6 +109,7 @@ public:
  
      void* AllocateAtOrAbove(std::uintptr_t hint, std::size_t bytes, std::size_t alignment) {
          if (_base == 0) throw std::runtime_error("guest address space arena is unavailable");
@@ -99,7 +99,7 @@ index 92f4877d..c7d41dba 100644
          if (alignment == 0 || (alignment & (alignment - 1)) != 0) throw std::invalid_argument("invalid guest arena alignment");
          std::lock_guard lock(_lock);
          if (hint >= _end) throw std::runtime_error("mapping address hint is above the guest address space arena");
-@@ -61,11 +121,19 @@ public:
+@@ -62,11 +122,19 @@ public:
              candidate = std::max(candidate, alignUp(end, alignment));
          }
          if (candidate > _end || bytes > _end - candidate) throw std::runtime_error("guest address space arena exhausted");
@@ -120,7 +120,7 @@ index 92f4877d..c7d41dba 100644
          std::lock_guard lock(_lock);
          const auto start = reinterpret_cast<std::uintptr_t>(pointer);
          const auto next = _used.lower_bound(start);
-@@ -74,10 +142,17 @@ public:
+@@ -75,10 +143,17 @@ public:
              std::snprintf(message, sizeof(message), "fixed guest mapping 0x%llx+0x%zx overlaps %s", static_cast<unsigned long long>(start), bytes, OverlapsHostRegion(start, bytes) ? "a host region in the guest arena" : "a guest arena range");
              throw std::runtime_error(message);
          }
@@ -139,7 +139,7 @@ index 92f4877d..c7d41dba 100644
          std::lock_guard lock(_lock);
          const auto start = reinterpret_cast<std::uintptr_t>(pointer);
          const auto end = start + bytes;
-@@ -99,29 +174,103 @@ public:
+@@ -100,29 +175,103 @@ public:
          }
      }
  
@@ -261,7 +261,7 @@ index 92f4877d..c7d41dba 100644
          _end = end;
  #endif
      }
-@@ -132,18 +281,27 @@ private:
+@@ -133,18 +282,27 @@ private:
      std::vector<std::pair<std::uintptr_t, std::uintptr_t>> _hostRegions;
      std::uintptr_t _base = 0;
      std::uintptr_t _end = 0;
@@ -289,7 +289,7 @@ index 92f4877d..c7d41dba 100644
  };
  
  const bool g_reserved = (Arena::Get(), true);
-@@ -212,6 +370,7 @@ std::invalid_argument OutsideArena(const char* operation, const void* pointer, s
+@@ -223,6 +381,7 @@ std::invalid_argument OutsideArena(const char* operation, const void* pointer, s
  
  void GuestArenaCommit_nid_postfix(void* pointer, std::size_t bytes, std::uint32_t protection, std::size_t granule) {
      if (!Arena::Get().Contains(pointer, bytes)) throw OutsideArena("commit", pointer, bytes);
@@ -297,7 +297,7 @@ index 92f4877d..c7d41dba 100644
      WindowsMappings::Get().Commit(pointer, bytes, protection, granule, Arena::Get().WriteWatched());
  }
  
-@@ -222,6 +381,7 @@ void GuestArenaReset_nid_postfix(void* pointer, std::size_t bytes) {
+@@ -233,6 +392,7 @@ void GuestArenaReset_nid_postfix(void* pointer, std::size_t bytes) {
  
  void GuestArenaMap_nid_postfix(void* pointer, std::size_t bytes, void* section, std::uint64_t offset, std::uint32_t protection) {
      if (!Arena::Get().Contains(pointer, bytes)) throw OutsideArena("shared mapping", pointer, bytes);

@@ -1,12 +1,11 @@
 diff --git a/core/libs/CMakeLists.txt b/core/libs/CMakeLists.txt
-index dfe86ccd..6d10b270 100644
+index f6c6df5e092f18fc4368c5952c0b7fa1ea5fdda9..117288bf2eac9e8518f4f22c23e71fbf686e7984 100644
 --- a/core/libs/CMakeLists.txt
 +++ b/core/libs/CMakeLists.txt
-@@ -195,3 +195,17 @@ if(MINGW)
-         string(REPLACE "${runtimeLinkFlag}" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-     endforeach()
+@@ -199,3 +199,16 @@ if(BUILD_TESTING)
+             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceSaveData.native>")
+     endif()
  endif()
-+
 +if(BUILD_TESTING)
 +    add_test_executable(guest_compatibility_api_tests tests/GuestCompatibilityApis.cpp)
 +    target_include_directories(guest_compatibility_api_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -21,7 +20,7 @@ index dfe86ccd..6d10b270 100644
 +    endif()
 +endif()
 diff --git a/core/libs/prx/libSceHttp2/Export.cpp b/core/libs/prx/libSceHttp2/Export.cpp
-index a90ecb83..c2e23669 100644
+index 56f59ebeaf755379b6ec0e85d0d1de1c8fce0aee..b49195e17490881a1fa7b82ecf0959f74f6d2cd5 100644
 --- a/core/libs/prx/libSceHttp2/Export.cpp
 +++ b/core/libs/prx/libSceHttp2/Export.cpp
 @@ -3,11 +3,15 @@
@@ -52,7 +51,7 @@ index a90ecb83..c2e23669 100644
  }
  
  int APS5_VABI sceHttp2ReadData(int req_id, void* data, size_t size) {
-@@ -192,8 +199,8 @@ int APS5_VABI sceHttp2SslEnableOption(int id, uint32_t ssl_flags) {
+@@ -198,8 +205,8 @@ int APS5_VABI sceHttp2SetMinSslVersion(int id, uint32_t ssl_version) {
  }
  
  int APS5_VABI sceHttp2Term(int lib_http2_ctx_id) {
@@ -63,7 +62,7 @@ index a90ecb83..c2e23669 100644
  }
  
  int APS5_VABI sceHttp2WaitAsync(int req_id, Http2AsyncResult* result, uint32_t* timeout, void* option) {
-@@ -214,9 +221,12 @@ int APS5_VABI sceHttp2GetMemoryPoolStats() {
+@@ -220,9 +227,12 @@ int APS5_VABI sceHttp2GetMemoryPoolStats() {
      return 0;
  }
  
@@ -79,7 +78,7 @@ index a90ecb83..c2e23669 100644
  }
  
  int APS5_VABI sceHttp2CreateCookieBox(int lib_http2_ctx_id) {
-@@ -233,6 +243,7 @@ int APS5_VABI sceHttp2SetCookieBox(int id, int cookie_box_id) {
+@@ -239,6 +249,7 @@ int APS5_VABI sceHttp2SetCookieBox(int id, int cookie_box_id) {
  int APS5_VABI sceHttp2SetRequestNoContentLength(int id) {
      (void)id;
      return 0;
@@ -88,10 +87,10 @@ index a90ecb83..c2e23669 100644
  
  }
 diff --git a/core/libs/prx/libSceJson2/CMakeLists.txt b/core/libs/prx/libSceJson2/CMakeLists.txt
-index acfda494..3008470c 100644
+index dff923fb2f0098605065004ff5eeb16aff8e0998..ee1ef64873aaaefde9885ef5a962607a20dc431a 100644
 --- a/core/libs/prx/libSceJson2/CMakeLists.txt
 +++ b/core/libs/prx/libSceJson2/CMakeLists.txt
-@@ -19,3 +19,15 @@ if(BUILD_TESTING)
+@@ -13,3 +13,15 @@ if(BUILD_TESTING)
              "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceJson2>")
      endif()
  endif()
@@ -108,7 +107,7 @@ index acfda494..3008470c 100644
 +    endif()
 +endif()
 diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
-index 0d7e33f9..52686b10 100644
+index 0d7e33f95b7abaa1fd28a92ce1f5130da95e5769..275cb6a06f4e051db52c86197cf28391d463b839 100644
 --- a/core/libs/prx/libSceJson2/Export.cpp
 +++ b/core/libs/prx/libSceJson2/Export.cpp
 @@ -5,6 +5,9 @@
@@ -322,6 +321,15 @@ index 0d7e33f9..52686b10 100644
          if (integral) {
              errno = 0;
              if (text[0] == '-') {
+@@ -372,7 +439,7 @@ private:
+             }
+         }
+         const double real = std::strtod(text.c_str(), nullptr);
+-        if (!std::isfinite(real)) throw std::runtime_error("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified");
++        if (!std::isfinite(real)) throw std::runtime_error(("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified").c_str());
+         out.type = TypeReal;
+         out.real = real;
+         return true;
 @@ -384,7 +451,7 @@ private:
              case 't': if (!literal("true")) return false; SetType(out, TypeBoolean); out.boolean = true; return true;
              case 'f': if (!literal("false")) return false; SetType(out, TypeBoolean); return true;
@@ -409,6 +417,15 @@ index 0d7e33f9..52686b10 100644
  void APS5_VABI _ZN3sce4Json6StringC1EPKc(String* self, const char* text) {
      if (text == nullptr) throw std::invalid_argument("sce::Json::String: null text");
      Construct(*self, text);
+@@ -569,7 +673,7 @@ void APS5_VABI _ZN3sce4Json6Object8iteratorD1Ev(ObjectIterator* self) { (void)se
+ ObjectIterator* APS5_VABI _ZN3sce4Json6Object8iteratorppEv(ObjectIterator* self) { ++self->it; return self; }
+ Pair* APS5_VABI _ZNK3sce4Json6Object8iteratordeEv(const ObjectIterator* self) { return &*self->it; }
+ bool APS5_VABI _ZNK3sce4Json6Object8iteratorneERKS2_(const ObjectIterator* self, const ObjectIterator* other) { return self->it != other->it; }
+-std::size_t APS5_VABI _ZNK3sce4Json6Object4sizeEv(const Object* self) { return self->items->size(); }
++
+ 
+ void APS5_VABI _ZN3sce4Json5ValueC1Ev(Value* self) { Construct(*self); }
+ void APS5_VABI _ZN3sce4Json5ValueC1Eb(Value* self, bool value) { Construct(*self); self->node->type = TypeBoolean; self->node->boolean = value; }
 @@ -611,13 +715,13 @@ int APS5_VABI _ZN3sce4Json5Value3setEm(Value* self, std::uint64_t value) { SetTy
  int APS5_VABI _ZN3sce4Json5Value3setEd(Value* self, double value) { SetType(NodeOf(*self), TypeReal); self->node->real = value; return 0; }
  int APS5_VABI _ZN3sce4Json5Value3setEPKc(Value* self, const char* text) {
@@ -443,8 +460,46 @@ index 0d7e33f9..52686b10 100644
      Serialize(text, n);
      *out->text = std::move(text);
      return 0;
+@@ -777,30 +881,17 @@ int APS5_VABI sceJson2Unknown00(void) {
+     return 0;
+ }
+ 
+-struct InitParameter2 {
+-    void* allocator;
+-    void* userData;
+-    std::size_t fileBufferSize;
+-};
+-static_assert(sizeof(InitParameter2) <= 40);
+-
+ void APS5_VABI _ZN3sce4Json14InitParameter2C1Ev(InitParameter2* self) {
+-    *self = {};
++    _ZN3sce4Json14InitParameter2C2Ev(self);
+ }
+ 
+ void APS5_VABI _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(InitParameter2* self, void* allocator, void* userData) {
+-    self->allocator = allocator;
+-    self->userData = userData;
+-}
+-
+-void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter2* self, std::size_t size) {
+-    self->fileBufferSize = size;
+-}
+-
+-int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void* self, const InitParameter2* parameter) {
+-    (void)self;
+-    if (parameter == nullptr) throw std::invalid_argument("sce::Json::Initializer::initialize: null parameter");
+-    return 0;
++    if (!self) throw std::invalid_argument("sce::Json::setAllocator: null self");
++    // MemAllocator is an opaque C++ virtual interface, unlike AllocParamRtti.
++    // Do not reinterpret it as a callback table or silently ignore it.
++    if (allocator) throw std::runtime_error("sce::Json::MemAllocator virtual ABI is not implemented; use AllocParamRtti");
++    self->allocator = nullptr;
++    self->context = userData;
+ }
+ 
+ int APS5_VABI _ZN3sce4Json5Value5clearEv(void) {
 diff --git a/core/libs/prx/libSceMsgDialog.native/Export.cpp b/core/libs/prx/libSceMsgDialog.native/Export.cpp
-index edb76df0..5882e295 100644
+index edb76df0f719d91d211dcfdf0833cbbc742637c8..5882e29582f49655ce669ba4a15562c94cfbcebb 100644
 --- a/core/libs/prx/libSceMsgDialog.native/Export.cpp
 +++ b/core/libs/prx/libSceMsgDialog.native/Export.cpp
 @@ -1,4 +1,7 @@
@@ -590,7 +645,7 @@ index edb76df0..5882e295 100644
  
  }
 diff --git a/core/libs/prx/libSceNpCommerce/Export.cpp b/core/libs/prx/libSceNpCommerce/Export.cpp
-index 525178f3..109f79ee 100644
+index 525178f39edf6d4b2a41a6f45aebb6e0ae5b2f99..109f79ee6c1ee744c55716dae6e8d3dd1e2e94f7 100644
 --- a/core/libs/prx/libSceNpCommerce/Export.cpp
 +++ b/core/libs/prx/libSceNpCommerce/Export.cpp
 @@ -1,6 +1,7 @@
@@ -625,10 +680,10 @@ index 525178f3..109f79ee 100644
  }
  
 diff --git a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
-index 61f27d29..1a3a59ba 100644
+index ccf92707c73e4b37446c411370805fe28088d82f..1a3a59bac813affae7104c2b8a9fc2054bbbc329 100644
 --- a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
 +++ b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
-@@ -119,34 +119,24 @@ int APS5_VABI sceNpEntitlementAccessRequestConsumeUnifiedEntitlement(void) {
+@@ -119,54 +119,24 @@ int APS5_VABI sceNpEntitlementAccessRequestConsumeUnifiedEntitlement(void) {
  }
  
  
@@ -650,6 +705,26 @@ index 61f27d29..1a3a59ba 100644
 -int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfo(void) {
 -    NotImplemented_nid_no_patch(__func__);
 -    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessGetPftFlag(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfoList() {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfoList() {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +int APS5_VABI sceNpEntitlementAccessGetEntitlementKey(uint32_t service_label, const NpUnifiedEntitlementLabel* label, void* key) {
 +    (void)service_label;
 +    if (!label || !key) return SCE_NP_ENTITLEMENT_ACCESS_ERROR_PARAMETER;
@@ -667,12 +742,12 @@ index 61f27d29..1a3a59ba 100644
 +int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
 +int APS5_VABI sceNpEntitlementAccessRequestConsumeServiceEntitlement(void) { return SCE_NP_ERROR_SIGNED_OUT; }
  
--int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void) {
+-int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfoList() {
 -    NotImplemented_nid_no_patch(__func__);
 -    return 0;
 -}
  
--int APS5_VABI sceNpEntitlementAccessGetPftFlag(void) {
+-int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfoList() {
 -    NotImplemented_nid_no_patch(__func__);
 -    return 0;
  }
@@ -680,7 +755,7 @@ index 61f27d29..1a3a59ba 100644
 -}
 +extern "C" int APS5_VABI sceNpEntitlementAccessGetPftFlag(void) { return SCE_NP_ERROR_SIGNED_OUT; }
 diff --git a/core/libs/prx/libSceNpManager/Export.cpp b/core/libs/prx/libSceNpManager/Export.cpp
-index ca76483a..79649fb7 100644
+index a9d412be4e38c77ec8c19cbafffb3adb1a0962a6..894f5cecdbf666642733356ae7d565239c4a8682 100644
 --- a/core/libs/prx/libSceNpManager/Export.cpp
 +++ b/core/libs/prx/libSceNpManager/Export.cpp
 @@ -3,6 +3,7 @@
@@ -701,7 +776,7 @@ index ca76483a..79649fb7 100644
  
  extern "C" {
  
-@@ -125,8 +129,10 @@ void APS5_VABI sceNpRegisterGamePresenceCallback(void* callback, void* userdata)
+@@ -124,8 +128,10 @@ void APS5_VABI sceNpRegisterGamePresenceCallback(void* callback, void* userdata)
  }
  
  int APS5_VABI sceNpRegisterNpReachabilityStateCallback(void* callback, void* userdata) {
@@ -713,11 +788,10 @@ index ca76483a..79649fb7 100644
      return 0;
  }
  
-@@ -191,4 +197,12 @@ int APS5_VABI sceNpUnregisterPremiumEventCallback(void) {
+@@ -195,4 +201,11 @@ int APS5_VABI sceNpGetUserIdByAccountId() {
      return 0;
  }
  
-+
 +int APS5_VABI sceNpUnregisterNpReachabilityStateCallback(void) {
 +    std::lock_guard lock(g_reachabilityMutex);
 +    g_reachabilityCallback = nullptr;
@@ -727,23 +801,19 @@ index ca76483a..79649fb7 100644
 +
  }
 diff --git a/core/libs/prx/libSceNpSessionSignaling/Export.cpp b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-index 996613a4..2202a8ce 100644
+index 996613a42901a4e52a892bc8a3ddc13035953ea3..4f98c3017c8a5ec8fcc851f6923b60b98568af78 100644
 --- a/core/libs/prx/libSceNpSessionSignaling/Export.cpp
 +++ b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-@@ -88,4 +88,11 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
+@@ -88,4 +88,7 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
      NotImplemented_nid_no_patch(__func__);
      return 0;
  }
 +
-+int APS5_VABI sceNpSessionSignalingRequestPrepare(uint32_t context_id, uint32_t* request_id) {
-+    (void)context_id;
-+    if (!request_id) return SCE_NP_SESSION_SIGNALING_ERROR_INVALID_ARGUMENT;
-+    return SCE_NP_SESSION_SIGNALING_ERROR_UNAVAILABLE;
-+}
++
 +
  }
 diff --git a/core/libs/prx/libSceNpTrophy2/src/Context.cpp b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
-index 0a7bd1da..1a03b550 100644
+index 0a7bd1dafb2db5e09c05e5903830367a5f9fe041..10f4ce0077f059c6eaa7488e9a6f61c117f1d4e4 100644
 --- a/core/libs/prx/libSceNpTrophy2/src/Context.cpp
 +++ b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
 @@ -4,6 +4,7 @@
@@ -754,22 +824,25 @@ index 0a7bd1da..1a03b550 100644
  
  extern "C" {
  
-@@ -45,4 +46,13 @@ int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
-     return 0;
+@@ -36,13 +37,12 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback() {
+ 
+ 
+ int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
++    return SCE_NP_TROPHY2_ERROR_ICON_FILE_NOT_FOUND;
  }
  
-+int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
-+    return SCE_NP_TROPHY2_ERROR_ICON_FILE_NOT_FOUND;
-+}
-+
-+int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
+ int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +    // Local compatibility result: no console overlay backend is available.
 +    return SCE_KERNEL_ERROR_ENOSYS;
-+}
-+
+ }
+ 
  }
 diff --git a/core/libs/prx/libSceSsl/Export.cpp b/core/libs/prx/libSceSsl/Export.cpp
-index 5ef04eac..9fc33cc7 100644
+index 5ef04eacbc760c9fe05a893d504e8b7ec1986f74..9fc33cc77563b526f148d7dec73d4205f853d3d8 100644
 --- a/core/libs/prx/libSceSsl/Export.cpp
 +++ b/core/libs/prx/libSceSsl/Export.cpp
 @@ -73,34 +73,34 @@ int APS5_VABI sceSslGetMemoryPoolStats() {
@@ -830,7 +903,7 @@ index 5ef04eac..9fc33cc7 100644
  
  }
 diff --git a/core/libs/prx/libSceSystemService/Export.cpp b/core/libs/prx/libSceSystemService/Export.cpp
-index 0de0c37f..b0fa427b 100644
+index 0de0c37f4031ef7b912f40ff0b4a84841daf03bf..b0fa427b844975fdb96c98784de89a5b2bb7b864 100644
 --- a/core/libs/prx/libSceSystemService/Export.cpp
 +++ b/core/libs/prx/libSceSystemService/Export.cpp
 @@ -2,11 +2,15 @@
@@ -893,7 +966,7 @@ index 0de0c37f..b0fa427b 100644
 +
 +extern "C" int APS5_VABI sceSystemServiceOpenTournamentOccurrence(void) { return SCE_KERNEL_ERROR_ENOSYS; }
 diff --git a/core/libs/prx/libSceUserService/Export.cpp b/core/libs/prx/libSceUserService/Export.cpp
-index 2a54f7c9..7dde5d3c 100644
+index 2a54f7c9f2f6b3d8121092de847dfd97986e19d4..7dde5d3ca6e83e437c224f6b82f5e6077c490c22 100644
 --- a/core/libs/prx/libSceUserService/Export.cpp
 +++ b/core/libs/prx/libSceUserService/Export.cpp
 @@ -189,6 +189,7 @@ int APS5_VABI sceUserServiceGetNpAccountId(int user_id, uint64_t* account_id) {
@@ -905,26 +978,36 @@ index 2a54f7c9..7dde5d3c 100644
  
  }
 diff --git a/core/libs/prx/libSceVideoOut/src/Output.cpp b/core/libs/prx/libSceVideoOut/src/Output.cpp
-index cf471691..53a4f7ca 100644
+index af435d9a3a9df284b0b9c1a416519f62291ac48b..5ff897c935d882b0a1934aaf3ebbfc1541324618 100644
 --- a/core/libs/prx/libSceVideoOut/src/Output.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/Output.cpp
-@@ -279,4 +279,14 @@ int APS5_VABI sceVideoOutAdjustColor(int handle, const VideoOutColorSettings* se
+@@ -276,18 +276,14 @@ int APS5_VABI sceVideoOutAdjustColor(int handle, const VideoOutColorSettings* se
      LibcAwaitExit_nid_postfix();
  }
  
+-int APS5_VABI sceVideoOutVrrUnpegFromFixedRate() try {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-} catch (const ProcessShutdown&) {
+-    LibcAwaitExit_nid_postfix();
 +int APS5_VABI sceVideoOutVrrPegToFixedRate(void) {
 +    // The current host output does not advertise VRR support.
 +    return VIDEO_OUT_ERROR_UNSUPPORTED_OUTPUT_MODE;
-+}
-+
+ }
+ 
+-int APS5_VABI sceVideoOutVrrPegToFixedRate() try {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-} catch (const ProcessShutdown&) {
+-    LibcAwaitExit_nid_postfix();
 +int APS5_VABI sceVideoOutVrrUnpegFromFixedRate(void) {
 +    // The current host output does not advertise VRR support.
 +    return VIDEO_OUT_ERROR_UNSUPPORTED_OUTPUT_MODE;
-+}
-+
  }
+ 
+ APS5_EXPORT("kP2L8t3j-aM", sceVideoOutUnknown00);
 diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index 7defbc42..ef1f1caa 100644
+index 7defbc421f47e07a81e75900f6e900e404d0bb1b..ef1f1caa002c51d58c2550451d6a52ed1877c408 100644
 --- a/core/libs/prx/libkernel/File/src/Stdio.cpp
 +++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
 @@ -42,37 +42,62 @@ static int NativeMkdir(const std::filesystem::path& path, std::uint16_t mode) {
@@ -1033,7 +1116,7 @@ index 7defbc42..ef1f1caa 100644
  
  }
 diff --git a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
-index 66800ba3..c5f23450 100644
+index 66800ba338eb5e0cbc18b5d9f30ad97c3126e7f1..c5f2345027b86ae0bcba7dcc2d715ddb18047691 100644
 --- a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
 +++ b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
 @@ -7,6 +7,7 @@
@@ -1069,24 +1152,35 @@ index 66800ba3..c5f23450 100644
 +
  }
 diff --git a/core/libs/prx/libkernel/Socket/src/Udp.cpp b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-index af4f2f14..0e60de26 100644
+index af4f2f148470743f90f5c3c9373d59eaadcfbb20..4c0338d05deb5100f319198ce141e37f61c6f1fc 100644
 --- a/core/libs/prx/libkernel/Socket/src/Udp.cpp
 +++ b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-@@ -156,6 +156,11 @@ void GuestAddress(const sockaddr_storage& native, void* output, std::uint32_t* l
+@@ -156,16 +156,18 @@ void GuestAddress(const sockaddr_storage& native, void* output, std::uint32_t* l
  }
  }
  
+-int GuestSockets::Close(int descriptor) {
 +bool GuestSockets::IsOpen(int descriptor) {
-+    std::lock_guard lock(socketsMutex);
-+    return sockets.count(descriptor) != 0;
-+}
-+
- int GuestSockets::Close(int descriptor) {
      std::lock_guard lock(socketsMutex);
-     return sockets.erase(descriptor) ? 0 : Fail(9);
+-    return sockets.erase(descriptor) ? 0 : Fail(9);
++    return sockets.count(descriptor) != 0;
+ }
+ 
+-bool GuestSockets::IsOpen(int descriptor) {
++int GuestSockets::Close(int descriptor) {
+     std::lock_guard lock(socketsMutex);
+-    return sockets.contains(descriptor);
++    return sockets.erase(descriptor) ? 0 : Fail(9);
+ }
+ 
++
++
+ extern "C" {
+ int APS5_VABI fcntl_nid_postfix(int descriptor, int command, ...) {
+     const auto socket = Lookup(descriptor);
 diff --git a/core/libs/tests/GuestCompatibilityApis.cpp b/core/libs/tests/GuestCompatibilityApis.cpp
 new file mode 100644
-index 00000000..d6c65232
+index 0000000000000000000000000000000000000000..d6c65232ecebbc333f5fd7f2d4fba65f93bdeb03
 --- /dev/null
 +++ b/core/libs/tests/GuestCompatibilityApis.cpp
 @@ -0,0 +1,88 @@
@@ -1179,7 +1273,7 @@ index 00000000..d6c65232
 +    std::puts("PASS offline service failures, immutable error outputs, context lifetime, accessibility and progress dialog lifecycle");
 +}
 diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
-index 1a7f71ad..950f11e5 100644
+index 2730e18f21e46b4f1be9da2e00108d3680931594..c8728c5f758362e7cd97d4f9b022a4e58d5180f7 100644
 --- a/core/libs/tests/GuestFilesystem.cpp
 +++ b/core/libs/tests/GuestFilesystem.cpp
 @@ -8,10 +8,16 @@
@@ -1199,7 +1293,7 @@ index 1a7f71ad..950f11e5 100644
  int APS5_VABI remove_nid_postfix(const char*);
  int APS5_VABI rename_nid_postfix(const char*, const char*);
  int APS5_VABI sceKernelChmod_nid_postfix(const char*, unsigned short);
-@@ -193,6 +199,37 @@ int main() {
+@@ -198,6 +204,37 @@ int main() {
      const auto empty = root / "empty";
      Require(std::filesystem::create_directory(empty));
      Require(rmdir_nid_postfix(empty.string().c_str()) == 0 && !std::filesystem::exists(empty));
@@ -1237,9 +1331,33 @@ index 1a7f71ad..950f11e5 100644
      Require(remove_nid_postfix(root.string().c_str()) == 0);
      Require(!std::filesystem::exists(root));
  }
+diff --git a/core/libs/tests/GuestJson.cpp b/core/libs/tests/GuestJson.cpp
+index 7791c84047f05fcc84eec2417601d7f4e53e8561..70dd80c9267254bf93f5940ca53b10f685cbb7be 100644
+--- a/core/libs/tests/GuestJson.cpp
++++ b/core/libs/tests/GuestJson.cpp
+@@ -339,11 +339,17 @@ static void ValueAccess() {
+     _ZN3sce4Json14InitParameter2C1Ev(parameter);
+     int allocator = 0;
+     int userData = 0;
+-    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData);
++    bool unsupportedAllocator = false;
++    try { _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData); }
++    catch (const std::runtime_error& error) {
++        unsupportedAllocator = std::string(error.what()).find("virtual ABI is not implemented") != std::string::npos;
++    }
++    Require(unsupportedAllocator);
++    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, nullptr, &userData);
+     _ZN3sce4Json14InitParameter217setFileBufferSizeEm(parameter, 4096);
+     void* stored[3]{};
+     std::memcpy(stored, parameter, sizeof(stored));
+-    Require(stored[0] == &allocator && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
++    Require(stored[0] == nullptr && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
+     alignas(16) std::uint8_t initializer[16]{};
+     Require(_ZN3sce4Json11InitializerC1Ev(initializer) == 0);
+     Require(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(initializer, parameter) == 0);
 diff --git a/core/libs/tests/GuestJson2Initialization.cpp b/core/libs/tests/GuestJson2Initialization.cpp
 new file mode 100644
-index 00000000..db5e2b89
+index 0000000000000000000000000000000000000000..db5e2b8936982d2ee85c3c46f6af2082910db499
 --- /dev/null
 +++ b/core/libs/tests/GuestJson2Initialization.cpp
 @@ -0,0 +1,79 @@
@@ -1323,7 +1441,7 @@ index 00000000..db5e2b89
 +    std::puts("PASS JSON2 allocator callbacks, temporary configuration, live object cleanup, parsing and allocation failure");
 +}
 diff --git a/core/libs/tests/GuestPthreadAttr.cpp b/core/libs/tests/GuestPthreadAttr.cpp
-index 74368d79..ab1b962e 100644
+index 74368d79e04aa1b3b13e0c3d92145b95c031bd6d..ab1b962eb5e3e69247e6e9c011e254782538b7a3 100644
 --- a/core/libs/tests/GuestPthreadAttr.cpp
 +++ b/core/libs/tests/GuestPthreadAttr.cpp
 @@ -60,7 +60,21 @@ static void* APS5_VABI Worker(void* arg) {
@@ -1348,140 +1466,3 @@ index 74368d79..ab1b962e 100644
      PthreadAttr attr = nullptr;
      Require(scePthreadAttrInit(&attr) == SCE_OK);
      Require(scePthreadAttrSetinheritsched(&attr, EXPLICIT_SCHED) == SCE_OK);
-diff --git a/core/libs/prx/libkernel/Socket/src/Udp.cpp b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-index 0e60de26..4c0338d0 100644
---- a/core/libs/prx/libkernel/Socket/src/Udp.cpp
-+++ b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-@@ -166,10 +166,7 @@ int GuestSockets::Close(int descriptor) {
-     return sockets.erase(descriptor) ? 0 : Fail(9);
- }
- 
--bool GuestSockets::IsOpen(int descriptor) {
--    std::lock_guard lock(socketsMutex);
--    return sockets.contains(descriptor);
--}
-+
- 
- extern "C" {
- int APS5_VABI fcntl_nid_postfix(int descriptor, int command, ...) {
-diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
-index 52686b10..275cb6a0 100644
---- a/core/libs/prx/libSceJson2/Export.cpp
-+++ b/core/libs/prx/libSceJson2/Export.cpp
-@@ -439,7 +439,7 @@ private:
-             }
-         }
-         const double real = std::strtod(text.c_str(), nullptr);
--        if (!std::isfinite(real)) throw std::runtime_error("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified");
-+        if (!std::isfinite(real)) throw std::runtime_error(("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified").c_str());
-         out.type = TypeReal;
-         out.real = real;
-         return true;
-@@ -673,7 +673,7 @@ void APS5_VABI _ZN3sce4Json6Object8iteratorD1Ev(ObjectIterator* self) { (void)se
- ObjectIterator* APS5_VABI _ZN3sce4Json6Object8iteratorppEv(ObjectIterator* self) { ++self->it; return self; }
- Pair* APS5_VABI _ZNK3sce4Json6Object8iteratordeEv(const ObjectIterator* self) { return &*self->it; }
- bool APS5_VABI _ZNK3sce4Json6Object8iteratorneERKS2_(const ObjectIterator* self, const ObjectIterator* other) { return self->it != other->it; }
--std::size_t APS5_VABI _ZNK3sce4Json6Object4sizeEv(const Object* self) { return self->items->size(); }
-+
- 
- void APS5_VABI _ZN3sce4Json5ValueC1Ev(Value* self) { Construct(*self); }
- void APS5_VABI _ZN3sce4Json5ValueC1Eb(Value* self, bool value) { Construct(*self); self->node->type = TypeBoolean; self->node->boolean = value; }
-@@ -881,30 +881,17 @@ int APS5_VABI sceJson2Unknown00(void) {
-     return 0;
- }
- 
--struct InitParameter2 {
--    void* allocator;
--    void* userData;
--    std::size_t fileBufferSize;
--};
--static_assert(sizeof(InitParameter2) <= 40);
--
- void APS5_VABI _ZN3sce4Json14InitParameter2C1Ev(InitParameter2* self) {
--    *self = {};
-+    _ZN3sce4Json14InitParameter2C2Ev(self);
- }
- 
- void APS5_VABI _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(InitParameter2* self, void* allocator, void* userData) {
--    self->allocator = allocator;
--    self->userData = userData;
--}
--
--void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter2* self, std::size_t size) {
--    self->fileBufferSize = size;
--}
--
--int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void* self, const InitParameter2* parameter) {
--    (void)self;
--    if (parameter == nullptr) throw std::invalid_argument("sce::Json::Initializer::initialize: null parameter");
--    return 0;
-+    if (!self) throw std::invalid_argument("sce::Json::setAllocator: null self");
-+    // MemAllocator is an opaque C++ virtual interface, unlike AllocParamRtti.
-+    // Do not reinterpret it as a callback table or silently ignore it.
-+    if (allocator) throw std::runtime_error("sce::Json::MemAllocator virtual ABI is not implemented; use AllocParamRtti");
-+    self->allocator = nullptr;
-+    self->context = userData;
- }
- 
- int APS5_VABI _ZN3sce4Json5Value5clearEv(void) {
-diff --git a/core/libs/prx/libSceNpSessionSignaling/Export.cpp b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-index 2202a8ce..4f98c301 100644
---- a/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-+++ b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-@@ -89,10 +89,6 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
-     return 0;
- }
- 
--int APS5_VABI sceNpSessionSignalingRequestPrepare(uint32_t context_id, uint32_t* request_id) {
--    (void)context_id;
--    if (!request_id) return SCE_NP_SESSION_SIGNALING_ERROR_INVALID_ARGUMENT;
--    return SCE_NP_SESSION_SIGNALING_ERROR_UNAVAILABLE;
--}
-+
- 
- }
-diff --git a/core/libs/prx/libSceNpTrophy2/src/Context.cpp b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
-index 1a03b550..10f4ce00 100644
---- a/core/libs/prx/libSceNpTrophy2/src/Context.cpp
-+++ b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
-@@ -36,16 +36,6 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback() {
- }
- 
- 
--int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
--    NotImplemented_nid_no_patch(__func__);
--    return 0;
--}
--
--int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
--    NotImplemented_nid_no_patch(__func__);
--    return 0;
--}
--
- int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
-     return SCE_NP_TROPHY2_ERROR_ICON_FILE_NOT_FOUND;
- }
-diff --git a/core/libs/tests/GuestJson.cpp b/core/libs/tests/GuestJson.cpp
-index 7791c840..70dd80c9 100644
---- a/core/libs/tests/GuestJson.cpp
-+++ b/core/libs/tests/GuestJson.cpp
-@@ -339,11 +339,17 @@ static void ValueAccess() {
-     _ZN3sce4Json14InitParameter2C1Ev(parameter);
-     int allocator = 0;
-     int userData = 0;
--    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData);
-+    bool unsupportedAllocator = false;
-+    try { _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData); }
-+    catch (const std::runtime_error& error) {
-+        unsupportedAllocator = std::string(error.what()).find("virtual ABI is not implemented") != std::string::npos;
-+    }
-+    Require(unsupportedAllocator);
-+    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, nullptr, &userData);
-     _ZN3sce4Json14InitParameter217setFileBufferSizeEm(parameter, 4096);
-     void* stored[3]{};
-     std::memcpy(stored, parameter, sizeof(stored));
--    Require(stored[0] == &allocator && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
-+    Require(stored[0] == nullptr && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
-     alignas(16) std::uint8_t initializer[16]{};
-     Require(_ZN3sce4Json11InitializerC1Ev(initializer) == 0);
-     Require(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(initializer, parameter) == 0);

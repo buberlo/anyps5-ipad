@@ -1,8 +1,8 @@
 diff --git a/core/shader/recompiler/Optimization/src/ConstantFolder.cpp b/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
-index 8f87d21d..a06451e2 100644
+index a05a6c7a86de12cb1628dd28fd875299e0f70b9f..69618bd941860700789ee1600c8ca0940dce1f75 100644
 --- a/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
 +++ b/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
-@@ -94,6 +94,38 @@ bool replaceBinaryIdentity(IrValue& inst, IrType type, std::uint64_t identity) {
+@@ -97,6 +97,38 @@ bool replaceBinaryIdentity(IrValue& inst, IrType type, std::uint64_t identity) {
      return false;
  }
  
@@ -41,7 +41,7 @@ index 8f87d21d..a06451e2 100644
  bool foldSelect(IrValue& inst) {
      auto& condition = resolveArg(inst, 0);
      auto& trueValue = resolveArg(inst, 1);
-@@ -435,6 +467,7 @@ bool ConstantFolder::tryFoldValue(IrProgram& program, IrValue& value) const {
+@@ -494,6 +526,7 @@ bool ConstantFolder::tryFoldValue(IrProgram& program, IrValue& value) const {
              if (foldU32(builder, value, [](std::uint32_t a, std::uint32_t b) { return a & b; })) {
                  return true;
              }

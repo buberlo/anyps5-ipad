@@ -6,6 +6,7 @@ or executed. A complete package still needs a Windows GPU reference and iPad
 gameplay testing. Missing libraries or NIDs leave it explicitly not ready.
 """
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
@@ -35,8 +36,8 @@ def digest(path):
     return value.hexdigest()
 
 
-def needed_libraries(path):
-    """Read DT_NEEDED from a bounds-checked x86-64 ELF, including OS tags."""
+def dynamic_strings(path):
+    """Read a bounds-checked x86-64 ELF dynamic table and its string table."""
     data = Path(path).read_bytes()
 
     def take(offset, size):
@@ -86,16 +87,77 @@ def needed_libraries(path):
             raise ValueError("ELF string table does not fit one file-backed LOAD")
         start = loads[0][2] + address - loads[0][3]
     strings = take(start, size)
+    return tags, strings
+
+
+def dynamic_name(strings, offset):
+    if offset >= len(strings):
+        raise ValueError("Dynamic string outside table")
+    end = strings.find(b"\0", offset)
+    if end < 0:
+        raise ValueError("Unterminated dynamic string")
+    return strings[offset:end].decode("ascii")
+
+
+def needed_libraries(path):
+    """Read DT_NEEDED, including ELF files with OS string-table tags."""
+    tags, strings = dynamic_strings(path)
     result = []
     for tag, value in tags:
         if tag != 1:
             continue
-        if value >= size:
-            raise ValueError("DT_NEEDED string outside table")
-        end = strings.find(b"\0", value)
-        if end < 0:
-            raise ValueError("Unterminated DT_NEEDED name")
-        result.append(safe_library_name(strings[value:end].decode("ascii")))
+        result.append(safe_library_name(dynamic_name(strings, value)))
+    return result
+
+
+def import_library_hints(path):
+    """Associate qualified NID strings with declared import libraries.
+
+    These are diagnostic hints, not proof that a symbol is imported or used.
+    Only the relinker's actual import list decides the dependency gate.
+    """
+    tags, strings = dynamic_strings(path)
+    libraries = {}
+    for tag, value in tags:
+        if tag not in (0x61000015, 0x61000049):
+            continue
+        library_id = value >> 48
+        name = safe_library_name(dynamic_name(strings, value & 0xffffffff))
+        if library_id in libraries and libraries[library_id] != name:
+            raise ValueError("Conflicting ELF import-library IDs")
+        libraries[library_id] = name
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-"
+    hints = {}
+    for raw in strings.split(b"\0"):
+        try:
+            fields = raw.decode("ascii").split("#")
+        except UnicodeDecodeError:
+            continue
+        if len(fields) != 3 or len(fields[0]) != 11:
+            continue
+        nid, encoded_library, module = fields
+        if not encoded_library or not module or any(c not in alphabet for c in nid + encoded_library + module):
+            continue
+        library_id = 0
+        for character in encoded_library:
+            library_id = library_id * 64 + alphabet.index(character)
+        if library_id in libraries:
+            hints.setdefault(nid, set()).add(libraries[library_id])
+    return hints
+
+
+def nid_catalog(path):
+    """Read local NID/name pairs; accept names only when their hashes match."""
+    result = {}
+    salt = bytes.fromhex("518d64a635ded8c1e6b039b1c3e55230")
+    for row in path.read_text().splitlines():
+        fields = row.split()
+        if len(fields) != 2:
+            continue
+        nid, name = fields
+        computed = base64.b64encode(hashlib.sha1(name.encode() + salt).digest()[:8][::-1]).decode()[:11].replace("/", "-")
+        if computed == nid:
+            result[nid] = name
     return result
 
 
@@ -266,6 +328,7 @@ def main():
     parser.add_argument("--hle", type=Path, help="Built hle-runtime.zip, never contains game data")
     parser.add_argument("--relinker", type=Path, default=ROOT / "build/host-tools/build/relinker/relinker")
     parser.add_argument("--nid-patcher", type=Path, default=ROOT / "build/host-tools/build/nid_patcher")
+    parser.add_argument("--nid-catalog", type=Path, help="Optional local whitespace-separated NID/name catalog; names are hash-verified")
     args = parser.parse_args()
     dump, output = args.dump.resolve(), args.output.resolve()
     if ROOT / "build" not in output.parents or output.exists():
@@ -280,6 +343,8 @@ def main():
     param = json.loads((dump / "sce_sys/param.json").read_text())
     selected, module_names = select_elfs(dump)
     needed = {name: needed_libraries(path) for name, path in selected.items()}
+    hints = {name: import_library_hints(path) for name, path in selected.items()}
+    names = nid_catalog(args.nid_catalog) if args.nid_catalog else {}
     roots = sorted({library.lower() for names in needed.values() for library in names
                     if library not in module_names})
     if "libscelibcinternal.prx" in roots and "libc.prx" not in roots:
@@ -311,6 +376,16 @@ def main():
         stage_assets(dump, app0, inventory)
         audit = audit_hle(stage, roots, args.nid_patcher.resolve(), args.hle.resolve()) if args.hle else {
             "passed": False, "missing_libraries": roots, "reason": "hle_archive_not_supplied"}
+        audit["unresolved_guest_imports"] = [
+            {"nid": nid, "name": names.get(nid), "references": [
+                {"module": module, "library": library}
+                for module, imports in sorted(hints.items())
+                for library in sorted(imports.get(nid, ()))
+            ]}
+            for nid in audit.get("unresolved_guest_nids", ())
+        ]
+        if args.nid_catalog:
+            audit["nid_catalog_sha256"] = digest(args.nid_catalog)
         (stage / "REFERENCE.md").write_text(
             "# Private game package\n\n"
             "Keep this package local; it contains your dumped game assets and converted binaries.\n"

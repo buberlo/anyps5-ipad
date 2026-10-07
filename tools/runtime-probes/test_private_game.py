@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject corrupt ELF tables, ambiguous backups, and unsafe HLE archives."""
 import hashlib
+import base64
 import importlib.util
 import json
 from pathlib import Path
@@ -66,6 +67,50 @@ class PrivateGameTests(unittest.TestCase):
     def test_sysv_and_os_string_offsets(self):
         for os_tags in (False, True):
             self.assertEqual(self.read(elf(os_tags=os_tags)), ["libkernel.prx"])
+
+    def library_elf(self, tag, value, strings=b"\0libkernel.prx\0AAAAAAAAAAA#B#B\0"):
+        data = elf(strings=strings)
+        struct.pack_into("<QQ", data, 256 + 3 * 16, tag, value)
+        struct.pack_into("<QQ", data, 256 + 4 * 16, 0, 0)
+        struct.pack_into("<QQ", data, 120 + 32, 80, 80)
+        path = self.root / "library.elf"
+        path.write_bytes(data)
+        return path
+
+    def test_import_library_ids_are_decoded_without_changing_needed_libraries(self):
+        for tag in (0x61000015, 0x61000049):
+            path = self.library_elf(tag, (1 << 48) | 1)
+            self.assertEqual(game.import_library_hints(path), {"AAAAAAAAAAA": {"libkernel.prx"}})
+            self.assertEqual(game.needed_libraries(path), ["libkernel.prx"])
+
+    def test_undeclared_library_id_and_unrelated_unicode_are_not_import_evidence(self):
+        path = self.library_elf(0x61000049, (2 << 48) | 1,
+                                b"\0libkernel.prx\0AAAAAAAAAAA#B#B\0\xc3\xa4\0")
+        self.assertEqual(game.import_library_hints(path), {})
+
+    def test_import_library_name_is_bounded(self):
+        path = self.library_elf(0x61000049, (1 << 48) | 0xffff)
+        with self.assertRaises(ValueError):
+            game.import_library_hints(path)
+
+    def test_conflicting_library_ids_are_rejected(self):
+        path = self.library_elf(0x61000049, (1 << 48) | 1,
+                                b"\0libkernel.prx\0other.prx\0AAAAAAAAAAA#B#B\0")
+        data = bytearray(path.read_bytes())
+        struct.pack_into("<QQ", data, 256 + 4 * 16, 0x61000049, (1 << 48) | 15)
+        struct.pack_into("<QQ", data, 256 + 5 * 16, 0, 0)
+        struct.pack_into("<QQ", data, 120 + 32, 96, 96)
+        path.write_bytes(data)
+        with self.assertRaises(ValueError):
+            game.import_library_hints(path)
+
+    def test_catalog_names_must_match_the_nid_hash(self):
+        name = "syntheticApi"
+        salt = bytes.fromhex("518d64a635ded8c1e6b039b1c3e55230")
+        nid = base64.b64encode(hashlib.sha1(name.encode() + salt).digest()[:8][::-1]).decode()[:11].replace("/", "-")
+        catalog = self.root / "catalog.txt"
+        catalog.write_text(f"{nid} {name}\nAAAAAAAAAAA inventedName\nmalformed\n")
+        self.assertEqual(game.nid_catalog(catalog), {nid: name})
 
     def test_self_is_rejected(self):
         with self.assertRaises(ValueError):

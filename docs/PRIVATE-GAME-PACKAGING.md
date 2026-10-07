@@ -69,6 +69,14 @@ produces a useful inventory and relinked assets with this explicitly incomplete
 status; it never claims readiness. Inputs, binaries, assets, build provenance and
 tool hashes are retained in `private-game-manifest.json`.
 
+The audit also reports each unresolved guest NID with its declared library and
+referencing module where the ELF provides qualified symbol names. These are
+diagnostic hints; only the relinker's import list controls readiness. An optional
+local whitespace-separated NID/name catalog can be supplied with `--nid-catalog`.
+Each name must reproduce the NID hash before it appears in the report. The tool
+does not download a catalog or send game diagnostics anywhere. A symbol name or
+library being identified does not satisfy a missing function import.
+
 `prepared_unexecuted` means only that static dependency validation passed. It
 does not prove Windows graphics, iPad startup or gameplay. Qualify the package
 on a native Windows PC with a Vulkan GPU, using the existing probes, and test

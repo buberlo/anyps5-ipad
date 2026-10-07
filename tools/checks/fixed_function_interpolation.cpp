@@ -68,6 +68,32 @@ int main() {
     test("memory side effects between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::MIMG;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
     test("compare between pairs",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOPC;i.destination=reg(12);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
     test("independent ALU still reads raw J",false,[](Case& c){RdnaInstruction i;i.family=RdnaInstructionFamily::VOP1;i.destination=reg(12);i.source0=reg(1);c.code.instructions.insert(c.code.instructions.begin()+2,i);});
+    const auto sampled = [](Case& c) {
+        RdnaInstruction i;
+        i.family=RdnaInstructionFamily::MIMG; i.op=RdnaOpcode::ImageSample;
+        i.opcodeId=i.imageOpcodeId=0x20; i.imageDimension=RdnaImageDimension::Dim2D;
+        i.imageAddressComponents=2; i.wordCount=2; i.sourceCount=3; i.dataDwordCount=4;
+        i.destination=reg(12); i.source0=reg(8);
+        i.source1.kind=i.source2.kind=RdnaOperandKind::ScalarRegister;
+        c.code.instructions.insert(c.code.instructions.begin()+2,i);
+    };
+    test("independent read-only 2D sample between pairs",true,sampled);
+    test("sample consumes partial coordinate",false,[&](Case& c){sampled(c);c.code.instructions[2].source0=reg(4);});
+    test("sample coordinate second word is partial",false,[&](Case& c){sampled(c);c.code.instructions[2].source0=reg(3);});
+    test("sample overwrites partial in fourth result",false,[&](Case& c){sampled(c);c.code.instructions[2].destination=reg(2);});
+    test("sample reads original raw J",false,[&](Case& c){sampled(c);c.code.instructions[2].source0=reg(1);});
+    test("sample writes original raw J",false,[&](Case& c){sampled(c);c.code.instructions[2].destination=reg(1);});
+    test("sample with status result rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].rawWords[0]=0x10000;});
+    test("sample with packed results rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].imageD16=true;});
+    test("sample with packed addresses rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].imageA16=true;});
+    test("sample with NSA coordinates rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].imageNsaDwordCount=1;});
+    test("sample with explicit LOD rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].imageSampleFlags=RdnaImageSampleFlagLod;});
+    test("sample with ambiguous footprint rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].dataDwordCount=0;});
+    test("sample with unknown address count rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].imageAddressComponents=0;});
+    test("sample with modified coordinates rejected",false,[&](Case& c){sampled(c);c.code.instructions[2].source0.negate=true;});
+    test("sample secondary result overlaps partial",false,[&](Case& c){sampled(c);c.code.instructions[2].destination2=reg(4);});
+    test("sample secondary result changes EXEC",false,[&](Case& c){sampled(c);c.code.instructions[2].destination2.kind=RdnaOperandKind::ExecLo;});
+    test("sample cannot hide missing P2",false,[&](Case& c){sampled(c);c.code.instructions.pop_back();});
     const auto branching = [](Case& c) {
         RdnaInstruction write; write.family=RdnaInstructionFamily::MIMG; write.destination=reg(0); write.dataDwordCount=4; c.code.instructions.push_back(write);
         RdnaInstruction branch; branch.op=RdnaOpcode::SBranch; c.code.instructions.push_back(branch);

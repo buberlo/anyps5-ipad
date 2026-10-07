@@ -177,6 +177,35 @@ remain. The existing fixed-function interpolation proof also rejects a later
 shader; the normal iPad path reports unsupported `PerVertexKHR` MSL translation.
 No graphics validation was disabled. These are startup diagnostics, not gameplay
 or display-FPS acceptance. Private shader requests and raw logs stay outside Git.
+
+Two bounded graphics repairs now retain the normal Vulkan draw path. A
+single-sample `STENCIL_CLEAR_ENABLE` is admitted only when its normal stencil
+state already replaces every covered sample with `DB_STENCIL_CLEAR`: both active
+faces must always pass, every operation must replace, write masks must be full,
+depth/bounds tests must be disabled, the stencil plane must be writable, and
+shader execution must use late Z without kill. This does not implement general
+depth/stencil maintenance or MSAA.
+
+The fixed-function interpolation proof also permits a plain read-only 2D
+`IMAGE_SAMPLE` between P1 and P2 when its complete coordinate/result register
+footprint is disjoint from every pending interpolation result. Raw I/J reads,
+status returns, packed/NSA addressing, stores, atomics, incomplete pairs and
+ambiguous effects remain rejected. Seventy guard cases pass, including
+ASan/UBSan; all nine initially captured shader requests now replay successfully.
+The later capture still rejects two different shaders at `pc=76` and `pc=108`.
+Run the guard against an isolated patched checkout with
+`python3 tools/checks/test_fixed_function_interpolation.py --source <AnyPS5>`.
+
+A 45-second stencil-only Windows comparison and a 60-second comparison including
+the interpolation repair both remained visually black. The original non-graphics
+guest binaries were unchanged and each new package verified 137 guest files.
+The latter run advanced to additional unsupported clear, MSAA and interpolation
+states. On the iPad, the bounded private signal experiment reached JIT and the
+ELF entry but again faulted in the graphics worker at `game.exe+0x1426827`.
+The production kernel and updated graphics runtime were restored with 138 files
+verified; the library, game assets and global configuration were preserved.
+The restored package was not launched again. See the
+[updated checkpoint](evidence/solitaire-runtime-checkpoint-build21.json).
 See the [bounded comparison record](evidence/solitaire-runtime-checkpoint-build21.json).
 
 ## Local evidence, 2026-10-06

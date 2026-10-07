@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Compile the production interpolation guard and its conservative rejection cases."""
 from pathlib import Path
-import os, shlex, subprocess, tempfile
+import argparse, os, shlex, subprocess, tempfile
 ROOT=Path(__file__).resolve().parents[2]
-SOURCE=ROOT/'upstreams/AnyPS5/core/shader/recompiler'
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--source',type=Path,default=ROOT/'upstreams/AnyPS5',help='Patched AnyPS5 checkout')
+args=parser.parse_args()
+SOURCE=args.source.resolve()/'core/shader/recompiler'
 INCLUDES=[SOURCE]+[SOURCE/p/'include' for p in ('Translation','Optimization','IntermediateRepresentation','ControlFlow','RdnaDecoder')]
 with tempfile.TemporaryDirectory(prefix='anyps5-interpolation-') as tmp:
     target=Path(tmp)/'check'

@@ -1,0 +1,134 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+index 14057558..f1335477 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -145,8 +145,32 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
+     return face;
+ }
+ 
++// A single-sample stencil clear can follow the ordinary stencil pipeline only
++// when that pipeline already replaces every covered stencil sample with exactly
++// DB_STENCIL_CLEAR. No depth/bounds test, partial write mask, shader kill, or
++// early depth/stencil side effects may change which samples are written.
++// This is not a general DB clear implementation: other maintenance draws remain
++// rejected, and geometry, scissor and sample coverage still run normally.
++void validateEquivalentStencilClear(const Registers& cx, std::uint32_t depthControl) {
++    const auto clear = read(cx, 0x00a) & 0xffu;
++    const auto face = [clear](std::uint32_t compare, std::uint32_t ops, std::uint32_t refMask) {
++        return compare == 7u && (ops & 0xfffu) == 0x333u &&
++               (refMask & 0xffu) == clear && ((refMask >> 16u) & 0xffu) == 0xffu;
++    };
++    const auto ops = read(cx, 0x10b);
++    const auto shader = read(cx, 0x203);
++    Require((depthControl & 0xfu) == 1u && (read(cx, 0x011) & 1u) != 0 &&
++            (read(cx, 0x002) & 0x02000000u) == 0 &&
++            (shader & 0x70u) == 0x10u && // Z_ORDER=LATE_Z, KILL_ENABLE=0
++            face((depthControl >> 8u) & 7u, ops, read(cx, 0x10c)) &&
++            ((depthControl & 0x80u) == 0 ||
++             face((depthControl >> 20u) & 7u, ops >> 12u, read(cx, 0x10d))),
++            "stencil clear is not equivalent to a late, always-pass full-mask replacement draw (DB_RENDER_CONTROL)");
++}
++
+ void decodeDepth(const Registers& cx, std::uint32_t depthControl, State& result) {
+-    zero(cx, 0x000, 0x00001f9fu, "depth/stencil clear, copy, resummarize or decompress draws (DB_RENDER_CONTROL)");
++    zero(cx, 0x000, 0x00001f9du, "depth clear, copy, resummarize or decompress draws (DB_RENDER_CONTROL)");
++    if ((read(cx, 0x000) & 2u) != 0) validateEquivalentStencilClear(cx, depthControl);
+     const auto view = read(cx, 0x002);
+     zero(cx, 0x002, 0x3c000000u, "depth mips (DB_DEPTH_VIEW MIP_LEVEL)");
+     zero(cx, 0x010, 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+index 8c136be9..ffccf65e 100644
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -515,6 +515,72 @@ void CompactedExportTests() {
+     Require(state.blends[1].colorWriteMask == 0 && !state.blends[1].blendEnable && state.blends[2].blendEnable, "the write-masked export 1 was not left unused");
+ }
+ 
++void equivalentStencilClearTests() {
++    auto queue = makeState();
++    queue.context[0x000] = 0x22;
++    queue.context[0x002] = 0;
++    queue.context[0x007] = (1u << 16u) | 3u;
++    queue.context[0x00a] = 0;
++    queue.context[0x00b] = 0;
++    queue.context[0x010] = 0xa0000183;
++    queue.context[0x011] = 0x20000181;
++    for (const auto offset : {0x012u, 0x014u}) queue.context[offset] = 0x100;
++    for (const auto offset : {0x013u, 0x015u}) queue.context[offset] = 0x200;
++    queue.context[0x10b] = 0x333;
++    queue.context[0x10c] = 0xffffff00;
++    queue.context[0x10d] = 0xffffff00;
++    queue.context[0x200] = 0x771;
++    queue.context[0x203] = 0x10;
++    const auto verify = [&] {
++        const auto state = AgcDriver::Graphics::DecodeState(queue);
++        Require(state.stencilTest && !state.depthTest && !state.depthWrite && !state.depthBoundsTest,
++                "equivalent stencil clear changed depth/stencil enables");
++        for (const auto& face : {state.stencilFront, state.stencilBack}) {
++            Require(face.compareOp == VK_COMPARE_OP_ALWAYS && face.writeMask == 0xff &&
++                    face.reference == state.depth->clearStencil &&
++                    face.failOp == VK_STENCIL_OP_REPLACE && face.passOp == VK_STENCIL_OP_REPLACE &&
++                    face.depthFailOp == VK_STENCIL_OP_REPLACE, "equivalent stencil clear lost replacement state");
++        }
++    };
++    verify();
++    queue.context[0x00a] = 0x7a;
++    queue.context[0x10c] |= 0x7a;
++    queue.context[0x10d] |= 0x7a;
++    queue.context[0x200] |= 0x700080; // independent back-face state
++    queue.context[0x10b] |= 0x333000;
++    verify();
++    std::vector<AgcDriver::Graphics::RegisterRead> reads;
++    AgcDriver::Graphics::RegisterReadLog() = &reads;
++    verify();
++    AgcDriver::Graphics::RegisterReadLog() = nullptr;
++    for (const auto read : reads) Require(AgcDriver::Graphics::DrawKeyCovers(read),
++                                         "DrawKeyRegisters lacks an equivalent stencil clear register");
++    const auto reject = [&](std::uint32_t offset, std::uint32_t value, const char* reason) {
++        const auto previous = queue.context[offset];
++        queue.context[offset] = value;
++        expectFailure([&] { AgcDriver::Graphics::DecodeState(queue); }, reason);
++        queue.context[offset] = previous;
++    };
++    reject(0x00a, 0x7b, "stencil clear");
++    reject(0x10c, 0xff7fff7a, "stencil clear"); // partial front write mask
++    reject(0x10d, 0xffffff7b, "stencil clear"); // different back reference
++    reject(0x10b, 0x333330, "stencil clear"); // front fail keeps
++    reject(0x10b, 0x330333, "stencil clear"); // back fail keeps
++    reject(0x200, 0x7007f3, "stencil clear"); // depth test enabled
++    reject(0x200, 0x7007f5, "stencil clear"); // depth write enabled
++    reject(0x200, 0x7007f9, "stencil clear"); // depth bounds enabled
++    reject(0x200, 0x7002f1, "stencil clear"); // front compare is equal
++    reject(0x200, 0x2007f1, "stencil clear"); // back compare is equal
++    reject(0x203, 0x50, "stencil clear"); // shader kill enabled
++    reject(0x203, 0x00, "stencil clear"); // early Z order
++    reject(0x002, 0x02000000, "stencil clear"); // read-only stencil
++    reject(0x011, 0x20000180, "stencil clear"); // no stencil plane
++    reject(0x010, 0xa000018f, "multisampled");
++    reject(0x2f8, 0x0030e003, "multisampling");
++    for (const auto bit : {0u, 2u, 3u, 4u, 7u, 8u, 12u})
++        reject(0x000, 0x22 | (1u << bit), "DB_RENDER_CONTROL");
++}
++
+ void DepthStencilTests() {
+     auto queue = makeState();
+     queue.context[0x000] = 0;
+@@ -2038,11 +2104,18 @@ int main(int argc, char** argv) {
+         }
+         stateTests();
+         shaderEnginePartitionTests();
++        equivalentStencilClearTests();
+         hardwareScreenOffsetTests();
+         if (argc == 2 && std::string_view(argv[1]) == "--state-only") {
+             std::cout << "Graphics state validation tests passed\n";
+             return 0;
+         }
++        if (argc == 2 && std::string_view(argv[1]) == "--depth-state-only") {
++            DepthStencilTests();
++            DepthBoundsBiasTests();
++            std::cout << "Graphics depth/stencil state validation tests passed\n";
++            return 0;
++        }
+         DepthClipTests();
+         DepthStencilTests();
+         DepthBoundsBiasTests();

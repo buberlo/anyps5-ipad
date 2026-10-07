@@ -41,9 +41,9 @@
     "cleanup": "only reference game processes stopped; process environment restored"
   },
   "graphics_blockers": [
-    "depth/stencil clear, copy, resummarize or decompress draws rejected for DB_RENDER_CONTROL=0x22",
+    "stencil maintenance draws outside the equivalent late, always-pass full-mask replacement case remain rejected",
     "multisampling or coverage conversion rejected for PA_SC_AA_CONFIG=0x0030e003",
-    "existing fixed-function interpolation proof rejects a later shader at pc=60; validation remains enabled",
+    "later fixed-function interpolation proof rejects additional shaders at pc=76 and pc=108; validation remains enabled",
     "default interpolation on iPad encounters MoltenVK PerVertexKHR MSL compilation errors"
   ],
   "measurement_limits": [
@@ -59,5 +59,54 @@
     "prototype_kernel_removed_from_installed_game_package": true,
     "applied_source_patch_stack_reverse_check": "passed",
     "startup_smoke": "JIT enabled, ELF entry reached, then explicit sceKernelRaiseException not implemented abort; own processes closed"
+  },
+  "bounded_graphics_repairs": {
+    "stencil_clear": "DB_RENDER_CONTROL bit 1 accepted only when ordinary single-sample stencil replacement already writes DB_STENCIL_CLEAR, both active faces always pass, all operations replace, masks are full, no depth/bounds test or shader kill, and Z_ORDER is late",
+    "interpolation": "a plain read-only 2D IMAGE_SAMPLE may occur between P1/P2 only with a proven disjoint register footprint; original I/J validation, pairing, masks and entry-block checks remain active",
+    "state_tests": "graphics --state-only and --depth-state-only pass, including negative clear cases",
+    "interpolation_tests": {
+      "cases": 70,
+      "passed": true,
+      "asan_ubsan": "passed"
+    },
+    "host_hle_contracts_passed": 12,
+    "captured_shader_replay": {
+      "initial_requests": 9,
+      "compiled_with_repair": 9,
+      "later_requests": 15,
+      "later_unsupported_shaders": 2,
+      "gpu_execution_proven_by_replay": false
+    },
+    "pinned_patch_validation": "24 patches apply, exactly match isolated source, and reverse to original pinned bytes",
+    "native_windows_renderer_comparisons": {
+      "stencil_only_seconds": 45,
+      "stencil_and_interpolation_seconds": 60,
+      "selected_gpu": "AMD Radeon 780M Graphics",
+      "driver": "31.0.21029.6002",
+      "verified_guest_files": 137,
+      "non_graphics_guest_binaries_unchanged": true,
+      "window": "black",
+      "submitted_counter_is_not_display_fps": true,
+      "visible_gameplay_qualified": false,
+      "own_processes_stopped": true
+    },
+    "ipad_experiment": {
+      "duration_seconds": 22.951129875,
+      "jit_enabled": true,
+      "elf_entry_reached": true,
+      "outcome": "unhandled read access violation in UnityGfxDeviceWorker at game.exe+0x1426827",
+      "visible_gameplay_qualified": false,
+      "original_global_pool_configuration_restored_byte_for_byte": true
+    },
+    "final_device_package": {
+      "verified_files": 138,
+      "production_kernel_restored": true,
+      "experimental_signal_path_removed": true,
+      "updated_graphics_driver_installed": true,
+      "library_and_global_configuration_byte_preserved": true,
+      "game_assets_unchanged": true,
+      "launched_after_final_restoration": false
+    },
+    "private_diagnostics": "requests, register snapshots, game files, source experiments and raw logs remain in ignored build/ only"
   }
 }

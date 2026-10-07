@@ -33,6 +33,12 @@ APS5_HLE_TARGETS_FILE=/path/to/private-hle-targets.txt \
 tools. The dependency audit, rather than the number of built libraries, decides
 whether a package is complete.
 
+The Windows HLE builder initializes and patches only the AnyPS5 submodule before
+validating library targets. A fresh Windows checkout does not need Madeira, FEX,
+Wine or MoltenVK source trees for this build. Other builds can select a patch
+series with `scripts/apply-patches.sh --only SERIES`; the default still applies
+all series.
+
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/prepare-private-game.py \
     --dump PPSA02929-app0 \
@@ -40,9 +46,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/prepare-private-game.py \
     --output build/dreaming-sarah-runtime
 ```
 
-The preparer selects decrypted ELF files by magic. A `.esbak` copy is used only
-when it is an ELF; conflicting decrypted originals/backups cause an error.
-Original files are immutable. Relinking processes all bundled modules and checks
+The preparer selects decrypted ELF files by magic. It also accepts a
+`decrypted/` overlay with the same relative paths; encrypted originals remain
+untouched. A `.esbak` copy is used only when it is an ELF; conflicting decrypted
+originals, overlays or backups cause an error. Bundled modules in `sce_module`,
+`sce_modules`, `prx`, `Media/Modules` and `Media/Plugins` retain their directory
+layout when converted. Both `sce_module` spellings in one input are ambiguous
+and rejected. Encrypted dummy modules under `fakelib/` and unconverted module
+files are excluded from the runtime package.
+
+Original files are immutable. Relinking processes all selected modules and checks
 syscalls; no deprecated skip switches are enabled. Assets are copied into
 `app0/`, including the runtime VFS `~INDEX`; this is a game asset, not a
 dumper sidecar. The converted bundled `libc` remains a guest module.

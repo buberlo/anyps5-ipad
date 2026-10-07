@@ -2,12 +2,19 @@
 # Build the demo and Dreaming Sarah's AnyPS5 PRX closure with WinLibs GCC 15.2.0
 # posix-seh (15.2.0posix-14.0.0-ucrt-r7), the compiler AnyPS5's BUILD.md
 # requires. Ubuntu's GCC 13 posix emits SjLj and does not link these
-# libraries. This script is for a Windows host (GitHub windows-latest or
-# Git Bash). It downloads the toolchain into build/toolchains, which is
+# libraries. This script is for a Windows host with Git Bash.
+# It downloads the toolchain into build/toolchains, which is
 # gitignored.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+print_only=0
+if [ "$#" = 1 ] && [ "$1" = --print-hle-targets ]; then
+    print_only=1
+elif [ "$#" != 0 ]; then
+    echo "Usage: $0 [--print-hle-targets]" >&2
+    exit 1
+fi
 libraries=(libc libkernel libSceAgc libSceAgcDriver libSceVideoOut libScePad
     libSceAudioOut libSceCommonDialog libSceIme libSceImeBackend libSceImeDialog
     libSceLibcInternal libSceNpGameIntent libSceNpTrophy2 libSceNpUniversalDataSystem
@@ -20,8 +27,7 @@ if [ -n "${APS5_HLE_TARGETS_FILE:-}" ]; then
     while IFS= read -r library || [ -n "$library" ]; do
         library="${library%$'\r'}"
         [ -n "$library" ] || continue
-        if [[ ! "$library" =~ ^lib[A-Za-z0-9_.]+$ ]] ||
-            [ ! -d "$root/upstreams/AnyPS5/core/libs/prx/$library" ]; then
+        if [[ ! "$library" =~ ^lib[A-Za-z0-9_.]+$ ]]; then
             echo "Unknown or unsafe HLE target: $library" >&2
             exit 1
         fi
@@ -31,12 +37,19 @@ if [ -n "${APS5_HLE_TARGETS_FILE:-}" ]; then
         esac
     done < "$APS5_HLE_TARGETS_FILE"
 fi
-if [ "${1:-}" = --print-hle-targets ] && [ "$#" = 1 ]; then
+if [ "$print_only" = 0 ]; then
+    "$root/scripts/apply-patches.sh" --only anyps5
+fi
+for library in "${libraries[@]}"; do
+    if [ ! -d "$root/upstreams/AnyPS5/core/libs/prx/$library" ]; then
+        echo "Unknown HLE target or uninitialized AnyPS5 submodule: $library" >&2
+        exit 1
+    fi
+done
+if [ "$print_only" = 1 ]; then
     printf '%s\n' "${libraries[@]}"
     exit 0
 fi
-[ "$#" = 0 ] || { echo "Usage: $0 [--print-hle-targets]" >&2; exit 1; }
-"$root/scripts/apply-patches.sh"
 
 url="https://github.com/brechtsanders/winlibs_mingw/releases/download/15.2.0posix-14.0.0-ucrt-r7/winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.7z"
 archive_sha256="a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b3"
@@ -51,7 +64,7 @@ if [ -z "$gcc" ]; then
     mkdir -p "$root/build/toolchains"
     archive="$root/build/toolchains/winlibs-15.2.0posix-seh.7z"
     echo "downloading $url"
-    curl -L --fail --retry 3 -o "$archive" "$url"
+    curl -L --fail --retry 3 --retry-all-errors -o "$archive" "$url"
     printf '%s  %s\n' "$archive_sha256" "$archive" | sha256sum --check --strict -
     if [ -x "/c/Program Files/7-Zip/7z.exe" ]; then
         seven="/c/Program Files/7-Zip/7z.exe"

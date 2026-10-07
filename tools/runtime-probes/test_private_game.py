@@ -108,6 +108,76 @@ class PrivateGameTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             game.decrypted_candidate(original)
 
+    def test_decrypted_overlay_preserves_original_self(self):
+        original = self.root / "eboot.bin"
+        original.write_bytes(b"SELF")
+        overlay = self.root / "decrypted/eboot.bin"
+        overlay.parent.mkdir()
+        overlay.write_bytes(elf())
+        self.assertEqual(game.decrypted_candidate(original, overlay), overlay)
+        self.assertEqual(original.read_bytes(), b"SELF")
+
+    def test_conflicting_overlay_is_rejected(self):
+        original = self.root / "eboot.bin"
+        original.write_bytes(elf())
+        overlay = self.root / "decrypted/eboot.bin"
+        overlay.parent.mkdir()
+        overlay.write_bytes(elf(strings=b"\0other.prx\0"))
+        with self.assertRaises(ValueError):
+            game.decrypted_candidate(original, overlay)
+
+    def test_overlay_is_not_assumed_to_be_decrypted(self):
+        original = self.root / "eboot.bin"
+        original.write_bytes(b"SELF")
+        overlay = self.root / "decrypted/eboot.bin"
+        overlay.parent.mkdir()
+        overlay.write_bytes(b"SELF")
+        with self.assertRaises(ValueError):
+            game.decrypted_candidate(original, overlay)
+
+    def test_overlay_only_unity_modules_keep_their_paths(self):
+        overlay = self.root / "decrypted"
+        overlay.mkdir()
+        (overlay / "eboot.bin").write_bytes(elf())
+        expected = {"eboot.elf": overlay / "eboot.bin"}
+        modules = {"sce_module/provider.prx", "Media/Modules/engine.prx",
+                   "Media/Plugins/plugin.prx"}
+        for name in modules:
+            path = overlay / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(elf())
+            expected[name] = path
+        selected, names = game.select_elfs(self.root)
+        self.assertEqual(selected, expected)
+        self.assertEqual(names, {Path(name).name for name in modules})
+
+    def test_singular_plural_conflict_across_overlay_is_rejected(self):
+        (self.root / "eboot.bin").write_bytes(elf())
+        (self.root / "sce_module").mkdir()
+        (self.root / "decrypted/sce_modules").mkdir(parents=True)
+        with self.assertRaisesRegex(ValueError, "Both sce_module and sce_modules"):
+            game.select_elfs(self.root)
+
+    def test_unity_binaries_and_overlay_are_not_copied_as_assets(self):
+        dump = self.root / "dump"
+        contents = {"Media/Modules/engine.prx": b"SELF",
+                    "Media/Plugins/plugin.prx": b"SELF",
+                    "Media/Modules/module-data.bin": b"real asset",
+                    "Media/level0": b"scene",
+                    "decrypted/Media/Modules/engine.prx": bytes(elf()),
+                    "fakelib/libSceFixture.sprx": b"dump helper",
+                    "ampr_emu.index": b"preserve unknown index"}
+        inventory = {}
+        for name, data in contents.items():
+            path = dump / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            inventory[name] = {"sha256": hashlib.sha256(data).hexdigest()}
+        app0 = self.root / "package/app0"
+        game.stage_assets(dump, app0, inventory)
+        self.assertEqual({p.relative_to(app0).as_posix() for p in app0.rglob("*") if p.is_file()},
+                         {"Media/Modules/module-data.bin", "Media/level0", "ampr_emu.index"})
+
     def archive(self, name, content=b"data", expected=None, extra=False):
         path = self.root / "hle.zip"
         manifest = {"schema": 1, "kind": "anyps5_unpatched_hle_runtime", "files": {

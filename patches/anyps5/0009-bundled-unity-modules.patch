@@ -1,0 +1,139 @@
+diff --git a/core/relinker/main.cpp b/core/relinker/main.cpp
+index 2e3b655..1b4db2e 100644
+--- a/core/relinker/main.cpp
++++ b/core/relinker/main.cpp
+@@ -135,7 +135,7 @@ int main(const int argc, char* argv[]) {
+                   << std::filesystem::path(absPath).filename().string() << "\n"
+                   << "libs/\n    *.prx\napp0/\n    <game resources>\n";
+         for (const auto& artifact : guestArtifacts)
+-            std::cout << "    " << artifact.Path.parent_path().filename().string() << "/" << artifact.Path.filename().string() << '\n';
++            std::cout << "    " << artifact.Path.lexically_relative(std::filesystem::path(absPath).parent_path() / "app0").generic_string() << '\n';
+         std::cout << "Game resources and system libraries must be placed in this layout separately.\n";
+         if (args.runPath != "$ORIGIN/libs") std::cout << "Custom library search path (--rpath): " << args.runPath << '\n';
+ 
+diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
+index eebb504..82b1e9d 100644
+--- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
++++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
+@@ -20,10 +20,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+     const bool hasPlural = std::filesystem::exists(plural);
+     const bool hasPrx = std::filesystem::exists(prx);
+     if (hasSingular && hasPlural) throw Domain::RelinkerException("Both sce_module and sce_modules exist beside the input executable");
+-    if (!hasSingular && !hasPlural && !hasPrx) throw Domain::RelinkerException("sce_module/sce_modules/prx was not found beside the input executable: " + root.string() + ". Use --skip-sce-module only if this game can run without these modules.");
+     std::vector<std::filesystem::path> directories;
+     if (hasSingular || hasPlural) directories.push_back(hasSingular ? singular : plural);
+     if (hasPrx) directories.push_back(prx);
++    for (const auto* relative : {"Media/Modules", "Media/Plugins"}) {
++        const auto directory = root / relative;
++        if (std::filesystem::exists(directory)) directories.push_back(directory);
++    }
++    if (directories.empty()) throw Domain::RelinkerException("sce_module/sce_modules/prx or Media/Modules/Media/Plugins was not found beside the input executable: " + root.string() + ". Use --skip-sce-module only if this game can run without these modules.");
+     std::vector<std::filesystem::path> paths;
+     std::set<std::string> unmatchedExclusions = excludedModules;
+     for (const auto& directory : directories) {
+@@ -142,18 +146,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+         Io::AppendU64(dynamic.DynamicSegmentData, dynamic.DynStrData.size());
+         Io::AppendString(dynamic.DynStrData, name);
+     };
+-    for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().filename().generic_string() + "/" + images[index].OutputName);
++    for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().lexically_relative(root).generic_string() + "/" + images[index].OutputName);
+     for (const auto& name : hostLibraries) addNeeded(name);
+-    std::string guestRunPath = runPath;
+-    if (!windows) {
+-        if (guestRunPath == "$ORIGIN") guestRunPath = "$ORIGIN/../..";
+-        else if (guestRunPath.starts_with("$ORIGIN/")) guestRunPath.insert(8, "../../");
+-        else if (!std::filesystem::path(guestRunPath).is_absolute()) throw Domain::RelinkerException("Guest Linux run path must be absolute or begin with $ORIGIN");
+-    }
++    if (!windows && runPath != "$ORIGIN" && !runPath.starts_with("$ORIGIN/") && !std::filesystem::path(runPath).is_absolute())
++        throw Domain::RelinkerException("Guest Linux run path must be absolute or begin with $ORIGIN");
+     std::vector<GuestArtifact> artifacts;
+     for (const auto index : order) {
+         const auto& image = images[index];
+-        const auto relativeDirectory = "app0/" + image.SourcePath.parent_path().filename().generic_string();
++        const auto relativeDirectory = "app0/" + image.SourcePath.parent_path().lexically_relative(root).generic_string();
+         const auto destination = std::filesystem::absolute(outputPath).parent_path() / relativeDirectory;
+         const auto target = destination / image.OutputName;
+         if (target.lexically_normal() == std::filesystem::absolute(outputPath).lexically_normal()) throw Domain::RelinkerException("Guest output collides with the executable output");
+@@ -165,6 +165,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+         std::vector<std::uint8_t> output;
+         if (windows) output = Elfpatcher::GuestModuleWriter().WriteWindows(image, runtime);
+         else {
++            std::string guestRunPath = runPath;
++            const auto executableDirectory = std::filesystem::absolute(outputPath).parent_path();
++            const auto returnPath = executableDirectory.lexically_relative(destination).generic_string();
++            if (guestRunPath == "$ORIGIN") guestRunPath += "/" + returnPath;
++            else if (guestRunPath.starts_with("$ORIGIN/")) guestRunPath.insert(8, returnPath + "/");
+             std::vector<std::string> needed;
+             for (const auto dependency : dependencies[index]) {
+                 const auto dependencyPath = images[dependency].SourcePath.parent_path() / images[dependency].OutputName;
+diff --git a/core/relinker/relinker/tests/test_guest_module_directories.py b/core/relinker/relinker/tests/test_guest_module_directories.py
+index 5d0389c..87d6d17 100644
+--- a/core/relinker/relinker/tests/test_guest_module_directories.py
++++ b/core/relinker/relinker/tests/test_guest_module_directories.py
+@@ -23,7 +23,7 @@ def module_with_symbol(exported):
+     return image
+ 
+ 
+-def needed_libraries(image):
++def dynamic_strings(image, wanted_tag):
+     loads = elf_loads(image)
+ 
+     def offset(address):
+@@ -45,7 +45,11 @@ def needed_libraries(image):
+         tags.append((tag, value))
+     strings = offset(next(value for tag, value in tags if tag == 5))
+     return [image[strings + value:image.index(0, strings + value)].decode()
+-            for tag, value in tags if tag == 1]
++            for tag, value in tags if tag == wanted_tag]
++
++
++def needed_libraries(image):
++    return dynamic_strings(image, 1)
+ 
+ 
+ def main():
+@@ -63,12 +67,12 @@ def main():
+             return result, output
+ 
+         for windows in (False, True):
+-            for standard in (None, "sce_module", "sce_modules"):
++            for standard in (None, "sce_module", "sce_modules", "Media/Modules", "Media/Plugins"):
+                 case = work / f"{windows}-{standard}"
+                 prx = case / "prx"
+                 prx.mkdir(parents=True)
+                 provider = (case / standard) if standard else prx
+-                provider.mkdir(exist_ok=True)
++                provider.mkdir(parents=True, exist_ok=True)
+                 (provider / "provider.prx").write_bytes(module_with_symbol(True))
+                 (prx / "consumer.prx").write_bytes(module_with_symbol(False))
+                 (prx / "ignored.txt").write_text("not ELF")
+@@ -92,6 +96,29 @@ def main():
+                     consumer = case / "app0" / "prx" / "consumer.prx.guest.prx"
+                     needed = needed_libraries(consumer.read_bytes())
+                     assert needed == [f"$ORIGIN/{'../' + standard + '/' if standard else ''}provider.prx.guest.prx"], needed
++                    for artifact in artifacts:
++                        parent = '/'.join('..' for _ in artifact.parent.relative_to(case).parts)
++                        search = dynamic_strings(artifact.read_bytes(), 29)
++                        assert search == [f"$ORIGIN/{parent}/libs"], (artifact, search)
++                    # A nested module must resolve custom host-library paths from
++                    # its own directory, while absolute paths remain absolute.
++                    for configured in ("$ORIGIN", "/opt/anyps5/libs"):
++                        result, _ = convert(case, windows, ["--rpath", configured])
++                        assert result.returncode == 0, (result.stdout, result.stderr)
++                        for artifact in artifacts:
++                            parent = '/'.join('..' for _ in artifact.parent.relative_to(case).parts)
++                            expected_search = f"$ORIGIN/{parent}" if configured == "$ORIGIN" else configured
++                            assert dynamic_strings(artifact.read_bytes(), 29) == [expected_search], artifact
++
++            for directory in ("Media/Modules", "Media/Plugins"):
++                case = work / f"{windows}-only-{directory}"
++                folder = case / directory
++                folder.mkdir(parents=True)
++                (folder / "provider.prx").write_bytes(module_with_symbol(True))
++                result, output = convert(case, windows)
++                assert result.returncode == 0, (result.stdout, result.stderr)
++                artifact = case / "app0" / directory / "provider.prx.guest.prx"
++                assert artifact.exists(), artifact
+ 
+             case = work / f"{windows}-exclude"
+             for name in ("sce_module", "prx"):

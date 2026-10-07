@@ -99,18 +99,45 @@ def needed_libraries(path):
     return result
 
 
-def decrypted_candidate(original):
+MODULE_DIRECTORIES = ("sce_module", "sce_modules", "prx", "Media/Modules", "Media/Plugins")
+
+
+def decrypted_candidate(original, overlay=None):
     candidates = []
-    for path in (original, original.with_name(original.name + ".esbak")):
+    paths = [original, original.with_name(original.name + ".esbak")]
+    if overlay is not None:
+        paths += [overlay, overlay.with_name(overlay.name + ".esbak")]
+    for path in paths:
         if path.is_file():
             with path.open("rb") as source:
                 if source.read(4) == b"\x7fELF":
                     candidates.append(path)
     if not candidates:
         raise ValueError(f"No decrypted ELF beside {original.name}")
-    if len(candidates) > 1 and digest(candidates[0]) != digest(candidates[1]):
+    if len({digest(path) for path in candidates}) > 1:
         raise ValueError(f"Ambiguous decrypted copies of {original.name}; use a clean input directory")
     return candidates[0]
+
+
+def select_elfs(dump):
+    """Select real decrypted files without replacing any input SELF or backup."""
+    overlay = dump / "decrypted"
+    selected = {"eboot.elf": decrypted_candidate(dump / "eboot.bin", overlay / "eboot.bin")}
+    if (any((base / "sce_module").exists() for base in (dump, overlay)) and
+            any((base / "sce_modules").exists() for base in (dump, overlay))):
+        raise ValueError("Both sce_module and sce_modules exist")
+    module_names = set()
+    for directory in MODULE_DIRECTORIES:
+        names = set()
+        for folder in (dump / directory, overlay / directory):
+            if folder.is_dir():
+                names.update(path.name.removesuffix(".esbak") for path in folder.iterdir()
+                             if path.is_file() and path.name.endswith((".prx", ".prx.esbak")))
+        for name in sorted(names):
+            selected[directory + "/" + name] = decrypted_candidate(
+                dump / directory / name, overlay / directory / name)
+            module_names.add(name)
+    return selected, module_names
 
 
 def unpack_hle(archive_path, destination):
@@ -221,7 +248,8 @@ def stage_assets(dump, app0, inventory):
         path = Path(relative)
         # ~INDEX is a runtime VFS index, not a dumper sidecar. Keep it and
         # other asset names, including names starting with a tilde.
-        if (path.parts[0] in ("sce_module", "sce_modules", "prx") or
+        if (path.parts[0] in ("sce_module", "sce_modules", "prx", "decrypted", "fakelib") or
+                (path.parent.as_posix() in MODULE_DIRECTORIES and path.name.endswith(".prx")) or
                 relative == "eboot.bin" or path.name.endswith((".esbak", ".complete"))):
             continue
         destination = app0 / path
@@ -235,7 +263,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dump", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--hle", type=Path, help="CI hle-runtime.zip, never contains game data")
+    parser.add_argument("--hle", type=Path, help="Built hle-runtime.zip, never contains game data")
     parser.add_argument("--relinker", type=Path, default=ROOT / "build/host-tools/build/relinker/relinker")
     parser.add_argument("--nid-patcher", type=Path, default=ROOT / "build/host-tools/build/nid_patcher")
     args = parser.parse_args()
@@ -250,19 +278,7 @@ def main():
     inventory = {p.relative_to(dump).as_posix(): {"bytes": p.stat().st_size, "sha256": digest(p)}
                  for p in files if p.is_file()}
     param = json.loads((dump / "sce_sys/param.json").read_text())
-    selected = {"eboot.elf": decrypted_candidate(dump / "eboot.bin")}
-    if (dump / "sce_module").exists() and (dump / "sce_modules").exists():
-        raise ValueError("Both sce_module and sce_modules exist")
-    module_names = set()
-    for directory in ("sce_module", "sce_modules", "prx"):
-        folder = dump / directory
-        if folder.is_dir():
-            for path in sorted(folder.iterdir()):
-                if path.is_file() and path.name.endswith((".prx", ".prx.esbak")):
-                    base = path.name.removesuffix(".esbak")
-                    key = directory + "/" + base
-                    selected[key] = decrypted_candidate(folder / base)
-                    module_names.add(base)
+    selected, module_names = select_elfs(dump)
     needed = {name: needed_libraries(path) for name, path in selected.items()}
     roots = sorted({library.lower() for names in needed.values() for library in names
                     if library not in module_names})

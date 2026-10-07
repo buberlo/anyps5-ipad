@@ -5,15 +5,17 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Patch series touch these checkouts. rpmalloc is nested inside FEX.
-git -C "$root" submodule update --init --depth 1 \
-    upstreams/AnyPS5 upstreams/Madeira upstreams/FEX upstreams/wine
-git -C "$root/upstreams/FEX" submodule update --init --depth 1 External/rpmalloc
 mode="apply"
-if [ "${1:-}" = "--reverse" ]; then
-    mode="reverse"
-    shift
-fi
+names=(anyps5 madeira fex wine moltenvk)
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --reverse) mode="reverse"; shift ;;
+        --only)
+            [ "$#" -ge 2 ] || { echo "--only needs a patch series name" >&2; exit 1; }
+            names=("$2"); shift 2 ;;
+        *) echo "Usage: $0 [--reverse] [--only SERIES]" >&2; exit 1 ;;
+    esac
+done
 
 repo_for() {
     case "$1" in
@@ -29,8 +31,21 @@ repo_for() {
     esac
 }
 
+# Initialize only the selected checkouts. rpmalloc is nested inside FEX.
+paths=()
+for name in "${names[@]}"; do
+    repo="$(repo_for "$name")"
+    paths+=("${repo#"$root/"}")
+done
+git -C "$root" submodule update --init --depth 1 "${paths[@]}"
+for name in "${names[@]}"; do
+    if [ "$name" = fex ]; then
+        git -C "$root/upstreams/FEX" submodule update --init --depth 1 External/rpmalloc
+    fi
+done
+
 shopt -s nullglob
-for name in anyps5 madeira fex wine moltenvk; do
+for name in "${names[@]}"; do
     dir="$root/patches/$name"
     [ -d "$dir" ] || continue
     files=("$dir"/*.patch)

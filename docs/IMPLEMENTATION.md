@@ -951,3 +951,42 @@ library are preserved byte-for-byte. Production Unity GC signal delivery and
 the rejected graphics operations remain open. Solitaire is installed, with no
 qualified visible gameplay, control acceptance or performance measurement.
 See the [Build 28 record](evidence/solitaire-build28-redzone-and-write-watch.json).
+
+### Captured vertex branch and preemption qualification
+
+A subsequent bounded private shader capture still produces no playable image.
+The device rejects viewport depths outside [0, 1], multisampling/coverage state
+and a vertex subgroup capability. Fifteen requests are recovered locally from
+the completed production-package readback. Fourteen have the data required for
+replay; one lacks a dynamic descriptor source. Raw code stays outside Git.
+
+The rejected vertex shader's only subgroup ballot implements a wave-mask branch
+whose condition reads scalar draw constants. AnyPS5 0027 conservatively proves
+that expression uniform and uses its already sensed Boolean directly. Any/all
+of the same Boolean is that Boolean for every active invocation, including a
+partial subgroup. Divergent phis are explicitly excluded even when their input
+values are constants. Unknown or varying expressions keep the vote. Capability
+analysis is updated together with branch emission, rather than weakening GPU
+validation or simply deleting declared capabilities.
+
+The captured vertex loses its single ballot and capabilities 61/64. All fourteen
+complete replays pass SPIR-V validation before and after; the other thirteen are
+byte-identical. Independent control-flow tests cover zero/nonzero EXEC/VCC
+branches with both Boolean values and uniform/varying predicates. They verify
+the emitted branch operand, vote count and capability requirement together.
+The existing wide-subgroup regression also passes. The rebuilt driver and its
+NID-patched private overlay pass the complete package's native import and 3,225
+guest-NID audit. These host results do not establish correct device rendering.
+
+A separate special-APC fixture checks whether a CPU-bound target can be
+interrupted without entering an alertable Windows wait. Local x86 Wine accepts
+the queue but only delivers after the target enters `SleepEx`; preemption fails
+with exit 1. Target identity, arguments and SysV scratch pass. The next iPad
+attempt is refused because the device is locked; no device result is inferred
+from that attempt or from the preceding game's log. This is why the cooperative
+GC prototype is not promoted to production signal delivery.
+
+The regular game package, configuration and library are restored. The new driver
+is prepared locally for a controlled device test. Memory tracking, depth/MSAA
+support and real GC preemption remain separate unresolved work. See the
+[shader and preemption record](evidence/solitaire-uniform-vertex-branch.json).

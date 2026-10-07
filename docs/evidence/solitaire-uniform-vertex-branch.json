@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "status": "shader_repair_host_qualified_device_test_pending_unlock",
+  "installed_app_build": "28",
+  "shared_runtime_pr_head_rechecked": "e783c4f1f8baf987cba33145ca32481a6fa6c645",
+  "shared_runtime_adoption_commit": "54e36f670bc7993f5829b2fcc1435f87bcca0be8",
+  "private_shader_capture": {
+    "device_model": "iPad14,10",
+    "os": "27.0.1 (24A446)",
+    "bounded_seconds": 60,
+    "private_cooperative_gc_prototype": true,
+    "private_write_watching_disabled_for_diagnosis": true,
+    "visible_gameplay_qualified": false,
+    "requests_recovered": 15,
+    "recovered_from_completed_production_restore_readback": true,
+    "complete_replay_requests": 14,
+    "incomplete_requests": 1,
+    "incomplete_reason": "One request lacks memory for a dynamic descriptor source; no successful replay is claimed.",
+    "raw_shaders_public": false
+  },
+  "shader_repair": {
+    "patch": "patches/anyps5/0027-uniform-wave-branches.patch",
+    "patch_sha256": "22fb01beaa21299c4f9c34104d010a8713a055e6e3b37e6b0bd090a42d2115dd",
+    "rule": "Use the already sensed branch Boolean directly only when a conservative scalar expression proof establishes wave uniformity.",
+    "retains_varying_branch_collectives": true,
+    "rejects_phi_and_unknown_sources": true,
+    "proof_depth_limit": 64,
+    "proof_node_limit": 256,
+    "changes_gpu_feature_validation": false,
+    "vertex_before": {
+      "words": 15297,
+      "ballots": 1,
+      "capabilities": [
+        1,
+        61,
+        64,
+        4466
+      ]
+    },
+    "vertex_after": {
+      "words": 15268,
+      "ballots": 0,
+      "capabilities": [
+        1,
+        4466
+      ]
+    },
+    "other_complete_replays_unchanged": true,
+    "spirv_val_target": "vulkan1.3",
+    "spirv_val_before_passed": 14,
+    "spirv_val_after_passed": 14,
+    "emitter_and_capability_cases": 16,
+    "guards_tested": [
+      "varying vertex input",
+      "lane ID",
+      "varying scalar-buffer offset",
+      "divergently selected phi",
+      "cycle",
+      "missing operands",
+      "depth limit"
+    ],
+    "existing_wave32_wide_subgroup_test_passed": true,
+    "graphics_driver_built": true,
+    "candidate_driver_sha256": "b8fe3d3d797aaaacbcea5e0da1fb2df97656c9cf8927fddb3c4ba1bb61a64409",
+    "candidate_packaged_libraries_checked": 51,
+    "candidate_guest_nids_checked": 3225,
+    "candidate_dependency_audit_passed": true,
+    "device_candidate_installed": false,
+    "device_candidate_rendering_qualified": false
+  },
+  "special_apc_probe": {
+    "source": "tools/runtime-probes/special_apc_probe.c",
+    "source_sha256": "4a993918d590fbd7670f969fcb252fa9a614e14451ff825af198959f5fa48df3",
+    "host": "macOS x86 Wine, not the iPad or native Windows",
+    "host_queue_status": 0,
+    "host_preemptive_callbacks": 0,
+    "host_alertable_callbacks": 1,
+    "host_wrong_thread_or_argument_count": 0,
+    "host_redzone_errors": 0,
+    "host_exit_code": 1,
+    "host_preemptive_delivery_passed": false,
+    "device_execution_status": "not_executed_device_locked",
+    "checks": "Target spins without calls or waits during preemption observation, then enters a bounded alertable wait. Success requires preemption on the correct target thread and preserved SysV scratch.",
+    "production_gc_signal_delivery_qualified": false
+  },
+  "production_restored": {
+    "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "verified_files": 138,
+    "private_gc_kernel_removed": true,
+    "original_configuration_and_library_restored_byte_identical": true,
+    "private_write_watch_disable_persisted": false
+  },
+  "pinned_stack_validation": [
+    {
+      "component": "AnyPS5",
+      "pin": "ee391a5614246338aec9cb7a3a3dd4f479aec9f3",
+      "patches": 27,
+      "files_verified": 59,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 10,
+      "files_verified": 8,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 25,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "remaining_blockers": [
+    "Unity target-thread GC signal delivery and full guest context",
+    "graphics worker invalid pointer with normal memory tracking",
+    "unsupported multisampling or coverage state",
+    "out-of-range viewport depth support",
+    "device qualification of the new scalar vertex branch"
+  ],
+  "visible_gameplay_qualified": false,
+  "controls_qualified": false,
+  "performance_qualified": false,
+  "private_evidence_sha256": {
+    "build/solitaire-investigation/run-uniform-branch.log": "a4a0c639205ae31f3ec5ba0d4a832d3ae30bb8d12bbcfe190a12feb67bc8a04a",
+    "build/solitaire-investigation/build28-uniform-branch-replay/comparison.json": "2b474b6ca0aa17ce267f45ed62a046d89001449ea66d2f15ea260b9cc36872b2",
+    "build/solitaire-investigation/build-uniform-branch-runtime.log": "ce59f0a3eab1321c3d1de486d7876e96ef06b29c3abdc9f42fc2d09a9ce4d5ab",
+    "build/solitaire-investigation/special-apc-host.log": "85a8ea302a9e5977ab9457b80574e6f376a742ece7a5d34070265c3fb432fa48",
+    "build/solitaire-investigation/build28-shader-capture-device.log": "9c3ff80aa0c813a04c2c402afb7a65a7f1ca1010498eaf4fe37c238b4db16438"
+  }
+}

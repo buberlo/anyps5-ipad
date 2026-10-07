@@ -530,3 +530,21 @@ sense. See the [README](../README.md) and
 `patches/madeira/0002` still does not grant extended virtual addressing by
 itself; the provisioning profile has to include it. No game dump belongs in
 this repository.
+
+## Conservative scalar wave branches: 2026-10-08
+
+AnyPS5 0027 replaces a wave-mask branch's subgroup vote with its already sensed
+Boolean only when a bounded proof establishes uniform scalar draw data and pure
+operations. Vertex inputs, lane IDs, phis, unknown reads, cyclic expressions and
+varying resource addresses retain the collective path. Capability analysis and
+branch emission use the same proof; unsupported GPU feature checks stay active.
+
+Sixteen synthetic emitter/capability cases and the existing wide-subgroup test
+pass under local x86 Wine. Fourteen complete private device shader captures
+replay and pass `spirv-val --target-env vulkan1.3` before and after the change.
+Exactly one captured vertex shader changes: its unnecessary ballot and subgroup
+capabilities disappear. Thirteen other complete shaders remain byte-identical.
+One additional capture is incomplete and is not counted as a successful replay.
+The driver builds and its prepared private overlay passes import/NID checks;
+the iPad candidate has not been installed or tested. See the
+[qualification record](evidence/solitaire-uniform-vertex-branch.json).

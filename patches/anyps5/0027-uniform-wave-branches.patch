@@ -1,0 +1,276 @@
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -733,6 +733,14 @@
+         set_tests_properties(ray_tracing_miss PROPERTIES ENVIRONMENT_MODIFICATION
+             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
+     endif()
++    add_test_executable(uniform_wave_branch_tests ${LIBS_INCLUDE_DIR}/tests/UniformWaveBranch.cpp)
++    target_link_libraries(uniform_wave_branch_tests PRIVATE shader_recompiler_agc_driver libc)
++    configure_windows_unwind(uniform_wave_branch_tests)
++    add_test(NAME uniform_wave_branch COMMAND uniform_wave_branch_tests)
++    if(WIN32)
++        set_tests_properties(uniform_wave_branch PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
++    endif()
+     add_test_executable(wave32_wide_subgroup_tests ${LIBS_INCLUDE_DIR}/tests/Wave32WideSubgroup.cpp)
+     target_link_libraries(wave32_wide_subgroup_tests PRIVATE shader_recompiler_agc_driver libc)
+     configure_windows_unwind(wave32_wide_subgroup_tests)
+diff --git a/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp b/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
+--- a/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
++++ b/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
+@@ -36,6 +36,7 @@
+ [[nodiscard]] std::unordered_map<const IrValue*, std::uint32_t> FunctionLdsLaneAddresses(const IrProgram& program);
+ [[nodiscard]] std::unordered_set<const IrValue*> WaveUniformValues(const IrProgram& program);
+ [[nodiscard]] bool IsWaveMaskBranch(BranchCondition condition);
++[[nodiscard]] bool IsUniformWaveBranchPredicate(const IrValue* value);
+ 
+ }
+ 
+diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
+--- a/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
++++ b/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
+@@ -429,7 +429,7 @@
+         }
+     }
+     for (const auto& info : program.Metadata().blockInfo) {
+-        if (info.terminator.kind == TerminatorKind::ConditionalBranch && IsWaveMaskBranch(info.terminator.condition)) {
++        if (info.terminator.kind == TerminatorKind::ConditionalBranch && IsWaveMaskBranch(info.terminator.condition) && !IsUniformWaveBranchPredicate(info.condition)) {
+             requirements.subgroupBallot = true;
+         }
+     }
+@@ -450,6 +450,64 @@
+ 
+ bool IsWaveMaskBranch(BranchCondition condition) {
+     return condition == BranchCondition::ExecZero || condition == BranchCondition::ExecNonZero || condition == BranchCondition::VccZero || condition == BranchCondition::VccNonZero;
++}
++
++bool IsUniformWaveBranchPredicate(const IrValue* value) {
++    // Any/all of one wave-uniform Boolean is that Boolean, including a partial
++    // subgroup. Prove only draw-wide scalar sources and a small pure expression
++    // closure. Do not reuse WaveUniformValues: a phi selected by divergent
++    // control flow can vary even when all its incoming operands are constants.
++    std::unordered_map<const IrValue*, bool> memo;
++    const auto prove = [&](const auto& self, const IrValue* current, unsigned depth) -> bool {
++        if (!current || depth > 64u) return false;
++        current = current->Resolve();
++        if (!current) return false;
++        if (current->HasImmediate()) return true;
++        if (const auto found = memo.find(current); found != memo.end()) return found->second;
++        if (memo.size() >= 256u) return false;
++        memo.emplace(current, false); // also breaks cycles, conservatively
++        switch (current->Opcode()) {
++        case IrOpcode::GetUserData:
++        case IrOpcode::GetShaderBase:
++            memo[current] = true;
++            return true;
++        case IrOpcode::GetBufferResource:
++        case IrOpcode::GetSrtResource:
++        case IrOpcode::ReadConst:
++        case IrOpcode::ReadConstBuffer:
++        case IrOpcode::BitCastF32U32:
++        case IrOpcode::BitCastU32F32:
++        case IrOpcode::BitwiseAnd32:
++        case IrOpcode::BitwiseOr32:
++        case IrOpcode::BitwiseXor32:
++        case IrOpcode::IEqual32:
++        case IrOpcode::INotEqual32:
++        case IrOpcode::LogicalNot:
++        case IrOpcode::LogicalAnd:
++        case IrOpcode::LogicalOr:
++        case IrOpcode::FPOrdEqual32:
++        case IrOpcode::FPUnordEqual32:
++        case IrOpcode::FPOrdNotEqual32:
++        case IrOpcode::FPUnordNotEqual32:
++        case IrOpcode::FPOrdLessThan32:
++        case IrOpcode::FPUnordLessThan32:
++        case IrOpcode::FPOrdGreaterThan32:
++        case IrOpcode::FPUnordGreaterThan32:
++        case IrOpcode::FPOrdLessThanEqual32:
++        case IrOpcode::FPUnordLessThanEqual32:
++        case IrOpcode::FPOrdGreaterThanEqual32:
++        case IrOpcode::FPUnordGreaterThanEqual32:
++            break;
++        default:
++            return false;
++        }
++        if (!current->ArgumentCount()) return false;
++        for (const IrValue* argument : current->Arguments())
++            if (!self(self, argument, depth + 1u)) return false;
++        memo[current] = true;
++        return true;
++    };
++    return prove(prove, value, 0u);
+ }
+ 
+ std::unordered_set<const IrValue*> WaveUniformValues(const IrProgram& program) {
+diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
+--- a/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
++++ b/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
+@@ -154,6 +154,11 @@
+ 
+ std::uint32_t EmitBranchCondition(SpirvValueEmitContext& ctx, const BlockInfo& info) {
+     const auto condition = info.terminator.condition;
++    if (IsWaveMaskBranch(condition) && IsUniformWaveBranchPredicate(info.condition)) {
++        // info.condition already includes the zero/nonzero sense. A uniform
++        // predicate needs no cross-invocation vote, on either wave half.
++        return ctx.Def(info.condition);
++    }
+     if (ctx.otherHalf == nullptr && IsWaveMaskBranch(condition)) {
+         return EmitWaveMaskBranchCondition(ctx, info);
+     }
+diff --git a/core/libs/tests/UniformWaveBranch.cpp b/core/libs/tests/UniformWaveBranch.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/UniformWaveBranch.cpp
+@@ -0,0 +1,150 @@
++#include "SpirvBackend/SpirvAnalysis.hpp"
++#include "SpirvBackend/SpirvFlowEmitter.hpp"
++#include "SpirvBackend/SpirvMemory/SpirvConstants.hpp"
++#include <array>
++#include <cstdio>
++#include <stdexcept>
++
++using namespace ShaderRecompiler;
++
++namespace {
++void Require(bool value, const char* message) {
++    if (!value) throw std::runtime_error(message);
++}
++
++IrValue& Constant(IrProgram& program, std::uint32_t value) {
++    auto& result = program.CreateValue(IrOpcode::Void, IrType::U32);
++    result.SetImmediateU32(value);
++    return result;
++}
++
++IrValue& Compare(IrProgram& program, IrValue& source) {
++    auto& predicate = program.CreateValue(IrOpcode::INotEqual32, IrType::Bool);
++    predicate.AddArgument(&source);
++    predicate.AddArgument(&Constant(program, 0));
++    return predicate;
++}
++
++// Check the actual control-flow emitter as well as the device capability request.
++// Both use the predicate with its zero/nonzero sense already applied by the IR.
++void CheckBranch(IrProgram& program, IrValue& predicate, bool uniform,
++                 BranchCondition kind, bool value) {
++    auto& entry = program.CreateBlock();
++    auto& yes = program.CreateBlock();
++    auto& no = program.CreateBlock();
++    program.SetEntryBlock(entry);
++    program.BlockOrder() = {&entry, &yes, &no};
++    program.Resources().stage = IrShaderStage::Vertex;
++    program.Metadata().blockInfo.resize(3);
++    for (unsigned i = 0; i < 3; ++i) program.Metadata().blockInfo[i].id = i;
++    auto& info = program.Metadata().blockInfo[0];
++    info.terminator.kind = TerminatorKind::ConditionalBranch;
++    info.terminator.condition = kind;
++    info.terminator.trueBlock = 1;
++    info.terminator.falseBlock = 2;
++    info.condition = &predicate;
++
++    SpirvEmitterState state(program, {});
++    Require(state.requirements.subgroupBallot == !uniform,
++            "branch capability request disagrees with predicate uniformity");
++    SpirvValueEmitContext context(state);
++    const auto predicateId = ConstantBool(state, value);
++    context.definitions[&predicate] = predicateId;
++    for (auto* block : program.BlockOrder()) state.labels[block] = state.module.AllocateId();
++    StructuredFunctionState function;
++    EmitControlFlow(context, function, program);
++    const auto code = state.module.Finalize();
++    unsigned ballots = 0, branches = 0;
++    for (std::size_t offset = 5; offset < code.size();) {
++        const auto count = code[offset] >> 16;
++        Require(count != 0 && count <= code.size() - offset, "invalid SPIR-V instruction");
++        const auto op = static_cast<spv::Op>(code[offset] & 0xffff);
++        if (op == spv::OpGroupNonUniformBallot) ++ballots;
++        if (op == spv::OpBranchConditional) {
++            ++branches;
++            if (uniform) Require(code[offset + 1] == predicateId,
++                                 "uniform branch changed the predicate sense");
++        }
++        offset += count;
++    }
++    Require(branches == 1, "expected one conditional branch");
++    Require(ballots == (uniform ? 0u : 1u), "varying branch vote lost or uniform vote retained");
++}
++
++void CheckRejections() {
++    IrProgram p;
++    auto& lane = p.CreateValue(IrOpcode::LaneId, IrType::U32);
++    Require(!IsUniformWaveBranchPredicate(&Compare(p, lane)), "lane-dependent branch accepted");
++    auto& attribute = p.CreateValue(IrOpcode::GetAttribute, IrType::U32);
++    Require(!IsUniformWaveBranchPredicate(&Compare(p, attribute)), "vertex-dependent branch accepted");
++    auto& address = p.CreateValue(IrOpcode::ReadConstBuffer, IrType::U32);
++    address.AddArgument(&Constant(p, 0));
++    address.AddArgument(&lane);
++    Require(!IsUniformWaveBranchPredicate(&Compare(p, address)), "varying constant-buffer address accepted");
++    auto& a = p.CreateBlock();
++    auto& b = p.CreateBlock();
++    auto& phi = p.CreateValue(IrOpcode::Phi, IrType::U32);
++    phi.AddPhiOperand(&a, &Constant(p, 0));
++    phi.AddPhiOperand(&b, &Constant(p, 1));
++    Require(!IsUniformWaveBranchPredicate(&Compare(p, phi)), "divergent phi accepted");
++    auto& cycle = p.CreateValue(IrOpcode::LogicalNot, IrType::Bool);
++    cycle.AddArgument(&cycle);
++    Require(!IsUniformWaveBranchPredicate(&cycle), "cyclic expression accepted");
++    auto& empty = p.CreateValue(IrOpcode::ReadConstBuffer, IrType::U32);
++    Require(!IsUniformWaveBranchPredicate(&empty), "missing resource operands accepted");
++    IrValue* deep = &Constant(p, 0);
++    for (unsigned i = 0; i < 70; ++i) {
++        auto& node = p.CreateValue(IrOpcode::BitwiseOr32, IrType::U32);
++        node.AddArgument(deep);
++        node.AddArgument(&Constant(p, 0));
++        deep = &node;
++    }
++    Require(!IsUniformWaveBranchPredicate(deep), "unbounded expression accepted");
++}
++
++IrValue& DrawPredicate(IrProgram& p) {
++    // Same scalar-resource expression shape as the captured vertex branch.
++    auto& descriptor = p.CreateValue(IrOpcode::GetBufferResource, IrType::U32);
++    for (unsigned i = 0; i < 4; ++i) {
++        auto& user = p.CreateValue(IrOpcode::GetUserData, IrType::U32);
++        user.AddArgument(&Constant(p, i));
++        descriptor.AddArgument(&user);
++    }
++    auto& read = p.CreateValue(IrOpcode::ReadConstBuffer, IrType::U32);
++    read.AddArgument(&descriptor);
++    read.AddArgument(&Constant(p, 0));
++    auto& bits = p.CreateValue(IrOpcode::BitCastF32U32, IrType::F32);
++    bits.AddArgument(&read);
++    auto& zero = p.CreateValue(IrOpcode::Void, IrType::F32);
++    zero.SetImmediateF32(0.0f);
++    auto& predicate = p.CreateValue(IrOpcode::FPUnordNotEqual32, IrType::Bool);
++    predicate.AddArgument(&zero);
++    predicate.AddArgument(&bits);
++    return predicate;
++}
++}
++
++int main() {
++    try {
++        CheckRejections();
++        unsigned checks = 0;
++        for (const auto kind : {BranchCondition::ExecZero, BranchCondition::ExecNonZero,
++                                BranchCondition::VccZero, BranchCondition::VccNonZero}) {
++            for (const bool value : {false, true}) {
++                IrProgram uniform;
++                auto& draw = DrawPredicate(uniform);
++                Require(IsUniformWaveBranchPredicate(&draw), "draw-wide scalar branch rejected");
++                CheckBranch(uniform, draw, true, kind, value);
++                IrProgram varying;
++                auto& vertex = varying.CreateValue(IrOpcode::GetAttribute, IrType::U32);
++                CheckBranch(varying, Compare(varying, vertex), false, kind, value);
++                checks += 2;
++            }
++        }
++        std::printf("[uniform-wave-branch] %u emitter/capability cases passed; varying, phi, cycle and depth guards passed\n", checks);
++        return 0;
++    } catch (const std::exception& e) {
++        std::fprintf(stderr, "[uniform-wave-branch] %s\n", e.what());
++        return 1;
++    }
++}

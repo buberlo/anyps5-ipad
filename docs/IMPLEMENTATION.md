@@ -238,6 +238,30 @@ and global settings, library and game assets preserved. The signal experiment
 remains private and absent from the installed production package.
 See the [follow-up checkpoint](evidence/solitaire-discard-continuation-checkpoint.json).
 
+Build 22 adds an opt-in, default-quiet FEX diagnostic:
+`MADEIRA_TRACE_FEX_CONFIG=1` records the resolved scalar/vector/REP and half-barrier
+TSO options after configuration layers have loaded. Requested environment values
+alone are not evidence of the resolved mode. The iOS hardware-TSO hook returns
+false, retaining software emulation; no ordering defaults are changed.
+
+A stronger independent signal test binds distinct values to R12–R15 while the
+actual target thread waits in native alertable `SleepEx`. Both callbacks match
+all four values in the interrupted PS5 context on the host and iPad (eight
+checks). Original wait completion/deadline contracts also pass. This excludes
+a generic mismatch of these nonvolatile registers in that tested path, but does
+not prove every context field, Unity GC root completeness or arbitrary async
+delivery. The signal implementation remains a private diagnostic prototype.
+
+Two Build 22 game runs use the same diagnostic package and resolved scalar TSO
+and half-barrier settings. The baseline resolves vector/REP ordering to false;
+the strict run resolves both to true. Both reach JIT and the ELF entry, then
+fault at `game.exe+0x1426827` reading address `0x20` in `UnityGfxDeviceWorker`.
+Stricter ordering did not fix that observed failure. The regular production
+package is restored with all 138 files hash-verified. Library and global config
+remain byte-identical, and the device lease is released. Solitaire is installed;
+visible iPad gameplay remains unqualified. See the
+[context and ordering checkpoint](evidence/solitaire-build22-context-and-ordering.json).
+
 ## Local evidence, 2026-10-06
 
 - The native host relinker and NID patcher build; all 17 existing relinker tests

@@ -1,0 +1,39 @@
+diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
+--- a/app/Madeira.xcodeproj/project.pbxproj
++++ b/app/Madeira.xcodeproj/project.pbxproj
+@@ -880,7 +880,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 21;
++				CURRENT_PROJECT_VERSION = 22;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -932,7 +932,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 21;
++				CURRENT_PROJECT_VERSION = 22;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -983,7 +983,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 21;
++				CURRENT_PROJECT_VERSION = 22;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+@@ -1014,7 +1014,7 @@
+ 			buildSettings = {
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 21;
++				CURRENT_PROJECT_VERSION = 22;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;

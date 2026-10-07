@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "version": "01.000.000",
+  "device": {
+    "model": "iPad Air 13-inch M2",
+    "os": "27.0.1 (24A446)",
+    "app": "madeira-anyps5",
+    "app_version": "0.1.9",
+    "app_build": "22"
+  },
+  "diagnostic_change": {
+    "patch": "patches/fex/0003-resolved-memory-order-config.patch",
+    "opt_in": "MADEIRA_TRACE_FEX_CONFIG=1",
+    "default_quiet": true,
+    "changes_memory_order_defaults": false,
+    "scope": "resolved configuration after all layers loaded; iOS hardware TSO path returns false, so software emulation is used"
+  },
+  "independent_signal_context_contract": {
+    "app_build": "21",
+    "host_passed": true,
+    "ipad_passed": true,
+    "thread": "target thread parked in native alertable SleepEx",
+    "interrupted_gpr_values_checked": [
+      "R12",
+      "R13",
+      "R14",
+      "R15"
+    ],
+    "callbacks": 2,
+    "value_checks": 8,
+    "wait_completion_deadline_preserved": true,
+    "gameplay_proven": false,
+    "general_async_delivery_proven": false,
+    "private_prototype": true
+  },
+  "comparison": [
+    {
+      "mode": "baseline",
+      "resolved_options": "tso=true vector-tso=false memcpy-set-tso=false half-barrier-tso=true",
+      "same_diagnostic_package": true,
+      "jit_enabled": true,
+      "elf_entry_reached": true,
+      "duration_seconds": 22.091938959,
+      "result": "read access violation at address 0x20, game.exe+0x1426827, UnityGfxDeviceWorker",
+      "visual_gameplay_qualified": false
+    },
+    {
+      "mode": "strict",
+      "resolved_options": "tso=true vector-tso=true memcpy-set-tso=true half-barrier-tso=true",
+      "same_diagnostic_package": true,
+      "jit_enabled": true,
+      "elf_entry_reached": true,
+      "duration_seconds": 21.608288667,
+      "result": "read access violation at address 0x20, game.exe+0x1426827, UnityGfxDeviceWorker",
+      "visual_gameplay_qualified": false
+    }
+  ],
+  "local_validation": {
+    "fex_build": "passed",
+    "signed_iphoneos_build": "passed",
+    "pinned_stacks": [
+      {
+        "component": "FEX",
+        "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+        "patches": 3,
+        "files_verified": 3,
+        "applied": true,
+        "isolated_source_matches": true,
+        "reverse_restores_pin": true
+      },
+      {
+        "component": "Madeira",
+        "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+        "patches": 19,
+        "files_verified": 43,
+        "applied": true,
+        "isolated_source_matches": true,
+        "reverse_restores_pin": true
+      }
+    ],
+    "atomic_direction": "passed ASan/UBSan on isolated patched source",
+    "swapchain_contracts": "passed",
+    "display_timing_contracts": "passed",
+    "app_resource_matches_rebuilt_fex": true
+  },
+  "installation": {
+    "library_byte_preserved": true,
+    "configuration_byte_preserved": true,
+    "production_manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "verified_files": 138,
+    "private_kernel_removed": true,
+    "production_launched_after_restore": false,
+    "own_processes_closed": true,
+    "lease_released": true
+  },
+  "conclusion": "Strict vector and REP memory ordering did not remove the observed null dereference. No TSO defaults changed.",
+  "remaining_requirements": [
+    "Real Unity GC signal delivery; independent APC contracts do not qualify full GC roots.",
+    "UnityGfxDeviceWorker null dereference in the iPad game test.",
+    "Viewport depth outside [0,1] and unsupported multisampling/coverage path.",
+    "Visible iPad scene, confirmed controls and playable Solitaire remain unqualified."
+  ],
+  "privacy": "Private game binaries, instruction listings, shader requests, raw logs and pairing data remain outside Git.",
+  "github_actions_used": false
+}

@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "app": {
+    "version": "0.1.9",
+    "build": "21",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "development_signed": true,
+    "installed_version_verified": true,
+    "library_and_global_config_byte_preserved": true
+  },
+  "change": "Classify ARM64 CAS, CASP and LSE read-modify-write accesses as write faults, including acquire encodings whose load bit fooled the old decoder; preserve plain-load classification.",
+  "build": {
+    "ntdll_unix_compile": "37 objects succeeded, zero failed",
+    "iphoneos_link": "passed",
+    "codesign_deep_strict": "passed",
+    "arm64ec_pe_components": "hash-identical to Build 19"
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "builtin_jit": "activated",
+    "temporary_jit_pool_mb": 512,
+    "pool_config_restored_byte_for_byte": true
+  },
+  "cpu_probe": {
+    "public_source": "tools/runtime-probes/atomic_protection_probe.c",
+    "executable_copy": "hash-verified device readback",
+    "cmpxchg16b_success_write_fault": "passed",
+    "cmpxchg16b_failed_comparison_write_fault": "passed",
+    "xadd_write_fault": "passed",
+    "xchg_write_fault": "passed",
+    "cmpxchg_write_fault": "passed",
+    "ordinary_page_noaccess_load_read_fault": "passed",
+    "temporary_library_entry_removed_and_original_restored": true,
+    "result": "passed on iPad through Wine and FEX"
+  },
+  "host_checks": {
+    "production_classifier_ASan_UBSan": "passed",
+    "pristine_patch_series_apply_source_match_reverse": "passed all five series"
+  },
+  "solitaire_experiments": {
+    "cooperative_sigusr1": "private opt-in prototype delivered repeated signals on target threads and advanced past GC initialization",
+    "native_rmw_repair": "advanced past cmpxchg16b and then xadd failures",
+    "next_failure": "UnityGfxDeviceWorker null-vtable dereference; MoltenVK PerVertexKHR shader compilation errors also recorded",
+    "visible_gameplay": false
+  },
+  "limits": [
+    "Synthetic page-fault behavior does not prove game stability or displayed FPS.",
+    "Production kernel signal delivery remains unimplemented; experimental code is outside Git.",
+    "The game experiment uses the private signal prototype and does not qualify an unmodified production game launch.",
+    "Only this app was installed; original library and global configuration restored after tests.",
+    "No game assets, shader code or private raw logs included."
+  ]
+}

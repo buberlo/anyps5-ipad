@@ -20,7 +20,7 @@ upstream commits; the patches are the delta.
 ## Current local refresh: 2026-10-07
 
 The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All
-22 AnyPS5, 17 Madeira, two FEX and two Wine patches apply to pristine pinned
+22 AnyPS5, 18 Madeira, two FEX and two Wine patches apply to pristine pinned
 sources, match the built source and reverse successfully. The four optional
 MoltenVK patches pass apply/reverse checks but were not used in Build 18.
 
@@ -69,6 +69,29 @@ rasterization remain rejected. The focused `agc_driver_graphics_tests --state-on
 run passes; the full graphics suite still fails a separate fixed-function
 interpolation shader-recompiler case. The focused result does not qualify the
 whole renderer. See the [runtime repair record](evidence/ipad-m2-solitaire-header-state.json).
+
+## ARM64 atomic access direction: 2026-10-08
+
+Madeira 0029 classifies CAS/CASP and LSE read-modify-write instructions as write
+faults before Wine/FEX exception delivery, including acquire forms that the old
+bit-22 load/store shortcut classified as reads. It leaves ordinary loads,
+load-exclusive instructions and LDAPR outside this override. It changes access
+classification only: mapping ownership, permissions, dirty tracking and the
+fault terminal remain enforced by the existing handlers.
+
+Build 21 passes an independent x86-64 protection probe on the M2 iPad through
+Wine/FEX: successful and failed CMPXCHG16B comparisons, XADD, XCHG and CMPXCHG
+produce write faults on read-only pages, while a plain load from PAGE_NOACCESS
+produces a read fault. The production instruction classifier also passes
+ASan/UBSan host tests. The temporarily added probe entry and 512-MB JIT-pool
+configuration are removed and the originals restored byte-for-byte.
+[Build 21 record](evidence/ipad-m2-menu-build21-atomic-direction.json).
+
+A private cooperative-SIGUSR1 experiment advances Solitaire past Unity GC
+initialization but does not qualify arbitrary asynchronous guest signals. With
+the atomic correction, a later null-vtable dereference and MoltenVK PerVertexKHR
+compilation errors remain. The experimental signal sources are not part of the
+production patch series; visible Solitaire gameplay is still unqualified.
 
 ## Historical foundation evidence
 

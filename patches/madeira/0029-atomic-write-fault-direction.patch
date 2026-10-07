@@ -1,0 +1,121 @@
+diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
+index 6c6b1b6..3cd7cdc 100644
+--- a/app/Madeira.xcodeproj/project.pbxproj
++++ b/app/Madeira.xcodeproj/project.pbxproj
+@@ -880,7 +880,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 19;
++				CURRENT_PROJECT_VERSION = 21;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -932,7 +932,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 19;
++				CURRENT_PROJECT_VERSION = 21;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -983,7 +983,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 19;
++				CURRENT_PROJECT_VERSION = 21;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+@@ -1014,7 +1014,7 @@
+ 			buildSettings = {
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 19;
++				CURRENT_PROJECT_VERSION = 21;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+diff --git a/build/ntdll-unix/aps5_atomic_fault.h b/build/ntdll-unix/aps5_atomic_fault.h
+new file mode 100644
+index 0000000..42cfdb5
+--- /dev/null
++++ b/build/ntdll-unix/aps5_atomic_fault.h
+@@ -0,0 +1,19 @@
++#ifndef APS5_ATOMIC_FAULT_H
++#define APS5_ATOMIC_FAULT_H
++#include <stdint.h>
++// LSE atomics are read-modify-write even when the syndrome labels the
++// read phase. The ordinary write-fault handler must still check page ownership
++// and permissions; this only reports the instruction's access kind.
++static inline int aps5_arm64_rmw(uint32_t insn)
++{
++    if ((insn & 0x3fa07c00u) == 0x08a07c00u) return 1; // CAS/CASA/CASL/CASAL
++    if ((insn & 0xbfa07c00u) == 0x08207c00u) { // CASP and its A/L variants
++        // Pair forms require even comparison and replacement registers.
++        return (((insn >> 16) | insn) & 1u) == 0;
++    }
++    // LSE LDADD/LDCLR/LDEOR/LDSET/min/max and SWP, all sizes and A/L modes.
++    // Opcode 0xc is LDAPR: a genuine load, deliberately excluded.
++    if ((insn & 0x3b200c00u) == 0x38200000u && ((insn >> 12) & 15u) <= 8u) return 1;
++    return 0;
++}
++#endif
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+index 0a92ea5..7dc1445 100644
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -1371,6 +1371,14 @@ static int ios_fault_read_insn( uint64_t fault_pc, uint32_t *out )
+     return 1;
+ }
+ 
++#include "aps5_atomic_fault.h"
++static int ios_fault_is_rmw(uint64_t pc)
++{
++    uint32_t insn;
++    return ios_fault_read_insn(pc, &insn) && aps5_arm64_rmw(insn);
++}
++
++
+ /* x18-derived base register.
+  *
+  * Wine's EC kernelbase TlsGetValue is `add x8, x18, w0, uxtw #3;
+@@ -7517,7 +7525,7 @@ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_s
+         rec.ExceptionCode = EXCEPTION_ACCESS_VIOLATION;
+         rec.NumberParameters = 2;
+         if (esr_ec == 0x20 || esr_ec == 0x21) rec.ExceptionInformation[0] = EXCEPTION_EXECUTE_FAULT;
+-        else if (esr & 0x40) rec.ExceptionInformation[0] = EXCEPTION_WRITE_FAULT;
++        else if ((esr & 0x40) || ios_fault_is_rmw(pc)) rec.ExceptionInformation[0] = EXCEPTION_WRITE_FAULT;
+         else rec.ExceptionInformation[0] = EXCEPTION_READ_FAULT;
+         rec.ExceptionInformation[1] = fault_addr;
+ 
+@@ -10268,7 +10276,7 @@ static void segv_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+ #endif
+     rec.NumberParameters = 2;
+     if ((esr & 0xf0000000) == 0x80000000) rec.ExceptionInformation[0] = EXCEPTION_EXECUTE_FAULT;
+-    else if (esr & 0x40) rec.ExceptionInformation[0] = EXCEPTION_WRITE_FAULT;
++    else if ((esr & 0x40) || ios_fault_is_rmw(PC_sig(context))) rec.ExceptionInformation[0] = EXCEPTION_WRITE_FAULT;
+     else rec.ExceptionInformation[0] = EXCEPTION_READ_FAULT;
+     rec.ExceptionInformation[1] = (ULONG_PTR)siginfo->si_addr;
+ #ifdef WINE_IOS
+@@ -12191,7 +12199,8 @@ static void bus_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+                 uint32_t f_insn = *(uint32_t *)(uintptr_t)PC_sig(bus_ctx);
+                 /* loads have bit22 set in the ld/st register/immediate classes;
+                  * good enough to label the fault direction for wine's repair */
+-                if ((f_insn & 0x0a000000) == 0x08000000 && !(f_insn & 0x00400000))
++                if (aps5_arm64_rmw(f_insn) ||
++                    ((f_insn & 0x0a000000) == 0x08000000 && !(f_insn & 0x00400000)))
+                     vrec.ExceptionInformation[0] = EXCEPTION_WRITE_FAULT;
+             }
+ 
+@@ -12462,7 +12471,7 @@ static void bus_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+             if (rd_kr == KERN_SUCCESS)
+             {
+                 DWORD64 esr = get_fault_esr( bus_ctx );
+-                int is_write = (int)((esr >> 6) & 1);          /* ISS.WnR */
++                int is_write = (int)((esr >> 6) & 1) || ios_fault_is_rmw(PC_sig(bus_ctx));
+                 extern int ios_page_expected_prot( const void *addr );
+                 int want = ios_page_expected_prot( siginfo->si_addr );
+                 mach_vm_address_t ra = (mach_vm_address_t)(uintptr_t)siginfo->si_addr;

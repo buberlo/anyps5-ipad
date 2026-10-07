@@ -20,6 +20,8 @@ src="$root/tools/runtime-probes"
     -fno-exceptions -fno-rtti -fno-stack-protector -nostdlib \
     -Wl,--entry=mainCRTStartup "$src/protected_write_probe.cpp" -lkernel32 \
     -o "$out/protected-write-probe.exe"
+"$win_cxx" -x c -std=c11 -Wall -Wextra -Werror -O2 -mcx16 -static-libgcc \
+    "$src/atomic_protection_probe.c" -o "$out/atomic-protection-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'
 printf 'A compiled probe or scalar reference does not establish AVX or memory behavior on iPad.\n'

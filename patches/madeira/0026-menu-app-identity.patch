@@ -1,0 +1,266 @@
+diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
+index 678ed14..71c5e24 100644
+--- a/app/Madeira.xcodeproj/project.pbxproj
++++ b/app/Madeira.xcodeproj/project.pbxproj
+@@ -95,7 +95,7 @@
+ 		A1000041 /* PrefixExtractor.c in Sources */ = {isa = PBXBuildFile; fileRef = A2000041 /* PrefixExtractor.c */; };
+ 		A1000042 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000042 /* libz.tbd */; };
+ 		A1000050 /* IOSDisplayShim.m in Sources */ = {isa = PBXBuildFile; fileRef = A2000050 /* IOSDisplayShim.m */; };
+-		A1000051 /* libdxmt_combined.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000051 /* libdxmt_combined.a */; };
++		A1000051 /* libaps5_ui.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000051 /* libaps5_ui.a */; };
+ 		A1000052 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000052 /* Metal.framework */; };
+ 		A1000053 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000053 /* QuartzCore.framework */; };
+ 		A1000054 /* MetalFX.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000054 /* MetalFX.framework */; };
+@@ -106,7 +106,6 @@
+ 		A1000247 /* PadOutput.m in Sources */ = {isa = PBXBuildFile; fileRef = A2000247 /* PadOutput.m */; };
+ 		A1000080 /* arm64ec-windows in Resources */ = {isa = PBXBuildFile; fileRef = A2000080 /* arm64ec-windows */; };
+ 		A1000210 /* i386-windows in Resources */ = {isa = PBXBuildFile; fileRef = A2000210 /* i386-windows */; };
+-		A1000081 /* x86_64-vcruntime in Resources */ = {isa = PBXBuildFile; fileRef = A2000081 /* x86_64-vcruntime */; };
+ 		A1000090 /* libgnutls.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000090 /* libgnutls.a */; };
+ 		A1000091 /* libhogweed.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000091 /* libhogweed.a */; };
+ 		A1000092 /* libnettle.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000092 /* libnettle.a */; };
+@@ -274,7 +273,7 @@
+ 		A2000042 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+ 		A2000043 /* PrefixExtractor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixExtractor.h; sourceTree = "<group>"; };
+ 		A2000050 /* IOSDisplayShim.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = IOSDisplayShim.m; sourceTree = "<group>"; };
+-		A2000051 /* libdxmt_combined.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libdxmt_combined.a; sourceTree = "<group>"; };
++		A2000051 /* libaps5_ui.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libaps5_ui.a; sourceTree = "<group>"; };
+ 		A2000052 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+ 		A2000053 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+ 		A2000054 /* MetalFX.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalFX.framework; path = System/Library/Frameworks/MetalFX.framework; sourceTree = SDKROOT; };
+@@ -288,7 +287,6 @@
+ 		A2000248 /* PadOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PadOutput.h; sourceTree = "<group>"; };
+ 		A2000080 /* arm64ec-windows */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "arm64ec-windows"; sourceTree = "<group>"; };
+ 		A2000210 /* i386-windows */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "i386-windows"; sourceTree = "<group>"; };
+-		A2000081 /* x86_64-vcruntime */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "x86_64-vcruntime"; sourceTree = "<group>"; };
+ 		A2000090 /* libgnutls.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgnutls.a; sourceTree = "<group>"; };
+ 		A2000091 /* libhogweed.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libhogweed.a; sourceTree = "<group>"; };
+ 		A2000092 /* libnettle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libnettle.a; sourceTree = "<group>"; };
+@@ -337,7 +335,7 @@
+ 				A1000031 /* libntdll_unix.a in Frameworks */,
+ 				A1000034 /* IOKit.framework in Frameworks */,
+ 				A1000042 /* libz.tbd in Frameworks */,
+-				A1000051 /* libdxmt_combined.a in Frameworks */,
++				A1000051 /* libaps5_ui.a in Frameworks */,
+ 				A1000052 /* Metal.framework in Frameworks */,
+ 				A1000053 /* QuartzCore.framework in Frameworks */,
+ 				A1000054 /* MetalFX.framework in Frameworks */,
+@@ -477,7 +475,6 @@
+ 				A2000210 /* i386-windows */,
+ 				A20000D1 /* d3d12 */,
+ 				A20000D2 /* licenses */,
+-				A2000081 /* x86_64-vcruntime */,
+ 				A2000040 /* prefix-template.tar.gz */,
+ 				A2000094 /* cacert.pem */,
+ 				A2000041 /* PrefixExtractor.c */,
+@@ -520,7 +517,7 @@
+ 				A2000032 /* libntdll_unix.a */,
+ 				A2000035 /* IOKit.framework */,
+ 				A2000042 /* libz.tbd */,
+-				A2000051 /* libdxmt_combined.a */,
++				A2000051 /* libaps5_ui.a */,
+ 				A2000052 /* Metal.framework */,
+ 				A2000053 /* QuartzCore.framework */,
+ 				A2000054 /* MetalFX.framework */,
+@@ -649,7 +646,6 @@
+ 				A1000210 /* i386-windows in Resources */,
+ 				A10000D1 /* d3d12 in Resources */,
+ 				A10000D2 /* licenses in Resources */,
+-				A1000081 /* x86_64-vcruntime in Resources */,
+ 				A1000040 /* prefix-template.tar.gz in Resources */,
+ 				A1000094 /* cacert.pem in Resources */,
+ 				A1000910 /* Assets.xcassets in Resources */,
+@@ -839,7 +835,7 @@
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+-				MADEIRA_BUNDLE_IDENTIFIER = com.willfaust.madeora;
++				MADEIRA_BUNDLE_IDENTIFIER = com.buberlo.anyps5ipad;
+ 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+ 				MTL_FAST_MATH = YES;
+ 				ONLY_ACTIVE_ARCH = YES;
+@@ -868,7 +864,7 @@
+ 				GCC_WARN_UNUSED_FUNCTION = YES;
+ 				GCC_WARN_UNUSED_VARIABLE = YES;
+ 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+-				MADEIRA_BUNDLE_IDENTIFIER = com.willfaust.madeora;
++				MADEIRA_BUNDLE_IDENTIFIER = com.buberlo.anyps5ipad;
+ 				MTL_ENABLE_DEBUG_INFO = NO;
+ 				MTL_FAST_MATH = YES;
+ 				SDKROOT = iphoneos;
+@@ -885,7 +881,7 @@
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+ 					"$(inherited)",
+@@ -916,6 +912,7 @@
+ 					"$(SRCROOT)/../FEX/build-ios/External/SoftFloat-3e",
+ 					"$(SRCROOT)/Madeira",
+ 				);
++				OTHER_LDFLAGS = ("$(inherited)", "-lwinevulkan_unix", "-lMoltenVK", "-framework", IOSurface, "-framework", IOKit);
+ 				MARKETING_VERSION = 0.1.3;
+ 				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+@@ -936,7 +933,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+ 					"$(inherited)",
+@@ -967,6 +964,7 @@
+ 					"$(SRCROOT)/../FEX/build-ios/External/SoftFloat-3e",
+ 					"$(SRCROOT)/Madeira",
+ 				);
++				OTHER_LDFLAGS = ("$(inherited)", "-lwinevulkan_unix", "-lMoltenVK", "-framework", IOSurface, "-framework", IOKit);
+ 				MARKETING_VERSION = 0.1.3;
+ 				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+@@ -986,7 +984,7 @@
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = MadeiraJITHelper/Info.plist;
+@@ -1017,7 +1015,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 4;
+-				DEVELOPMENT_TEAM = V8NU3FX3TL;
++				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				INFOPLIST_FILE = MadeiraJITHelper/Info.plist;
+diff --git a/app/Madeira/Info.plist b/app/Madeira/Info.plist
+index 651ac88..433a91e 100644
+--- a/app/Madeira/Info.plist
++++ b/app/Madeira/Info.plist
+@@ -12,7 +12,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>en</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>Madeira</string>
++	<string>madeira-anyps5</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>$(EXECUTABLE_NAME)</string>
+ 	<key>CFBundleIdentifier</key>
+@@ -32,7 +32,7 @@
+ 			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+ 			<key>CFBundleURLSchemes</key>
+ 			<array>
+-				<string>madeira</string>
++				<string>anyps5ipad</string>
+ 			</array>
+ 		</dict>
+ 	</array>
+diff --git a/app/Madeira/JITNetwork.swift b/app/Madeira/JITNetwork.swift
+index f82b271..9169cf6 100644
+--- a/app/Madeira/JITNetwork.swift
++++ b/app/Madeira/JITNetwork.swift
+@@ -193,7 +193,7 @@ enum JITShortcutFile {
+ ///
+ /// An app can only run a shortcut by opening the Shortcuts app, so each run leaves
+ /// Madeira for a moment and comes back through x-callback-url
+-/// (madeira://jit-network/...). Off unless Settings › JIT › Madeira JIT shortcut
++/// (anyps5ipad://jit-network/...). Off unless Settings › JIT › Madeira JIT shortcut
+ /// turns it on (madeira.cfg env.MADEIRA_JIT_SHORTCUT = 1): without the shortcut the
+ /// Shortcuts app would only report that it is missing.
+ @MainActor final class JITNetworkShortcut: ObservableObject {
+@@ -291,9 +291,9 @@ enum JITShortcutFile {
+             URLQueryItem(name: "name", value: Self.name),
+             URLQueryItem(name: "input", value: "text"),
+             URLQueryItem(name: "text", value: input),
+-            URLQueryItem(name: "x-success", value: "madeira://jit-network/success"),
+-            URLQueryItem(name: "x-error", value: "madeira://jit-network/error"),
+-            URLQueryItem(name: "x-cancel", value: "madeira://jit-network/cancel")
++            URLQueryItem(name: "x-success", value: "anyps5ipad://jit-network/success"),
++            URLQueryItem(name: "x-error", value: "anyps5ipad://jit-network/error"),
++            URLQueryItem(name: "x-cancel", value: "anyps5ipad://jit-network/cancel")
+         ]
+         guard let url = c.url else { completion(.failed("bad shortcut URL")); return }
+         LogStore.shared.log("[jit-shortcut] run input=\(input)")
+@@ -306,10 +306,10 @@ enum JITShortcutFile {
+         }
+     }
+ 
+-    /// madeira://jit-network/{success|error|cancel}, from Shortcuts' x-callback-url.
++    /// anyps5ipad://jit-network/{success|error|cancel}, from Shortcuts' x-callback-url.
+     @discardableResult
+     func handle(_ url: URL) -> Bool {
+-        guard url.scheme == "madeira", url.host == "jit-network" else { return false }
++        guard url.scheme == "anyps5ipad", url.host == "jit-network" else { return false }
+         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+         let value = { (name: String) in query.first { $0.name == name }?.value ?? "" }
+         switch url.path {
+diff --git a/app/Madeira/Madeira.entitlements b/app/Madeira/Madeira.entitlements
+index 3c7c59f..67425f3 100644
+--- a/app/Madeira/Madeira.entitlements
++++ b/app/Madeira/Madeira.entitlements
+@@ -4,6 +4,8 @@
+ <dict>
+ 	<key>com.apple.developer.kernel.increased-memory-limit</key>
+ 	<true/>
++	<key>com.apple.developer.kernel.extended-virtual-addressing</key>
++	<true/>
+ 	<key>com.apple.security.cs.allow-jit</key>
+ 	<true/>
+ 	<key>get-task-allow</key>
+diff --git a/app/Madeira/MadeiraApp.swift b/app/Madeira/MadeiraApp.swift
+index 4f3f895..8c030c1 100644
+--- a/app/Madeira/MadeiraApp.swift
++++ b/app/Madeira/MadeiraApp.swift
+@@ -6,6 +6,34 @@ struct MadeiraApp: App {
+         // ml1172: read the screen on the main thread; library entries, whose
+         // default Resolution comes from it, are also made on other threads.
+         _ = ResolutionChoices.screen
++        // This app has its own bundle/container. Seed the runtime profile once;
++        // subsequent user configuration is retained unchanged.
++        if let url = MadeiraConfig.url, !MadeiraConfig.present {
++            let profile = """
++            # AnyPS5 iPad runtime profile, version 1.
++            # Guest addresses are retained; physical pages are committed on demand.
++            env.MADEIRA_FEX_AVX = 1
++            env.APS5_GUEST_ARENA_LAZY = 1
++            env.APS5_GUEST_ARENA_BASE = 0x7400000000
++            env.APS5_GUEST_ARENA_SIZE = 0x100000000
++            env.APS5_GUEST_ARENA_CHUNK = 0x10000000
++            env.MADEIRA_CONTROLS_XBOX_DEFAULT = 1
++            env.MADEIRA_FRAMEGEN = 0
++            d3d12 = 0
++            """
++            do {
++                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
++                try (profile + "\n").write(to: url, atomically: true, encoding: .utf8)
++            } catch {
++                NSLog("[anyps5] Could not create initial runtime profile: %@", String(describing: error))
++            }
++        }
++        // Touch controls read their defaults before Wine exports cfg env lines.
++        for name in ["MADEIRA_FEX_AVX", "APS5_GUEST_ARENA_LAZY", "APS5_GUEST_ARENA_BASE",
++                     "APS5_GUEST_ARENA_SIZE", "APS5_GUEST_ARENA_CHUNK", "MADEIRA_CONTROLS_XBOX_DEFAULT"] {
++            if let value = MadeiraConfig.get("env." + name) { setenv(name, value, 1) }
++        }
++
+     }
+ 
+     var body: some Scene {
+@@ -17,8 +45,8 @@ struct MadeiraApp: App {
+                     HardwareInput.shared.start()
+                     JITNetworkShortcut.shared.restoreLeftover()   // also starts its network path monitor
+                 }
+-                // madeira://jit-network/... (the Madeira JIT shortcut returning, JITNetwork.swift),
+-                // else madeira://play?exe=... (Home Screen shortcuts, SavesAndShortcuts.swift).
++                // anyps5ipad://jit-network/... (the Madeira JIT shortcut returning, JITNetwork.swift),
++                // else anyps5ipad://play?exe=... (Home Screen shortcuts, SavesAndShortcuts.swift).
+                 .onOpenURL { url in if !JITNetworkShortcut.shared.handle(url) { ShortcutRouter.shared.handle(url) } }
+         }
+     }

@@ -1,0 +1,13 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+index 35cc8281..a1ac39d3 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -2295,6 +2295,8 @@ std::size_t VulkanDevice::FlipInFlight() {
+         std::fprintf(stderr, "[present] APS5_FLIP_INFLIGHT=%s refused (0, 1 or 2 presentations may trail on the GPU); using 1\n", value);
+         return std::size_t{1};
+     }();
++    static const bool announced = (std::fprintf(stderr, "[present] flip inflight=%zu\n", count), std::fflush(stderr), true);
++    (void)announced;
+     return count;
+ }
+ 

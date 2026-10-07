@@ -1,8 +1,8 @@
 # Patch status
 
 The implementation follow-ups are documented in
-[IMPLEMENTATION.md](IMPLEMENTATION.md): transactional GuestArena (AnyPS5 0005),
-accurate unavailable SDK telemetry (Madeira 0004), the complete static Vulkan
+[IMPLEMENTATION.md](IMPLEMENTATION.md): transactional GuestArena (now folded into AnyPS5 0001),
+accurate unavailable SDK telemetry (now upstream), the complete static Vulkan
 bridge (0006), and the isolated runtime profile/build integration (0007).
 The native protection-repair follow-up (0017) retains the fault terminal and
 recognizes only a checked writable repair on the faulting thread/range. Build 12
@@ -17,7 +17,35 @@ Apply with `scripts/apply-patches.sh`. Reverse with
 `scripts/apply-patches.sh --reverse`. The submodules in git stay at the
 upstream commits; the patches are the delta.
 
-## Verified on this Linux VM
+## Current local refresh: 2026-10-07
+
+The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All
+20 AnyPS5, 16 Madeira, two FEX and two Wine patches apply to pristine pinned
+sources, match the built source and reverse successfully. The four optional
+MoltenVK patches pass apply/reverse checks but were not used in Build 18.
+
+The native iPhoneOS runtime and ARM64EC ntdll/FEX/Vulkan components were rebuilt,
+linked into the development-signed menu app and verified against embedded hashes.
+Build 18 is installed on the M2 iPad. All 11 HLE host contracts pass using the
+qualified WinLibs compiler under local macOS Wine; the portable JSON and offline
+API contracts also pass ASan/UBSan. This is not a native-Windows GPU reference.
+
+The hardware audio-period regression reproduces the old callback starvation and
+passes the new sizing at 44.1, 48 and 96 kHz. The iPad run reports 21.333 ms;
+physical audio behavior and route changes remain unqualified. Solitaire is
+installed with a complete dependency closure, but its bounded launch reached
+Unity initialization without a game image. See the
+[Build 18 record](evidence/ipad-m2-menu-build18-solitaire-install.json) and
+[runtime measurement details](RUNTIME-PERFORMANCE.md).
+
+## Historical foundation evidence
+
+The following Linux and hosted-runner records describe earlier pins. Historical
+patch numbers and unavailable components are not the status of the current
+2026-10-07 runtime. GitHub Actions remain disabled; all current validation and
+builds run locally.
+
+### Verified on the original Linux VM
 
 - `tools/vk-requirements` rebuilt from the current source and run against
   lavapipe (`/usr/share/vulkan/icd.d/lvp_icd.json`, Mesa 25.2.8, LLVM

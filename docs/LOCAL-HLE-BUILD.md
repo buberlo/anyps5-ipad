@@ -8,7 +8,8 @@ archive extractor must be installed locally. No GitHub Actions are used.
 Apply the AnyPS5 patches before invoking this helper. An omitted target list builds
 all available PRX targets; explicit targets must exist and retain libc/libkernel.
 `--from-hle` reads a prior archive's manifest to select names, without reusing old
-binaries. Only this invocation's selected PRXs enter the exported archive.
+binaries. `--source /absolute/path/to/patched/AnyPS5` selects a separate checkout
+for a pin upgrade; use its matching host tools when preparing the package. Only this invocation's selected PRXs enter the exported archive.
 
 ```sh
 scripts/apply-patches.sh --only anyps5

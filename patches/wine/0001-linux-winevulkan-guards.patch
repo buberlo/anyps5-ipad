@@ -1,5 +1,5 @@
 diff --git a/dlls/ntdll/unix/sync.c b/dlls/ntdll/unix/sync.c
-index 4d0fd0e..9021b2b 100644
+index 4d0fd0e1..9021b2b8 100644
 --- a/dlls/ntdll/unix/sync.c
 +++ b/dlls/ntdll/unix/sync.c
 @@ -1252,9 +1252,12 @@ static inline int madeira_fast_sem_enabled(void)
@@ -160,7 +160,7 @@ index 4d0fd0e..9021b2b 100644
              {
                  unsigned long long st = ios_alert_stamp[ios_alert_slot( futex )];
 diff --git a/dlls/win32u/dibdrv/bitblt.c b/dlls/win32u/dibdrv/bitblt.c
-index fa1f842..b785ff9 100644
+index fa1f8420..b785ff9d 100644
 --- a/dlls/win32u/dibdrv/bitblt.c
 +++ b/dlls/win32u/dibdrv/bitblt.c
 @@ -32,6 +32,30 @@

@@ -1,10 +1,19 @@
 diff --git a/build/ntdll-unix/mach_fault_redelivery.h b/build/ntdll-unix/mach_fault_redelivery.h
---- a/build/ntdll-unix/mach_fault_redelivery.h
+new file mode 100644
+index 0000000..104d1ae
+--- /dev/null
 +++ b/build/ntdll-unix/mach_fault_redelivery.h
-@@ -8,6 +8,25 @@
-     struct ios_redelivery_entry entries[IOS_REDELIVERY_THREADS];
-     unsigned next;
- };
+@@ -0,0 +1,57 @@
++/* SPDX-License-Identifier: LGPL-2.1-or-later */
++#ifndef IOS_MACH_FAULT_REDELIVERY_H
++#define IOS_MACH_FAULT_REDELIVERY_H
++#include <stdint.h>
++#define IOS_REDELIVERY_THREADS 64u
++struct ios_redelivery_entry { uint64_t thread, pc, address; uint32_t count; };
++struct ios_redelivery_tracker {
++    struct ios_redelivery_entry entries[IOS_REDELIVERY_THREADS];
++    unsigned next;
++};
 +/* Called only after a verified read-only -> writable repair. A repair on
 + * another thread or outside the faulting page is not evidence of progress. */
 +static inline int ios_redelivery_repaired(struct ios_redelivery_tracker *t,
@@ -24,13 +33,47 @@ diff --git a/build/ntdll-unix/mach_fault_redelivery.h b/build/ntdll-unix/mach_fa
 +    }
 +    return 0;
 +}
- /* One Mach exception-server caller. Other threads do not reset a failing
-  * thread's sequence; a different delivery on that thread does. Watched stores
-  * may recur at the same PC/address after intervening guest work. */
++/* One Mach exception-server caller. Other threads do not reset a failing
++ * thread's sequence; a different delivery on that thread does. Watched stores
++ * may recur at the same PC/address after intervening guest work. */
++static inline uint32_t ios_redelivery_record(struct ios_redelivery_tracker *t,
++                                            uint64_t thread, uint64_t pc,
++                                            uint64_t address, int exempt)
++{
++    struct ios_redelivery_entry *entry = 0, *empty = 0;
++    unsigned i;
++    for (i = 0; i < IOS_REDELIVERY_THREADS; ++i)
++    {
++        if (t->entries[i].count && t->entries[i].thread == thread) { entry = &t->entries[i]; break; }
++        if (!t->entries[i].count && !empty) empty = &t->entries[i];
++    }
++    if (exempt) { if (entry) entry->count = 0; return 0; }
++    if (!entry)
++    {
++        entry = empty ? empty : &t->entries[t->next++ % IOS_REDELIVERY_THREADS];
++        entry->count = 0;
++    }
++    if (!entry->count || entry->pc != pc || entry->address != address)
++    {
++        entry->thread = thread; entry->pc = pc; entry->address = address; entry->count = 1;
++    }
++    else if (entry->count != UINT32_MAX) ++entry->count;
++    return entry->count;
++}
++#endif
 diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+index 5ecf4e5..0a92ea5 100644
 --- a/build/ntdll-unix/signal_arm64_ios.c
 +++ b/build/ntdll-unix/signal_arm64_ios.c
-@@ -6945,6 +6945,60 @@
+@@ -25,6 +25,7 @@
+ #ifdef __aarch64__
+ 
+ #include "config.h"
++#include "mach_fault_redelivery.h"
+ 
+ #include <assert.h>
+ #include <pthread.h>
+@@ -7179,6 +7180,60 @@ static void setup_exception( ucontext_t *sigcontext, EXCEPTION_RECORD *rec )
   * [unaligned-atomic] block below for why the two paths may not disagree. */
  static int ios_emulate_unaligned_guest_access(ucontext_t *ctx, uint32_t insn, uintptr_t addr);
  
@@ -91,23 +134,247 @@ diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64
  static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_state64_t *state,
                                                     arm_neon_state64_t *neon, int have_neon,
                                                     int exception, uintptr_t fault_addr,
-@@ -7577,9 +7631,10 @@
+@@ -7342,6 +7397,7 @@ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_s
+                                 if (pair[0] <= fp) break;
+                                 fp = pair[0];
+                             }
++#ifndef APS5_VULKAN_ONLY
+                             {   /* ml1155: did WE free the object this thread is touching? (winemetal records
+                                  * every release that dropped the last reference) */
+                                 extern const char *madeira_wmt_released_class( uintptr_t addr, uint64_t *ago ) __attribute__((weak_import));
+@@ -7357,6 +7413,7 @@ static int ios_mach_deliver_guest_exception_inner( thread_t thread, arm_thread_s
+                                                       r ? 8 : 0, (unsigned long long)v );
+                                     }
+                             }
++#endif
+                         }
+                     }
+                     return 0;
+@@ -7796,6 +7853,10 @@ dispatch:
+      * thread's pointer registers (the ml460 corruption lived at [x10+x9*8]
+      * and register dumps were capped away long before the storm settled),
+      * then terminate honestly. */
++    /* AnyPS5: count consecutive deliveries per thread, not lifetime counts
++     * in a PC/address hash bucket. Real tracked writes recur after other
++     * guest work and must not accumulate toward the storm threshold. Keep
++     * the 256 warning and 2000 terminal for consecutive identical faults. */
+     /* 2026-09-19: EXEMPT ALIGNMENT FAULTS. The premise of this terminal is "no
+      * legitimate guest pattern redelivers the SAME (thread,pc,addr) thousands
+      * of times" — and the comment above already lists "unaligned" among the
+@@ -7805,32 +7866,21 @@ dispatch:
       * once per loop iteration (FEX emulates, it cannot back-patch an LSE
       * atomic), and counting those would kill the pseudo-process for making
       * progress. */
--    static struct ios_redelivery_tracker redeliv;
--    uint32_t redeliv_count = ios_redelivery_record( &redeliv, (uint64_t)thread,
 +    pthread_mutex_lock( &ios_mach_redeliv_lock );
 +    uint32_t redeliv_count = ios_redelivery_record( &ios_mach_redeliv, (uint64_t)thread,
-                                                  pc, fault_addr, is_align );
++                                                 pc, fault_addr, is_align );
 +    pthread_mutex_unlock( &ios_mach_redeliv_lock );
      if (!is_align)
      {
+-        /* Count CONSECUTIVE identical deliveries per thread, not lifetime hits
+-         * of a (thread,pc,addr) key. Slots used to be chosen by the key itself,
+-         * so a fault that recurs once per frame with real progress in between
+-         * kept its count for as long as no other key landed in its slot. Dark
+-         * Souls Remastered's Settings menu re-writes Arxan-guarded .text every
+-         * frame; each write is a self-modifying-code fault FEX handles, the
+-         * game keeps running, yet 7 keys cycling once per frame reached 2000 in
+-         * ~35 s and this guard killed a healthy game. A real storm refaults the
+-         * same instruction back to back on one thread, so the slot is chosen by
+-         * thread and any other fault on that thread restarts the run. */
+-        static struct { uint64_t thread, key; uint32_t n; } redeliv[16];
++        /* Upstream #148 counts consecutive faults in a 16-slot thread hash.
++         * That does not reset on an alignment delivery, folds thread identity,
++         * and cannot retire a sequence after a verified writable repair.
++         * ios_redelivery_record above is that counter; do not keep a second one. */
          static volatile int ios_redeliv_terminating;
+-        uint64_t rkey = ((uint64_t)thread << 48) ^ pc ^ ((uint64_t)fault_addr << 1);
+-        int rslot = (int)(((uint64_t)thread * 0x9E3779B97F4A7C15ull) >> 60);
+-        if (redeliv[rslot].thread != (uint64_t)thread || redeliv[rslot].key != rkey)
+-        {
+-            redeliv[rslot].thread = (uint64_t)thread;
+-            redeliv[rslot].key = rkey;
+-            redeliv[rslot].n = 1;
+-        }
+-        else if (++redeliv[rslot].n == 256)
++        if (redeliv_count == 256)
+             dprintf( 2, "[redeliv] 256 identical redeliveries pc=0x%llx addr=0x%llx — storm forming rev=ml461\n",
+                      (unsigned long long)pc, (unsigned long long)fault_addr );
+-        else if (redeliv[rslot].n >= 2000 && !ios_redeliv_terminating)
++        else if (redeliv_count >= 2000 && !ios_redeliv_terminating)
+         {
+             /* ml463: was `== 2000` + exit(76) — one shot, and exit() on iOS is
+              * the wine_ios_exit shim which LONGJMPS instead of terminating (the
 diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+index 88eac4d..487d98d 100644
 --- a/build/ntdll-unix/virtual_ios.c
 +++ b/build/ntdll-unix/virtual_ios.c
-@@ -24259,6 +24259,16 @@
+@@ -9006,6 +9006,10 @@ static void ios_init_stub_tables(void)
+  * winemetal_unix.c to avoid collision with our own ntdll table). */
+ extern const void *dxmt_winemetal_unix_call_funcs[];
+ 
++#if defined(MADEIRA_WITH_VULKAN)
++#include "../winevulkan-unix/binder.h"
++#endif
++
+ /* DXMT's winemetal_unix.c, linked into the same image, reports per-frame
+  * statistics into a "[frame]" instrument through the symbols below.  That
+  * instrument is a diagnostic and is not part of this port, so this is its off
+@@ -9318,10 +9322,17 @@ static NTSTATUS load_builtin_unixlib( void *module, BOOL wow, const void **funcs
+          * so they have no layout to get wrong. */
+         const char *libname = NULL;
+         const void *funcs64 = NULL, *funcs_wow64 = NULL;
++#if defined(MADEIRA_WITH_VULKAN)
++        if (madeira_winevulkan_matches(match) || madeira_winevulkan_matches(modname))
++            return ios_bind_unixlib_table(module, "winevulkan", wow,
++                                          madeira_winevulkan_table(0), NULL, funcs);
++#endif
+         if (match && strstr(match, "winemetal")) {
+             libname = "winemetal";
++#if !defined(APS5_VULKAN_ONLY)
+             funcs64 = (const void *)dxmt_winemetal_unix_call_funcs;
+             funcs_wow64 = (const void *)dxmt_winemetal_unix_call_wow64_funcs;
++#endif
+         } else if (wow && ((match && strstr(match, "d3d9shim")) ||
+                            (modname && strstr(modname, "d3d9shim")))) {
+             /* The i386 D3D9 shim, bound to the native ARM64 frontend.  A
+@@ -9333,7 +9344,9 @@ static NTSTATUS load_builtin_unixlib( void *module, BOOL wow, const void **funcs
+              * installed as d3d9.dll, so a unix_path would read "d3d9.so"; its
+              * PE export name stays d3d9shim.dll whatever the file is called. */
+             libname = "d3d9shim";
++#if !defined(APS5_VULKAN_ONLY)
+             funcs_wow64 = (const void *)dxmt_d3d9_unix_call_wow64_funcs;
++#endif
+         } else if (match && (strstr(match, "wineios.drv") || strstr(match, "winecoreaudio") || strstr(match, "winealsa") || strstr(match, "winepulse"))) {
+             /* NOTE: mmdevapi does NOT reach the driver through this by-module
+              * path — __wine_load_unix_lib() asks for "wine<name>.drv" BY NAME
+@@ -12092,9 +12105,106 @@ static int ios_guest_anon_rwx_is_host_data( const void *base, size_t size )
+ }
+ 
+ 
++/* AnyPS5's explicitly configured guest arena is x86 memory, not ARM code.
++ * Keep Wine's logical execution rights and FEX's SMC notifications intact,
++ * but do not remap shared GPU pages into the native executable pool. That
++ * loses section sharing and allocates one JIT alias for each 16-KiB page. */
++static int ios_anyps5_guest_arena_limits( uintptr_t *start, size_t *span )
++{
++    static int enabled;
++    static uintptr_t arena_start;
++    static size_t arena_span;
++    if (!enabled)
++    {
++        const char *lazy = getenv( "APS5_GUEST_ARENA_LAZY" );
++        const char *base = getenv( "APS5_GUEST_ARENA_BASE" );
++        const char *size = getenv( "APS5_GUEST_ARENA_SIZE" );
++        int saved_errno = errno;
++        char *end;
++        unsigned long long b = 0, n = 0;
++        if (lazy && !strcmp( lazy, "1" ) && base && size &&
++            *base && *size && !strchr( " \t\r\n+-", *base ) &&
++            !strchr( " \t\r\n+-", *size ))
++        {
++            errno = 0;
++            b = strtoull( base, &end, 0 );
++            if (!errno && !*end && b && b <= UINTPTR_MAX)
++            {
++                errno = 0;
++                n = strtoull( size, &end, 0 );
++                if (!errno && !*end && n && n <= SIZE_MAX && n <= UINTPTR_MAX - b &&
++                    !(b & host_page_mask) && !(n & host_page_mask))
++                {
++                    arena_start = (uintptr_t)b;
++                    arena_span = (size_t)n;
++                    enabled = 1;
++                }
++            }
++        }
++        errno = saved_errno;
++        /* The native runtime can query protections before the app/child has
++         * exported its profile. Cache success only; absence is not permanent. */
++        {
++            static unsigned int config_n;
++            if (config_n++ < 4 && !ios_in_mach_exc)
++                dprintf( 2, "[anyps5-guest-config] enabled=%d lazy=%s base=%s span=%s\n",
++                         enabled, lazy ? lazy : "(unset)", base ? base : "(unset)", size ? size : "(unset)" );
++        }
++    }
++    *start = arena_start;
++    *span = arena_span;
++    return enabled;
++}
++
++static int ios_anyps5_guest_arena_is_host_data( const void *base, size_t size )
++{
++    uintptr_t arena, b = (uintptr_t)base, e, a;
++    size_t span;
++    static unsigned int classify_n;
++    uintptr_t rx = (uintptr_t)ios_jit_rx_base_global;
++    uintptr_t rw = (uintptr_t)ios_jit_rw_base_global;
++    if (!size || !ios_anyps5_guest_arena_limits( &arena, &span ) ||
++        b < arena || size > span || b - arena > span - size) return 0;
++    {
++        static unsigned int candidate_n;
++        if (candidate_n++ < 4 && !ios_in_mach_exc)
++            dprintf( 2, "[anyps5-guest-candidate] %p+0x%lx ec_map=%d ec_alloc=%d\n",
++                     base, (unsigned long)size, !!arm64ec_view, ios_alloc_ec_code );
++    }
++    if (!arm64ec_view || ios_alloc_ec_code) return 0;
++    e = b + size;  /* the configured arena and containment checks exclude overflow */
++    if ((rx && e > rx && b < rx + ios_jit_pool_size_global) ||
++        (rw && e > rw && b < rw + ios_jit_pool_size_global)) return 0;
++    for (a = b; a < e; )
++    {
++        const struct file_view *view = find_view( (const void *)a, 1 );
++        uintptr_t vb;
++        if (classify_n++ < 24 && !ios_in_mach_exc)
++            dprintf( 2, "[anyps5-guest-classify] request=%p+0x%lx view=%p flags=0x%x\n",
++                     base, (unsigned long)size, view ? view->base : NULL, view ? view->protect : 0 );
++        if (!view || (view->protect & (SEC_IMAGE | VPROT_ARM64EC | VPROT_SYSTEM))) return 0;
++        /* Replaced section views retain PLACEHOLDER so unmap can restore it.
++         * Reject an empty placeholder, not a committed replacement mapping. */
++        if ((view->protect & VPROT_PLACEHOLDER) && !(view->protect & VPROT_COMMITTED)) return 0;
++        vb = (uintptr_t)view->base;
++        if (!view->size || view->size > UINTPTR_MAX - vb || vb + view->size <= a) return 0;
++        a = vb + view->size;
++    }
++    return 1;
++}
++
+ static inline int mprotect_exec( void *base, size_t size, int unix_prot )
+ {
+ #ifdef WINE_IOS
++    if ((unix_prot & PROT_EXEC) && ios_anyps5_guest_arena_is_host_data( base, size ))
++    {
++        static unsigned int guest_n;
++        if (++guest_n <= 24 && !ios_in_mach_exc)
++            dprintf( 2, "[anyps5-guest-data] %p+0x%lx logical EXEC retained; native protection has no EXEC\n",
++                     base, (unsigned long)size );
++        unix_prot &= ~PROT_EXEC;
++        if (!unix_prot) unix_prot = PROT_READ;
++    }
+     /* iOS-Madeira ml1030: A 32-BIT IMAGE PAGE IS DATA TO THE HOST — SO STOP
+      * ROUTING ITS WRITE REQUESTS THROUGH THE EXECUTABLE MACHINERY.
+      *
+@@ -14588,6 +14698,19 @@ static NTSTATUS map_fixed_area( void *base, size_t size, int unix_prot )
+     return STATUS_SUCCESS;
+ 
+ failed:
++#ifdef WINE_IOS
++    /* Preserve the raw failure before logging can change errno. This is a
++     * bounded diagnosis, never permission to replace an unrelated host map. */
++    {
++        const int saved_errno = errno;
++        static unsigned fixed_failures;
++        if (fixed_failures++ < 32)
++            dprintf( 2, "[anyps5-fixed-map] base=%p size=0x%llx start=%p prot=0x%x errno=%d af_stage=%d af_error=%d reserved=%d\n",
++                     base, (unsigned long long)size, start, unix_prot, saved_errno,
++                     ios_af.stage, ios_af.err, mmap_is_in_reserved_area( base, size ) );
++        errno = saved_errno;
++    }
++#endif
+     if (errno == ENOMEM)
+     {
+         ERR( "out of memory for %p-%p\n", base, (char *)base + size );
+@@ -24260,6 +24383,16 @@ NTSTATUS WINAPI NtProtectVirtualMemory( HANDLE process, PVOID *addr_ptr, SIZE_T
          *old_prot = old;
  
  #ifdef WINE_IOS

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-07",
+  "app": {
+    "display_name": "madeira-anyps5",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "version": "0.1.9",
+    "build": "18",
+    "menus_retained": true,
+    "development_signed": true,
+    "installed_version_verified": true
+  },
+  "upstreams": {
+    "AnyPS5": "ee391a5614246338aec9cb7a3a3dd4f479aec9f3",
+    "Madeira": "48f976429c189f8396e23d251d8a82f43c705922",
+    "FEX": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+    "wine": "257f271cfffed9f22f7987cac53bc00095d092fe",
+    "MoltenVK": "fae55a18779ee59da2cc5373a367a0282779c171"
+  },
+  "build": {
+    "host_c_objc_optimization": "O2",
+    "host_swift_optimization": "O",
+    "native_fex_and_wine_rebuilt": true,
+    "arm64ec_pe_components_rebuilt_and_embedded_hash_verified": [
+      "ntdll.dll",
+      "xtajit64.dll",
+      "winevulkan.dll",
+      "vulkan-1.dll"
+    ],
+    "win32u_mscoree_xinput_rebuilt": true,
+    "moltenvk_optional_patches_applied": false,
+    "jit_helper_retained": true,
+    "hle_compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7",
+    "hle_prx_built": 50,
+    "hle_contract_tests_passed": 11,
+    "hle_test_runtime": "local macOS Wine, not a Windows GPU reference"
+  },
+  "checks": {
+    "all_default_patch_stacks_pristine_apply_and_reverse": "passed",
+    "isolated_patched_source_match": "passed",
+    "optional_moltenvk_apply_reverse_only": "passed",
+    "portable_json_offline_services_asan_ubsan": "passed",
+    "frame_timing_display_timing_swapchain_lifecycle_diagnostic_contracts": "passed",
+    "audio_period_regression": "passed"
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "low_power_mode": false,
+    "thermal_state_at_launch": "nominal",
+    "jit_activated_with_builtin_stikjit": true,
+    "vpn_loopback_reachable_on_second_launch": true,
+    "wasapi_hardware_period_ms": 21.333,
+    "guest_arena_base": "0x7400000000",
+    "guest_arena_bytes": 4294967296
+  },
+  "game": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000",
+    "installed_and_registered": true,
+    "device_file_hash_readback_count": 138,
+    "missing_hle_libraries": 0,
+    "unresolved_guest_nids": 0,
+    "unresolved_native_imports": 0,
+    "original_library_entry_preserved": true,
+    "global_configuration_preserved": true,
+    "elf_entry_reached": true,
+    "unity_initialization_reached": true,
+    "visible_game_scene": false,
+    "present_count_at_60_seconds": 0,
+    "result": "installed; startup did not reach a game image during the bounded capture",
+    "windows_gpu_reference": "not_run",
+    "gameplay_audio_controls_saves": "not_qualified"
+  },
+  "limits": [
+    "No stable displayed 60 FPS claim.",
+    "No game dump, asset, pairing data or raw private diagnostics included.",
+    "Existing Dreaming Sarah game-local HLE was not replaced or requalified.",
+    "Original menu bundle only; other app bundles were not installed or modified.",
+    "Own app processes were closed after bounded capture and device lease released."
+  ]
+}

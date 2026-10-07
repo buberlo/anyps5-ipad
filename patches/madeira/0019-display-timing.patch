@@ -1,66 +1,6 @@
-diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
---- a/build/win32u-unix/vulkan_ios.c
-+++ b/build/win32u-unix/vulkan_ios.c
-@@ -87,6 +87,7 @@
-     return result;
- }
- 
-+#include "aps5_display_timing.h"
- #include "vulkan_lifecycle.h"
- static struct aps5_gpu_gate aps5_gpu = APS5_GPU_GATE_INITIALIZER;
- struct aps5_gpu_device { VkDevice host; struct aps5_gpu_device *next; };
-@@ -95,6 +96,7 @@
- 
- __attribute__((visibility("default"))) void aps5_vulkan_set_active(int active)
- {
-+    aps5_timing_set_active(active);
-     if (active) {
-         aps5_gpu_resume(&aps5_gpu);
-         fprintf(stderr, "[anyps5-vulkan-lifecycle] resumed\n");
-@@ -120,7 +122,7 @@
-     struct aps5_gpu_device *entry = calloc(1, sizeof(*entry));
-     if (!entry) return VK_ERROR_OUT_OF_HOST_MEMORY;
-     aps5_gpu_enter(&aps5_gpu);
--    VkResult result = madeira_vkCreateDevice_base(physical, info, allocator, device);
-+    VkResult result = aps5_timing_create_device(physical, info, allocator, device);
-     if (result == VK_SUCCESS) {
-         entry->host = *device;
-         pthread_mutex_lock(&aps5_gpu_devices_lock);
-@@ -140,16 +142,22 @@
-     while (*at && (*at)->host != device) at = &(*at)->next;
-     if (*at) { struct aps5_gpu_device *old = *at; *at = old->next; free(old); }
-     pthread_mutex_unlock(&aps5_gpu_devices_lock);
-+    aps5_timing_destroy_device(device);
-     vkDestroyDevice(device, allocator);
-     aps5_gpu_leave(&aps5_gpu);
- }
- #define APS5_GPU_RESULT(name, signature, arguments) \
- static VkResult VKAPI_CALL aps5_##name signature \
--{ aps5_gpu_enter(&aps5_gpu); VkResult result = name arguments; aps5_gpu_leave(&aps5_gpu); return result; }
-+{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = name arguments; aps5_phase_end(#name, started); aps5_gpu_leave(&aps5_gpu); return result; }
- APS5_GPU_RESULT(vkQueueSubmit, (VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f), (q,n,s,f))
- APS5_GPU_RESULT(vkQueueSubmit2, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
- APS5_GPU_RESULT(vkQueueSubmit2KHR, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
--APS5_GPU_RESULT(vkQueuePresentKHR, (VkQueue q, const VkPresentInfoKHR *i), (q,i))
-+static VkResult VKAPI_CALL aps5_vkQueuePresentKHR(VkQueue q, const VkPresentInfoKHR *i)
-+{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = aps5_timing_present(q, i); aps5_phase_end("vkQueuePresentKHR", started); aps5_gpu_leave(&aps5_gpu); return result; }
-+static VkResult VKAPI_CALL aps5_vkCreateSwapchainKHR(VkDevice d, const VkSwapchainCreateInfoKHR *i, const VkAllocationCallbacks *a, VkSwapchainKHR *s)
-+{ aps5_gpu_enter(&aps5_gpu); VkResult result = aps5_timing_create_swapchain(d, i, a, s); aps5_gpu_leave(&aps5_gpu); return result; }
-+static void VKAPI_CALL aps5_vkDestroySwapchainKHR(VkDevice d, VkSwapchainKHR s, const VkAllocationCallbacks *a)
-+{ aps5_gpu_enter(&aps5_gpu); aps5_timing_destroy_swapchain(d, s, a); aps5_gpu_leave(&aps5_gpu); }
- APS5_GPU_RESULT(vkQueueWaitIdle, (VkQueue q), (q))
- APS5_GPU_RESULT(vkDeviceWaitIdle, (VkDevice d), (d))
- APS5_GPU_RESULT(vkAcquireNextImageKHR, (VkDevice d, VkSwapchainKHR s, uint64_t t, VkSemaphore m, VkFence f, uint32_t *i), (d,s,t,m,f,i))
-@@ -162,6 +170,7 @@
- #define APS5_GPU_PROC(n) if (!strcmp(name, #n)) return (PFN_vkVoidFunction)aps5_##n
-     APS5_GPU_PROC(vkQueueSubmit); APS5_GPU_PROC(vkQueueSubmit2); APS5_GPU_PROC(vkQueueSubmit2KHR);
-     APS5_GPU_PROC(vkQueuePresentKHR); APS5_GPU_PROC(vkQueueWaitIdle); APS5_GPU_PROC(vkDeviceWaitIdle);
-+    APS5_GPU_PROC(vkCreateSwapchainKHR); APS5_GPU_PROC(vkDestroySwapchainKHR);
-     APS5_GPU_PROC(vkAcquireNextImageKHR); APS5_GPU_PROC(vkAcquireNextImage2KHR); APS5_GPU_PROC(vkDestroyDevice);
- #undef APS5_GPU_PROC
-     return proc;
 diff --git a/build/win32u-unix/aps5_display_stats.h b/build/win32u-unix/aps5_display_stats.h
 new file mode 100644
+index 0000000..4ffd959
 --- /dev/null
 +++ b/build/win32u-unix/aps5_display_stats.h
 @@ -0,0 +1,59 @@
@@ -125,6 +65,7 @@ new file mode 100644
 +#endif
 diff --git a/build/win32u-unix/aps5_display_timing.h b/build/win32u-unix/aps5_display_timing.h
 new file mode 100644
+index 0000000..d466c8c
 --- /dev/null
 +++ b/build/win32u-unix/aps5_display_timing.h
 @@ -0,0 +1,274 @@
@@ -402,3 +343,65 @@ new file mode 100644
 +    return result;
 +}
 +#endif
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+index 54079ab..994928b 100644
+--- a/build/win32u-unix/vulkan_ios.c
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -87,6 +87,7 @@ static VkResult VKAPI_CALL madeira_vkCreateDevice_base(VkPhysicalDevice physical
+     return result;
+ }
+ 
++#include "aps5_display_timing.h"
+ #include "vulkan_lifecycle.h"
+ static struct aps5_gpu_gate aps5_gpu = APS5_GPU_GATE_INITIALIZER;
+ struct aps5_gpu_device { VkDevice host; struct aps5_gpu_device *next; };
+@@ -95,6 +96,7 @@ static pthread_mutex_t aps5_gpu_devices_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
+ __attribute__((visibility("default"))) void aps5_vulkan_set_active(int active)
+ {
++    aps5_timing_set_active(active);
+     if (active) {
+         aps5_gpu_resume(&aps5_gpu);
+         fprintf(stderr, "[anyps5-vulkan-lifecycle] resumed\n");
+@@ -120,7 +122,7 @@ static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
+     struct aps5_gpu_device *entry = calloc(1, sizeof(*entry));
+     if (!entry) return VK_ERROR_OUT_OF_HOST_MEMORY;
+     aps5_gpu_enter(&aps5_gpu);
+-    VkResult result = madeira_vkCreateDevice_base(physical, info, allocator, device);
++    VkResult result = aps5_timing_create_device(physical, info, allocator, device);
+     if (result == VK_SUCCESS) {
+         entry->host = *device;
+         pthread_mutex_lock(&aps5_gpu_devices_lock);
+@@ -140,16 +142,22 @@ static void VKAPI_CALL aps5_vkDestroyDevice(VkDevice device, const VkAllocationC
+     while (*at && (*at)->host != device) at = &(*at)->next;
+     if (*at) { struct aps5_gpu_device *old = *at; *at = old->next; free(old); }
+     pthread_mutex_unlock(&aps5_gpu_devices_lock);
++    aps5_timing_destroy_device(device);
+     vkDestroyDevice(device, allocator);
+     aps5_gpu_leave(&aps5_gpu);
+ }
+ #define APS5_GPU_RESULT(name, signature, arguments) \
+ static VkResult VKAPI_CALL aps5_##name signature \
+-{ aps5_gpu_enter(&aps5_gpu); VkResult result = name arguments; aps5_gpu_leave(&aps5_gpu); return result; }
++{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = name arguments; aps5_phase_end(#name, started); aps5_gpu_leave(&aps5_gpu); return result; }
+ APS5_GPU_RESULT(vkQueueSubmit, (VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f), (q,n,s,f))
+ APS5_GPU_RESULT(vkQueueSubmit2, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
+ APS5_GPU_RESULT(vkQueueSubmit2KHR, (VkQueue q, uint32_t n, const VkSubmitInfo2 *s, VkFence f), (q,n,s,f))
+-APS5_GPU_RESULT(vkQueuePresentKHR, (VkQueue q, const VkPresentInfoKHR *i), (q,i))
++static VkResult VKAPI_CALL aps5_vkQueuePresentKHR(VkQueue q, const VkPresentInfoKHR *i)
++{ aps5_gpu_enter(&aps5_gpu); uint64_t started = aps5_phase_begin(); VkResult result = aps5_timing_present(q, i); aps5_phase_end("vkQueuePresentKHR", started); aps5_gpu_leave(&aps5_gpu); return result; }
++static VkResult VKAPI_CALL aps5_vkCreateSwapchainKHR(VkDevice d, const VkSwapchainCreateInfoKHR *i, const VkAllocationCallbacks *a, VkSwapchainKHR *s)
++{ aps5_gpu_enter(&aps5_gpu); VkResult result = aps5_timing_create_swapchain(d, i, a, s); aps5_gpu_leave(&aps5_gpu); return result; }
++static void VKAPI_CALL aps5_vkDestroySwapchainKHR(VkDevice d, VkSwapchainKHR s, const VkAllocationCallbacks *a)
++{ aps5_gpu_enter(&aps5_gpu); aps5_timing_destroy_swapchain(d, s, a); aps5_gpu_leave(&aps5_gpu); }
+ APS5_GPU_RESULT(vkQueueWaitIdle, (VkQueue q), (q))
+ APS5_GPU_RESULT(vkDeviceWaitIdle, (VkDevice d), (d))
+ APS5_GPU_RESULT(vkAcquireNextImageKHR, (VkDevice d, VkSwapchainKHR s, uint64_t t, VkSemaphore m, VkFence f, uint32_t *i), (d,s,t,m,f,i))
+@@ -162,6 +170,7 @@ static PFN_vkVoidFunction aps5_lifecycle_proc(const char *name, PFN_vkVoidFuncti
+ #define APS5_GPU_PROC(n) if (!strcmp(name, #n)) return (PFN_vkVoidFunction)aps5_##n
+     APS5_GPU_PROC(vkQueueSubmit); APS5_GPU_PROC(vkQueueSubmit2); APS5_GPU_PROC(vkQueueSubmit2KHR);
+     APS5_GPU_PROC(vkQueuePresentKHR); APS5_GPU_PROC(vkQueueWaitIdle); APS5_GPU_PROC(vkDeviceWaitIdle);
++    APS5_GPU_PROC(vkCreateSwapchainKHR); APS5_GPU_PROC(vkDestroySwapchainKHR);
+     APS5_GPU_PROC(vkAcquireNextImageKHR); APS5_GPU_PROC(vkAcquireNextImage2KHR); APS5_GPU_PROC(vkDestroyDevice);
+ #undef APS5_GPU_PROC
+     return proc;

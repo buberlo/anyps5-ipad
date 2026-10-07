@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libc/src/Strings.cpp b/core/libs/prx/libc/src/Strings.cpp
-index 5bcad4d2..18035227 100644
+index 7c9be2a2..ff62baf2 100644
 --- a/core/libs/prx/libc/src/Strings.cpp
 +++ b/core/libs/prx/libc/src/Strings.cpp
-@@ -7,9 +7,21 @@
+@@ -6,9 +6,21 @@
  #include <cwchar>
  #include <cstdio>
  #include <limits>
@@ -24,7 +24,7 @@ index 5bcad4d2..18035227 100644
  extern "C" {
  
  void* APS5_VABI memset_nid_postfix(void* s, int c, size_t n) {
-@@ -88,7 +100,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
+@@ -87,7 +99,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
  }
  
  std::uint64_t APS5_VABI strtoul_nid_postfix(const char* str, char** endptr, int base) {
@@ -33,7 +33,7 @@ index 5bcad4d2..18035227 100644
  }
  
  long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base) {
-@@ -96,7 +108,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
+@@ -95,7 +107,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
  }
  
  unsigned long long APS5_VABI strtoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -42,7 +42,7 @@ index 5bcad4d2..18035227 100644
  }
  
  double APS5_VABI strtod_nid_postfix(const char* str, char** endptr) {
-@@ -268,7 +280,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
+@@ -264,7 +276,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
  }
  
  unsigned long long APS5_VABI _Stoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -52,19 +52,20 @@ index 5bcad4d2..18035227 100644
  
  size_t APS5_VABI wcslen_nid_postfix(const wchar_t* s) {
 diff --git a/core/libs/tests/GuestMath.cpp b/core/libs/tests/GuestMath.cpp
-index 7ef93b7e..e02ce4dd 100644
+index 259aeb3d..aeefbecb 100644
 --- a/core/libs/tests/GuestMath.cpp
 +++ b/core/libs/tests/GuestMath.cpp
-@@ -10,6 +10,8 @@ float APS5_VABI strtof_nid_postfix(const char*, char**);
- long double APS5_VABI strtold_nid_postfix(const char*, char**);
+@@ -13,6 +13,9 @@ long double APS5_VABI strtold_nid_postfix(const char*, char**);
  std::int64_t APS5_VABI strtol_nid_postfix(const char*, char**, int);
  std::uint64_t APS5_VABI strtoul_nid_postfix(const char*, char**, int);
+ std::intmax_t APS5_VABI strtoimax_nid_postfix(const char*, char**, int);
 +unsigned long long APS5_VABI strtoull_nid_postfix(const char*, char**, int);
 +unsigned long long APS5_VABI _Stoull_nid_postfix(const char*, char**, int);
++
  int* APS5_VABI __error_nid_postfix();
- float APS5_VABI fmodf_nid_postfix(float, float);
- float APS5_VABI asinf_nid_postfix(float);
-@@ -97,19 +99,28 @@ static void CheckIntegerConversions() {
+ struct LibcFloatConstant { std::uint32_t bits[4]; };
+ extern LibcFloatConstant _FInf_nid_postfix;
+@@ -120,19 +123,28 @@ static void CheckIntegerConversions() {
          {"123!", 10, 123, 3, 0}
      };
      for (const auto& test : unsignedCases) {

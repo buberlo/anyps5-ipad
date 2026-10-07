@@ -1,8 +1,8 @@
 diff --git a/core/libs/CMakeLists.txt b/core/libs/CMakeLists.txt
-index 5101103..9809cbd 100644
+index dfe86ccd..6d10b270 100644
 --- a/core/libs/CMakeLists.txt
 +++ b/core/libs/CMakeLists.txt
-@@ -216,3 +216,17 @@ if(MINGW)
+@@ -195,3 +195,17 @@ if(MINGW)
          string(REPLACE "${runtimeLinkFlag}" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
      endforeach()
  endif()
@@ -21,7 +21,7 @@ index 5101103..9809cbd 100644
 +    endif()
 +endif()
 diff --git a/core/libs/prx/libSceHttp2/Export.cpp b/core/libs/prx/libSceHttp2/Export.cpp
-index 911b657..8d935e9 100644
+index a90ecb83..c2e23669 100644
 --- a/core/libs/prx/libSceHttp2/Export.cpp
 +++ b/core/libs/prx/libSceHttp2/Export.cpp
 @@ -3,11 +3,15 @@
@@ -63,23 +63,35 @@ index 911b657..8d935e9 100644
  }
  
  int APS5_VABI sceHttp2WaitAsync(int req_id, Http2AsyncResult* result, uint32_t* timeout, void* option) {
-@@ -214,4 +221,11 @@ int APS5_VABI sceHttp2GetMemoryPoolStats() {
+@@ -214,9 +221,12 @@ int APS5_VABI sceHttp2GetMemoryPoolStats() {
      return 0;
  }
  
+-int APS5_VABI sceHttp2CookieFlush(int id) {
+-    (void)id;
+-    return 0;
 +
 +int APS5_VABI sceHttp2CookieFlush(int lib_http2_ctx_id) {
 +    std::lock_guard lock(g_contextMutex);
 +    // A valid offline context's cookie inventory is always empty.
 +    return g_contexts.count(lib_http2_ctx_id) ? 0 : ERROR_NETWORK;
-+}
 +
  }
+ 
+ int APS5_VABI sceHttp2CreateCookieBox(int lib_http2_ctx_id) {
+@@ -233,6 +243,7 @@ int APS5_VABI sceHttp2SetCookieBox(int id, int cookie_box_id) {
+ int APS5_VABI sceHttp2SetRequestNoContentLength(int id) {
+     (void)id;
+     return 0;
++
+ }
+ 
+ }
 diff --git a/core/libs/prx/libSceJson2/CMakeLists.txt b/core/libs/prx/libSceJson2/CMakeLists.txt
-index d1cd90d..ae70074 100644
+index acfda494..3008470c 100644
 --- a/core/libs/prx/libSceJson2/CMakeLists.txt
 +++ b/core/libs/prx/libSceJson2/CMakeLists.txt
-@@ -18,3 +18,15 @@ if(BUILD_TESTING)
+@@ -19,3 +19,15 @@ if(BUILD_TESTING)
              "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceJson2>")
      endif()
  endif()
@@ -96,7 +108,7 @@ index d1cd90d..ae70074 100644
 +    endif()
 +endif()
 diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
-index a19fc32..2bbd986 100644
+index 0d7e33f9..52686b10 100644
 --- a/core/libs/prx/libSceJson2/Export.cpp
 +++ b/core/libs/prx/libSceJson2/Export.cpp
 @@ -5,6 +5,9 @@
@@ -310,7 +322,7 @@ index a19fc32..2bbd986 100644
          if (integral) {
              errno = 0;
              if (text[0] == '-') {
-@@ -382,7 +449,7 @@ private:
+@@ -384,7 +451,7 @@ private:
              case 't': if (!literal("true")) return false; SetType(out, TypeBoolean); out.boolean = true; return true;
              case 'f': if (!literal("false")) return false; SetType(out, TypeBoolean); return true;
              case '"': {
@@ -319,7 +331,7 @@ index a19fc32..2bbd986 100644
                  if (!string(text)) return false;
                  SetType(out, TypeString);
                  *out.string.text = std::move(text);
-@@ -416,7 +483,7 @@ private:
+@@ -418,7 +485,7 @@ private:
                  if (_text < _end && *_text == '}') { ++_text; --_depth; return true; }
                  for (;;) {
                      skip();
@@ -328,7 +340,7 @@ index a19fc32..2bbd986 100644
                      if (!string(key)) return false;
                      skip();
                      if (_text >= _end || *_text != ':') return false;
-@@ -450,7 +517,7 @@ void* const JsonMemAllocatorVtable[] = {
+@@ -452,7 +519,7 @@ void* const JsonMemAllocatorVtable[] = {
      reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual), reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual),
  };
  
@@ -337,7 +349,7 @@ index a19fc32..2bbd986 100644
      for (auto& pair : *object.items)
          if (*pair.key.text == key) return pair.value;
      Pair pair{};
-@@ -464,6 +531,42 @@ Value& ObjectEntry(Object& object, const std::string& key) {
+@@ -466,6 +533,42 @@ Value& ObjectEntry(Object& object, const std::string& key) {
  
  extern "C" {
  
@@ -380,7 +392,7 @@ index a19fc32..2bbd986 100644
  int APS5_VABI _ZN3sce4Json11InitializerC1Ev(void* self) {
      (void)self;
      return 0;
-@@ -482,6 +585,7 @@ int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_13InitParameterE(void*
+@@ -484,6 +587,7 @@ int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_13InitParameterE(void*
  
  int APS5_VABI _ZN3sce4Json11Initializer9terminateEv(void* self) {
      (void)self;
@@ -388,7 +400,7 @@ index a19fc32..2bbd986 100644
      auto& state = State();
      std::lock_guard lock(state.mutex);
      state.callback = nullptr;
-@@ -506,7 +610,7 @@ void APS5_VABI _ZN3sce4Json12MemAllocatorD2Ev(void* self) {
+@@ -508,7 +612,7 @@ void APS5_VABI _ZN3sce4Json12MemAllocatorD2Ev(void* self) {
      *static_cast<void* const**>(self) = &JsonMemAllocatorVtable[2];
  }
  
@@ -397,7 +409,7 @@ index a19fc32..2bbd986 100644
  void APS5_VABI _ZN3sce4Json6StringC1EPKc(String* self, const char* text) {
      if (text == nullptr) throw std::invalid_argument("sce::Json::String: null text");
      Construct(*self, text);
-@@ -608,13 +712,13 @@ int APS5_VABI _ZN3sce4Json5Value3setEm(Value* self, std::uint64_t value) { SetTy
+@@ -611,13 +715,13 @@ int APS5_VABI _ZN3sce4Json5Value3setEm(Value* self, std::uint64_t value) { SetTy
  int APS5_VABI _ZN3sce4Json5Value3setEd(Value* self, double value) { SetType(NodeOf(*self), TypeReal); self->node->real = value; return 0; }
  int APS5_VABI _ZN3sce4Json5Value3setEPKc(Value* self, const char* text) {
      if (text == nullptr) throw std::invalid_argument("sce::Json::Value::set: null text");
@@ -413,7 +425,7 @@ index a19fc32..2bbd986 100644
      SetType(NodeOf(*self), TypeString);
      *self->node->string.text = copy;
      return 0;
-@@ -711,7 +815,7 @@ Object* APS5_VABI _ZN3sce4Json5Value11referObjectEv(Value* self) {
+@@ -733,7 +837,7 @@ Object* APS5_VABI _ZN3sce4Json5Value11referObjectEv(Value* self) {
      return &n.object;
  }
  int APS5_VABI _ZN3sce4Json5Value9serializeERNS0_6StringE(Value* self, String* out) {
@@ -422,7 +434,7 @@ index a19fc32..2bbd986 100644
      Serialize(text, NodeOf(*self));
      *out->text = std::move(text);
      return 0;
-@@ -722,7 +826,7 @@ int APS5_VABI _ZNK3sce4Json5Value8toStringERNS0_6StringE(const Value* self, Stri
+@@ -744,7 +848,7 @@ int APS5_VABI _ZNK3sce4Json5Value8toStringERNS0_6StringE(const Value* self, Stri
          *out->text = *n.string.text;
          return 0;
      }
@@ -432,7 +444,7 @@ index a19fc32..2bbd986 100644
      *out->text = std::move(text);
      return 0;
 diff --git a/core/libs/prx/libSceMsgDialog.native/Export.cpp b/core/libs/prx/libSceMsgDialog.native/Export.cpp
-index 1423e8f..5882e29 100644
+index edb76df0..5882e295 100644
 --- a/core/libs/prx/libSceMsgDialog.native/Export.cpp
 +++ b/core/libs/prx/libSceMsgDialog.native/Export.cpp
 @@ -1,4 +1,7 @@
@@ -444,7 +456,7 @@ index 1423e8f..5882e29 100644
  #include <cstdint>
  #include <stdexcept>
  #include <cstddef>
-@@ -6,9 +9,16 @@
+@@ -6,14 +9,19 @@
  #include "prx/libc/include/General.hpp"
  
  namespace {
@@ -454,7 +466,7 @@ index 1423e8f..5882e29 100644
 +std::uint32_t g_progress = 0;
 +std::string g_progressMessage;
  
-+constexpr int COMMON_DIALOG_STATUS_RUNNING = 2;
+ constexpr int COMMON_DIALOG_STATUS_RUNNING = 2;
  constexpr int COMMON_DIALOG_STATUS_FINISHED = 3;
 +constexpr int COMMON_DIALOG_ERROR_BUSY = static_cast<int>(0x80B80008u);
 +constexpr int COMMON_DIALOG_ERROR_NOT_RUNNING = static_cast<int>(0x80B8000Bu);
@@ -462,9 +474,20 @@ index 1423e8f..5882e29 100644
  constexpr int COMMON_DIALOG_RESULT_OK = 0;
  constexpr int COMMON_DIALOG_ERROR_NOT_INITIALIZED = static_cast<int>(0x80B80003u);
  constexpr int COMMON_DIALOG_ERROR_NOT_FINISHED = static_cast<int>(0x80B80005u);
-@@ -21,7 +31,8 @@ extern "C" {
+-constexpr int COMMON_DIALOG_ERROR_NOT_RUNNING = static_cast<int>(0x80B8000Bu);
+ constexpr int COMMON_DIALOG_ERROR_ARG_NULL = static_cast<int>(0x80B8000Du);
+ constexpr int BUTTON_ID_OK = 1;
+ }
+@@ -22,14 +30,9 @@ extern "C" {
+ 
  int SceMsgDialogNativeModuleLoaded_nid_no_patch = 1;
  
+-int APS5_VABI sceMsgDialogClose(void) {
+- int expected = COMMON_DIALOG_STATUS_RUNNING;
+- if (!g_status.compare_exchange_strong(expected, COMMON_DIALOG_STATUS_FINISHED)) return COMMON_DIALOG_ERROR_NOT_RUNNING;
+- return 0;
+-}
+-
  int APS5_VABI sceMsgDialogGetResult(MsgDialogResult* result) {
 - const int status = g_status.load();
 + std::lock_guard lock(g_lock);
@@ -472,7 +495,7 @@ index 1423e8f..5882e29 100644
   if (status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
   if (result == nullptr) return COMMON_DIALOG_ERROR_ARG_NULL;
   if (status != COMMON_DIALOG_STATUS_FINISHED) return COMMON_DIALOG_ERROR_NOT_FINISHED;
-@@ -32,34 +43,65 @@ int APS5_VABI sceMsgDialogGetResult(MsgDialogResult* result) {
+@@ -40,51 +43,66 @@ int APS5_VABI sceMsgDialogGetResult(MsgDialogResult* result) {
  }
  
  int APS5_VABI sceMsgDialogInitialize(void) {
@@ -518,41 +541,56 @@ index 1423e8f..5882e29 100644
 +    return g_status;
  }
 -
--APS5_EXPORT("CWVW78Qc3fI", sceMsgDialogUnknown00);
--int APS5_VABI sceMsgDialogUnknown00(void) {
--    NotImplemented_nid_no_patch("CWVW78Qc3fI");
+-int APS5_VABI sceMsgDialogProgressBarInc(int target, std::uint32_t delta) {
+- (void)target;
+- (void)delta;
+- return g_status.load() == COMMON_DIALOG_STATUS_RUNNING ? 0 : COMMON_DIALOG_ERROR_NOT_RUNNING;
 +int APS5_VABI sceMsgDialogGetStatus(void) { return sceMsgDialogUpdateStatus(); }
 +int APS5_VABI sceMsgDialogClose(void) {
 +    std::lock_guard lock(g_lock);
 +    if (g_status == 0) return COMMON_DIALOG_ERROR_NOT_INITIALIZED;
 +    g_status = COMMON_DIALOG_STATUS_FINISHED;
 +    return 0;
-+}
+ }
+-
+-int APS5_VABI sceMsgDialogProgressBarSetMsg(int target, const char* msg) {
+- (void)target;
+- (void)msg;
+- return g_status.load() == COMMON_DIALOG_STATUS_RUNNING ? 0 : COMMON_DIALOG_ERROR_NOT_RUNNING;
 +int APS5_VABI sceMsgDialogProgressBarInc(int target, std::uint32_t delta) {
 +    std::lock_guard lock(g_lock);
 +    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
 +    if (target != 0) return COMMON_DIALOG_ERROR_INVALID_ARG;
 +    g_progress += std::min(delta, 100u - g_progress);
 +    return 0;
-+}
+ }
+-
+-int APS5_VABI sceMsgDialogProgressBarSetValue(int target, std::uint32_t rate) {
+- (void)target;
+- (void)rate;
+- return g_status.load() == COMMON_DIALOG_STATUS_RUNNING ? 0 : COMMON_DIALOG_ERROR_NOT_RUNNING;
 +int APS5_VABI sceMsgDialogProgressBarSetValue(int target, std::uint32_t value) {
 +    std::lock_guard lock(g_lock);
 +    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
 +    if (target != 0 || value > 100) return COMMON_DIALOG_ERROR_INVALID_ARG;
 +    g_progress = value;
 +    return 0;
-+}
+ }
+-
+-int APS5_VABI sceMsgDialogGetStatus(void) {
+-    return g_status.load();
 +int APS5_VABI sceMsgDialogProgressBarSetMsg(int target, const char* message) {
 +    std::lock_guard lock(g_lock);
 +    if (g_status != COMMON_DIALOG_STATUS_RUNNING) return COMMON_DIALOG_ERROR_NOT_RUNNING;
 +    if (!message) return COMMON_DIALOG_ERROR_ARG_NULL;
 +    if (target != 0) return COMMON_DIALOG_ERROR_INVALID_ARG;
 +    g_progressMessage = message;
-     return 0;
++    return 0;
  }
  
+ }
 diff --git a/core/libs/prx/libSceNpCommerce/Export.cpp b/core/libs/prx/libSceNpCommerce/Export.cpp
-index 6d8f3f5..fac1bbc 100644
+index 525178f3..109f79ee 100644
 --- a/core/libs/prx/libSceNpCommerce/Export.cpp
 +++ b/core/libs/prx/libSceNpCommerce/Export.cpp
 @@ -1,6 +1,7 @@
@@ -571,31 +609,52 @@ index 6d8f3f5..fac1bbc 100644
  
  }
  
-@@ -74,4 +76,10 @@ int APS5_VABI sceNpCommerceShowPsStoreIcon(int pos) {
-  return 0;
+@@ -75,12 +77,9 @@ int APS5_VABI sceNpCommerceShowPsStoreIcon(int pos) {
  }
  
-+int APS5_VABI sceNpCommerceSetPsStoreIconLayout(int layout) {
+ int APS5_VABI sceNpCommerceSetPsStoreIconLayout(int layout) {
+- (void)layout;
+- return 0;
+-}
 +    // Configuration only. The existing offline store dialog stays cancelled.
 +    g_storeIconLayout.store(layout, std::memory_order_relaxed);
-+    return 0;
-+}
-+
- }
-diff --git a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
-index 05fc693..687ee79 100644
---- a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
-+++ b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
-@@ -118,4 +118,22 @@ int APS5_VABI sceNpEntitlementAccessRequestConsumeUnifiedEntitlement(void) {
-  return SCE_NP_ERROR_SIGNED_OUT;
+ 
+-int APS5_VABI sceNpCommerceDialogOpen2(void) {
+-    NotImplemented_nid_no_patch(__func__);
+     return 0;
  }
  
-+
+diff --git a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
+index 61f27d29..1a3a59ba 100644
+--- a/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
++++ b/core/libs/prx/libSceNpEntitlementAccess/Export.cpp
+@@ -119,34 +119,24 @@ int APS5_VABI sceNpEntitlementAccessRequestConsumeUnifiedEntitlement(void) {
+ }
+ 
+ 
+-int APS5_VABI sceNpEntitlementAccessRequestConsumeServiceEntitlement(void) {
+- return SCE_NP_ERROR_SIGNED_OUT;
+-}
+-
+-
+-int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessPollUnifiedEntitlementInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +int APS5_VABI sceNpEntitlementAccessGetEntitlementKey(uint32_t service_label, const NpUnifiedEntitlementLabel* label, void* key) {
 +    (void)service_label;
 +    if (!label || !key) return SCE_NP_ENTITLEMENT_ACCESS_ERROR_PARAMETER;
 +    return SCE_NP_ERROR_SIGNED_OUT;
-+}
+ }
 +// Unavailable PSN request entry points intentionally do not inspect opaque request
 +// structures or create successful asynchronous work. Polling fails too.
 +int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void) { return SCE_NP_ERROR_SIGNED_OUT; }
@@ -607,10 +666,21 @@ index 05fc693..687ee79 100644
 +int APS5_VABI sceNpEntitlementAccessRequestServiceEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
 +int APS5_VABI sceNpEntitlementAccessPollServiceEntitlementInfoList(void) { return SCE_NP_ERROR_SIGNED_OUT; }
 +int APS5_VABI sceNpEntitlementAccessRequestConsumeServiceEntitlement(void) { return SCE_NP_ERROR_SIGNED_OUT; }
-+
+ 
+-int APS5_VABI sceNpEntitlementAccessRequestUnifiedEntitlementInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+ 
+-int APS5_VABI sceNpEntitlementAccessGetPftFlag(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
  }
+ 
+-}
++extern "C" int APS5_VABI sceNpEntitlementAccessGetPftFlag(void) { return SCE_NP_ERROR_SIGNED_OUT; }
 diff --git a/core/libs/prx/libSceNpManager/Export.cpp b/core/libs/prx/libSceNpManager/Export.cpp
-index ca76483..79649fb 100644
+index ca76483a..79649fb7 100644
 --- a/core/libs/prx/libSceNpManager/Export.cpp
 +++ b/core/libs/prx/libSceNpManager/Export.cpp
 @@ -3,6 +3,7 @@
@@ -657,10 +727,10 @@ index ca76483..79649fb 100644
 +
  }
 diff --git a/core/libs/prx/libSceNpSessionSignaling/Export.cpp b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-index d140181..82e391f 100644
+index 996613a4..2202a8ce 100644
 --- a/core/libs/prx/libSceNpSessionSignaling/Export.cpp
 +++ b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
-@@ -83,4 +83,11 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
+@@ -88,4 +88,11 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
      NotImplemented_nid_no_patch(__func__);
      return 0;
  }
@@ -673,7 +743,7 @@ index d140181..82e391f 100644
 +
  }
 diff --git a/core/libs/prx/libSceNpTrophy2/src/Context.cpp b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
-index 097a8fe..ee02845 100644
+index 0a7bd1da..1a03b550 100644
 --- a/core/libs/prx/libSceNpTrophy2/src/Context.cpp
 +++ b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
 @@ -4,6 +4,7 @@
@@ -684,7 +754,7 @@ index 097a8fe..ee02845 100644
  
  extern "C" {
  
-@@ -35,4 +36,13 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback() {
+@@ -45,4 +46,13 @@ int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
      return 0;
  }
  
@@ -699,32 +769,51 @@ index 097a8fe..ee02845 100644
 +
  }
 diff --git a/core/libs/prx/libSceSsl/Export.cpp b/core/libs/prx/libSceSsl/Export.cpp
-index 4cca48f..ef86a2b 100644
+index 5ef04eac..9fc33cc7 100644
 --- a/core/libs/prx/libSceSsl/Export.cpp
 +++ b/core/libs/prx/libSceSsl/Export.cpp
-@@ -73,4 +73,33 @@ int APS5_VABI sceSslGetMemoryPoolStats() {
+@@ -73,34 +73,34 @@ int APS5_VABI sceSslGetMemoryPoolStats() {
      return 0;
  }
  
-+
+-int APS5_VABI sceSslFreeSslCertName(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+ 
+-int APS5_VABI sceSslGetIssuerName(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +int APS5_VABI sceSslGetNameEntryCount(int context, const void* name) {
 +    (void)context;
 +    return name ? ERROR_NOT_FOUND : ERROR_INVALID_ARG;
-+}
+ }
+-
+-int APS5_VABI sceSslGetNameEntryCount(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +int APS5_VABI sceSslGetNameEntryInfo(int context, const void* name, int index, char* oid,
 +    size_t oid_capacity, char* value, size_t value_capacity, size_t* value_length) {
 +    (void)context;
 +    if (!name || index < 0 || !oid || !oid_capacity || !value || !value_capacity || !value_length) return ERROR_INVALID_ARG;
 +    return ERROR_NOT_FOUND;
-+}
+ }
+-
+-int APS5_VABI sceSslGetNameEntryInfo(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +int APS5_VABI sceSslFreeSslCertName(int context, void* name) {
 +    (void)context;
 +    return name ? ERROR_NOT_FOUND : 0; // Releasing an absent name is harmless.
-+}
+ }
+-
+-int APS5_VABI sceSslGetPem(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
 +void* APS5_VABI sceSslGetIssuerName(int context, const void* certificate) {
 +    (void)context; (void)certificate;
 +    return nullptr;
-+}
+ }
 +void* APS5_VABI sceSslGetSubjectName(int context, const void* certificate) {
 +    (void)context; (void)certificate;
 +    return nullptr;
@@ -733,11 +822,15 @@ index 4cca48f..ef86a2b 100644
 +    (void)context; (void)buffer;
 +    if (!certificate || !size) return ERROR_INVALID_ARG;
 +    return ERROR_NOT_FOUND;
-+}
-+
+ 
+-int APS5_VABI sceSslGetSubjectName(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+ }
+ 
  }
 diff --git a/core/libs/prx/libSceSystemService/Export.cpp b/core/libs/prx/libSceSystemService/Export.cpp
-index 01a6365..949795a 100644
+index 0de0c37f..b0fa427b 100644
 --- a/core/libs/prx/libSceSystemService/Export.cpp
 +++ b/core/libs/prx/libSceSystemService/Export.cpp
 @@ -2,11 +2,15 @@
@@ -756,54 +849,66 @@ index 01a6365..949795a 100644
  extern "C" {
  
  int APS5_VABI sceSystemServiceLoadExec(const char* path, const char* const* arguments) {
-@@ -130,4 +134,26 @@ int APS5_VABI sceSystemServiceLaunchPlayerDialog(const void* param) {
+@@ -135,27 +139,29 @@ int APS5_VABI sceSystemServiceLaunchPlayerDialog(const void* param) {
   return SYSTEM_SERVICE_OK;
  }
  
+-int APS5_VABI sceSystemServiceDisableMusicPlayer(void) {
+- return SYSTEM_SERVICE_OK;
 +int APS5_VABI sceSystemServiceShowControllerSettings(void) {
 +    // Local compatibility result: no console overlay backend is available.
 +    return SCE_KERNEL_ERROR_ENOSYS;
-+}
-+
-+int APS5_VABI sceSystemServiceOpenChallengeActivity(void) {
+ }
+ 
+ int APS5_VABI sceSystemServiceOpenChallengeActivity(void) {
+- NotImplemented_nid_no_patch(__func__);
+- return 0;
+-}
+-
+-int APS5_VABI sceSystemServiceOpenTournamentOccurrence(void) {
+- NotImplemented_nid_no_patch(__func__);
+- return 0;
 +    // Local compatibility result: no console overlay backend is available.
 +    return SCE_KERNEL_ERROR_ENOSYS;
-+}
-+
-+int APS5_VABI sceSystemServiceReenableMusicPlayer(void) {
+ }
+ 
+ int APS5_VABI sceSystemServiceReenableMusicPlayer(void) {
+- return SYSTEM_SERVICE_OK;
 +    // This controls local system-player permission, not game audio.
 +    g_musicPlayerAllowed.store(true, std::memory_order_relaxed);
 +    return SYSTEM_SERVICE_OK;
-+}
-+
+ }
+ 
+-int APS5_VABI sceSystemServiceShowControllerSettings(void) {
+- NotImplemented_nid_no_patch(__func__);
+- return 0;
 +int APS5_VABI sceSystemServiceDisableMusicPlayer(void) {
 +    // This controls local system-player permission, not game audio.
 +    g_musicPlayerAllowed.store(false, std::memory_order_relaxed);
 +    return SYSTEM_SERVICE_OK;
-+}
 +
- }
-diff --git a/core/libs/prx/libSceUserService/Export.cpp b/core/libs/prx/libSceUserService/Export.cpp
-index 1695f45..80a350c 100644
---- a/core/libs/prx/libSceUserService/Export.cpp
-+++ b/core/libs/prx/libSceUserService/Export.cpp
-@@ -147,4 +147,11 @@ int APS5_VABI sceUserServiceGetPlatformPrivacyWs1(int32_t user_id, int32_t* valu
-     return 0;
  }
  
+ }
 +
-+int APS5_VABI sceUserServiceGetAccessibilityZoomFollowFocus(int user_id, int32_t* enabled) {
-+    if (!enabled || user_id != USER_SERVICE_INITIAL_USER_ID) return USER_SERVICE_ERROR_INVALID_ARGUMENT;
-+    *enabled = 0; // The local user profile has accessibility zoom disabled.
-+    return USER_SERVICE_OK;
-+}
++extern "C" int APS5_VABI sceSystemServiceOpenTournamentOccurrence(void) { return SCE_KERNEL_ERROR_ENOSYS; }
+diff --git a/core/libs/prx/libSceUserService/Export.cpp b/core/libs/prx/libSceUserService/Export.cpp
+index 2a54f7c9..7dde5d3c 100644
+--- a/core/libs/prx/libSceUserService/Export.cpp
++++ b/core/libs/prx/libSceUserService/Export.cpp
+@@ -189,6 +189,7 @@ int APS5_VABI sceUserServiceGetNpAccountId(int user_id, uint64_t* account_id) {
+  }
+  *account_id = 0;
+  return USER_SERVICE_OK;
 +
  }
+ 
+ }
 diff --git a/core/libs/prx/libSceVideoOut/src/Output.cpp b/core/libs/prx/libSceVideoOut/src/Output.cpp
-index c595e30..ae5c642 100644
+index cf471691..53a4f7ca 100644
 --- a/core/libs/prx/libSceVideoOut/src/Output.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/Output.cpp
-@@ -270,4 +270,14 @@ int APS5_VABI sceVideoOutAdjustColor(int handle, const VideoOutColorSettings* se
+@@ -279,4 +279,14 @@ int APS5_VABI sceVideoOutAdjustColor(int handle, const VideoOutColorSettings* se
      LibcAwaitExit_nid_postfix();
  }
  
@@ -819,20 +924,38 @@ index c595e30..ae5c642 100644
 +
  }
 diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index cf4c3a3..f33fb10 100644
+index 7defbc42..ef1f1caa 100644
 --- a/core/libs/prx/libkernel/File/src/Stdio.cpp
 +++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
-@@ -35,10 +35,59 @@ static int NativeChmod(const std::filesystem::path& path, int mode) {
- static int NativeFtruncate(int descriptor, std::int64_t length) {
-     return static_cast<int>(::_chsize_s(descriptor, length));
+@@ -42,37 +42,62 @@ static int NativeMkdir(const std::filesystem::path& path, std::uint16_t mode) {
+ static int NativeChmod(const std::filesystem::path& path, int mode) {
+     return ::_wchmod(path.wstring().c_str(), mode);
  }
+-static std::optional<std::filesystem::path> NativeDescriptorPath(int descriptor) {
+-    if (auto directory = File::DirectoryDescriptorPath(descriptor)) return directory;
+-    const auto handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+-    if (handle == INVALID_HANDLE_VALUE) {
+-        errno = EBADF;
+-        return std::nullopt;
+-    }
+-    std::wstring path(MAX_PATH, L'\0');
+-    auto length = ::GetFinalPathNameByHandleW(handle, path.data(), static_cast<DWORD>(path.size()), FILE_NAME_NORMALIZED);
+-    if (length >= path.size()) {
+-        path.resize(length);
+-        length = ::GetFinalPathNameByHandleW(handle, path.data(), length, FILE_NAME_NORMALIZED);
++static int NativeFtruncate(int descriptor, std::int64_t length) {
++    return static_cast<int>(::_chsize_s(descriptor, length));
++}
 +static int NativeWindowsError() {
 +    switch (GetLastError()) {
 +    case ERROR_ACCESS_DENIED: errno = EACCES; break;
 +    case ERROR_INVALID_HANDLE: errno = EBADF; break;
 +    case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND: errno = ENOENT; break;
 +    default: errno = EIO; break;
-+    }
+     }
+-    if (length == 0 || length >= path.size()) {
+-        errno = EINVAL;
+-        return std::nullopt;
 +    return -1;
 +}
 +static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
@@ -848,13 +971,15 @@ index cf4c3a3..f33fb10 100644
 +        const std::uint64_t ticks = static_cast<std::uint64_t>(times[i].tv_sec + epoch) * 10000000ULL +
 +            static_cast<std::uint64_t>(times[i].tv_usec) * 10ULL;
 +        values[i] = {static_cast<DWORD>(ticks), static_cast<DWORD>(ticks >> 32)};
-+    }
+     }
+-    path.resize(length);
+-    return path;
 +    return SetFileTime(handle, nullptr, &values[0], &values[1]) ? 0 : NativeWindowsError();
-+}
- static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
--    if (times == nullptr) return ::_wutime(path.wstring().c_str(), nullptr);
--    struct _utimbuf values{static_cast<time_t>(times[0].tv_sec), static_cast<time_t>(times[1].tv_sec)};
--    return ::_wutime(path.wstring().c_str(), &values);
+ }
+-static int NativeFchmod(int descriptor, int mode) {
+-    const auto path = NativeDescriptorPath(descriptor);
+-    return path ? NativeChmod(*path, mode) : -1;
++static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
 +    HANDLE handle = CreateFileW(path.wstring().c_str(), FILE_WRITE_ATTRIBUTES,
 +        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 +    if (handle == INVALID_HANDLE_VALUE) return NativeWindowsError();
@@ -862,14 +987,20 @@ index cf4c3a3..f33fb10 100644
 +    const int saved = errno;
 +    CloseHandle(handle); errno = saved;
 +    return result;
-+}
+ }
+-static int NativeFtruncate(int descriptor, std::int64_t length) {
+-    return static_cast<int>(::_chsize_s(descriptor, length));
 +static int NativeFutimes(int descriptor, const KernelTimeval* times) {
 +    if (const auto path = File::DirectoryDescriptorPath(descriptor); path) return NativeUtimes(*path, times);
 +    if (descriptor < 0) { errno = EBADF; return -1; }
 +    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
 +    if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
 +    return NativeSetTimes(handle, times);
-+}
+ }
+-static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
+-    if (times == nullptr) return ::_wutime(path.wstring().c_str(), nullptr);
+-    struct _utimbuf values{static_cast<time_t>(times[0].tv_sec), static_cast<time_t>(times[1].tv_sec)};
+-    return ::_wutime(path.wstring().c_str(), &values);
 +static int NativeFchmod(int descriptor, std::uint16_t mode) {
 +    if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
 +        return NativeChmod(*path, mode & (_S_IREAD | _S_IWRITE));
@@ -883,104 +1014,65 @@ index cf4c3a3..f33fb10 100644
 +    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
 +    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
  }
- static int NativeFlock(int descriptor, int operation) {
-     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
-@@ -108,6 +157,13 @@ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval*
+ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+     const auto path = NativeDescriptorPath(descriptor);
+@@ -153,6 +178,7 @@ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval*
+ }
+ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+     if (times == nullptr) return ::futimes(descriptor, nullptr);
++
+     struct timeval values[2]{{static_cast<time_t>(times[0].tv_sec), static_cast<suseconds_t>(times[0].tv_usec)},
          {static_cast<time_t>(times[1].tv_sec), static_cast<suseconds_t>(times[1].tv_usec)}};
-     return ::utimes(path.c_str(), values);
- }
-+static int NativeFchmod(int descriptor, std::uint16_t mode) { return ::fchmod(descriptor, mode); }
-+static int NativeFutimes(int descriptor, const KernelTimeval* times) {
-+    if (!times) return ::futimes(descriptor, nullptr);
-+    struct timeval values[2]{{static_cast<time_t>(times[0].tv_sec), static_cast<suseconds_t>(times[0].tv_usec)},
-+        {static_cast<time_t>(times[1].tv_sec), static_cast<suseconds_t>(times[1].tv_usec)}};
-+    return ::futimes(descriptor, values);
-+}
- static int NativeFlock(int descriptor, int operation) {
-     return ::flock(descriptor, operation);
- }
-@@ -121,6 +177,7 @@ static std::int64_t NativePwrite(int descriptor, const void* buf, std::size_t nb
- 
- static constexpr int GUEST_ENOENT = 2;
- static constexpr int GUEST_EIO = 5;
-+static constexpr int GUEST_EBADF = 9;
- static constexpr int GUEST_EFAULT = 14;
- static constexpr int GUEST_EEXIST = 17;
- static constexpr int GUEST_EINVAL = 22;
-@@ -487,4 +544,26 @@ int APS5_VABI sceKernelUtimes_nid_postfix(const char* path, const KernelTimeval*
+     return ::futimes(descriptor, values);
+@@ -646,6 +672,7 @@ int APS5_VABI futimes_nid_postfix(int d, const KernelTimeval* times) {
+ int APS5_VABI fsync_nid_postfix(int fd) {
+     if (sceKernelFsync(fd) != 0) return PosixFailure(errno);
      return 0;
- }
- 
-+int APS5_VABI sceKernelFchmod(int descriptor, std::uint16_t mode) {
-+    if (descriptor >= GuestSockets::FirstDescriptor)
-+        return SceErrorFromErrno(GuestSockets::IsOpen(descriptor) ? GUEST_EINVAL : GUEST_EBADF);
-+    return NativeFchmod(descriptor, mode & 07777) == 0 ? 0 : SceErrorFromErrno(errno);
-+}
-+int APS5_VABI fchmod_nid_postfix(int descriptor, int mode) {
-+    return PosixResult(sceKernelFchmod(descriptor, static_cast<std::uint16_t>(mode)));
-+}
-+int APS5_VABI utimes_nid_postfix(const char* path, const KernelTimeval* times) {
-+    if (const int error = PathError(path)) return PosixFailure(error);
-+    if (times) for (int i = 0; i < 2; ++i)
-+        if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000) return PosixFailure(GUEST_EINVAL);
-+    return PosixResult(sceKernelUtimes_nid_postfix(path, times));
-+}
-+int APS5_VABI futimes_nid_postfix(int descriptor, const KernelTimeval* times) {
-+    if (descriptor >= GuestSockets::FirstDescriptor)
-+        return PosixFailure(GuestSockets::IsOpen(descriptor) ? GUEST_EINVAL : GUEST_EBADF);
-+    if (times) for (int i = 0; i < 2; ++i)
-+        if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000) return PosixFailure(GUEST_EINVAL);
-+    return NativeFutimes(descriptor, times) == 0 ? 0 : PosixResult(SceErrorFromErrno(errno));
-+}
 +
  }
+ 
+ }
 diff --git a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
-index fc9fd94..a699867 100644
+index 66800ba3..c5f23450 100644
 --- a/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
 +++ b/core/libs/prx/libkernel/Pthread/Posix/Thread.cpp
-@@ -5,6 +5,7 @@
- #include "prx/libc/include/General.hpp"
- #include "../include/Pthread.hpp"
+@@ -7,6 +7,7 @@
  #include "Common.hpp"
-+#include "prx/libkernel/KernelErrors.hpp"
+ #include "prx/libkernel/KernelErrors.hpp"
+ #include <chrono>
++
  #include <thread>
  
  extern "C" {
-@@ -84,4 +85,19 @@ void APS5_VABI pthread_yield_nid_postfix(void) {
-     std::this_thread::yield();
+@@ -49,7 +50,7 @@ int APS5_VABI scePthreadGetschedparam(Pthread thread, int* policy, KernelSchedPa
+ }
+ 
+ int APS5_VABI scePthreadSetschedparam(Pthread thread, int policy, const KernelSchedParam* param) {
+-    (void)policy;
++    if (policy != GUEST_SCHED_FIFO) return SCE_KERNEL_ERROR_EINVAL;
+     if (!param) return SCE_KERNEL_ERROR_EINVAL;
+     return scePthreadSetprio(thread, param->sched_priority);
+ }
+@@ -90,7 +91,7 @@ int APS5_VABI pthread_setprio_nid_postfix(Pthread thread, int prio) {
+ }
+ 
+ int APS5_VABI pthread_setschedparam_nid_postfix(Pthread thread, int policy, const KernelSchedParam* param) {
+-    (void)policy;
++    if (policy != GUEST_SCHED_FIFO) return SCE_KERNEL_ERROR_EINVAL;
+     if (!param) return PosixThread::GUEST_EINVAL;
+     return PosixThread::ToErrno(scePthreadSetprio(thread, param->sched_priority));
+ }
+@@ -108,4 +109,5 @@ unsigned int APS5_VABI sleep_nid_postfix(unsigned int seconds) {
+     return 0;
  }
  
 +
-+int APS5_VABI scePthreadGetschedparam(Pthread thread, int* policy, KernelSchedParam* param) {
-+    if (!policy || !param) return SCE_KERNEL_ERROR_EINVAL;
-+    int priority = 0;
-+    const int result = scePthreadGetprio(thread, &priority);
-+    if (result != 0) return result;
-+    *policy = GUEST_SCHED_FIFO;
-+    param->sched_priority = priority;
-+    return 0;
-+}
-+int APS5_VABI scePthreadSetschedparam(Pthread thread, int policy, const KernelSchedParam* param) {
-+    if (!param || policy != GUEST_SCHED_FIFO) return SCE_KERNEL_ERROR_EINVAL;
-+    return scePthreadSetprio(thread, param->sched_priority);
-+}
-+
- }
-diff --git a/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp b/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
-index ee08990..0ef89de 100644
---- a/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
-+++ b/core/libs/prx/libkernel/Socket/include/SocketRuntime.hpp
-@@ -2,4 +2,5 @@
- namespace GuestSockets {
- constexpr int FirstDescriptor = 0x10000000;
- int Close(int descriptor);
-+bool IsOpen(int descriptor);
  }
 diff --git a/core/libs/prx/libkernel/Socket/src/Udp.cpp b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-index 5462087..0fc610c 100644
+index af4f2f14..0e60de26 100644
 --- a/core/libs/prx/libkernel/Socket/src/Udp.cpp
 +++ b/core/libs/prx/libkernel/Socket/src/Udp.cpp
-@@ -148,6 +148,11 @@ void GuestAddress(const sockaddr_storage& native, void* output, std::uint32_t* l
+@@ -156,6 +156,11 @@ void GuestAddress(const sockaddr_storage& native, void* output, std::uint32_t* l
  }
  }
  
@@ -994,7 +1086,7 @@ index 5462087..0fc610c 100644
      return sockets.erase(descriptor) ? 0 : Fail(9);
 diff --git a/core/libs/tests/GuestCompatibilityApis.cpp b/core/libs/tests/GuestCompatibilityApis.cpp
 new file mode 100644
-index 0000000..d6c6523
+index 00000000..d6c65232
 --- /dev/null
 +++ b/core/libs/tests/GuestCompatibilityApis.cpp
 @@ -0,0 +1,88 @@
@@ -1087,16 +1179,18 @@ index 0000000..d6c6523
 +    std::puts("PASS offline service failures, immutable error outputs, context lifetime, accessibility and progress dialog lifecycle");
 +}
 diff --git a/core/libs/tests/GuestFilesystem.cpp b/core/libs/tests/GuestFilesystem.cpp
-index d99ae96..9661c76 100644
+index 1a7f71ad..950f11e5 100644
 --- a/core/libs/tests/GuestFilesystem.cpp
 +++ b/core/libs/tests/GuestFilesystem.cpp
-@@ -5,7 +5,14 @@
- #include <filesystem>
- #include <fstream>
- #include <cstdio>
-+#ifdef _WIN32
+@@ -8,10 +8,16 @@
+ #include <cstring>
+ #ifdef _WIN32
+ #include <io.h>
 +#include <windows.h>
-+#endif
+ #else
+ #include <unistd.h>
++
+ #endif
  extern "C" {
 +int APS5_VABI fchmod_nid_postfix(int,int);
 +int APS5_VABI sceKernelFchmod(int,unsigned short);
@@ -1105,7 +1199,7 @@ index d99ae96..9661c76 100644
  int APS5_VABI remove_nid_postfix(const char*);
  int APS5_VABI rename_nid_postfix(const char*, const char*);
  int APS5_VABI sceKernelChmod_nid_postfix(const char*, unsigned short);
-@@ -117,6 +124,37 @@ int main() {
+@@ -193,6 +199,37 @@ int main() {
      const auto empty = root / "empty";
      Require(std::filesystem::create_directory(empty));
      Require(rmdir_nid_postfix(empty.string().c_str()) == 0 && !std::filesystem::exists(empty));
@@ -1145,7 +1239,7 @@ index d99ae96..9661c76 100644
  }
 diff --git a/core/libs/tests/GuestJson2Initialization.cpp b/core/libs/tests/GuestJson2Initialization.cpp
 new file mode 100644
-index 0000000..db5e2b8
+index 00000000..db5e2b89
 --- /dev/null
 +++ b/core/libs/tests/GuestJson2Initialization.cpp
 @@ -0,0 +1,79 @@
@@ -1229,7 +1323,7 @@ index 0000000..db5e2b8
 +    std::puts("PASS JSON2 allocator callbacks, temporary configuration, live object cleanup, parsing and allocation failure");
 +}
 diff --git a/core/libs/tests/GuestPthreadAttr.cpp b/core/libs/tests/GuestPthreadAttr.cpp
-index 74368d7..ab1b962 100644
+index 74368d79..ab1b962e 100644
 --- a/core/libs/tests/GuestPthreadAttr.cpp
 +++ b/core/libs/tests/GuestPthreadAttr.cpp
 @@ -60,7 +60,21 @@ static void* APS5_VABI Worker(void* arg) {
@@ -1254,3 +1348,140 @@ index 74368d7..ab1b962 100644
      PthreadAttr attr = nullptr;
      Require(scePthreadAttrInit(&attr) == SCE_OK);
      Require(scePthreadAttrSetinheritsched(&attr, EXPLICIT_SCHED) == SCE_OK);
+diff --git a/core/libs/prx/libkernel/Socket/src/Udp.cpp b/core/libs/prx/libkernel/Socket/src/Udp.cpp
+index 0e60de26..4c0338d0 100644
+--- a/core/libs/prx/libkernel/Socket/src/Udp.cpp
++++ b/core/libs/prx/libkernel/Socket/src/Udp.cpp
+@@ -166,10 +166,7 @@ int GuestSockets::Close(int descriptor) {
+     return sockets.erase(descriptor) ? 0 : Fail(9);
+ }
+ 
+-bool GuestSockets::IsOpen(int descriptor) {
+-    std::lock_guard lock(socketsMutex);
+-    return sockets.contains(descriptor);
+-}
++
+ 
+ extern "C" {
+ int APS5_VABI fcntl_nid_postfix(int descriptor, int command, ...) {
+diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
+index 52686b10..275cb6a0 100644
+--- a/core/libs/prx/libSceJson2/Export.cpp
++++ b/core/libs/prx/libSceJson2/Export.cpp
+@@ -439,7 +439,7 @@ private:
+             }
+         }
+         const double real = std::strtod(text.c_str(), nullptr);
+-        if (!std::isfinite(real)) throw std::runtime_error("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified");
++        if (!std::isfinite(real)) throw std::runtime_error(("sce::Json::Parser::parse: number " + text + " overflows a double; the console's behaviour is unverified").c_str());
+         out.type = TypeReal;
+         out.real = real;
+         return true;
+@@ -673,7 +673,7 @@ void APS5_VABI _ZN3sce4Json6Object8iteratorD1Ev(ObjectIterator* self) { (void)se
+ ObjectIterator* APS5_VABI _ZN3sce4Json6Object8iteratorppEv(ObjectIterator* self) { ++self->it; return self; }
+ Pair* APS5_VABI _ZNK3sce4Json6Object8iteratordeEv(const ObjectIterator* self) { return &*self->it; }
+ bool APS5_VABI _ZNK3sce4Json6Object8iteratorneERKS2_(const ObjectIterator* self, const ObjectIterator* other) { return self->it != other->it; }
+-std::size_t APS5_VABI _ZNK3sce4Json6Object4sizeEv(const Object* self) { return self->items->size(); }
++
+ 
+ void APS5_VABI _ZN3sce4Json5ValueC1Ev(Value* self) { Construct(*self); }
+ void APS5_VABI _ZN3sce4Json5ValueC1Eb(Value* self, bool value) { Construct(*self); self->node->type = TypeBoolean; self->node->boolean = value; }
+@@ -881,30 +881,17 @@ int APS5_VABI sceJson2Unknown00(void) {
+     return 0;
+ }
+ 
+-struct InitParameter2 {
+-    void* allocator;
+-    void* userData;
+-    std::size_t fileBufferSize;
+-};
+-static_assert(sizeof(InitParameter2) <= 40);
+-
+ void APS5_VABI _ZN3sce4Json14InitParameter2C1Ev(InitParameter2* self) {
+-    *self = {};
++    _ZN3sce4Json14InitParameter2C2Ev(self);
+ }
+ 
+ void APS5_VABI _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(InitParameter2* self, void* allocator, void* userData) {
+-    self->allocator = allocator;
+-    self->userData = userData;
+-}
+-
+-void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter2* self, std::size_t size) {
+-    self->fileBufferSize = size;
+-}
+-
+-int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void* self, const InitParameter2* parameter) {
+-    (void)self;
+-    if (parameter == nullptr) throw std::invalid_argument("sce::Json::Initializer::initialize: null parameter");
+-    return 0;
++    if (!self) throw std::invalid_argument("sce::Json::setAllocator: null self");
++    // MemAllocator is an opaque C++ virtual interface, unlike AllocParamRtti.
++    // Do not reinterpret it as a callback table or silently ignore it.
++    if (allocator) throw std::runtime_error("sce::Json::MemAllocator virtual ABI is not implemented; use AllocParamRtti");
++    self->allocator = nullptr;
++    self->context = userData;
+ }
+ 
+ int APS5_VABI _ZN3sce4Json5Value5clearEv(void) {
+diff --git a/core/libs/prx/libSceNpSessionSignaling/Export.cpp b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
+index 2202a8ce..4f98c301 100644
+--- a/core/libs/prx/libSceNpSessionSignaling/Export.cpp
++++ b/core/libs/prx/libSceNpSessionSignaling/Export.cpp
+@@ -89,10 +89,6 @@ int APS5_VABI sceNpSessionSignalingGetConnectionStatistics(void) {
+     return 0;
+ }
+ 
+-int APS5_VABI sceNpSessionSignalingRequestPrepare(uint32_t context_id, uint32_t* request_id) {
+-    (void)context_id;
+-    if (!request_id) return SCE_NP_SESSION_SIGNALING_ERROR_INVALID_ARGUMENT;
+-    return SCE_NP_SESSION_SIGNALING_ERROR_UNAVAILABLE;
+-}
++
+ 
+ }
+diff --git a/core/libs/prx/libSceNpTrophy2/src/Context.cpp b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
+index 1a03b550..10f4ce00 100644
+--- a/core/libs/prx/libSceNpTrophy2/src/Context.cpp
++++ b/core/libs/prx/libSceNpTrophy2/src/Context.cpp
+@@ -36,16 +36,6 @@ int APS5_VABI sceNpTrophy2UnregisterUnlockCallback() {
+ }
+ 
+ 
+-int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-int APS5_VABI sceNpTrophy2ShowTrophyList(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+ int APS5_VABI sceNpTrophy2GetRewardIcon(void) {
+     return SCE_NP_TROPHY2_ERROR_ICON_FILE_NOT_FOUND;
+ }
+diff --git a/core/libs/tests/GuestJson.cpp b/core/libs/tests/GuestJson.cpp
+index 7791c840..70dd80c9 100644
+--- a/core/libs/tests/GuestJson.cpp
++++ b/core/libs/tests/GuestJson.cpp
+@@ -339,11 +339,17 @@ static void ValueAccess() {
+     _ZN3sce4Json14InitParameter2C1Ev(parameter);
+     int allocator = 0;
+     int userData = 0;
+-    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData);
++    bool unsupportedAllocator = false;
++    try { _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData); }
++    catch (const std::runtime_error& error) {
++        unsupportedAllocator = std::string(error.what()).find("virtual ABI is not implemented") != std::string::npos;
++    }
++    Require(unsupportedAllocator);
++    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, nullptr, &userData);
+     _ZN3sce4Json14InitParameter217setFileBufferSizeEm(parameter, 4096);
+     void* stored[3]{};
+     std::memcpy(stored, parameter, sizeof(stored));
+-    Require(stored[0] == &allocator && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
++    Require(stored[0] == nullptr && stored[1] == &userData && reinterpret_cast<std::uintptr_t>(stored[2]) == 4096);
+     alignas(16) std::uint8_t initializer[16]{};
+     Require(_ZN3sce4Json11InitializerC1Ev(initializer) == 0);
+     Require(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(initializer, parameter) == 0);

@@ -95,13 +95,15 @@ index 6ce0b2d5..0e90ee38 100644
      }
  
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
-index 80355fc7..dc08ea09 100644
+index af336130..6bec8891 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
-@@ -16,13 +16,14 @@ namespace AgcDriver::DriverDetail {
+@@ -17,13 +17,16 @@ namespace AgcDriver::DriverDetail {
  
  template <typename TWork>
  void Driver::timed(double WorkerProfile::*bucket, TWork&& work) {
++    // Upstream ProfileOutput (#798) already writes the report off the GPU worker.
++    // Skip the clocks entirely unless a report was requested.
 +    static const bool report = std::getenv("APS5_PROFILE_DRAW") != nullptr;
 +    if (!report) { work(); return; }
      static thread_local WorkerProfile profile;
@@ -113,7 +115,7 @@ index 80355fc7..dc08ea09 100644
 -    if (report && end - profile.reported > std::chrono::seconds(10)) {
 +    if (end - profile.reported > std::chrono::seconds(10)) {
          profile.reported = end;
-         std::fprintf(stderr, "[gpu] worker at %.0f s: dispatch %.1f s, draw %.1f s, wait %.1f s\n", std::chrono::duration<double>(end - profile.start).count(), profile.dispatchMs / 1000, profile.drawMs / 1000, profile.waitMs / 1000);
+         AgcDriver::ProfilePrint_nid_no_patch( "[gpu] worker at %.0f s: dispatch %.1f s, draw %.1f s, wait %.1f s\n", std::chrono::duration<double>(end - profile.start).count(), profile.dispatchMs / 1000, profile.drawMs / 1000, profile.waitMs / 1000);
      }
 diff --git a/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp b/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
 index 6717efe3..a20be9d4 100644

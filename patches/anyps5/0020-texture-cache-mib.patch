@@ -1,0 +1,52 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
+index 012c5d0b..d066ce43 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
+@@ -23,6 +23,7 @@ private:
+         std::uint64_t generation = 0;
+     };
+     void trim();
++    static std::uint64_t BudgetBytes();
+     Context context;
+     std::list<Entry> entries;
+     std::uint64_t retainedBytes = 0;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
+index 28e97008..c0e9f30d 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
+@@ -2,6 +2,8 @@
+ #include "prx/libSceAgcDriver/Graphics/include/TextureTiling.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
+ #include <algorithm>
++#include <cstdio>
++#include <cstdlib>
+ #include <cstring>
+ #include <limits>
+ 
+@@ -11,8 +13,25 @@ TextureCache::TextureCache(const Context& context) : context(context) {
+     Require(context.detiler != nullptr, "texture cache requires a device detiler");
+ }
+ 
++std::uint64_t TextureCache::BudgetBytes() {
++    static const std::uint64_t bytes = [] {
++        const char* value = std::getenv("APS5_TEXTURE_CACHE_MIB");
++        if (value == nullptr || *value == '\0') return budget;
++        char* end = nullptr;
++        const unsigned long long mib = std::strtoull(value, &end, 10);
++        if (end == value || *end != '\0' || mib < 1 || mib > 4096) {
++            std::fprintf(stderr, "[texture-cache] APS5_TEXTURE_CACHE_MIB=%s ignored; cap stays 256 MiB\n", value);
++            return budget;
++        }
++        std::fprintf(stderr, "[texture-cache] cap %llu MiB (APS5_TEXTURE_CACHE_MIB)\n", mib);
++        return static_cast<std::uint64_t>(mib) << 20;
++    }();
++    return bytes;
++}
++
+ void TextureCache::trim() {
+-    for (auto it = entries.begin(); it != entries.end() && (retainedBytes > budget || entries.size() > 64);) {
++    const auto budgetBytes = BudgetBytes();
++    for (auto it = entries.begin(); it != entries.end() && (retainedBytes > budgetBytes || entries.size() > 64);) {
+         if (it->texture.use_count() != 1) {
+             ++it;
+             continue;

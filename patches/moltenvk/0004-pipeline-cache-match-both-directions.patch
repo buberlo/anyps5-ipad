@@ -1,0 +1,36 @@
+diff --git a/Docs/Whats_New.md b/Docs/Whats_New.md
+index 72836f437..cd90526a1 100644
+--- a/Docs/Whats_New.md
++++ b/Docs/Whats_New.md
+@@ -28,6 +28,7 @@ Released TBD
+ - Fix spurious warning about blending on attachment formats that do not support it.
+ - Fix `VkDeviceMemory` imported from a `MTLTexture` not backing the image bound to it, and over-releasing that texture.
+ - Fix leak of the `MTLBuffer` of a host-coherent `VkDeviceMemory` that also holds a `MTLTexture`.
++- Fix pipeline cache matching incompatible shaders when the only difference was in dynamic buffer offset usage.
+ 
+ 
+ 
+diff --git a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
+index 18347df34..7a6272ca2 100644
+--- a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
++++ b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
+@@ -211,10 +211,19 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
+ 			!containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
+ 	}
+ 
++	for (const auto& db : other.dynamicBufferDescriptors) {
++		if (db.stage == options.entryPointStage &&
++			!containsMatching(dynamicBufferDescriptors, db)) { return false; }
++	}
++
+ 	for (uint32_t dsIdx : discreteDescriptorSets) {
+ 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+ 	}
+ 
++	for (uint32_t dsIdx : other.discreteDescriptorSets) {
++		if ( !contains(discreteDescriptorSets, dsIdx)) { return false; }
++	}
++
+     return true;
+ }
+ 

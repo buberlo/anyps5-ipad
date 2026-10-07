@@ -1,29 +1,3 @@
-diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
-index 8f01a4b..28ca05d 100644
---- a/app/Madeira/Library.swift
-+++ b/app/Madeira/Library.swift
-@@ -947,6 +947,13 @@ final class LibraryModel: ObservableObject {
-                 controls.layoutID = ControlPresetsModel.shared.store.resolvedID(entry.controlLayout)
-             }
-         }
-+        // An enabled game with an empty migrated profile needs a usable default.
-+        // Explicit layouts and all existing buttons remain authoritative.
-+        if entry.touchControls, controls.controls.isEmpty, entry.controlLayout == nil,
-+           ControlPresetsModel.enabled, MadeiraConfig.flag("MADEIRA_CONTROLS_XBOX_DEFAULT", fallback: false) {
-+            ControlPresetsModel.shared.load(ControlPresetLayout.xboxID,
-+                screen: ControlPresetsModel.currentScreen(), reason: "empty-game-profile-default")
-+        }
-         controls.visible = entry.touchControls
-         controls.sizeScale = min(max(entry.controlSize ?? 1, 0.5), 2)
-         controllerBinds = GamepadInput.keyboardMouseAvailable ? (entry.controllerBinds ?? [:]) : [:]
-@@ -1098,6 +1105,7 @@ final class LibraryModel: ObservableObject {
-         MetalHostView.shared.isHidden = true
-         ProMotionIntent.shared.setActive(false)
-         fputs("[frontend] returned to library\n", stderr)
-+        LogStore.shared.finishSessionLog()
-     }
- }
- 
 diff --git a/app/Madeira/LogStore.swift b/app/Madeira/LogStore.swift
 index 73b0817..5ba3a6c 100644
 --- a/app/Madeira/LogStore.swift

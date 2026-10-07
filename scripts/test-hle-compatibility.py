@@ -19,7 +19,10 @@ LIBS = ROOT / "upstreams/AnyPS5/core/libs"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cxx", default=os.environ.get("CXX", "clang++"))
+    parser.add_argument("--source", type=Path, default=ROOT / "upstreams/AnyPS5",
+                        help="Patched isolated AnyPS5 checkout")
     args = parser.parse_args()
+    libs = args.source.resolve() / "core/libs"
     if sys.platform != "darwin":
         parser.error("This sanitizer adapter currently supports macOS; use the Windows CMake targets on Windows")
     groups = [
@@ -36,8 +39,8 @@ def main():
         for name, sources in groups:
             output = temp / name
             subprocess.run(shlex.split(args.cxx) + ["-std=c++20", "-g", "-fsanitize=address,undefined",
-                "-Wno-return-type-c-linkage", "-Wl,-dead_strip", "-I" + str(LIBS),
-                str(LIBS / "tests" / (name + ".cpp")), *[str(LIBS / "prx" / source) for source in sources],
+                "-Wno-return-type-c-linkage", "-Wl,-dead_strip", "-I" + str(libs),
+                str(libs / "tests" / (name + ".cpp")), *[str(libs / "prx" / source) for source in sources],
                 str(shim), "-o", str(output)], check=True)
             subprocess.run([str(output)], check=True, timeout=30)
             print("PASS production " + name, flush=True)

@@ -1,5 +1,5 @@
 diff --git a/core/relinker/main.cpp b/core/relinker/main.cpp
-index 2e3b655..1b4db2e 100644
+index 2e3b6553..1b4db2e0 100644
 --- a/core/relinker/main.cpp
 +++ b/core/relinker/main.cpp
 @@ -135,7 +135,7 @@ int main(const int argc, char* argv[]) {
@@ -12,10 +12,10 @@ index 2e3b655..1b4db2e 100644
          if (args.runPath != "$ORIGIN/libs") std::cout << "Custom library search path (--rpath): " << args.runPath << '\n';
  
 diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-index eebb504..82b1e9d 100644
+index fe15abdd..8ca432b2 100644
 --- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 +++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-@@ -20,10 +20,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -21,10 +21,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
      const bool hasPlural = std::filesystem::exists(plural);
      const bool hasPrx = std::filesystem::exists(prx);
      if (hasSingular && hasPlural) throw Domain::RelinkerException("Both sce_module and sce_modules exist beside the input executable");
@@ -31,7 +31,7 @@ index eebb504..82b1e9d 100644
      std::vector<std::filesystem::path> paths;
      std::set<std::string> unmatchedExclusions = excludedModules;
      for (const auto& directory : directories) {
-@@ -142,18 +146,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -182,18 +186,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
          Io::AppendU64(dynamic.DynamicSegmentData, dynamic.DynStrData.size());
          Io::AppendString(dynamic.DynStrData, name);
      };
@@ -54,7 +54,7 @@ index eebb504..82b1e9d 100644
          const auto destination = std::filesystem::absolute(outputPath).parent_path() / relativeDirectory;
          const auto target = destination / image.OutputName;
          if (target.lexically_normal() == std::filesystem::absolute(outputPath).lexically_normal()) throw Domain::RelinkerException("Guest output collides with the executable output");
-@@ -165,6 +165,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -205,6 +205,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
          std::vector<std::uint8_t> output;
          if (windows) output = Elfpatcher::GuestModuleWriter().WriteWindows(image, runtime);
          else {
@@ -67,7 +67,7 @@ index eebb504..82b1e9d 100644
              for (const auto dependency : dependencies[index]) {
                  const auto dependencyPath = images[dependency].SourcePath.parent_path() / images[dependency].OutputName;
 diff --git a/core/relinker/relinker/tests/test_guest_module_directories.py b/core/relinker/relinker/tests/test_guest_module_directories.py
-index 5d0389c..87d6d17 100644
+index 992f89ab..ab5833f8 100644
 --- a/core/relinker/relinker/tests/test_guest_module_directories.py
 +++ b/core/relinker/relinker/tests/test_guest_module_directories.py
 @@ -23,7 +23,7 @@ def module_with_symbol(exported):

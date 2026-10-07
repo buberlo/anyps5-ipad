@@ -1,0 +1,47 @@
+diff --git a/build/win32u-unix/aps5_display_timing.h b/build/win32u-unix/aps5_display_timing.h
+index 82f0002..bb434d3 100644
+--- a/build/win32u-unix/aps5_display_timing.h
++++ b/build/win32u-unix/aps5_display_timing.h
+@@ -6,8 +6,13 @@
+ #ifndef APS5_DISPLAY_TIMING_H
+ #define APS5_DISPLAY_TIMING_H
+ #include <stdint.h>
++#include <stddef.h>
+ #include <stdatomic.h>
+ #include <time.h>
++#ifdef __APPLE__
++#include <mach/mach.h>
++extern size_t os_proc_available_memory(void);
++#endif
+ #include "aps5_display_stats.h"
+ #define APS5_MAX_TIMED_DEVICES 8
+ #define APS5_MAX_TIMED_SWAPCHAINS 8
+@@ -44,6 +49,18 @@ static struct aps5_phase_totals aps5_phases[4];
+ static pthread_once_t aps5_report_once = PTHREAD_ONCE_INIT;
+ static int aps5_report_enabled;
+ static void aps5_report_init(void) { const char *v = getenv("APS5_PERF_REPORT"); aps5_report_enabled = v && !strcmp(v, "1"); }
++static void aps5_memory_sample(unsigned long long *footprint_mb, unsigned long long *available_mb)
++{
++    *footprint_mb = 0;
++    *available_mb = 0;
++#ifdef __APPLE__
++    task_vm_info_data_t info;
++    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
++    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
++        *footprint_mb = (unsigned long long)(info.phys_footprint >> 20);
++    *available_mb = (unsigned long long)(os_proc_available_memory() >> 20);
++#endif
++}
+ static uint64_t aps5_now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; }
+ static uint64_t aps5_phase_begin(void)
+ {
+@@ -269,6 +286,9 @@ static VkResult aps5_timing_present(VkQueue queue, const VkPresentInfoKHR *info)
+                     fprintf(stderr, "[anyps5-native] {\"schema\":1,\"monotonic_ns\":%llu,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu", (unsigned long long)now, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count);
+                     static const char *names[4] = {"submit", "present", "acquire", "idle"};
+                     for (unsigned phase = 0; phase < 4; ++phase) fprintf(stderr, ",\"%s_calls\":%llu,\"%s_ns\":%llu,\"%s_max_ns\":%llu", names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].calls), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].ns), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].max_ns));
++                    unsigned long long footprint_mb = 0, available_mb = 0;
++                    aps5_memory_sample(&footprint_mb, &available_mb);
++                    fprintf(stderr, ",\"phys_footprint_mb\":%llu,\"available_mb\":%llu", footprint_mb, available_mb);
+                     fputs("}\n", stderr);
+                     aps5_reported_ns = now;
+                 }

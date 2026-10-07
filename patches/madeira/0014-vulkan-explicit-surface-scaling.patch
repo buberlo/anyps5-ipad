@@ -1,143 +1,133 @@
-diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
---- a/build/win32u-unix/vulkan_ios.c
-+++ b/build/win32u-unix/vulkan_ios.c
-@@ -21,7 +21,9 @@
- #define dlsym   madeira_vk_dlsym_ios
- #define dlclose madeira_vk_dlclose
- 
-+#define __wine_get_vulkan_driver madeira_get_vulkan_driver_base
- #include "vulkan.c"
-+#undef __wine_get_vulkan_driver
- 
- #undef dlopen
- #undef dlsym
-@@ -89,3 +91,111 @@
- #endif
-     return proc;
- }
-+
-+/* A Wine HWND is deliberately scaled into Madeira's fullscreen game layer.
-+ * Negotiate real surface/device maintenance support instead of suppressing
-+ * MoltenVK's SUBOPTIMAL result or its natural-extent check. */
-+static VkResult VKAPI_CALL madeira_scaled_host_swapchain(VkDevice device,
-+        const VkSwapchainCreateInfoKHR *info, const VkAllocationCallbacks *allocator, VkSwapchainKHR *ret)
-+{
-+    PFN_vkCreateSwapchainKHR create = (PFN_vkCreateSwapchainKHR)p_vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR");
-+    return create(device, info, allocator, ret);
-+}
-+
-+static VkResult madeira_client_create_device(VkPhysicalDevice physical,
-+        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *ret)
-+{
-+    struct vulkan_physical_device *pd = vulkan_physical_device_from_handle(physical);
-+    struct vulkan_instance *instance = pd->instance;
-+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT maintenance = {
-+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT};
-+    VkPhysicalDeviceFeatures2 features = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &maintenance};
-+    VkDeviceCreateInfo host = *info;
-+    int enabled = 0, existing = 0;
-+    VkResult result;
-+    if (instance->extensions.has_VK_EXT_surface_maintenance1 && pd->extensions.has_VK_EXT_swapchain_maintenance1)
-+    {
-+        PFN_vkGetPhysicalDeviceFeatures2 query = (PFN_vkGetPhysicalDeviceFeatures2)
-+            p_vkGetInstanceProcAddr(instance->host.instance, "vkGetPhysicalDeviceFeatures2");
-+        if (!query) query = (PFN_vkGetPhysicalDeviceFeatures2)
-+            p_vkGetInstanceProcAddr(instance->host.instance, "vkGetPhysicalDeviceFeatures2KHR");
-+        if (query) query(pd->host.physical_device, &features);
-+        if (maintenance.swapchainMaintenance1)
-+        {
-+            for (const VkBaseInStructure *next = info->pNext; next; next = next->pNext)
-+                if (next->sType == maintenance.sType)
-+                {
-+                    existing = 1;
-+                    enabled = ((const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT *)next)->swapchainMaintenance1;
-+                }
-+            if (!existing)
-+            {
-+                maintenance.pNext = (void *)host.pNext;
-+                host.pNext = &maintenance;
-+                enabled = 1;
-+            }
-+        }
-+    }
-+    result = win32u_vkCreateDevice(physical, &host, allocator, ret);
-+    if (result == VK_SUCCESS && enabled)
-+    {
-+        /* Per-device marker: no global device registry or handle lifetime race.
-+         * The native function itself passes through to the real ICD. */
-+        struct vulkan_device *device = vulkan_device_from_handle(*ret);
-+        if (device->extensions.has_VK_EXT_swapchain_maintenance1)
-+            device->p_vkCreateSwapchainKHR = madeira_scaled_host_swapchain;
-+    }
-+    return result;
-+}
-+
-+static VkResult madeira_client_create_swapchain(VkDevice client,
-+        const VkSwapchainCreateInfoKHR *info, const VkAllocationCallbacks *allocator, VkSwapchainKHR *ret)
-+{
-+    struct vulkan_device *device = vulkan_device_from_handle(client);
-+    struct vulkan_physical_device *pd = device->physical_device;
-+    struct vulkan_instance *instance = pd->instance;
-+    struct surface *surface = surface_from_handle(info->surface);
-+    VkSwapchainPresentScalingCreateInfoEXT scaling = {
-+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT,
-+        .pNext = info->pNext, .scalingBehavior = VK_PRESENT_SCALING_STRETCH_BIT_EXT};
-+    VkSurfacePresentModeEXT mode = {.sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT, .presentMode = info->presentMode};
-+    VkPhysicalDeviceSurfaceInfo2KHR surface_info = {
-+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, .pNext = &mode};
-+    VkSurfacePresentScalingCapabilitiesEXT support = {.sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT};
-+    VkSurfaceCapabilities2KHR capabilities = {.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR, .pNext = &support};
-+    VkSwapchainCreateInfoKHR host = *info;
-+    if (!surface || device->p_vkCreateSwapchainKHR != madeira_scaled_host_swapchain ||
-+        !instance->p_vkGetPhysicalDeviceSurfaceCapabilities2KHR)
-+        return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
-+    /* Preserve explicit application scaling rather than duplicating its sType. */
-+    for (const VkBaseInStructure *next = info->pNext; next; next = next->pNext)
-+        if (next->sType == scaling.sType) return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
-+    surface_info.surface = surface->obj.host.surface;
-+    VkResult result = instance->p_vkGetPhysicalDeviceSurfaceCapabilities2KHR(
-+        pd->host.physical_device, &surface_info, &capabilities);
-+    if (result != VK_SUCCESS) return result;
-+    if (!(support.supportedPresentScaling & VK_PRESENT_SCALING_STRETCH_BIT_EXT) ||
-+        info->imageExtent.width < support.minScaledImageExtent.width ||
-+        info->imageExtent.height < support.minScaledImageExtent.height ||
-+        info->imageExtent.width > support.maxScaledImageExtent.width ||
-+        info->imageExtent.height > support.maxScaledImageExtent.height)
-+        return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
-+    host.pNext = &scaling;
-+    fprintf(stderr, "[anyps5-vulkan-scaling] supported stretch extent=%ux%u; maintenance feature enabled\n",
-+            info->imageExtent.width, info->imageExtent.height);
-+    return win32u_vkCreateSwapchainKHR(client, &host, allocator, ret);
-+}
-+
-+static pthread_once_t madeira_scaling_once = PTHREAD_ONCE_INIT;
-+static void madeira_install_scaling(void)
-+{
-+    vulkan_funcs.p_vkCreateDevice = madeira_client_create_device;
-+    vulkan_funcs.p_vkCreateSwapchainKHR = madeira_client_create_swapchain;
-+}
-+
-+const struct vulkan_funcs *__wine_get_vulkan_driver(UINT version)
-+{
-+    const struct vulkan_funcs *funcs = madeira_get_vulkan_driver_base(version);
-+    if (funcs) pthread_once(&madeira_scaling_once, madeira_install_scaling);
-+    return funcs;
-+}
 diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_metal_ios.c
---- a/build/win32u-unix/vulkan_metal_ios.c
+new file mode 100644
+index 0000000..375c0ec
+--- /dev/null
 +++ b/build/win32u-unix/vulkan_metal_ios.c
-@@ -42,6 +42,7 @@
- };
- 
- static int g_use_metal_surface;
+@@ -0,0 +1,183 @@
++/* winios Vulkan user-driver: VK_KHR_win32_surface -> VK_EXT_metal_surface.
++ *
++ * Madeira is one Mach-O. Wine's PE winevulkan.dll calls
++ * __wine_get_vulkan_driver, which dlopens the ICD (see vulkan_ios.c) and
++ * then asks the user driver for a surface. There is no winemac.drv unix
++ * library on iOS. This TU is linked into libwin32u_unix.a and registered
++ * from driver_ios.c as winios_pVulkanInit when the symbol is present.
++ *
++ * IOSDisplayShim selects the existing game CAMetalLayer or the desktop
++ * compositor's HWND layer. The surface retains it until destruction.
++ *
++ * Not compile-checked on Linux: it includes Wine's unix headers and is
++ * built by build/win32u-unix/build.sh with the iOS SDK. The loader beside
++ * it (moltenvk_static_loader.c) is compile-checked on Linux.
++ */
++
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++
++#include <dlfcn.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "ntstatus.h"
++#define WIN32_NO_STATUS
++#include "windef.h"
++#include "winbase.h"
++#include "wine/gdi_driver.h"
++#include "wine/vulkan_driver.h"
++#include "moltenvk_static_loader.h"
++
++extern void *madeira_vulkan_layer_acquire(void *hwnd);
++extern void madeira_vulkan_layer_release(void *layer);
++
++struct ios_client_surface
++{
++    struct client_surface base;
++    void *layer;
++};
++
++static int g_use_metal_surface;
 +static int g_surface_maintenance;
- 
- static void ios_surface_destroy(struct client_surface *surface)
- {
-@@ -121,6 +122,13 @@
-      * enabled the metal extension directly still sees win32. */
-     if (extensions->has_VK_KHR_win32_surface) extensions->has_VK_EXT_metal_surface = 1;
-     if (extensions->has_VK_EXT_metal_surface) extensions->has_VK_KHR_win32_surface = 1;
++
++static void ios_surface_destroy(struct client_surface *surface)
++{
++    struct ios_client_surface *ios = (struct ios_client_surface *)surface;
++    madeira_vulkan_layer_release(ios->layer);
++}
++
++static void ios_surface_detach(struct client_surface *surface)
++{
++    (void)surface;
++}
++
++static void ios_surface_update(struct client_surface *surface)
++{
++    (void)surface;
++}
++
++static void ios_surface_present(struct client_surface *surface, HDC hdc)
++{
++    (void)surface;
++    (void)hdc;
++}
++
++static const struct client_surface_funcs ios_surface_funcs =
++{
++    .destroy = ios_surface_destroy,
++    .detach = ios_surface_detach,
++    .update = ios_surface_update,
++    .present = ios_surface_present,
++};
++
++static VkResult ios_vulkan_surface_create(HWND hwnd, const struct vulkan_instance *instance, VkSurfaceKHR *handle,
++                                          struct client_surface **client)
++{
++    VkMetalSurfaceCreateInfoEXT info;
++    VkResult res;
++    void *layer;
++    struct ios_client_surface *surface;
++
++    if (!g_use_metal_surface || !instance || !instance->p_vkCreateMetalSurfaceEXT)
++        return VK_ERROR_EXTENSION_NOT_PRESENT;
++    layer = madeira_vulkan_layer_acquire(hwnd);
++    if (!layer) return VK_ERROR_INCOMPATIBLE_DRIVER;
++    surface = (struct ios_client_surface *)client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
++    if (!surface)
++    {
++        madeira_vulkan_layer_release(layer);
++        return VK_ERROR_OUT_OF_HOST_MEMORY;
++    }
++    surface->layer = layer;
++
++    memset(&info, 0, sizeof(info));
++    info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
++    info.pLayer = layer;
++    res = instance->p_vkCreateMetalSurfaceEXT(instance->host.instance, &info, NULL, handle);
++    if (res != VK_SUCCESS)
++    {
++        client_surface_release(&surface->base);
++        return res;
++    }
++    *client = &surface->base;
++    return VK_SUCCESS;
++}
++
++static VkBool32 ios_get_physical_device_presentation_support(struct vulkan_physical_device *physical_device, uint32_t index)
++{
++    (void)physical_device;
++    (void)index;
++    return g_use_metal_surface ? VK_TRUE : VK_FALSE;
++}
++
++static void ios_map_instance_extensions(struct vulkan_instance_extensions *extensions)
++{
++    if (!g_use_metal_surface) return;
++    /* Guest code asks for VK_KHR_win32_surface. The host ICD has
++     * VK_EXT_metal_surface. Wine's map is symmetric so a client that
++     * enabled the metal extension directly still sees win32. */
++    if (extensions->has_VK_KHR_win32_surface) extensions->has_VK_EXT_metal_surface = 1;
++    if (extensions->has_VK_EXT_metal_surface) extensions->has_VK_KHR_win32_surface = 1;
 +    /* Wine clears the Win32 bit before its own maintenance-extension test.
 +     * Metal's natural extent differs from a deliberately scaled HWND. */
 +    if (extensions->has_VK_KHR_win32_surface && g_surface_maintenance)
@@ -145,36 +135,55 @@ diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_met
 +        extensions->has_VK_EXT_surface_maintenance1 = 1;
 +        extensions->has_VK_KHR_get_surface_capabilities2 = 1;
 +    }
- }
- 
- static void ios_map_device_extensions(struct vulkan_device_extensions *extensions)
-@@ -142,12 +150,14 @@
-     PFN_vkEnumerateInstanceExtensionProperties enumerate;
-     VkExtensionProperties *extensions;
-     uint32_t count = 0;
++}
++
++static void ios_map_device_extensions(struct vulkan_device_extensions *extensions)
++{
++    (void)extensions;
++}
++
++static const struct vulkan_driver_funcs ios_vulkan_driver_funcs =
++{
++    .p_vulkan_surface_create = ios_vulkan_surface_create,
++    .p_get_physical_device_presentation_support = ios_get_physical_device_presentation_support,
++    .p_map_instance_extensions = ios_map_instance_extensions,
++    .p_map_device_extensions = ios_map_device_extensions,
++};
++
++UINT winios_pVulkanInit(UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs)
++{
++    PFN_vkGetInstanceProcAddr get_proc;
++    PFN_vkEnumerateInstanceExtensionProperties enumerate;
++    VkExtensionProperties *extensions;
++    uint32_t count = 0;
 +    int maintenance = 0, capabilities2 = 0;
-     VkResult result;
- 
-     if (version != WINE_VULKAN_DRIVER_VERSION) return STATUS_INVALID_PARAMETER;
-     if (!driver_funcs) return STATUS_INVALID_PARAMETER;
-     *driver_funcs = NULL;
-     g_use_metal_surface = 0;
++    VkResult result;
++
++    if (version != WINE_VULKAN_DRIVER_VERSION) return STATUS_INVALID_PARAMETER;
++    if (!driver_funcs) return STATUS_INVALID_PARAMETER;
++    *driver_funcs = NULL;
++    g_use_metal_surface = 0;
 +    g_surface_maintenance = 0;
-     get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
-     if (!get_proc) return STATUS_NOT_IMPLEMENTED;
-     enumerate = (PFN_vkEnumerateInstanceExtensionProperties)get_proc(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
-@@ -158,8 +168,12 @@
-     result = enumerate(NULL, &count, extensions);
-     if (result == VK_SUCCESS)
-         for (uint32_t i = 0; i < count; ++i)
--            if (!strcmp(extensions[i].extensionName, "VK_EXT_metal_surface"))
--                g_use_metal_surface = 1;
++    get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
++    if (!get_proc) return STATUS_NOT_IMPLEMENTED;
++    enumerate = (PFN_vkEnumerateInstanceExtensionProperties)get_proc(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
++    if (!enumerate || enumerate(NULL, &count, NULL) != VK_SUCCESS || !count)
++        return STATUS_NOT_IMPLEMENTED;
++    extensions = calloc(count, sizeof(*extensions));
++    if (!extensions) return STATUS_NO_MEMORY;
++    result = enumerate(NULL, &count, extensions);
++    if (result == VK_SUCCESS)
++        for (uint32_t i = 0; i < count; ++i)
 +        {
 +            if (!strcmp(extensions[i].extensionName, "VK_EXT_metal_surface")) g_use_metal_surface = 1;
 +            if (!strcmp(extensions[i].extensionName, "VK_EXT_surface_maintenance1")) maintenance = 1;
 +            if (!strcmp(extensions[i].extensionName, "VK_KHR_get_surface_capabilities2")) capabilities2 = 1;
 +        }
 +    g_surface_maintenance = maintenance && capabilities2;
-     free(extensions);
-     /* There is no VkInstance yet. Wine resolves vkCreateMetalSurfaceEXT on
-      * the host instance after applying our extension mapping. */
++    free(extensions);
++    /* There is no VkInstance yet. Wine resolves vkCreateMetalSurfaceEXT on
++     * the host instance after applying our extension mapping. */
++    if (!g_use_metal_surface) return STATUS_NOT_IMPLEMENTED;
++    *driver_funcs = &ios_vulkan_driver_funcs;
++    return STATUS_SUCCESS;
++}

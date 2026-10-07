@@ -1,10 +1,148 @@
-diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
---- a/build/win32u-unix/vulkan_ios.c
-+++ b/build/win32u-unix/vulkan_ios.c
-@@ -30,11 +30,24 @@
- #undef dlclose
+diff --git a/app/Madeira/IOSDisplayShim.m b/app/Madeira/IOSDisplayShim.m
+index 2385ebf..c37e0eb 100644
+--- a/app/Madeira/IOSDisplayShim.m
++++ b/app/Madeira/IOSDisplayShim.m
+@@ -164,6 +164,26 @@ static int madeira_desktop_mode(void) {
+ // Winios.m's game-mode window overlay must not draw its GDI bits.
+ extern void winios_note_game_metal_hwnd(void *hwnd);
  
- #if defined(MADEIRA_VK_STATIC_LINK)
++/* Vulkan follows the same desktop/game routing as the Metal display bridge.
++ * A retained reference outlives asynchronous HWND/compositor removal. */
++void *madeira_vulkan_layer_acquire(void *hwnd) {
++    const char *desktop = getenv("MADEIRA_DESKTOP");
++    if (desktop && *desktop == '1') {
++        CAMetalLayer *layer = winios_metal_layer_for_hwnd(hwnd);
++        return layer ? (void *)CFBridgingRetain(layer) : NULL;
++    }
++    pthread_mutex_lock(&g_lock);
++    CAMetalLayer *layer = g_layer;
++    void *retained = layer ? (void *)CFBridgingRetain(layer) : NULL;
++    pthread_mutex_unlock(&g_lock);
++    if (retained) winios_note_game_metal_hwnd(hwnd);
++    return retained;
++}
++
++void madeira_vulkan_layer_release(void *layer) {
++    if (layer) CFRelease((CFTypeRef)layer);
++}
++
+ static macdrv_metal_device my_create_metal_device(void) {
+     // DXMT also has a separate code path that creates its own MTLDevice;
+     // this is only called by a Wine-flavoured API we don't hit. Return a
+@@ -271,3 +291,7 @@ macdrv_metal_layer macdrv_view_get_metal_layer(macdrv_metal_view v) {
+ void macdrv_view_release_metal_view(macdrv_metal_view v) {
+     my_view_release_metal_view(v);
+ }
++
++/* Non-Vulkan builds have no submission gate. The static Vulkan driver defines
++ * the strong implementation in its already-linked win32u object. */
++__attribute__((weak)) void aps5_vulkan_set_active(int active) { (void)active; }
+diff --git a/app/Madeira/Madeira-Bridging-Header.h b/app/Madeira/Madeira-Bridging-Header.h
+index b9bf561..c5be4ab 100644
+--- a/app/Madeira/Madeira-Bridging-Header.h
++++ b/app/Madeira/Madeira-Bridging-Header.h
+@@ -15,6 +15,9 @@
+ // Wine file-based logging (server_ios.c)
+ void wine_log_set_file(const char *path);
+ 
++// Bounded read-only snapshot of this process's native Mach VM map.
++int aps5_runtime_snapshot(const char *path, const char *phase, const char *context_json);
++
+ // UI log callback (wine_log_ios.c) — forwards C logs to Swift UI
+ typedef void (*wine_ui_log_callback_t)(const char *message);
+ void wine_set_ui_log_callback(wine_ui_log_callback_t cb);
+@@ -73,3 +76,6 @@ int madeira_d3d12_canary_run(const char *fixture_dir, const char *dylib_path,
+ int madeira_d3d12_canary_run_log(const char *fixture_dir, const char *dylib_path,
+                                  void (*sink)(const char *), const char *log_path,
+                                  const char *build_id);
++
++// Park Vulkan submissions while inactive; drain outstanding work before background.
++void aps5_vulkan_set_active(int active);
+diff --git a/build/win32u-unix/vulkan_lifecycle.h b/build/win32u-unix/vulkan_lifecycle.h
+new file mode 100644
+index 0000000..1d52cc2
+--- /dev/null
++++ b/build/win32u-unix/vulkan_lifecycle.h
+@@ -0,0 +1,41 @@
++/* Admission gate: UIKit closes it before backgrounding; entrants park rather
++ * than dropping a submission or reporting fabricated Vulkan success. */
++#ifndef APS5_VULKAN_LIFECYCLE_H
++#define APS5_VULKAN_LIFECYCLE_H
++#include <pthread.h>
++struct aps5_gpu_gate {
++    pthread_mutex_t lock;
++    pthread_cond_t changed;
++    unsigned running;
++    int active;
++};
++#define APS5_GPU_GATE_INITIALIZER { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0 }
++static inline void aps5_gpu_enter(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    while (!g->active) pthread_cond_wait(&g->changed, &g->lock);
++    ++g->running;
++    pthread_mutex_unlock(&g->lock);
++}
++static inline void aps5_gpu_leave(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    if (!--g->running) pthread_cond_broadcast(&g->changed);
++    pthread_mutex_unlock(&g->lock);
++}
++/* Returns with admission closed and lock held; caller drains outstanding GPU
++ * work before releasing the lock, while UIKit still permits execution. */
++static inline void aps5_gpu_pause_lock(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    g->active = 0;
++    while (g->running) pthread_cond_wait(&g->changed, &g->lock);
++}
++static inline void aps5_gpu_resume(struct aps5_gpu_gate *g)
++{
++    pthread_mutex_lock(&g->lock);
++    g->active = 1;
++    pthread_cond_broadcast(&g->changed);
++    pthread_mutex_unlock(&g->lock);
++}
++#endif
+diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
+new file mode 100644
+index 0000000..54079ab
+--- /dev/null
++++ b/build/win32u-unix/vulkan_ios.c
+@@ -0,0 +1,300 @@
++/* iOS translation unit for dlls/win32u/vulkan.c.
++ *
++ * config_ios.h (passed with -include) #undefs SONAME_LIBVULKAN so the rest
++ * of the unix library keeps the "built without Vulkan" stubs. This file
++ * puts the macro back, then redirects dlopen/dlsym/dlclose onto
++ * moltenvk_static_loader.c before compiling upstream vulkan.c unchanged.
++ *
++ * SONAME is the literal "MoltenVK". The static build selects the pinned
++ * archive and supplies the host-only portability subset during device
++ * creation. Dynamic builds retain the normal loader dispatch.
++ */
++
++#define SONAME_LIBVULKAN "MoltenVK"
++
++#include "moltenvk_static_loader.h"
++#include <dlfcn.h>
++
++static void *madeira_vk_dlsym_ios(void *handle, const char *symbol);
++
++#define dlopen  madeira_vk_dlopen
++#define dlsym   madeira_vk_dlsym_ios
++#define dlclose madeira_vk_dlclose
++
++#define __wine_get_vulkan_driver madeira_get_vulkan_driver_base
++#include "vulkan.c"
++#undef __wine_get_vulkan_driver
++
++#undef dlopen
++#undef dlsym
++#undef dlclose
++
++#if defined(MADEIRA_VK_STATIC_LINK)
 +/* Wine suppresses native Vulkan prototypes; these are the statically linked
 + * MoltenVK entry points, with the native ABI and full declared signatures. */
 +extern VkResult VKAPI_CALL vkCreateDevice(VkPhysicalDevice, const VkDeviceCreateInfo *, const VkAllocationCallbacks *, VkDevice *);
@@ -18,19 +156,50 @@ diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
 +extern VkResult VKAPI_CALL vkDeviceWaitIdle(VkDevice);
 +extern VkResult VKAPI_CALL vkAcquireNextImageKHR(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t *);
 +extern VkResult VKAPI_CALL vkAcquireNextImage2KHR(VkDevice, const VkAcquireNextImageInfoKHR *, uint32_t *);
- /* This Wine revision excludes the provisional portability-subset extension
-  * from its generated extension bitsets. Its host-create conversion therefore
-  * drops the name even when an application requests it. Add the advertised
-  * host requirement after that conversion, preserving the feature chain. */
--static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
++/* This Wine revision excludes the provisional portability-subset extension
++ * from its generated extension bitsets. Its host-create conversion therefore
++ * drops the name even when an application requests it. Add the advertised
++ * host requirement after that conversion, preserving the feature chain. */
 +static VkResult VKAPI_CALL madeira_vkCreateDevice_base(VkPhysicalDevice physical,
-         const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
- {
-     static const char subset[] = "VK_KHR_portability_subset";
-@@ -74,12 +87,97 @@
-     return result;
- }
- 
++        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
++{
++    static const char subset[] = "VK_KHR_portability_subset";
++    VkExtensionProperties *properties = NULL;
++    uint32_t count = 0;
++    VkResult result;
++    int advertised = 0;
++    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i)
++        if (!strcmp(info->ppEnabledExtensionNames[i], subset))
++            return vkCreateDevice(physical, info, allocator, device);
++    do
++    {
++        free(properties);
++        properties = NULL;
++        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, NULL);
++        if (result != VK_SUCCESS) return result;
++        if (!count) return vkCreateDevice(physical, info, allocator, device);
++        properties = calloc(count, sizeof(*properties));
++        if (!properties) return VK_ERROR_OUT_OF_HOST_MEMORY;
++        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, properties);
++    } while (result == VK_INCOMPLETE);
++    if (result == VK_SUCCESS)
++        for (uint32_t i = 0; i < count; ++i)
++            if (!strcmp(properties[i].extensionName, subset)) advertised = 1;
++    free(properties);
++    if (result != VK_SUCCESS) return result;
++    if (!advertised) return vkCreateDevice(physical, info, allocator, device);
++    const char **extensions = calloc((size_t)info->enabledExtensionCount + 1, sizeof(*extensions));
++    if (!extensions) return VK_ERROR_OUT_OF_HOST_MEMORY;
++    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) extensions[i] = info->ppEnabledExtensionNames[i];
++    extensions[info->enabledExtensionCount] = subset;
++    VkDeviceCreateInfo host = *info;
++    host.enabledExtensionCount++;
++    host.ppEnabledExtensionNames = extensions;
++    result = vkCreateDevice(physical, &host, allocator, device);
++    free(extensions);
++    return result;
++}
++
 +#include "vulkan_lifecycle.h"
 +static struct aps5_gpu_gate aps5_gpu = APS5_GPU_GATE_INITIALIZER;
 +struct aps5_gpu_device { VkDevice host; struct aps5_gpu_device *next; };
@@ -116,110 +285,129 @@ diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
 +    return aps5_lifecycle_proc(name, get_proc(device, name));
 +}
 +
- static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(VkInstance instance, const char *name)
- {
-     PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
-     PFN_vkVoidFunction proc = get_proc(instance, name);
-     if (proc && name && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)madeira_vkCreateDevice;
--    return proc;
++static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(VkInstance instance, const char *name)
++{
++    PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
++    PFN_vkVoidFunction proc = get_proc(instance, name);
++    if (proc && name && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)madeira_vkCreateDevice;
 +    return aps5_lifecycle_proc(name, proc);
- }
- #endif
- 
-@@ -88,6 +186,7 @@
-     void *proc = madeira_vk_dlsym(handle, symbol);
- #if defined(MADEIRA_VK_STATIC_LINK)
-     if (proc && symbol && !strcmp(symbol, "vkGetInstanceProcAddr")) return (void *)madeira_vkGetInstanceProcAddr;
-+    if (proc && symbol && !strcmp(symbol, "vkGetDeviceProcAddr")) return (void *)madeira_vkGetDeviceProcAddr;
- #endif
-     return proc;
- }
-diff --git a/app/Madeira/ContentView.swift b/app/Madeira/ContentView.swift
---- a/app/Madeira/ContentView.swift
-+++ b/app/Madeira/ContentView.swift
-@@ -1348,15 +1348,18 @@
-             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                 library.refreshFlag()
-                 if library.enabled && library.current == nil { MetalHostView.shared.isHidden = true }
-+                aps5_vulkan_set_active(1)
-                 AnyPS5RuntimeDiagnostics.record("app_did_become_active")
-             }
-             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-+                aps5_vulkan_set_active(0)
-                 AnyPS5RuntimeDiagnostics.record("app_will_resign_active")
-             }
-             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                 AnyPS5RuntimeDiagnostics.record("app_did_enter_background")
-             }
-             .onAppear {
-+                aps5_vulkan_set_active(UIApplication.shared.applicationState == .active ? 1 : 0)
-                 jit_install_trap_handler()
-                 entitlements = EntitlementStatus.check()
-                 logEntitlementStatus()
-diff --git a/app/Madeira/Madeira-Bridging-Header.h b/app/Madeira/Madeira-Bridging-Header.h
---- a/app/Madeira/Madeira-Bridging-Header.h
-+++ b/app/Madeira/Madeira-Bridging-Header.h
-@@ -71,3 +71,6 @@
- int madeira_d3d12_canary_run_log(const char *fixture_dir, const char *dylib_path,
-                                  void (*sink)(const char *), const char *log_path,
-                                  const char *build_id);
-+
-+// Park Vulkan submissions while inactive; drain outstanding work before background.
-+void aps5_vulkan_set_active(int active);
-diff --git a/app/Madeira/IOSDisplayShim.m b/app/Madeira/IOSDisplayShim.m
---- a/app/Madeira/IOSDisplayShim.m
-+++ b/app/Madeira/IOSDisplayShim.m
-@@ -284,3 +284,7 @@
- void macdrv_view_release_metal_view(macdrv_metal_view v) {
-     my_view_release_metal_view(v);
- }
-+
-+/* Non-Vulkan builds have no submission gate. The static Vulkan driver defines
-+ * the strong implementation in its already-linked win32u object. */
-+__attribute__((weak)) void aps5_vulkan_set_active(int active) { (void)active; }
-diff --git a/build/win32u-unix/vulkan_lifecycle.h b/build/win32u-unix/vulkan_lifecycle.h
-new file mode 100644
---- /dev/null
-+++ b/build/win32u-unix/vulkan_lifecycle.h
-@@ -0,0 +1,41 @@
-+/* Admission gate: UIKit closes it before backgrounding; entrants park rather
-+ * than dropping a submission or reporting fabricated Vulkan success. */
-+#ifndef APS5_VULKAN_LIFECYCLE_H
-+#define APS5_VULKAN_LIFECYCLE_H
-+#include <pthread.h>
-+struct aps5_gpu_gate {
-+    pthread_mutex_t lock;
-+    pthread_cond_t changed;
-+    unsigned running;
-+    int active;
-+};
-+#define APS5_GPU_GATE_INITIALIZER { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0 }
-+static inline void aps5_gpu_enter(struct aps5_gpu_gate *g)
-+{
-+    pthread_mutex_lock(&g->lock);
-+    while (!g->active) pthread_cond_wait(&g->changed, &g->lock);
-+    ++g->running;
-+    pthread_mutex_unlock(&g->lock);
-+}
-+static inline void aps5_gpu_leave(struct aps5_gpu_gate *g)
-+{
-+    pthread_mutex_lock(&g->lock);
-+    if (!--g->running) pthread_cond_broadcast(&g->changed);
-+    pthread_mutex_unlock(&g->lock);
-+}
-+/* Returns with admission closed and lock held; caller drains outstanding GPU
-+ * work before releasing the lock, while UIKit still permits execution. */
-+static inline void aps5_gpu_pause_lock(struct aps5_gpu_gate *g)
-+{
-+    pthread_mutex_lock(&g->lock);
-+    g->active = 0;
-+    while (g->running) pthread_cond_wait(&g->changed, &g->lock);
-+}
-+static inline void aps5_gpu_resume(struct aps5_gpu_gate *g)
-+{
-+    pthread_mutex_lock(&g->lock);
-+    g->active = 1;
-+    pthread_cond_broadcast(&g->changed);
-+    pthread_mutex_unlock(&g->lock);
 +}
 +#endif
++
++static void *madeira_vk_dlsym_ios(void *handle, const char *symbol)
++{
++    void *proc = madeira_vk_dlsym(handle, symbol);
++#if defined(MADEIRA_VK_STATIC_LINK)
++    if (proc && symbol && !strcmp(symbol, "vkGetInstanceProcAddr")) return (void *)madeira_vkGetInstanceProcAddr;
++    if (proc && symbol && !strcmp(symbol, "vkGetDeviceProcAddr")) return (void *)madeira_vkGetDeviceProcAddr;
++#endif
++    return proc;
++}
++
++/* A Wine HWND is deliberately scaled into Madeira's fullscreen game layer.
++ * Negotiate real surface/device maintenance support instead of suppressing
++ * MoltenVK's SUBOPTIMAL result or its natural-extent check. */
++static VkResult VKAPI_CALL madeira_scaled_host_swapchain(VkDevice device,
++        const VkSwapchainCreateInfoKHR *info, const VkAllocationCallbacks *allocator, VkSwapchainKHR *ret)
++{
++    PFN_vkCreateSwapchainKHR create = (PFN_vkCreateSwapchainKHR)p_vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR");
++    return create(device, info, allocator, ret);
++}
++
++static VkResult madeira_client_create_device(VkPhysicalDevice physical,
++        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *ret)
++{
++    struct vulkan_physical_device *pd = vulkan_physical_device_from_handle(physical);
++    struct vulkan_instance *instance = pd->instance;
++    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT maintenance = {
++        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT};
++    VkPhysicalDeviceFeatures2 features = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &maintenance};
++    VkDeviceCreateInfo host = *info;
++    int enabled = 0, existing = 0;
++    VkResult result;
++    if (instance->extensions.has_VK_EXT_surface_maintenance1 && pd->extensions.has_VK_EXT_swapchain_maintenance1)
++    {
++        PFN_vkGetPhysicalDeviceFeatures2 query = (PFN_vkGetPhysicalDeviceFeatures2)
++            p_vkGetInstanceProcAddr(instance->host.instance, "vkGetPhysicalDeviceFeatures2");
++        if (!query) query = (PFN_vkGetPhysicalDeviceFeatures2)
++            p_vkGetInstanceProcAddr(instance->host.instance, "vkGetPhysicalDeviceFeatures2KHR");
++        if (query) query(pd->host.physical_device, &features);
++        if (maintenance.swapchainMaintenance1)
++        {
++            for (const VkBaseInStructure *next = info->pNext; next; next = next->pNext)
++                if (next->sType == maintenance.sType)
++                {
++                    existing = 1;
++                    enabled = ((const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT *)next)->swapchainMaintenance1;
++                }
++            if (!existing)
++            {
++                maintenance.pNext = (void *)host.pNext;
++                host.pNext = &maintenance;
++                enabled = 1;
++            }
++        }
++    }
++    result = win32u_vkCreateDevice(physical, &host, allocator, ret);
++    if (result == VK_SUCCESS && enabled)
++    {
++        /* Per-device marker: no global device registry or handle lifetime race.
++         * The native function itself passes through to the real ICD. */
++        struct vulkan_device *device = vulkan_device_from_handle(*ret);
++        if (device->extensions.has_VK_EXT_swapchain_maintenance1)
++            device->p_vkCreateSwapchainKHR = madeira_scaled_host_swapchain;
++    }
++    return result;
++}
++
++static VkResult madeira_client_create_swapchain(VkDevice client,
++        const VkSwapchainCreateInfoKHR *info, const VkAllocationCallbacks *allocator, VkSwapchainKHR *ret)
++{
++    struct vulkan_device *device = vulkan_device_from_handle(client);
++    struct vulkan_physical_device *pd = device->physical_device;
++    struct vulkan_instance *instance = pd->instance;
++    struct surface *surface = surface_from_handle(info->surface);
++    VkSwapchainPresentScalingCreateInfoEXT scaling = {
++        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT,
++        .pNext = info->pNext, .scalingBehavior = VK_PRESENT_SCALING_STRETCH_BIT_EXT};
++    VkSurfacePresentModeEXT mode = {.sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT, .presentMode = info->presentMode};
++    VkPhysicalDeviceSurfaceInfo2KHR surface_info = {
++        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, .pNext = &mode};
++    VkSurfacePresentScalingCapabilitiesEXT support = {.sType = VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT};
++    VkSurfaceCapabilities2KHR capabilities = {.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR, .pNext = &support};
++    VkSwapchainCreateInfoKHR host = *info;
++    if (!surface || device->p_vkCreateSwapchainKHR != madeira_scaled_host_swapchain ||
++        !instance->p_vkGetPhysicalDeviceSurfaceCapabilities2KHR)
++        return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
++    /* Preserve explicit application scaling rather than duplicating its sType. */
++    for (const VkBaseInStructure *next = info->pNext; next; next = next->pNext)
++        if (next->sType == scaling.sType) return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
++    surface_info.surface = surface->obj.host.surface;
++    VkResult result = instance->p_vkGetPhysicalDeviceSurfaceCapabilities2KHR(
++        pd->host.physical_device, &surface_info, &capabilities);
++    if (result != VK_SUCCESS) return result;
++    if (!(support.supportedPresentScaling & VK_PRESENT_SCALING_STRETCH_BIT_EXT) ||
++        info->imageExtent.width < support.minScaledImageExtent.width ||
++        info->imageExtent.height < support.minScaledImageExtent.height ||
++        info->imageExtent.width > support.maxScaledImageExtent.width ||
++        info->imageExtent.height > support.maxScaledImageExtent.height)
++        return win32u_vkCreateSwapchainKHR(client, info, allocator, ret);
++    host.pNext = &scaling;
++    fprintf(stderr, "[anyps5-vulkan-scaling] supported stretch extent=%ux%u; maintenance feature enabled\n",
++            info->imageExtent.width, info->imageExtent.height);
++    return win32u_vkCreateSwapchainKHR(client, &host, allocator, ret);
++}
++
++static pthread_once_t madeira_scaling_once = PTHREAD_ONCE_INIT;
++static void madeira_install_scaling(void)
++{
++    vulkan_funcs.p_vkCreateDevice = madeira_client_create_device;
++    vulkan_funcs.p_vkCreateSwapchainKHR = madeira_client_create_swapchain;
++}
++
++const struct vulkan_funcs *__wine_get_vulkan_driver(UINT version)
++{
++    const struct vulkan_funcs *funcs = madeira_get_vulkan_driver_base(version);
++    if (funcs) pthread_once(&madeira_scaling_once, madeira_install_scaling);
++    return funcs;
++}

@@ -38,12 +38,33 @@ fi
 make -C "$build" -j"$jobs" \
     dlls/ntdll/arm64ec-windows/ntdll.dll \
     dlls/winevulkan/arm64ec-windows/winevulkan.dll \
-    dlls/vulkan-1/arm64ec-windows/vulkan-1.dll
-for module in ntdll winevulkan vulkan-1; do
+    dlls/vulkan-1/arm64ec-windows/vulkan-1.dll \
+    dlls/win32u/arm64ec-windows/win32u.dll \
+    dlls/mscoree/arm64ec-windows/mscoree.dll \
+    dlls/xinput1_1/arm64ec-windows/xinput1_1.dll \
+    dlls/xinput1_2/arm64ec-windows/xinput1_2.dll \
+    dlls/xinput1_3/arm64ec-windows/xinput1_3.dll \
+    dlls/xinput1_4/arm64ec-windows/xinput1_4.dll \
+    dlls/xinput9_1_0/arm64ec-windows/xinput9_1_0.dll
+for module in ntdll winevulkan vulkan-1 win32u mscoree xinput1_1 xinput1_2 xinput1_3 xinput1_4 xinput9_1_0; do
     source="$build/dlls/$module/arm64ec-windows/$module.dll"
     target="$madeira/app/Madeira/arm64ec-windows/$module.dll"
     cp "$source" "$target.tmp"
     "$tc/arm64ec-w64-mingw32-strip" --strip-debug "$target.tmp"
+    if [ "$module" = ntdll ]; then
+        # The native loader maps a file image with this exact upstream slack.
+        python3 - "$target.tmp" <<'PY'
+import struct, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = path.read_bytes()
+pe = struct.unpack_from('<I', data, 0x3c)[0]
+target = struct.unpack_from('<I', data, pe + 24 + 56)[0] + 0x50000
+if len(data) > target:
+    raise ValueError('Stripped ntdll exceeds the loader padding contract')
+path.write_bytes(data + b'\0' * (target - len(data)))
+PY
+    fi
     mv "$target.tmp" "$target"
 done
 for module in ntdll xtajit64 winevulkan vulkan-1; do

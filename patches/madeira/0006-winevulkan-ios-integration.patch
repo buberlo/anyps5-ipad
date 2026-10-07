@@ -1,49 +1,8 @@
-diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
---- a/build/ntdll-unix/virtual_ios.c
-+++ b/build/ntdll-unix/virtual_ios.c
-@@ -9003,6 +9003,10 @@
-  * winemetal_unix.c to avoid collision with our own ntdll table). */
- extern const void *dxmt_winemetal_unix_call_funcs[];
- 
-+#if defined(MADEIRA_WITH_VULKAN)
-+#include "../winevulkan-unix/binder.h"
-+#endif
-+
- /* DXMT's winemetal_unix.c, linked into the same image, reports per-frame
-  * statistics into a "[frame]" instrument through the symbols below.  That
-  * instrument is a diagnostic and is not part of this port, so this is its off
-@@ -9315,10 +9319,17 @@
-          * so they have no layout to get wrong. */
-         const char *libname = NULL;
-         const void *funcs64 = NULL, *funcs_wow64 = NULL;
-+#if defined(MADEIRA_WITH_VULKAN)
-+        if (madeira_winevulkan_matches(match) || madeira_winevulkan_matches(modname))
-+            return ios_bind_unixlib_table(module, "winevulkan", wow,
-+                                          madeira_winevulkan_table(0), NULL, funcs);
-+#endif
-         if (match && strstr(match, "winemetal")) {
-             libname = "winemetal";
-+#if !defined(APS5_VULKAN_ONLY)
-             funcs64 = (const void *)dxmt_winemetal_unix_call_funcs;
-             funcs_wow64 = (const void *)dxmt_winemetal_unix_call_wow64_funcs;
-+#endif
-         } else if (wow && ((match && strstr(match, "d3d9shim")) ||
-                            (modname && strstr(modname, "d3d9shim")))) {
-             /* The i386 D3D9 shim, bound to the native ARM64 frontend.  A
-@@ -9330,7 +9341,9 @@
-              * installed as d3d9.dll, so a unix_path would read "d3d9.so"; its
-              * PE export name stays d3d9shim.dll whatever the file is called. */
-             libname = "d3d9shim";
-+#if !defined(APS5_VULKAN_ONLY)
-             funcs_wow64 = (const void *)dxmt_d3d9_unix_call_wow64_funcs;
-+#endif
-         } else if (match && (strstr(match, "wineios.drv") || strstr(match, "winecoreaudio") || strstr(match, "winealsa") || strstr(match, "winepulse"))) {
-             /* NOTE: mmdevapi does NOT reach the driver through this by-module
-              * path — __wine_load_unix_lib() asks for "wine<name>.drv" BY NAME
 diff --git a/build/win32u-unix/build.sh b/build/win32u-unix/build.sh
+index a0a635d..1c194d4 100755
 --- a/build/win32u-unix/build.sh
 +++ b/build/win32u-unix/build.sh
-@@ -10,14 +10,23 @@
+@@ -10,14 +10,23 @@ set -e
  
  BUILD_DIR="$(cd "$(dirname "$0")" && pwd)"
  REPO_ROOT="$(cd "$BUILD_DIR/../.." && pwd)"
@@ -69,7 +28,7 @@ diff --git a/build/win32u-unix/build.sh b/build/win32u-unix/build.sh
  
  SUCCEEDED=0
  FAILED=0
-@@ -53,7 +62,7 @@
+@@ -53,7 +62,7 @@ compile_one() {
          -USONAME_LIBVULKAN \
          -USONAME_LIBGNUTLS \
          -UHAVE_FT2BUILD_H \
@@ -78,7 +37,21 @@ diff --git a/build/win32u-unix/build.sh b/build/win32u-unix/build.sh
          -c "$src" -o "$OBJ_DIR/$name.o" 2>"$OBJ_DIR/$name.err"; then
          echo "OK"
          SUCCEEDED=$((SUCCEEDED + 1))
-@@ -135,6 +144,11 @@
+@@ -127,11 +136,25 @@ for src in $WINE_SRC/dlls/win32u/*.c $WINE_SRC/dlls/win32u/dibdrv/*.c; do
+                 -I"$REPO_ROOT/research/freetype/include"
+             continue
+             ;;
++        vulkan)
++            # Default tree still compiles upstream vulkan.c with SONAME_LIBVULKAN
++            # undefined (config_ios.h). MADEIRA_WITH_VULKAN=1 swaps in the
++            # MoltenVK static-link wrapper. See vulkan_ios.c.
++            if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then
++                compile_one "$BUILD_DIR/vulkan_ios.c" "vulkan" -DMADEIRA_WITH_VULKAN=1
++                continue
++            fi
++            ;;
+     esac
+ 
      compile_one "$src" "$name"
  done
  
@@ -90,40 +63,44 @@ diff --git a/build/win32u-unix/build.sh b/build/win32u-unix/build.sh
  echo ""
  echo "Results: $SUCCEEDED succeeded, $FAILED failed"
  if [ -n "$FAILED_FILES" ]; then
-@@ -145,11 +159,6 @@
-     echo ""
-     echo "(not linking — errors in $OBJ_DIR/<name>.err)"
-     exit 1
--fi
--
--if [ "${MADEIRA_WITH_VULKAN:-}" = "1" ]; then
--    compile_one "$BUILD_DIR/vulkan_metal_ios.c" "vulkan_metal_ios" -DMADEIRA_WITH_VULKAN=1
--    compile_one "$BUILD_DIR/moltenvk_static_loader.c" "moltenvk_static_loader" -DMADEIRA_WITH_VULKAN=1
- fi
- 
- echo ""
 diff --git a/build/win32u-unix/driver_ios.c b/build/win32u-unix/driver_ios.c
+index da75250..df3dd10 100644
 --- a/build/win32u-unix/driver_ios.c
 +++ b/build/win32u-unix/driver_ios.c
-@@ -59,7 +59,11 @@
+@@ -59,6 +59,11 @@ extern void winios_pDestroyWindow( HWND hwnd ) __attribute__((weak));
  extern UINT winios_pShowWindow( HWND hwnd, INT cmd, RECT *rect, UINT swp ) __attribute__((weak));
  extern void winios_pWindowPosChanged( HWND hwnd, HWND insert_after, HWND owner_hint, UINT swp_flags,
                                        const struct window_rects *new_rects, struct window_surface *surface ) __attribute__((weak));
 +#if defined(MADEIRA_WITH_VULKAN)
 +extern UINT winios_pVulkanInit( UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs );
 +#else
- extern UINT winios_pVulkanInit( UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs ) __attribute__((weak));
++extern UINT winios_pVulkanInit( UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs ) __attribute__((weak));
 +#endif
  
  static struct user_driver_funcs winios_user_driver;
  
+@@ -1872,6 +1877,11 @@ static void load_display_driver(void)
+                         "(MADEIRA_GAME_WINDOWS=0 hides them)\n" );
+         }
+         winios_user_driver.pUpdateDisplayDevices = winios_UpdateDisplayDevices;
++        /* MoltenVK surface creation. NULL (MADEIRA_WITH_VULKAN unset, or the
++         * TU not linked) leaves SET_USER_FUNC on nulldrv_VulkanInit, which
++         * reports STATUS_NOT_IMPLEMENTED and win32u falls back to a headless
++         * surface. AnyPS5 needs a real VK_EXT_metal_surface. */
++        if (winios_pVulkanInit) winios_user_driver.pVulkanInit = winios_pVulkanInit;
+         __wine_set_user_driver( &winios_user_driver, WINE_GDI_DRIVER_VERSION );
+ #else
+         __wine_set_user_driver( &null_user_driver, WINE_GDI_DRIVER_VERSION );
 diff --git a/build/win32u-unix/moltenvk_static_loader.c b/build/win32u-unix/moltenvk_static_loader.c
---- a/build/win32u-unix/moltenvk_static_loader.c
+new file mode 100644
+index 0000000..c8edaec
+--- /dev/null
 +++ b/build/win32u-unix/moltenvk_static_loader.c
-@@ -2,6 +2,15 @@
- 
- #include <dlfcn.h>
- #include <string.h>
+@@ -0,0 +1,83 @@
++#include "moltenvk_static_loader.h"
++
++#include <dlfcn.h>
++#include <string.h>
 +
 +#if defined(MADEIRA_VK_STATIC_LINK)
 +/* These strong references keep the ICD entry points in a static app link.
@@ -133,13 +110,14 @@ diff --git a/build/win32u-unix/moltenvk_static_loader.c b/build/win32u-unix/molt
 +extern madeira_vk_proc vkGetInstanceProcAddr(void *instance, const char *name);
 +extern madeira_vk_proc vkGetDeviceProcAddr(void *device, const char *name);
 +#endif
- 
- /* glibc 2.35 (Ubuntu 22.04) hides RTLD_DEFAULT unless _GNU_SOURCE.
-  * The value is the same one current glibc publishes by default. */
-@@ -10,6 +19,18 @@
- #endif
- 
- static int g_static_icd_sentinel;
++
++/* glibc 2.35 (Ubuntu 22.04) hides RTLD_DEFAULT unless _GNU_SOURCE.
++ * The value is the same one current glibc publishes by default. */
++#ifndef RTLD_DEFAULT
++#define RTLD_DEFAULT ((void *)0)
++#endif
++
++static int g_static_icd_sentinel;
 +
 +static void *static_entry(const char *symbol)
 +{
@@ -152,285 +130,59 @@ diff --git a/build/win32u-unix/moltenvk_static_loader.c b/build/win32u-unix/molt
 +    return dlsym(RTLD_DEFAULT, symbol);
 +#endif
 +}
- 
- int madeira_vk_path_is_icd(const char *path)
- {
-@@ -26,12 +47,19 @@
- 
- void *madeira_vk_dlopen(const char *path, int mode)
- {
++
++int madeira_vk_path_is_icd(const char *path)
++{
++    if (!path) return 0;
++    return strstr(path, "MoltenVK") != NULL
++        || strstr(path, "libvulkan") != NULL
++        || strstr(path, "vulkan.framework") != NULL;
++}
++
++void *madeira_vk_static_sentinel(void)
++{
++    return &g_static_icd_sentinel;
++}
++
++void *madeira_vk_dlopen(const char *path, int mode)
++{
 +    if (!path) return NULL;
 +#if defined(MADEIRA_VK_STATIC_LINK)
 +    /* An explicit static build always uses its pinned ICD, even if a host
 +     * also has a Vulkan dylib. It never hands our sentinel to system dlsym. */
 +    if (madeira_vk_path_is_icd(path)) return madeira_vk_static_sentinel();
 +#endif
-     void *handle = dlopen(path, mode);
-     if (handle) return handle;
-     if (!madeira_vk_path_is_icd(path)) return NULL;
-     /* Static MoltenVK: the two entry points Wine resolves are already in
-      * this process. Any other ICD path that failed to dlopen stays a miss. */
--    if (dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr")) return madeira_vk_static_sentinel();
++    void *handle = dlopen(path, mode);
++    if (handle) return handle;
++    if (!madeira_vk_path_is_icd(path)) return NULL;
++    /* Static MoltenVK: the two entry points Wine resolves are already in
++     * this process. Any other ICD path that failed to dlopen stays a miss. */
 +    if (static_entry("vkGetInstanceProcAddr") && static_entry("vkGetDeviceProcAddr"))
 +        return madeira_vk_static_sentinel();
-     return NULL;
- }
- 
-@@ -43,7 +71,7 @@
-         /* Wine's vulkan_init_once only looks these two up on the ICD. */
-         if (strcmp(symbol, "vkGetInstanceProcAddr") != 0 && strcmp(symbol, "vkGetDeviceProcAddr") != 0)
-             return NULL;
--        return dlsym(RTLD_DEFAULT, symbol);
++    return NULL;
++}
++
++void *madeira_vk_dlsym(void *handle, const char *symbol)
++{
++    if (!handle || !symbol) return NULL;
++    if (handle == madeira_vk_static_sentinel())
++    {
++        /* Wine's vulkan_init_once only looks these two up on the ICD. */
++        if (strcmp(symbol, "vkGetInstanceProcAddr") != 0 && strcmp(symbol, "vkGetDeviceProcAddr") != 0)
++            return NULL;
 +        return static_entry(symbol);
-     }
-     return dlsym(handle, symbol);
- }
-diff --git a/build/win32u-unix/vulkan_metal_ios.c b/build/win32u-unix/vulkan_metal_ios.c
---- a/build/win32u-unix/vulkan_metal_ios.c
-+++ b/build/win32u-unix/vulkan_metal_ios.c
-@@ -6,8 +6,8 @@
-  * library on iOS. This TU is linked into libwin32u_unix.a and registered
-  * from driver_ios.c as winios_pVulkanInit when the symbol is present.
-  *
-- * The CAMetalLayer is the one Winios.m already owns for the HWND
-- * (winios_metal_layer_for_hwnd). MoltenVK presents that layer.
-+ * IOSDisplayShim selects the existing game CAMetalLayer or the desktop
-+ * compositor's HWND layer. The surface retains it until destruction.
-  *
-  * Not compile-checked on Linux: it includes Wine's unix headers and is
-  * built by build/win32u-unix/build.sh with the iOS SDK. The loader beside
-@@ -21,6 +21,7 @@
- #include "config.h"
- 
- #include <dlfcn.h>
-+#include <stdlib.h>
- #include <string.h>
- 
- #include "ntstatus.h"
-@@ -29,14 +30,23 @@
- #include "winbase.h"
- #include "wine/gdi_driver.h"
- #include "wine/vulkan_driver.h"
-+#include "moltenvk_static_loader.h"
- 
--extern void *winios_metal_layer_for_hwnd(void *hwnd);
-+extern void *madeira_vulkan_layer_acquire(void *hwnd);
-+extern void madeira_vulkan_layer_release(void *layer);
-+
-+struct ios_client_surface
-+{
-+    struct client_surface base;
-+    void *layer;
-+};
- 
- static int g_use_metal_surface;
- 
- static void ios_surface_destroy(struct client_surface *surface)
- {
--    (void)surface;
-+    struct ios_client_surface *ios = (struct ios_client_surface *)surface;
-+    madeira_vulkan_layer_release(ios->layer);
- }
- 
- static void ios_surface_detach(struct client_surface *surface)
-@@ -69,14 +79,19 @@
-     VkMetalSurfaceCreateInfoEXT info;
-     VkResult res;
-     void *layer;
--    struct client_surface *surface;
-+    struct ios_client_surface *surface;
- 
-     if (!g_use_metal_surface || !instance || !instance->p_vkCreateMetalSurfaceEXT)
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
--    layer = winios_metal_layer_for_hwnd(hwnd);
-+    layer = madeira_vulkan_layer_acquire(hwnd);
-     if (!layer) return VK_ERROR_INCOMPATIBLE_DRIVER;
--    surface = client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
--    if (!surface) return VK_ERROR_OUT_OF_HOST_MEMORY;
-+    surface = (struct ios_client_surface *)client_surface_create(sizeof(*surface), &ios_surface_funcs, hwnd);
-+    if (!surface)
-+    {
-+        madeira_vulkan_layer_release(layer);
-+        return VK_ERROR_OUT_OF_HOST_MEMORY;
 +    }
-+    surface->layer = layer;
- 
-     memset(&info, 0, sizeof(info));
-     info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-@@ -84,10 +99,10 @@
-     res = instance->p_vkCreateMetalSurfaceEXT(instance->host.instance, &info, NULL, handle);
-     if (res != VK_SUCCESS)
-     {
--        client_surface_release(surface);
-+        client_surface_release(&surface->base);
-         return res;
-     }
--    *client = surface;
-+    *client = &surface->base;
-     return VK_SUCCESS;
- }
- 
-@@ -123,8 +138,31 @@
- 
- UINT winios_pVulkanInit(UINT version, void *vulkan_handle, const struct vulkan_driver_funcs **driver_funcs)
- {
-+    PFN_vkGetInstanceProcAddr get_proc;
-+    PFN_vkEnumerateInstanceExtensionProperties enumerate;
-+    VkExtensionProperties *extensions;
-+    uint32_t count = 0;
-+    VkResult result;
++    return dlsym(handle, symbol);
++}
 +
-     if (version != WINE_VULKAN_DRIVER_VERSION) return STATUS_INVALID_PARAMETER;
--    g_use_metal_surface = vulkan_handle && dlsym(vulkan_handle, "vkCreateMetalSurfaceEXT") != NULL;
-+    if (!driver_funcs) return STATUS_INVALID_PARAMETER;
-+    *driver_funcs = NULL;
-+    g_use_metal_surface = 0;
-+    get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
-+    if (!get_proc) return STATUS_NOT_IMPLEMENTED;
-+    enumerate = (PFN_vkEnumerateInstanceExtensionProperties)get_proc(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
-+    if (!enumerate || enumerate(NULL, &count, NULL) != VK_SUCCESS || !count)
-+        return STATUS_NOT_IMPLEMENTED;
-+    extensions = calloc(count, sizeof(*extensions));
-+    if (!extensions) return STATUS_NO_MEMORY;
-+    result = enumerate(NULL, &count, extensions);
-+    if (result == VK_SUCCESS)
-+        for (uint32_t i = 0; i < count; ++i)
-+            if (!strcmp(extensions[i].extensionName, "VK_EXT_metal_surface"))
-+                g_use_metal_surface = 1;
-+    free(extensions);
-+    /* There is no VkInstance yet. Wine resolves vkCreateMetalSurfaceEXT on
-+     * the host instance after applying our extension mapping. */
-     if (!g_use_metal_surface) return STATUS_NOT_IMPLEMENTED;
-     *driver_funcs = &ios_vulkan_driver_funcs;
-     return STATUS_SUCCESS;
-diff --git a/build/win32u-unix/vulkan_ios.c b/build/win32u-unix/vulkan_ios.c
---- a/build/win32u-unix/vulkan_ios.c
-+++ b/build/win32u-unix/vulkan_ios.c
-@@ -5,18 +5,20 @@
-  * puts the macro back, then redirects dlopen/dlsym/dlclose onto
-  * moltenvk_static_loader.c before compiling upstream vulkan.c unchanged.
-  *
-- * SONAME is the literal "MoltenVK". madeira_vk_dlopen tries that name first
-- * (an embedded MoltenVK dylib or framework) and, on failure, binds
-- * vkGetInstanceProcAddr from the static archive linked into Madeira.app.
-- * Do not pass -USONAME_LIBVULKAN for this TU.
-+ * SONAME is the literal "MoltenVK". The static build selects the pinned
-+ * archive and supplies the host-only portability subset during device
-+ * creation. Dynamic builds retain the normal loader dispatch.
-  */
- 
- #define SONAME_LIBVULKAN "MoltenVK"
- 
- #include "moltenvk_static_loader.h"
-+#include <dlfcn.h>
-+
-+static void *madeira_vk_dlsym_ios(void *handle, const char *symbol);
- 
- #define dlopen  madeira_vk_dlopen
--#define dlsym   madeira_vk_dlsym
-+#define dlsym   madeira_vk_dlsym_ios
- #define dlclose madeira_vk_dlclose
- 
- #include "vulkan.c"
-@@ -24,3 +26,66 @@
- #undef dlopen
- #undef dlsym
- #undef dlclose
-+
-+#if defined(MADEIRA_VK_STATIC_LINK)
-+/* This Wine revision excludes the provisional portability-subset extension
-+ * from its generated extension bitsets. Its host-create conversion therefore
-+ * drops the name even when an application requests it. Add the advertised
-+ * host requirement after that conversion, preserving the feature chain. */
-+static VkResult VKAPI_CALL madeira_vkCreateDevice(VkPhysicalDevice physical,
-+        const VkDeviceCreateInfo *info, const VkAllocationCallbacks *allocator, VkDevice *device)
++int madeira_vk_dlclose(void *handle)
 +{
-+    static const char subset[] = "VK_KHR_portability_subset";
-+    VkExtensionProperties *properties = NULL;
-+    uint32_t count = 0;
-+    VkResult result;
-+    int advertised = 0;
-+    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i)
-+        if (!strcmp(info->ppEnabledExtensionNames[i], subset))
-+            return vkCreateDevice(physical, info, allocator, device);
-+    do
-+    {
-+        free(properties);
-+        properties = NULL;
-+        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, NULL);
-+        if (result != VK_SUCCESS) return result;
-+        if (!count) return vkCreateDevice(physical, info, allocator, device);
-+        properties = calloc(count, sizeof(*properties));
-+        if (!properties) return VK_ERROR_OUT_OF_HOST_MEMORY;
-+        result = vkEnumerateDeviceExtensionProperties(physical, NULL, &count, properties);
-+    } while (result == VK_INCOMPLETE);
-+    if (result == VK_SUCCESS)
-+        for (uint32_t i = 0; i < count; ++i)
-+            if (!strcmp(properties[i].extensionName, subset)) advertised = 1;
-+    free(properties);
-+    if (result != VK_SUCCESS) return result;
-+    if (!advertised) return vkCreateDevice(physical, info, allocator, device);
-+    const char **extensions = calloc((size_t)info->enabledExtensionCount + 1, sizeof(*extensions));
-+    if (!extensions) return VK_ERROR_OUT_OF_HOST_MEMORY;
-+    for (uint32_t i = 0; i < info->enabledExtensionCount; ++i) extensions[i] = info->ppEnabledExtensionNames[i];
-+    extensions[info->enabledExtensionCount] = subset;
-+    VkDeviceCreateInfo host = *info;
-+    host.enabledExtensionCount++;
-+    host.ppEnabledExtensionNames = extensions;
-+    result = vkCreateDevice(physical, &host, allocator, device);
-+    free(extensions);
-+    return result;
++    if (!handle || handle == madeira_vk_static_sentinel()) return 0;
++    return dlclose(handle);
 +}
-+
-+static PFN_vkVoidFunction VKAPI_CALL madeira_vkGetInstanceProcAddr(VkInstance instance, const char *name)
-+{
-+    PFN_vkGetInstanceProcAddr get_proc = (PFN_vkGetInstanceProcAddr)madeira_vk_dlsym(vulkan_handle, "vkGetInstanceProcAddr");
-+    PFN_vkVoidFunction proc = get_proc(instance, name);
-+    if (proc && name && !strcmp(name, "vkCreateDevice")) return (PFN_vkVoidFunction)madeira_vkCreateDevice;
-+    return proc;
-+}
-+#endif
-+
-+static void *madeira_vk_dlsym_ios(void *handle, const char *symbol)
-+{
-+    void *proc = madeira_vk_dlsym(handle, symbol);
-+#if defined(MADEIRA_VK_STATIC_LINK)
-+    if (proc && symbol && !strcmp(symbol, "vkGetInstanceProcAddr")) return (void *)madeira_vkGetInstanceProcAddr;
-+#endif
-+    return proc;
-+}
-diff --git a/app/Madeira/IOSDisplayShim.m b/app/Madeira/IOSDisplayShim.m
---- a/app/Madeira/IOSDisplayShim.m
-+++ b/app/Madeira/IOSDisplayShim.m
-@@ -156,6 +156,26 @@
- // Game sessions: the window a swapchain presents from is the game's own;
- // Winios.m's game-mode window overlay must not draw its GDI bits.
- extern void winios_note_game_metal_hwnd(void *hwnd);
-+
-+/* Vulkan follows the same desktop/game routing as the Metal display bridge.
-+ * A retained reference outlives asynchronous HWND/compositor removal. */
-+void *madeira_vulkan_layer_acquire(void *hwnd) {
-+    const char *desktop = getenv("MADEIRA_DESKTOP");
-+    if (desktop && *desktop == '1') {
-+        CAMetalLayer *layer = winios_metal_layer_for_hwnd(hwnd);
-+        return layer ? (void *)CFBridgingRetain(layer) : NULL;
-+    }
-+    pthread_mutex_lock(&g_lock);
-+    CAMetalLayer *layer = g_layer;
-+    void *retained = layer ? (void *)CFBridgingRetain(layer) : NULL;
-+    pthread_mutex_unlock(&g_lock);
-+    if (retained) winios_note_game_metal_hwnd(hwnd);
-+    return retained;
-+}
-+
-+void madeira_vulkan_layer_release(void *layer) {
-+    if (layer) CFRelease((CFTypeRef)layer);
-+}
- 
- static macdrv_metal_device my_create_metal_device(void) {
-     // DXMT also has a separate code path that creates its own MTLDevice;
 diff --git a/build/winevulkan-unix/binder.h b/build/winevulkan-unix/binder.h
 new file mode 100644
+index 0000000..fa87300
 --- /dev/null
 +++ b/build/winevulkan-unix/binder.h
 @@ -0,0 +1,30 @@
@@ -464,8 +216,54 @@ new file mode 100644
 +}
 +
 +#endif
+diff --git a/build/winevulkan-unix/build.sh b/build/winevulkan-unix/build.sh
+new file mode 100755
+index 0000000..bd3c337
+--- /dev/null
++++ b/build/winevulkan-unix/build.sh
+@@ -0,0 +1,39 @@
++#!/usr/bin/env bash
++# Build the actual Unix side that winevulkan.dll calls on iOS.
++set -euo pipefail
++here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++madeira="$(cd "$here/../.." && pwd)"
++wine="${WINE_SRC:-$madeira/wine}"
++configured="${WINE_BUILD:-$wine/build-macos}"
++out="${WINEVULKAN_BUILD_DIR:-$here/obj}"
++sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
++test -f "$configured/include/config.h" || {
++    echo "Wine generated headers missing: $configured/include/config.h" >&2
++    exit 1
++}
++mkdir -p "$out"
++objects=()
++for name in vulkan vulkan_thunks; do
++    source="$wine/dlls/winevulkan/$name.c"
++    if [ "$name" = vulkan ]; then source="$here/vulkan_ios.c"; fi
++    xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk" \
++        -miphoneos-version-min=17.0 -O2 -fPIC -fvisibility=hidden \
++        -fno-stack-protector -fno-strict-aliasing \
++        -Werror=implicit-function-declaration \
++        -include "$configured/include/config.h" \
++        -include "$madeira/build/ntdll-unix/shims/wine_ios_exit.h" \
++        -I"$here" -I"$configured/include" -I"$wine/include" \
++        -I"$configured/dlls/winevulkan" -I"$wine/dlls/winevulkan" \
++        -D__WINESRC__ -D_NTSYSTEM_ -D_ACRTIMP= -DWINBASEAPI= \
++        -DWINE_UNIX_LIB -DWINE_IOS=1 \
++        -D__wine_unix_call_funcs=winevulkan_unix_call_funcs \
++        -D__wine_unix_call_wow64_funcs=winevulkan_unix_call_wow64_funcs \
++        -c "$source" -o "$out/$name.o"
++    objects+=("$out/$name.o")
++done
++xcrun --sdk iphoneos libtool -static -o "$out/libwinevulkan_unix.a" "${objects[@]}"
++xcrun nm -g "$out/libwinevulkan_unix.a" > "$out/symbols.txt"
++grep -Eq ' [BDRS] _winevulkan_unix_call_funcs$' "$out/symbols.txt"
++grep -q ' T _aps5_vulkan_present_count$' "$out/symbols.txt"
++cp "$out/libwinevulkan_unix.a" "$madeira/app/Madeira/libwinevulkan_unix.a"
++echo "Built iOS winevulkan Unix archive: $out/libwinevulkan_unix.a"
 diff --git a/build/winevulkan-unix/present_count.h b/build/winevulkan-unix/present_count.h
 new file mode 100644
+index 0000000..515f476
 --- /dev/null
 +++ b/build/winevulkan-unix/present_count.h
 @@ -0,0 +1,5 @@
@@ -476,6 +274,7 @@ new file mode 100644
 +#endif
 diff --git a/build/winevulkan-unix/vulkan_ios.c b/build/winevulkan-unix/vulkan_ios.c
 new file mode 100644
+index 0000000..bc923b7
 --- /dev/null
 +++ b/build/winevulkan-unix/vulkan_ios.c
 @@ -0,0 +1,56 @@
@@ -535,47 +334,3 @@ new file mode 100644
 +    vk_funcs = &aps5_vulkan_functions;
 +    return STATUS_SUCCESS;
 +}
-diff --git a/build/winevulkan-unix/build.sh b/build/winevulkan-unix/build.sh
-new file mode 100755
---- /dev/null
-+++ b/build/winevulkan-unix/build.sh
-@@ -0,0 +1,39 @@
-+#!/usr/bin/env bash
-+# Build the actual Unix side that winevulkan.dll calls on iOS.
-+set -euo pipefail
-+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-+madeira="$(cd "$here/../.." && pwd)"
-+wine="${WINE_SRC:-$madeira/wine}"
-+configured="${WINE_BUILD:-$wine/build-macos}"
-+out="${WINEVULKAN_BUILD_DIR:-$here/obj}"
-+sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
-+test -f "$configured/include/config.h" || {
-+    echo "Wine generated headers missing: $configured/include/config.h" >&2
-+    exit 1
-+}
-+mkdir -p "$out"
-+objects=()
-+for name in vulkan vulkan_thunks; do
-+    source="$wine/dlls/winevulkan/$name.c"
-+    if [ "$name" = vulkan ]; then source="$here/vulkan_ios.c"; fi
-+    xcrun --sdk iphoneos clang -arch arm64 -isysroot "$sdk" \
-+        -miphoneos-version-min=17.0 -O2 -fPIC -fvisibility=hidden \
-+        -fno-stack-protector -fno-strict-aliasing \
-+        -Werror=implicit-function-declaration \
-+        -include "$configured/include/config.h" \
-+        -include "$madeira/build/ntdll-unix/shims/wine_ios_exit.h" \
-+        -I"$here" -I"$configured/include" -I"$wine/include" \
-+        -I"$configured/dlls/winevulkan" -I"$wine/dlls/winevulkan" \
-+        -D__WINESRC__ -D_NTSYSTEM_ -D_ACRTIMP= -DWINBASEAPI= \
-+        -DWINE_UNIX_LIB -DWINE_IOS=1 \
-+        -D__wine_unix_call_funcs=winevulkan_unix_call_funcs \
-+        -D__wine_unix_call_wow64_funcs=winevulkan_unix_call_wow64_funcs \
-+        -c "$source" -o "$out/$name.o"
-+    objects+=("$out/$name.o")
-+done
-+xcrun --sdk iphoneos libtool -static -o "$out/libwinevulkan_unix.a" "${objects[@]}"
-+xcrun nm -g "$out/libwinevulkan_unix.a" > "$out/symbols.txt"
-+grep -Eq ' [BDRS] _winevulkan_unix_call_funcs$' "$out/symbols.txt"
-+grep -q ' T _aps5_vulkan_present_count$' "$out/symbols.txt"
-+cp "$out/libwinevulkan_unix.a" "$madeira/app/Madeira/libwinevulkan_unix.a"
-+echo "Built iOS winevulkan Unix archive: $out/libwinevulkan_unix.a"

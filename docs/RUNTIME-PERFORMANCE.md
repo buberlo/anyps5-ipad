@@ -124,3 +124,41 @@ These compile production policy/measurement code and exercise error propagation,
 pNext preservation, unsupported fallback, timestamp ordering, pause/resume and
 replacement lifetimes. They do not replace a full signed build or physical-iPad
 benchmark. No GitHub Actions are used.
+
+## Refreshed runtime and hardware audio period
+
+The 2026-10-07 pin refresh uses AnyPS5 `ee391a56`, Madeira `48f97642`,
+FEX `3bec2ac49` and Wine `257f271cfff`. The iPad's qualified lazy 4 GiB
+window at `0x7400000000` still overrides the larger upstream arena; it is
+virtual address space, not a 4 GiB physical allocation. Repeated savedata
+initialization fixes from AnyPS5 are included. Shaders requiring unavailable
+64-bit buffer atomics fail explicitly.
+
+After successful `AVAudioSession` activation, the native bridge publishes
+`IOBufferDuration` atomically to the WASAPI device-period query. A 1024-frame
+48 kHz hardware callback requires a 21.333 ms producer period. The previous
+10 ms response let SDL queue only 960 frames, leaving 64 silent frames per
+callback. Invalid or unavailable durations retain the 10 ms fallback. This
+changes producer block sizing, not samples, effects or sample rate. Route
+changes and longer physical-device audio tests remain separate qualification.
+The Build 18 iPad launch reports the expected 21.333 ms hardware period.
+Run the production-policy regression locally after applying the patches:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror -I upstreams/Madeira/build/ntdll-unix \
+  tools/perf/test_audio_period.c -lm -o build/audio-period-test
+build/audio-period-test
+```
+
+Additional cold-start experiment switches are `APS5_MEASURE=1` (quiet Wine and
+MoltenVK logs), `APS5_PERF_REPORT=1` (native phase/memory reports once per second),
+`APS5_FRAME_COUNTERS=1`, `APS5_VBLANK_HZ=60`, `APS5_TEXTURE_CACHE_MIB=1..4096`,
+and the existing `APS5_FLIP_INFLIGHT`. Leave vblank, inflight and FEX
+synchronization at their defaults for the initial installation. The explicit
+`APS5_SWAPCHAIN_IMAGES=2|3` policy remains the authoritative buffer-count
+control, including resize. Configure these through the existing library's
+per-game environment settings; host settings must be applied before Wine starts.
+
+The optional MoltenVK stability series and FEX VirtualProtect experiment are
+excluded from the default build. Neither a HUD value nor the selected three-image
+profile establishes sustained 60 unique game images per physical refresh.

@@ -1,8 +1,80 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index 98d526c..e792143 100644
+index 5cadb337..9c60ca0a 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-@@ -592,6 +592,23 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -23,6 +23,14 @@
+ #ifdef _WIN32
+ #include <windows.h>
+ #endif
++#ifdef APS5_SLIM
++#ifndef _WIN32
++#include <dlfcn.h>
++#endif
++#else
++#include <SDL_loadso.h>
++#include <SDL_error.h>
++#endif
+ #include <atomic>
+ #include <chrono>
+ #include <charconv>
+@@ -30,8 +38,6 @@
+ #include <fstream>
+ #include <cstdlib>
+ #include <mutex>
+-#include <SDL_loadso.h>
+-#include <SDL_error.h>
+ #include <spirv/unified1/spirv.hpp>
+ #include <array>
+ #include <optional>
+@@ -550,13 +556,36 @@ struct VulkanDevice::State {
+             reinterpret_cast<PFN_vkDestroyInstance>(instanceProc(instance, "vkDestroyInstance"))(instance, nullptr);
+         }
+         if (library != nullptr) {
++#ifdef APS5_SLIM
++#ifdef _WIN32
++            FreeLibrary(static_cast<HMODULE>(library));
++#else
++            dlclose(library);
++#endif
++#else
+             SDL_UnloadObject(library);
++#endif
+         }
+     }
+ };
+ 
+ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_unique<State>()), serial([] { static std::atomic<std::uint64_t> serials{0}; return serials.fetch_add(1, std::memory_order_relaxed) + 1; }()) {
+     APS5_LOG_OUT("VulkanDevice constructor window=%p", static_cast<const void*>(window));
++#ifdef APS5_SLIM
++#ifdef _WIN32
++    state->library = LoadLibraryA("vulkan-1.dll");
++#else
++    state->library = dlopen("libvulkan.so.1", RTLD_NOW);
++#endif
++    if (state->library == nullptr) {
++        throw std::runtime_error("Vulkan loader: failed to open the ICD library");
++    }
++#ifdef _WIN32
++    state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(GetProcAddress(static_cast<HMODULE>(state->library), "vkGetInstanceProcAddr"));
++#else
++    state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(dlsym(state->library, "vkGetInstanceProcAddr"));
++#endif
++#else
+ #ifdef _WIN32
+     state->library = SDL_LoadObject("vulkan-1.dll");
+ #else
+@@ -565,8 +594,9 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+     if (state->library == nullptr) {
+         throw std::runtime_error(std::string("Vulkan loader: ") + SDL_GetError());
+     }
+-    APS5_LOG_OUT("Vulkan loader loaded library=%p", state->library);
+     state->instanceProc = reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_LoadFunction(state->library, "vkGetInstanceProcAddr"));
++#endif
++    APS5_LOG_OUT("Vulkan loader loaded library=%p", state->library);
+     if (state->instanceProc == nullptr) {
+         throw std::runtime_error("Vulkan loader: vkGetInstanceProcAddr missing");
+     }
+@@ -594,6 +624,23 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          create.enabledExtensionCount = static_cast<std::uint32_t>(instanceExtensions.size());
          create.ppEnabledExtensionNames = instanceExtensions.data();
      }
@@ -26,7 +98,41 @@ index 98d526c..e792143 100644
      check(state->InstanceFunction<PFN_vkCreateInstance>("vkCreateInstance")(&create, nullptr, &state->instance), "vkCreateInstance");
      APS5_LOG_OUT("Vulkan instance created instance=%p", reinterpret_cast<void*>(state->instance));
      if (window != nullptr) {
-@@ -974,6 +991,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -712,6 +759,10 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+         state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &features);
+         state->fragmentShaderBarycentric = barycentricFeatures.fragmentShaderBarycentric == VK_TRUE;
+     }
++    if (const auto* interpolation = std::getenv("APS5_FIXED_FUNCTION_INTERPOLATION"); interpolation && std::strcmp(interpolation, "1") == 0) {
++        state->fragmentShaderBarycentric = false;
++        APS5_LOG_OUT("%s", "Fixed-function fragment interpolation selected; noncanonical I/J programs remain rejected");
++    }
+     VkPhysicalDeviceShaderClockFeaturesKHR clockFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
+     if (hasExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME)) {
+         VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &clockFeatures};
+@@ -738,7 +789,12 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+     const bool bufferInt64Atomics = atomicInt64Features.shaderBufferInt64Atomics == VK_TRUE;
+     atomicInt64Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR};
+     atomicInt64Features.shaderBufferInt64Atomics = VK_TRUE;
+-    if (bufferInt64Atomics) deviceExtensions.push_back(VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME);
++    if (bufferInt64Atomics) {
++        deviceExtensions.push_back(VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME);
++        // The recompiler emits Int64Atomics only when this capability is listed.
++        // MoltenVK reports shaderBufferInt64Atomics false, so the capability stays off.
++        state->capabilities.push_back(spv::CapabilityInt64Atomics);
++    }
+     deviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+     state->capabilities.push_back(spv::CapabilitySignedZeroInfNanPreserve);
+     state->spirvExtensions.push_back("SPV_KHR_float_controls");
+@@ -834,7 +890,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+     enabled.tessellationShader = available.tessellationShader;
+     state->tessellationShader = enabled.tessellationShader == VK_TRUE;
+     if (state->tessellationShader) state->capabilities.push_back(3);
+-    APS5_LOG_OUT("Vulkan features tessellationAvailable=%u mesh=%u depthClip=%u depthRangeUnrestricted=%u", static_cast<unsigned>(state->tessellationShader), static_cast<unsigned>(state->meshShader), static_cast<unsigned>(state->depthClipControl), static_cast<unsigned>(state->depthRangeUnrestricted));
++    APS5_LOG_OUT("Vulkan features tessellationAvailable=%u mesh=%u depthClip=%u depthRangeUnrestricted=%u bufferInt64Atomics=%u", static_cast<unsigned>(state->tessellationShader), static_cast<unsigned>(state->meshShader), static_cast<unsigned>(state->depthClipControl), static_cast<unsigned>(state->depthRangeUnrestricted), static_cast<unsigned>(bufferInt64Atomics));
+     require(available.samplerAnisotropy && available.textureCompressionBC, "device lacks sampler anisotropy or BC texture compression support required for texture sampling");
+     enabled.samplerAnisotropy = VK_TRUE;
+     enabled.textureCompressionBC = VK_TRUE;
+@@ -989,6 +1045,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      }
      bdaFeatures.pNext = &byteFeatures;
      deviceInfo.pNext = &bdaFeatures;

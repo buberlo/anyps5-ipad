@@ -1,8 +1,8 @@
 diff --git a/app/Madeira/FPSOverlay.swift b/app/Madeira/FPSOverlay.swift
-index 93afb78..0d62506 100644
+index a5728cd..c3afb45 100644
 --- a/app/Madeira/FPSOverlay.swift
 +++ b/app/Madeira/FPSOverlay.swift
-@@ -99,6 +99,7 @@ struct FPSOverlay: View {
+@@ -115,6 +115,7 @@ struct FPSOverlay: View {
      var compact: Bool = false
      @State private var presentCount: UInt64 = 0
      @State private var fps: Double = 0
@@ -10,7 +10,7 @@ index 93afb78..0d62506 100644
      @State private var visible: Bool = true
      @State private var timer: Timer? = nil
      @State private var displayTimer: Timer? = nil
-@@ -175,7 +176,7 @@ struct FPSOverlay: View {
+@@ -192,7 +193,7 @@ struct FPSOverlay: View {
                          .foregroundColor(.primary)
                      Text("|")
                          .foregroundColor(.secondary)
@@ -19,7 +19,7 @@ index 93afb78..0d62506 100644
                          .foregroundColor(.secondary)
                      Text(String(format: "%.1f", fps))
                          .foregroundColor(fpsColor)
-@@ -197,7 +198,8 @@ struct FPSOverlay: View {
+@@ -214,7 +215,8 @@ struct FPSOverlay: View {
              }
          }
          .onTapGesture { visible.toggle() }
@@ -29,7 +29,7 @@ index 93afb78..0d62506 100644
          .onDisappear { stopTimers() }
      }
  
-@@ -346,7 +348,9 @@ struct FPSOverlay: View {
+@@ -367,7 +369,9 @@ struct FPSOverlay: View {
          // 250ms display refresh — computes adaptive-window FPS
          memMB = readFootprintMB()
          displayTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
@@ -41,10 +41,10 @@ index 93afb78..0d62506 100644
              // task_info per 250ms and no additional SwiftUI invalidation.
              memMB = readFootprintMB()
 diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
-index 28ca05d..e3cf6ae 100644
+index 7b22ca3..1f8bd51 100644
 --- a/app/Madeira/Library.swift
 +++ b/app/Madeira/Library.swift
-@@ -3750,6 +3750,7 @@ struct LibraryMetrics: View {
+@@ -4131,6 +4131,7 @@ struct LibraryMetrics: View {
      @State private var lastCount: UInt64 = 0
      @State private var lastTime = Date()
      @State private var fps = 0.0
@@ -52,7 +52,7 @@ index 28ca05d..e3cf6ae 100644
      @State private var memory = 0
      @State private var battery = -1
      /// iOS lowers clocks from .serious on, so a frame rate that sags after a few
-@@ -3775,7 +3776,10 @@ struct LibraryMetrics: View {
+@@ -4156,7 +4157,10 @@ struct LibraryMetrics: View {
              .onReceive(ticks) { now in
                  let count = madeira_get_present_count(); let dt = now.timeIntervalSince(lastTime)
                  let frames = count >= lastCount ? count - lastCount : 0
@@ -64,7 +64,7 @@ index 28ca05d..e3cf6ae 100644
                  var info = task_vm_info_data_t(); var size = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
                  let result = withUnsafeMutablePointer(to: &info) { $0.withMemoryRebound(to: integer_t.self, capacity: Int(size)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &size) } }
                  if result == KERN_SUCCESS { memory = Int(info.phys_footprint / 1048576) }
-@@ -3802,7 +3806,7 @@ struct LibraryMetrics: View {
+@@ -4183,7 +4187,7 @@ struct LibraryMetrics: View {
      }
      private var parts: [String] {
          var result: [String] = []
@@ -74,10 +74,10 @@ index 28ca05d..e3cf6ae 100644
          if model.overlayFields.contains("CPU") {
              result.append(cpu.map { String(format: "CPU %.0f%% (top %.0f%%)", $0.total, $0.top) } ?? "CPU —")
 diff --git a/app/Madeira/Madeira-Bridging-Header.h b/app/Madeira/Madeira-Bridging-Header.h
-index 5047beb..5547299 100644
+index c5be4ab..0a42ac0 100644
 --- a/app/Madeira/Madeira-Bridging-Header.h
 +++ b/app/Madeira/Madeira-Bridging-Header.h
-@@ -23,6 +23,10 @@ void wine_set_ui_log_callback(wine_ui_log_callback_t cb);
+@@ -25,6 +25,10 @@ void wine_set_ui_log_callback(wine_ui_log_callback_t cb);
  // DXMT present counter (winemetal_unix.c) — for SwiftUI FPS overlay
  #include <stdint.h>
  uint64_t madeira_get_present_count(void);
@@ -89,10 +89,10 @@ index 5047beb..5547299 100644
  // enabled, each committed command buffer adds its GPU time (union) on completion.
  void madeira_gpu_meter_enable(int on);
 diff --git a/app/Madeira/WineProcessBridge.m b/app/Madeira/WineProcessBridge.m
-index 106cf49..18f4b85 100644
+index 500d547..9b67cad 100644
 --- a/app/Madeira/WineProcessBridge.m
 +++ b/app/Madeira/WineProcessBridge.m
-@@ -913,6 +913,8 @@ static void madeira_publish_host_probe(void)
+@@ -959,6 +959,8 @@ static void madeira_publish_host_probe(void)
           * HEAT — thermals are what cap ProMotion at 60. COMMENT THIS OUT
           * for diagnostic/profiling sessions. */
          setenv("MADEIRA_QUIET", "1", 1);

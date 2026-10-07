@@ -1,6 +1,6 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
 new file mode 100644
-index 0000000..9803292
+index 00000000..98032928
 --- /dev/null
 +++ b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
 @@ -0,0 +1,20 @@
@@ -25,10 +25,10 @@ index 0000000..9803292
 +}
 +}
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index 7a257cd..09cc038 100644
+index 9c60ca0a..35cc8281 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-@@ -2,6 +2,7 @@
+@@ -3,6 +3,7 @@
  #include "BdaAbi.hpp"
  #include "prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp"
  #include "prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp"
@@ -36,7 +36,7 @@ index 7a257cd..09cc038 100644
  #include "prx/libSceAgcDriver/Execution/include/BdaFeatures.hpp"
  #include "prx/libSceAgcDriver/Execution/include/PresentationScaler.hpp"
  #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
-@@ -1089,7 +1090,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1109,7 +1110,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          require(std::any_of(formats.begin(), formats.end(), [](const auto& format) { return format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; }), "BGRA8 sRGB-nonlinear surface format is unavailable");
          VkSwapchainCreateInfoKHR swapchain{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
          swapchain.surface = state->surface;
@@ -45,7 +45,7 @@ index 7a257cd..09cc038 100644
          swapchain.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
          swapchain.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
          swapchain.imageExtent = state->extent;
-@@ -1106,7 +1107,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1126,7 +1127,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          check(getImages(state->device, state->swapchain, &imageCount, nullptr), "vkGetSwapchainImagesKHR");
          state->images.resize(imageCount);
          check(getImages(state->device, state->swapchain, &imageCount, state->images.data()), "vkGetSwapchainImagesKHR");
@@ -54,7 +54,7 @@ index 7a257cd..09cc038 100644
          VkFenceCreateInfo fence{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
          const auto createFence = state->DeviceFunction<PFN_vkCreateFence>("vkCreateFence");
          check(createFence(state->device, &fence, nullptr, &state->acquireFence), "vkCreateFence");
-@@ -1746,7 +1747,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+@@ -1766,7 +1767,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
      require((surface.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0 && (surface.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) != 0 && (surface.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0, "resized surface capabilities are unsupported");
      VkSwapchainCreateInfoKHR create{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
      create.surface = state->surface;
@@ -63,7 +63,7 @@ index 7a257cd..09cc038 100644
      create.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
      create.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
      create.imageExtent = {width, height};
-@@ -1770,7 +1771,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+@@ -1790,7 +1791,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
      check(getImages(state->device, replacement, &count, state->images.data()), "vkGetSwapchainImagesKHR resize");
      state->images.resize(count);
      state->rendered.assign(count, VK_NULL_HANDLE);

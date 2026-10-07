@@ -46,6 +46,10 @@ done
 
 shopt -s nullglob
 for name in "${names[@]}"; do
+    if [ "$name" = moltenvk ] && [ "${APS5_APPLY_MOLTENVK:-0}" != 1 ]; then
+        echo "skip optional MoltenVK stability patches (APS5_APPLY_MOLTENVK=1 enables them)"
+        continue
+    fi
     dir="$root/patches/$name"
     [ -d "$dir" ] || continue
     files=("$dir"/*.patch)

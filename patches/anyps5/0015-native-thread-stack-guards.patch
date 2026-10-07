@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libkernel/Pthread/src/Thread.cpp b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
-index 3dc69cba..585633f7 100644
+index d71ca02e..ea533652 100644
 --- a/core/libs/prx/libkernel/Pthread/src/Thread.cpp
 +++ b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
-@@ -210,9 +210,15 @@ int APS5_VABI scePthreadCreate(Pthread* thread, const PthreadAttr* attr, Pthread
+@@ -290,9 +290,15 @@ int APS5_VABI scePthreadCreate(Pthread* thread, const PthreadAttr* attr, Pthread
  #ifdef _WIN32
      SYSTEM_INFO system{};
      GetSystemInfo(&system);

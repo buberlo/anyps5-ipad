@@ -25,7 +25,7 @@ the licenses in those checkouts.
 | `patches/madeira/` | GPL-3.0-or-later |
 | `patches/fex/` | GPL-3.0-or-later |
 | `patches/wine/` | LGPL-2.1-or-later |
-| `patches/moltenvk/` | no source patch |
+| `patches/moltenvk/` | Apache-2.0 |
 
 ## AnyPS5
 
@@ -74,7 +74,7 @@ the licenses in those checkouts.
 - Pin: `fae55a18779ee59da2cc5373a367a0282779c171`
 - `LICENSE` at the pin is the Apache License, Version 2.0, January 2004.
 - Result: **Apache-2.0**
-- `patches/moltenvk/` is empty. Apache-2.0 is compatible with GPL-3.0 and is not compatible with GPL-2.0-only, so the statically linked iOS app is the GPL-3.0 combination, not a GPL-2.0-only binary.
+- `patches/moltenvk/` contains optional upstream stability fixes, excluded from the default build. Apache-2.0 is compatible with GPL-3.0 and is not compatible with GPL-2.0-only, so the statically linked iOS app is the GPL-3.0 combination, not a GPL-2.0-only binary.
 
 ## Not in this repository
 

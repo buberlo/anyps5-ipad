@@ -66,6 +66,8 @@ def main():
     parser.add_argument('--from-hle', type=Path, help='Select targets from a previous public HLE archive, without copying binaries')
     parser.add_argument('--build', type=Path, default=ROOT / 'build/anyps5-winlibs-local')
     parser.add_argument('--jobs', type=int, default=3)
+    parser.add_argument('--source', type=Path, default=ROOT / 'upstreams/AnyPS5',
+                        help='Patched AnyPS5 checkout (use an isolated checkout for pin upgrades)')
     parser.add_argument('--wine', default=os.environ.get('APS5_WINE'))
     parser.add_argument('--toolchain', type=Path, default=ROOT / 'build/toolchains/winlibs/mingw64')
     parser.add_argument('--ffmpeg', type=Path, default=ROOT / f'build/toolchains/ffmpeg-{FFMPEG_COMMIT}')
@@ -74,7 +76,7 @@ def main():
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
-    source = ROOT / 'upstreams/AnyPS5'
+    source = args.source.resolve()
     targets = choose_targets(source, args.targets, args.from_hle)
     if os.name != 'nt' and not args.wine:
         parser.error('Set APS5_WINE or --wine to the local Wine executable')
@@ -124,7 +126,8 @@ def main():
         body = '@echo off\r\nset "PATH=' + ';'.join(win(p) for p in search) + ';%PATH%"\r\n'
         body += ' '.join(quote(v) for v in command) + '\r\nexit /b %ERRORLEVEL%\r\n'
         batch.write_bytes(body.encode('utf-8'))
-        invocation = ['cmd', '/c', str(batch)] if os.name == 'nt' else [args.wine, 'cmd', '/c', str(batch)]
+        # Tests deliberately change cwd; resolve the batch path before invoking cmd.
+        invocation = ['cmd', '/c', win(batch)] if os.name == 'nt' else [args.wine, 'cmd', '/c', win(batch)]
         log = args.build / (name + '.log')
         print(name + ': ' + str(log), flush=True)
         with log.open('w') as stream:

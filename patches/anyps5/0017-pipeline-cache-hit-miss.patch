@@ -1,0 +1,28 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
+index b3f1de78..10aedfaf 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
+@@ -32,7 +32,10 @@ bool profiling() {
+ 
+ PipelineCache::PipelineCache(const Context& context, const VkPhysicalDeviceProperties& properties) : context(context), properties(properties) {
+     const auto directory = ShaderRecompiler::ShaderCacheDirectory();
+-    if (!directory.empty()) {
++    if (directory.empty()) {
++        std::fprintf(stderr, "[pipeline-cache] directory unavailable\n");
++    } else {
++        std::fprintf(stderr, "[pipeline-cache] directory %s\n", directory.string().c_str());
+         std::string uuid;
+         for (const auto byte : properties.pipelineCacheUUID) {
+             char digits[3];
+@@ -76,7 +79,10 @@ PipelineCache::~PipelineCache() {
+ 
+ void PipelineCache::load(std::vector<std::byte>& initialData) {
+     std::vector<std::byte> file;
+-    if (!ShaderRecompiler::ReadWholeFile(path, file)) return;
++    if (!ShaderRecompiler::ReadWholeFile(path, file)) {
++        std::fprintf(stderr, "[pipeline-cache] miss %s\n", path.string().c_str());
++        return;
++    }
+     const auto reject = [&](const char* why) {
+         std::fprintf(stderr, "[pipeline-cache] ignoring %s: %s\n", path.string().c_str(), why);
+     };

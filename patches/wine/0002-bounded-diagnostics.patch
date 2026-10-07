@@ -1,11 +1,11 @@
 diff --git a/dlls/ntdll/signal_arm64ec.c b/dlls/ntdll/signal_arm64ec.c
+index 2a1333fe..0ec59fc6 100644
 --- a/dlls/ntdll/signal_arm64ec.c
 +++ b/dlls/ntdll/signal_arm64ec.c
-@@ -68,6 +68,45 @@
- static NTSTATUS (WINAPI *pThreadInit)(void);
+@@ -69,6 +69,45 @@ static NTSTATUS (WINAPI *pThreadInit)(void);
  static void     (WINAPI *pThreadTerm)(HANDLE,LONG);
  static void     (WINAPI *pUpdateProcessorInformation)(SYSTEM_CPU_INFORMATION*);
-+
+ 
 +/* Read before execution, never query CRT environment locks in an exception. */
 +static BOOL madeira_exception_diagnostics;
 +static ULONG madeira_exception_start_ms, madeira_exception_duration_ms;
@@ -44,25 +44,26 @@ diff --git a/dlls/ntdll/signal_arm64ec.c b/dlls/ntdll/signal_arm64ec.c
 +    return madeira_exception_diagnostics &&
 +        (ULONG)(user_shared_data->TickCount.LowPart - madeira_exception_start_ms) < madeira_exception_duration_ms;
 +}
- 
++
  static BOOLEAN emulated_processor_features[PROCESSOR_FEATURE_MAX];
  static BYTE KiUserExceptionDispatcher_orig[16]; /* to detect patching */
-@@ -868,6 +907,14 @@
-             ERR( "[hold-release] ml618 self-test OK; registered cb=%p peb=%p -> %lx\n",
-                  (void *)pBTCpu64IosReleaseThreadHolds, params.peb, reg_status );
+ extern void KiUserExceptionDispatcher_thunk(void) asm("EXP+#KiUserExceptionDispatcher");
+@@ -870,6 +909,14 @@ NTSTATUS arm64ec_process_init_dispatchers( HMODULE module )
          }
-+    }
-+
+     }
+ 
 +    madeira_exception_diagnostics = madeira_diagnostic_switch(L"MADEIRA_DIAGNOSTICS") ||
 +                                  madeira_diagnostic_switch(L"MADEIRA_EXCEPTION_DIAGNOSTICS");
 +    if (madeira_exception_diagnostics)
 +    {
 +        madeira_exception_start_ms = user_shared_data->TickCount.LowPart;
 +        madeira_exception_duration_ms = madeira_exception_seconds() * 1000;
-     }
- 
++    }
++
      return STATUS_SUCCESS;
-@@ -3566,9 +3613,11 @@
+ }
+ 
+@@ -3566,9 +3613,11 @@ static void * __attribute__((used)) prepare_exception_arm64ec( EXCEPTION_RECORD
       * excluded. Log BEFORE and AFTER ResetToConsistentState so we can see
       * whether FEX reconstructed the guest Rip or the pool/JIT host pc leaks
       * through to the dispatchers. RtCS may not return (NtContinueNative). */
@@ -74,7 +75,7 @@ diff --git a/dlls/ntdll/signal_arm64ec.c b/dlls/ntdll/signal_arm64ec.c
              /* ml266 (#47): WHY did the guest fault? Name the guest RIP's memory.
               *
               * FEX's side is correct -- it reconstructs the context and rethrows onto the
-@@ -3933,8 +3982,10 @@
+@@ -3933,8 +3982,10 @@ static void * __attribute__((used)) prepare_exception_arm64ec( EXCEPTION_RECORD
                   (unsigned int)rec->ExceptionCode, rec->ExceptionAddress,
                   (void *)(ULONG_PTR)arm_ctx->Pc, (void *)(ULONG_PTR)context->AMD64_Context.Rip,
                   pResetToConsistentState, get_arm64ec_cpu_area()->InSimulation );
@@ -85,7 +86,7 @@ diff --git a/dlls/ntdll/signal_arm64ec.c b/dlls/ntdll/signal_arm64ec.c
      {
          static LONG rtcs_m;
          if (rtcs_m < 40 && InterlockedIncrement( &rtcs_m ) <= 40)
-@@ -3959,7 +4010,7 @@
+@@ -3959,7 +4010,7 @@ static void * __attribute__((used)) prepare_exception_arm64ec( EXCEPTION_RECORD
          if (rec->ExceptionCode == STATUS_ACCESS_VIOLATION)
          {
              static LONG kipath_n;
@@ -95,6 +96,7 @@ diff --git a/dlls/ntdll/signal_arm64ec.c b/dlls/ntdll/signal_arm64ec.c
                       (unsigned int)rec->ExceptionCode, context,
                       (void *)(ULONG_PTR)context->AMD64_Context.Rsp,
 diff --git a/dlls/ntdll/unix/debug.c b/dlls/ntdll/unix/debug.c
+index ee21f8fc..e59a2126 100644
 --- a/dlls/ntdll/unix/debug.c
 +++ b/dlls/ntdll/unix/debug.c
 @@ -40,6 +40,9 @@
@@ -107,7 +109,7 @@ diff --git a/dlls/ntdll/unix/debug.c b/dlls/ntdll/unix/debug.c
  
  WINE_DECLARE_DEBUG_CHANNEL(pid);
  WINE_DECLARE_DEBUG_CHANNEL(timestamp);
-@@ -299,6 +302,12 @@
+@@ -299,6 +302,12 @@ NTSTATUS unixcall_wine_dbg_write( void *args )
  {
      struct wine_dbg_write_params *params = args;
  
@@ -121,9 +123,10 @@ diff --git a/dlls/ntdll/unix/debug.c b/dlls/ntdll/unix/debug.c
  }
  
 diff --git a/include/Makefile.in b/include/Makefile.in
+index 4ed60f52..645f645d 100644
 --- a/include/Makefile.in
 +++ b/include/Makefile.in
-@@ -999,6 +999,7 @@
+@@ -999,6 +999,7 @@ SOURCES = \
  	wine/nsi.h \
  	wine/opengl_driver.h \
  	wine/orpc.idl \
@@ -133,6 +136,7 @@ diff --git a/include/Makefile.in b/include/Makefile.in
  	wine/schrpc.idl \
 diff --git a/include/wine/madeira_diagnostics.h b/include/wine/madeira_diagnostics.h
 new file mode 100644
+index 00000000..7b62a758
 --- /dev/null
 +++ b/include/wine/madeira_diagnostics.h
 @@ -0,0 +1,66 @@

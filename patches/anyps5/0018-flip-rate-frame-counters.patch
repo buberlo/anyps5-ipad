@@ -1,0 +1,123 @@
+diff --git a/core/libs/prx/libSceVideoOut/src/Output.cpp b/core/libs/prx/libSceVideoOut/src/Output.cpp
+index 53a4f7ca..0cdb3c91 100644
+--- a/core/libs/prx/libSceVideoOut/src/Output.cpp
++++ b/core/libs/prx/libSceVideoOut/src/Output.cpp
+@@ -2,6 +2,7 @@
+ #include <array>
+ #include <cstddef>
+ #include <cstdint>
++#include <cstdio>
+ #include <cstring>
+ #include <mutex>
+ #include <stdexcept>
+@@ -100,6 +101,8 @@ int APS5_VABI sceVideoOutSetFlipRate(int handle, int rate) try {
+     std::lock_guard lock(cfg->mutex);
+     cfg->Check();
+     cfg->flipRate = rate;
++    std::fprintf(stderr, "[videoout] sceVideoOutSetFlipRate handle=%d rate=%d vblank_interval=%d\n", handle, rate, rate + 1);
++    std::fflush(stderr);
+     return 0;
+ } catch (const ProcessShutdown&) {
+     LibcAwaitExit_nid_postfix();
+diff --git a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
+index b61d35d4..ff2bb8bc 100644
+--- a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
++++ b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
+@@ -2,6 +2,8 @@
+ #include <chrono>
+ #include <cstdlib>
+ #include <cstdio>
++#include <cstdint>
++#include <cstring>
+ #include <exception>
+ #include <thread>
+ #include <limits>
+@@ -32,6 +34,45 @@ void checkConfig(const VideoOutConfig& cfg) {
+     cfg.Check();
+ }
+ 
++bool frameCountersEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("APS5_FRAME_COUNTERS");
++        return value != nullptr && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++void noteFrameCounter(std::chrono::steady_clock::time_point started, std::chrono::steady_clock::duration vblankWait, std::chrono::steady_clock::duration presentWait) {
++    struct Window {
++        std::uint64_t frames = 0;
++        std::int64_t cpuNs = 0;
++        std::int64_t vblankWaitNs = 0;
++        std::int64_t presentNs = 0;
++        std::int64_t intervalNs = 0;
++        std::chrono::steady_clock::time_point opened{};
++        std::chrono::steady_clock::time_point previous{};
++    };
++    static Window window;
++    const auto finished = std::chrono::steady_clock::now();
++    if (window.opened == std::chrono::steady_clock::time_point{}) window.opened = finished;
++    if (window.previous != std::chrono::steady_clock::time_point{}) window.intervalNs += std::chrono::duration_cast<std::chrono::nanoseconds>(finished - window.previous).count();
++    window.previous = finished;
++    auto cpu = (finished - started) - vblankWait - presentWait;
++    if (cpu.count() < 0) cpu = {};
++    window.cpuNs += std::chrono::duration_cast<std::chrono::nanoseconds>(cpu).count();
++    window.vblankWaitNs += std::chrono::duration_cast<std::chrono::nanoseconds>(vblankWait).count();
++    window.presentNs += std::chrono::duration_cast<std::chrono::nanoseconds>(presentWait).count();
++    ++window.frames;
++    if (finished - window.opened < std::chrono::seconds(1)) return;
++    const auto frames = window.frames;
++    const auto averageMs = [&](std::int64_t ns) { return frames == 0 ? 0.0 : static_cast<double>(ns) / static_cast<double>(frames) / 1.0e6; };
++    std::fprintf(stderr, "[frame-counters] frames=%llu cpu_ms=%.3f vblank_wait_ms=%.3f present_ms=%.3f interval_ms=%.3f\n", static_cast<unsigned long long>(frames), averageMs(window.cpuNs), averageMs(window.vblankWaitNs), averageMs(window.presentNs), averageMs(window.intervalNs));
++    std::fflush(stderr);
++    window = {};
++    window.opened = finished;
++    window.previous = finished;
++}
++
+ class RenderingWait final : public AgcDriver::IRenderingWait {
+     std::shared_ptr<VideoOutConfig> _config;
+     std::uint32_t _index;
+@@ -380,6 +421,9 @@ void VideoOutDriver::vblankEnd() {
+ }
+ 
+ void VideoOutDriver::processFlip(FlipRequest& req) {
++    const auto frameCounterStart = frameCountersEnabled() ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
++    std::chrono::steady_clock::duration vblankWait{};
++    std::chrono::steady_clock::duration presentWait{};
+     AgcDriver::PerformanceContext timingContext(req.timing.get());
+     AgcDriver::PerformanceTimer timing("VideoOut.Flip");
+     {
+@@ -391,7 +435,9 @@ void VideoOutDriver::processFlip(FlipRequest& req) {
+         require(req.cfg->lastFlipVblank <= std::numeric_limits<uint64_t>::max() - interval, "flip interval overflow");
+         const auto target = req.cfg->lastFlipVblank + interval;
+         timing.Mark("validate");
++        const auto vblankWaitStart = frameCounterStart == std::chrono::steady_clock::time_point{} ? std::chrono::steady_clock::time_point{} : std::chrono::steady_clock::now();
+         req.cfg->vblankCond.wait(lock, req.cfg->shutdownToken, [&] { return req.cfg->vblankStatus.count >= target || req.cfg->failure || req.cfg->closing; });
++        if (vblankWaitStart != std::chrono::steady_clock::time_point{}) vblankWait = std::chrono::steady_clock::now() - vblankWaitStart;
+         timing.Mark("vblank_wait");
+         checkConfig(*req.cfg);
+         req.cfg->lastFlipVblank = req.cfg->vblankStatus.count;
+@@ -428,12 +474,14 @@ void VideoOutDriver::processFlip(FlipRequest& req) {
+         request.gpuComplete = true;
+         request.cfg->vblankCond.notify_all();
+     };
++    const auto presentWaitStart = frameCounterStart == std::chrono::steady_clock::time_point{} ? std::chrono::steady_clock::time_point{} : std::chrono::steady_clock::now();
+     if (req.index >= 0) {
+         const auto display = DescribeVideoOutBuffer(req.buffer, req.group);
+         AgcDriverPresentBuffer_nid_postfix(target, display, gpuReady, &req);
+     } else {
+         AgcDriverPresentClear_nid_postfix(target, req.index == VIDEO_OUT_BUFFER_INDEX_BLACK, gpuReady, &req);
+     }
++    if (presentWaitStart != std::chrono::steady_clock::time_point{}) presentWait = std::chrono::steady_clock::now() - presentWaitStart;
+     timing.Mark("present");
+     window.UpdateTitle();
+     timing.Mark("window_title");
+@@ -460,6 +508,7 @@ void VideoOutDriver::processFlip(FlipRequest& req) {
+     req.terminal = true;
+     req.cfg->vblankCond.notify_all();
+     timing.Mark("notify_game");
++    if (frameCounterStart != std::chrono::steady_clock::time_point{}) noteFrameCounter(frameCounterStart, vblankWait, presentWait);
+ }
+ 
+ void VideoOutDriver::presentLoop(std::stop_token token) {

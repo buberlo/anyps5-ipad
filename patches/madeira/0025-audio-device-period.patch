@@ -1,0 +1,87 @@
+diff --git a/app/Madeira/WineProcessBridge.m b/app/Madeira/WineProcessBridge.m
+index a7bef7c..8572795 100644
+--- a/app/Madeira/WineProcessBridge.m
++++ b/app/Madeira/WineProcessBridge.m
+@@ -11,6 +11,7 @@
+  * in via autolink — the static-lib driver code can't autolink itself. */
+ #import <AVFoundation/AVFoundation.h>
+ #import <AudioToolbox/AudioToolbox.h>
++extern void aps5_ios_audio_set_device_period(double seconds);
+ #include <unistd.h>
+ #include <pwd.h>
+ #include <fcntl.h>
+@@ -985,8 +986,12 @@ static void madeira_publish_host_probe(void)
+             [session setActive:YES error:&aerr];
+             if (aerr) LOG("AVAudioSession setActive failed: %{public}s",
+                           aerr.localizedDescription.UTF8String);
+-            else LOG("AVAudioSession active: rate=%.0f latency=%.1fms",
+-                     session.sampleRate, session.outputLatency * 1000.0);
++            else {
++                aps5_ios_audio_set_device_period(session.IOBufferDuration);
++                LOG("AVAudioSession active: rate=%.0f latency=%.1fms period=%.3fms",
++                    session.sampleRate, session.outputLatency * 1000.0,
++                    session.IOBufferDuration * 1000.0);
++            }
+         }
+ 
+         /* 2026-07-04 BISECT RESULT: arm A (this env set, all handler fixes
+diff --git a/build/ntdll-unix/aps5_audio_period.h b/build/ntdll-unix/aps5_audio_period.h
+new file mode 100644
+index 0000000..c335ea3
+--- /dev/null
++++ b/build/ntdll-unix/aps5_audio_period.h
+@@ -0,0 +1,16 @@
++/* Match WASAPI's render quantum to the active iOS hardware quantum. */
++#ifndef APS5_AUDIO_PERIOD_H
++#define APS5_AUDIO_PERIOD_H
++#include <math.h>
++#include <stdint.h>
++
++#define APS5_AUDIO_FALLBACK_PERIOD 100000LL
++static inline int64_t aps5_audio_period(double seconds)
++{
++    if (!isfinite(seconds) || seconds < 0.001 || seconds > 0.5)
++        return APS5_AUDIO_FALLBACK_PERIOD;
++    /* REFERENCE_TIME uses 100 ns units. Round down: SDL rounds the frame
++     * count up, so rounding up here would add an extra frame per period. */
++    return (int64_t)(seconds * 10000000.0);
++}
++#endif
+diff --git a/build/ntdll-unix/audio_null_ios.c b/build/ntdll-unix/audio_null_ios.c
+index b9cb939..02a8051 100644
+--- a/build/ntdll-unix/audio_null_ios.c
++++ b/build/ntdll-unix/audio_null_ios.c
+@@ -496,6 +496,21 @@ extern NTSTATUS NtSetEvent( HANDLE handle, void *prev_state );
+ /* Per-function call counters. Print every 1000 calls so we can confirm
+  * FMOD is actually exercising the driver. Cheap atomic increments. */
+ #include <stdatomic.h>
++#include "aps5_audio_period.h"
++
++static _Atomic int64_t aps5_device_period = APS5_AUDIO_FALLBACK_PERIOD;
++
++/* Called after AVAudioSession activation, before any Wine clients open.
++ * An SDL WASAPI client queues at most two reported periods. Reporting 10 ms
++ * for a 1024-frame/48 kHz device lets it queue only 960 frames, leaving 64
++ * frames of silence on every hardware callback, regardless of timer lead. */
++void aps5_ios_audio_set_device_period(double seconds)
++{
++    int64_t period = aps5_audio_period(seconds);
++    atomic_store_explicit(&aps5_device_period, period, memory_order_release);
++    fprintf(stderr, "[ios_audio] device period %.3f ms (WASAPI %lld x 100 ns)\n",
++            seconds * 1000.0, (long long)period);
++}
+ #define NULL_AUDIO_FN_COUNT 37
+ static _Atomic uint32_t g_call_counter[NULL_AUDIO_FN_COUNT];
+ #define LOG_FN_CALL(idx, name) do { \
+@@ -1580,8 +1595,9 @@ static NTSTATUS ios_get_mix_format(void *args) {
+ 
+ static NTSTATUS ios_get_device_period(void *args) {
+     struct get_device_period_params *p = args;
+-    if (p->def_period) *p->def_period = 100000; /* 10 ms in 100ns units */
+-    if (p->min_period) *p->min_period = 50000;  /* 5 ms */
++    REFERENCE_TIME period = atomic_load_explicit(&aps5_device_period, memory_order_acquire);
++    if (p->def_period) *p->def_period = period;
++    if (p->min_period) *p->min_period = period < 50000 ? period : 50000;
+     p->result = S_OK;
+     return STATUS_SUCCESS;
+ }

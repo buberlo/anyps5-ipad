@@ -1,0 +1,477 @@
+diff --git a/MoltenVK/MoltenVK/Commands/MVKCmdPipeline.mm b/MoltenVK/MoltenVK/Commands/MVKCmdPipeline.mm
+index 3e9fc79f2..dcaf1c1a2 100644
+--- a/MoltenVK/MoltenVK/Commands/MVKCmdPipeline.mm
++++ b/MoltenVK/MoltenVK/Commands/MVKCmdPipeline.mm
+@@ -485,7 +485,13 @@
+ 	_pipelineLayout = (MVKPipelineLayout*)layout;
+ 	_pipelineLayout->retain();
+ 	_set = set;
++
++	// The app may destroy the template once this command is recorded, but encoding reads it,
++	// possibly much later, so keep it until this command is reused or destroyed.
++	auto* descUpdateTemplateToRelease = _descUpdateTemplate;
+ 	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
++	_descUpdateTemplate->retain();
++	if (descUpdateTemplateToRelease) { descUpdateTemplateToRelease->release(); }
+ 
+ 	size_t oldSize = _dataSize;
+ 	_dataSize = _descUpdateTemplate->getSize();
+@@ -505,6 +511,7 @@
+ }
+ 
+ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
++	if (_descUpdateTemplate) { _descUpdateTemplate->release(); }
+ 	if (_pipelineLayout) { _pipelineLayout->release(); }
+ 	free(_pData);
+ }
+diff --git a/MoltenVK/MoltenVK/Commands/MVKCommandEncoderState.h b/MoltenVK/MoltenVK/Commands/MVKCommandEncoderState.h
+index 25e6017bb..f32f2e8f1 100644
+--- a/MoltenVK/MoltenVK/Commands/MVKCommandEncoderState.h
++++ b/MoltenVK/MoltenVK/Commands/MVKCommandEncoderState.h
+@@ -166,7 +166,7 @@ struct MVKUseResourceHelper {
+  */
+ struct MVKVulkanCommonEncoderState {
+ 	MVKPipelineLayout* _layout = nullptr;
+-	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount];
++	MVKDescriptorSet* _descriptorSets[kMVKMaxDescriptorSetCount] = {};
+ 	MVKDescriptorSet _pushDescriptor = {};
+ 	MVKSmallVector<uint8_t, 16> _pushDescData;
+ 	void ensurePushDescriptorSize(uint32_t size);
+@@ -429,7 +429,7 @@ class MVKCommandEncoderState {
+ 		Compute
+ 	};
+ 	/** The type of Metal encoder, if any, that is currently active. */
+-	CommandEncoderClass _mtlActiveEncoder;
++	CommandEncoderClass _mtlActiveEncoder = CommandEncoderClass::None;
+ 
+ 	/** Get the encoder state associated with the given bind point, or nullptr if the bindPoint isn't supported. */
+ 	MVKVulkanCommonEncoderState* getVkEncoderState(VkPipelineBindPoint bindPoint);
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
+index 62e8ea496..c607950db 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm
+@@ -758,32 +758,33 @@ static bool usesConstantColor(MVKRenderStateFlags dynamic, const VkPipelineColor
+ 	VkPipelineCreationFeedback* pTessCtlFB = nullptr;
+ 	VkPipelineCreationFeedback* pTessEvalFB = nullptr;
+ 	VkPipelineCreationFeedback* pFragmentFB = nullptr;
++
++	// The app may provide fewer stage feedback elements than stages, including none, in which case
++	// feedback must not be written for the stages beyond pipelineStageCreationFeedbackCount.
++	auto getStageFeedback = [pFeedbackInfo](uint32_t stageIdx) -> VkPipelineCreationFeedback* {
++		if ( !pFeedbackInfo || !pFeedbackInfo->pPipelineStageCreationFeedbacks ) { return nullptr; }
++		if (stageIdx >= pFeedbackInfo->pipelineStageCreationFeedbackCount) { return nullptr; }
++		return &pFeedbackInfo->pPipelineStageCreationFeedbacks[stageIdx];
++	};
++
+ 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+ 		const auto* pSS = &pCreateInfo->pStages[i];
+ 		switch (pSS->stage) {
+ 			case VK_SHADER_STAGE_VERTEX_BIT:
+ 				pVertexSS = pSS;
+-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+-					pVertexFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+-				}
++				pVertexFB = getStageFeedback(i);
+ 				break;
+ 			case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+ 				pTessCtlSS = pSS;
+-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+-					pTessCtlFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+-				}
++				pTessCtlFB = getStageFeedback(i);
+ 				break;
+ 			case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+ 				pTessEvalSS = pSS;
+-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+-					pTessEvalFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+-				}
++				pTessEvalFB = getStageFeedback(i);
+ 				break;
+ 			case VK_SHADER_STAGE_FRAGMENT_BIT:
+ 				pFragmentSS = pSS;
+-				if (pFeedbackInfo && pFeedbackInfo->pPipelineStageCreationFeedbacks) {
+-					pFragmentFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[i];
+-				}
++				pFragmentFB = getStageFeedback(i);
+ 				break;
+ 			default:
+ 				break;
+@@ -2345,7 +2346,10 @@ static void setEmulatedReversedDepthViewportConfig(SPIRVToMSLConversionConfigura
+ 			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].flags = 0;
+ 			pFeedbackInfo->pPipelineStageCreationFeedbacks[i].duration = 0;
+ 		}
+-		pStageFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[0];
++		// The app may provide no stage feedback elements, in which case none must be written.
++		if (pFeedbackInfo->pPipelineStageCreationFeedbacks && pFeedbackInfo->pipelineStageCreationFeedbackCount > 0) {
++			pStageFB = &pFeedbackInfo->pPipelineStageCreationFeedbacks[0];
++		}
+ 		pipelineStart = mvkGetTimestamp();
+ 	}
+ 
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.h b/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.h
+index 2fa123426..7b9182c54 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.h
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.h
+@@ -85,10 +85,10 @@ class MVKRenderSubpass : public MVKBaseObject {
+ 	VkSampleCountFlagBits getSampleCount();
+ 
+ 	/** Returns the default sample count for when there are no attachments used in this subpass. */
+-	VkSampleCountFlagBits getDefaultSampleCount() { return _defaultSampleCount; }
++	VkSampleCountFlagBits getDefaultSampleCount() { return (VkSampleCountFlagBits)__atomic_load_n(&_defaultSampleCount, __ATOMIC_RELAXED); }
+ 
+ 	/** Sets the default sample count for when there are no attachments used in this subpass. */
+-	void setDefaultSampleCount(VkSampleCountFlagBits count) { _defaultSampleCount = count; }
++	void setDefaultSampleCount(VkSampleCountFlagBits count) { __atomic_store_n(&_defaultSampleCount, (uint32_t)count, __ATOMIC_RELAXED); }
+ 
+ 	/** Returns whether or not this is a multiview subpass. */
+ 	bool isMultiview() const { return _pipelineRenderingCreateInfo.viewMask != 0; }
+@@ -218,7 +218,7 @@ class MVKRenderSubpass : public MVKBaseObject {
+ 	VkAttachmentReference2 _stencilResolveAttachment;
+ 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
+ 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
+-	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
++	uint32_t _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;	// Set by pipelines, possibly from several threads.
+ 	uint32_t _subpassIndex;
+ 	bool _isDitheringEnabled = false;
+ 	bool _isInputAttachmentDepthStencilAttachment = false;
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.mm b/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.mm
+index b6841665f..66c992c80 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.mm
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.mm
+@@ -278,7 +278,7 @@ - (void)setOpenGLModeEnabled:(BOOL)enabled;
+ 	}
+ 
+ 	if (caUsedCnt == 0 && depthRPAttIdx == VK_ATTACHMENT_UNUSED && stencilRPAttIdx == VK_ATTACHMENT_UNUSED) {
+-        mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
++        mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(getDefaultSampleCount());
+ 	}
+ 
+ #if MVK_USE_METAL_PRIVATE_API
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.h b/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.h
+index c5b74991d..49f363747 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.h
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.h
+@@ -157,8 +157,9 @@ class MVKShaderLibrary : public MVKBaseDeviceObject {
+ 
+ 	/** When true, representing a library created with source, but never specialized */
+ 	bool _maySpecializeWithMacro;
+-	/** Can only be populated when _maySpecializeWithMacro is true */
++	/** Can only be populated when _maySpecializeWithMacro is true. Guarded by _variantsLock. */
+ 	std::map<std::vector<std::pair<uint32_t, MVKShaderMacroValue>>, MVKShaderLibrary *> _specializationVariants;
++	std::mutex _variantsLock;
+ };
+ 
+ 
+diff --git a/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.mm b/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.mm
+index 3aa44a44b..d002b8b7f 100644
+--- a/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.mm
++++ b/MoltenVK/MoltenVK/GPUObjects/MVKShaderModule.mm
+@@ -96,8 +96,10 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
+ 		}
+ 
+ 		if (!spec_list.empty()) {
+-			// Sort the specialization list before it is used as a key to index the variants
++			// Sort the specialization list before it is used as a key to index the variants.
++			// Pipelines sharing this library may be created concurrently, so guard the variant map.
+ 			std::sort(spec_list.begin(), spec_list.end());
++			lock_guard<mutex> lock(_variantsLock);
+ 			auto entry = _specializationVariants.find(spec_list);
+ 			if (entry != _specializationVariants.end()) {
+ 				lib = entry->second->_mtlLibrary;
+@@ -267,11 +269,12 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
+ 	addPerformanceInterval(getPerformanceStats().shaderCompilation.mslLoad, startTime);
+ }
+ 
++// Macro-specialized variants are owned by the library that created them, so they are not
++// shared with the copy. The copy re-creates any variant it needs on first use.
+ MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) :
+ 	MVKBaseDeviceObject(other._device),
+ 	_owner(other._owner),
+-	_maySpecializeWithMacro(other._maySpecializeWithMacro),
+-	_specializationVariants(other._specializationVariants) {
++	_maySpecializeWithMacro(other._maySpecializeWithMacro) {
+ 
+ 	_mtlLibrary = [other._mtlLibrary retain];
+ 	_shaderConversionResultInfo = other._shaderConversionResultInfo;
+@@ -325,7 +328,7 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
+ 	MVKShaderLibrary* shLib = findShaderLibrary(pShaderConfig, pShaderFeedback, startTime);
+ 	if ( !shLib && !pipeline->shouldFailOnPipelineCompileRequired() ) {
+ 		SPIRVToMSLConversionResult conversionResult;
+-		if (shaderModule->convert(pShaderConfig, conversionResult)) {
++		if (shaderModule->convert(pShaderConfig, conversionResult) && !conversionResult.msl.empty()) {
+ 			shLib = addShaderLibrary(pShaderConfig, conversionResult);
+ 			if (pShaderFeedback) {
+ 				pShaderFeedback->duration += mvkGetElapsedNanoseconds(startTime);
+diff --git a/MoltenVK/MoltenVK/Utility/MVKBitArray.h b/MoltenVK/MoltenVK/Utility/MVKBitArray.h
+index 004e591ba..4f3041b5c 100755
+--- a/MoltenVK/MoltenVK/Utility/MVKBitArray.h
++++ b/MoltenVK/MoltenVK/Utility/MVKBitArray.h
+@@ -22,6 +22,7 @@
+ #include "MVKFoundation.h"
+ 
+ #include <cassert>
++#include <climits>
+ #include <type_traits>
+ #include <functional>
+ 
+@@ -200,7 +201,7 @@ class MVKSmallStaticBitSet {
+ 	/** Returns whether this set is not equal to the given set. */
+ 	constexpr bool operator!=(MVKSmallStaticBitSet other) const { return !(*this == other); }
+ 	/** Returns whether there are any elements in the intersection between this and another set. */
+-	constexpr bool containsAny(MVKSmallStaticBitSet other) const { return (*this & other).any(); }
++	constexpr bool containsAny(MVKSmallStaticBitSet other) const { return (*this & other).areAnyBitsSet(); }
+ 	/** Returns whether this set is a superset of the given set. */
+ 	constexpr bool containsAll(MVKSmallStaticBitSet other) const { return (*this & other) == other; }
+ 	/** Subtracts the elements in the given set from this set. */
+@@ -275,13 +276,13 @@ class MVKLargeStaticBitSet {
+ 	/** Returns whether the set is empty. */
+ 	constexpr bool empty() const { return !any(); }
+ 	/** Intersects this set with the given set. */
+-	constexpr MVKLargeStaticBitSet operator&=(const MVKLargeStaticBitSet& other) {
++	constexpr MVKLargeStaticBitSet& operator&=(const MVKLargeStaticBitSet& other) {
+ 		for (uint32_t i = 0; i < ArrayLen; i++)
+ 			bits[i] &= other.bits[i];
+ 		return *this;
+ 	}
+ 	/** Unions this set with the given set. */
+-	constexpr MVKLargeStaticBitSet operator|=(const MVKLargeStaticBitSet& other) {
++	constexpr MVKLargeStaticBitSet& operator|=(const MVKLargeStaticBitSet& other) {
+ 		for (uint32_t i = 0; i < ArrayLen; i++)
+ 			bits[i] |= other.bits[i];
+ 		return *this;
+@@ -290,7 +291,7 @@ class MVKLargeStaticBitSet {
+ 	constexpr bool operator==(const MVKLargeStaticBitSet& other) const {
+ 		bool eq = true;
+ 		for (uint32_t i = 0; i < ArrayLen; i++)
+-			eq |= bits[i] == other.bits[i];
++			eq &= bits[i] == other.bits[i];
+ 		return eq;
+ 	}
+ 	/** Returns the intersection of this and another set. */
+diff --git a/MoltenVK/MoltenVK/Utility/MVKFoundation.h b/MoltenVK/MoltenVK/Utility/MVKFoundation.h
+index d712c6147..e23af923b 100644
+--- a/MoltenVK/MoltenVK/Utility/MVKFoundation.h
++++ b/MoltenVK/MoltenVK/Utility/MVKFoundation.h
+@@ -688,10 +688,12 @@ static void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
+ /**
+  * If pV1 and pV2 are both not null, returns whether the contents of the two values are equal,
+  * otherwise returns false. The optional count allows comparing multiple elements in an array.
++ * Ranges of zero elements are always equal, whether or not their pointers are null.
+  */
+ template<typename T>
+ static constexpr bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
+-	if ( !pV2 || !pV2 ) { return false; }				// Bad pointers
++	if (count == 0) { return true; }					// Empty ranges are equal, even with null pointers (e.g. an empty MVKArrayRef)
++	if ( !pV1 || !pV2 ) { return false; }				// Bad pointers
+ 	if (pV1 == pV2) { return true; }					// Same object
+ 	if constexpr(std::is_arithmetic_v<T>) { if (count == 1) { return *pV1 == *pV2; } }  // Fast compare of a single primitive
+ 	return memcmp(pV1, pV2, sizeof(T) * count) == 0;	// Memory compare of complex content or array
+diff --git a/MoltenVK/MoltenVK/Utility/MVKSmallVectorAllocator.h b/MoltenVK/MoltenVK/Utility/MVKSmallVectorAllocator.h
+index 0c69504bb..900eb831e 100755
+--- a/MoltenVK/MoltenVK/Utility/MVKSmallVectorAllocator.h
++++ b/MoltenVK/MoltenVK/Utility/MVKSmallVectorAllocator.h
+@@ -18,8 +18,10 @@
+ 
+ #pragma once
+ 
++#include <cstddef>
+ #include <new>
+ #include <type_traits>
++#include <utility>
+ 
+ 
+ namespace mvk_smallvector_memory_allocator
+@@ -125,24 +127,31 @@ class mvk_smallvector_allocator final
+   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
+     swap_stack( mvk_smallvector_allocator &a )
+   {
+-    T stack_copy[N];
+-
+-    for( size_t i = 0; i < num_elements_used; ++i )
++    // Both allocators hold their elements in their inline stack storage. Move this
++    // allocator's elements to raw temporary storage, move a's elements into this
++    // allocator, then move the temporaries into a. Only constructed elements are
++    // touched; the stack storage beyond num_elements_used is uninitialized memory.
++    alignas( alignof( T ) ) unsigned char tmp_storage[ STACK_SIZE ];
++    T *tmp = reinterpret_cast< T* >( &tmp_storage[0] );
++    const size_t this_count = num_elements_used;
++    const size_t a_count = a.num_elements_used;
++
++    for( size_t i = 0; i < this_count; ++i )
+     {
+-      construct( &stack_copy[i], std::move( S::ptr[i] ) );
++      construct( &tmp[i], std::move( ptr[i] ) );
+       destruct( &ptr[i] );
+     }
+ 
+-    for( size_t i = 0; i < a.num_elements_used; ++i )
++    for( size_t i = 0; i < a_count; ++i )
+     {
+       construct( &ptr[i], std::move( a.ptr[i] ) );
+-      destruct( &ptr[i] );
++      destruct( &a.ptr[i] );
+     }
+ 
+-    for( size_t i = 0; i < num_elements_used; ++i )
++    for( size_t i = 0; i < this_count; ++i )
+     {
+-      construct( &a.ptr[i], std::move( stack_copy[i] ) );
+-      destruct( &stack_copy[i] );
++      construct( &a.ptr[i], std::move( tmp[i] ) );
++      destruct( &tmp[i] );
+     }
+   }
+ 
+diff --git a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVReflection.h b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVReflection.h
+index 6e58d48c0..4cac05106 100644
+--- a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVReflection.h
++++ b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVReflection.h
+@@ -231,16 +231,20 @@ namespace mvk {
+ 		return getShaderInterfaceVariableAlignment(output);
+ 	}
+ 
++	/** Index value meaning no interface variable. */
++	static constexpr size_t kSPIRVNoInterfaceVariable = size_t(-1);
++
+ 	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
+ 
+ 	template<typename Vi>
+ 	static inline uint32_t getShaderInterfaceStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+-														   Vi& vars, SPIRVShaderInterfaceVariable* pParentFirstMember,
++														   Vi& vars, size_t parentFirstMemberIdx,
+ 														   const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+ 														   bool patch, uint32_t loc) {
+ 		bool isUsed = true;
+ 		auto biType = spv::BuiltInMax;
+-		SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
++		// Track the first member by index, because adding to vars may reallocate it.
++		size_t firstMemberIdx = kSPIRVNoInterfaceVariable;
+ 		size_t mbrCnt = structType->member_types.size();
+ 		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
+ 			// Each member may have a location decoration. If not, each member
+@@ -259,34 +263,33 @@ namespace mvk {
+ 			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+ 			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+ 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
+-					loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
++					loc = getShaderInterfaceStructMembers(reflect, vars, firstMemberIdx, type, storage, patch, loc);
+ 				else {
+ 					// The alignment of a structure is the same as the largest member of the structure.
+ 					// Consequently, the first flattened member of a structure should align with structure itself.
+ 					vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+-					auto& currOutput = vars.back();
+-					if ( !pFirstMember ) { pFirstMember = &currOutput; }
+-					pFirstMember->firstStructMemberAlignment = std::max(pFirstMember->firstStructMemberAlignment, getShaderOutputSize(currOutput));
++					if (firstMemberIdx == kSPIRVNoInterfaceVariable) { firstMemberIdx = vars.size() - 1; }
++					auto& firstMember = vars[firstMemberIdx];
++					firstMember.firstStructMemberAlignment = std::max(firstMember.firstStructMemberAlignment, getShaderOutputSize(vars.back()));
+ 					loc = addSat(loc, 1);
+ 				}
+ 			}
+ 		}
+ 
+ 		// Set the parent's first member alignment to the largest alignment found so far.
+-		if ( !pParentFirstMember ) {
+-			pParentFirstMember = pFirstMember;
+-		} else if (pParentFirstMember && pFirstMember) {
+-			pParentFirstMember->firstStructMemberAlignment = std::max(pParentFirstMember->firstStructMemberAlignment, pFirstMember->firstStructMemberAlignment);
++		if (parentFirstMemberIdx != kSPIRVNoInterfaceVariable && firstMemberIdx != kSPIRVNoInterfaceVariable) {
++			auto& parentFirstMember = vars[parentFirstMemberIdx];
++			parentFirstMember.firstStructMemberAlignment = std::max(parentFirstMember.firstStructMemberAlignment, vars[firstMemberIdx].firstStructMemberAlignment);
+ 		}
+ 
+ 		return loc;
+ 	}
+ 	template<typename Vo>
+ 	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect,
+-														Vo& outputs, SPIRVShaderOutput* pParentFirstMember,
++														Vo& outputs, size_t parentFirstMemberIdx,
+ 														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+ 														bool patch, uint32_t loc) {
+-		return getShaderInterfaceStructMembers(reflect, outputs, pParentFirstMember, structType, storage, patch, loc);
++		return getShaderInterfaceStructMembers(reflect, outputs, parentFirstMemberIdx, structType, storage, patch, loc);
+ 	}
+ 
+ 	/** Given a shader in SPIR-V format, returns interface reflection data. */
+@@ -342,8 +345,7 @@ namespace mvk {
+ 				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+ 				for (uint32_t i = 0; i < elemCnt; i++) {
+ 					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
+-						SPIRVShaderInterfaceVariable* pFirstMember = nullptr;
+-						loc = getShaderInterfaceStructMembers(reflect, vars, pFirstMember, type, storage, patch, loc);
++						loc = getShaderInterfaceStructMembers(reflect, vars, kSPIRVNoInterfaceVariable, type, storage, patch, loc);
+ 					} else {
+ 						vars.push_back({type->basetype, type->vecsize, loc, cmp, 0, biType, patch, isUsed});
+ 						loc = addSat(loc, 1);
+diff --git a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
+index 406f4f8b9..663f5cf54 100644
+--- a/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
++++ b/MoltenVKShaderConverter/MoltenVKShaderConverter/SPIRVToMSLConverter.cpp
+@@ -343,6 +343,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
+ 
+ #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+ 	} catch (CompilerError& ex) {
++		wasConverted = false;
++		conversionResult.msl.clear();
+ 		string errMsg("SPIR-V to MSL conversion error: ");
+ 		errMsg += ex.what();
+ 		logError(conversionResult.resultLog, errMsg.data());
+@@ -350,6 +352,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
+ 			auto partialMSL = pMSLCompiler->get_partial_source();
+             logSource(conversionResult.resultLog, partialMSL, "MSL", "Partially converted");
+         }
++	} catch (std::exception& ex) {
++		wasConverted = false;
++		conversionResult.msl.clear();
++		string errMsg("SPIR-V to MSL conversion error: ");
++		errMsg += ex.what();
++		logError(conversionResult.resultLog, errMsg.data());
+ 	}
+ #endif
+ 
+@@ -380,25 +388,28 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
+ 		}
+ 	}
+ 
+-	for (auto& ctxSI : shaderConfig.shaderInputs) {
+-		if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
+-			ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
+-		} else {
+-			ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
++	// The compiler is null if its construction (SPIR-V parsing) threw, so guard these queries.
++	if (pMSLCompiler) {
++		for (auto& ctxSI : shaderConfig.shaderInputs) {
++			if (ctxSI.shaderVar.builtin != spv::BuiltInMax) {
++				ctxSI.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSI.shaderVar.builtin, spv::StorageClassInput);
++			} else {
++				ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderVar.location);
++			}
+ 		}
+-	}
+-	for (auto& ctxSO : shaderConfig.shaderOutputs) {
+-		if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
+-			ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
+-		} else {
+-			ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
++		for (auto& ctxSO : shaderConfig.shaderOutputs) {
++			if (ctxSO.shaderVar.builtin != spv::BuiltInMax) {
++				ctxSO.outIsUsedByShader = pMSLCompiler->has_active_builtin(ctxSO.shaderVar.builtin, spv::StorageClassOutput);
++			} else {
++				ctxSO.outIsUsedByShader = pMSLCompiler->is_msl_shader_output_used(ctxSO.shaderVar.location);
++			}
+ 		}
+-	}
+-	for (auto& ctxRB : shaderConfig.resourceBindings) {
+-		if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
+-			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+-																				 ctxRB.resourceBinding.desc_set,
+-																				 ctxRB.resourceBinding.binding);
++		for (auto& ctxRB : shaderConfig.resourceBindings) {
++			if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
++				ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
++																					 ctxRB.resourceBinding.desc_set,
++																					 ctxRB.resourceBinding.binding);
++			}
+ 		}
+ 	}
+ 

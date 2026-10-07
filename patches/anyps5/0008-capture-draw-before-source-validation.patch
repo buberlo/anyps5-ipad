@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawCapture.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawCapture.cpp
-index 8399fc9..8757931 100644
+index 8399fc99..87579319 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawCapture.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawCapture.cpp
 @@ -20,6 +20,10 @@ ShaderRecompiler::RecompileResult Driver::compileDrawStage(std::size_t i, std::u

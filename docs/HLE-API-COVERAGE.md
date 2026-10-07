@@ -1,7 +1,9 @@
 # Added local and offline API coverage
 
-Patch `0011-local-and-offline-service-apis.patch` adds 43 entry points required by
-another Unity/IL2CPP title's import graph. Export availability and runtime behavior
+The local/offline compatibility series covers 43 entry points required by
+a Unity/IL2CPP title's import graph. Some are now provided by the refreshed
+upstream; patch `0011-local-and-offline-service-apis.patch` preserves the
+additional behavior and explicit failure contracts. Export availability and runtime behavior
 are separate checks. This patch does not claim general Unity support or successful
 game execution, and it does not implement PSN or original console services.
 
@@ -9,7 +11,7 @@ game execution, and it does not implement PSN or original console services.
 | --- | --- |
 | File descriptors | `fchmod`, `sceKernelFchmod`, `futimes`, `utimes`: actual host operations, guest errno translation, timestamp validation and socket/invalid-descriptor errors. Windows regular-file operations use handles, so rename does not redirect them. Guest opens share deletion and retain metadata access where permitted; a denied metadata right does not prevent a permitted data-only open. Synthetic directory descriptors remain path-based. Times retain microseconds. Windows permission changes follow its writable/read-only model, and deletion stays pending until the last handle closes; this is not complete Unix filesystem behavior. Existing Windows CRT `stat` still reports whole seconds. |
 | Thread scheduling | `scePthreadGetschedparam` / `scePthreadSetschedparam` use the existing priority implementation. FIFO is the supported guest scheduling policy; other policies fail. This does not establish native real-time scheduling. |
-| JSON2 | `Object::size`, `InitParameter2` construction and buffer configuration, RTTI allocator configuration and `Initializer::initialize(InitParameter2*)`. Allocator callbacks run with the guest ABI and are copied at initialization. JSON objects, strings and containers use that allocator; each allocation retains its original release callback/context so reinitialization cannot redirect frees. The existing parser reads memory; a file-buffer setting does not add a file parser. |
+| JSON2 | `Object::size`, `InitParameter2` construction and buffer configuration, RTTI allocator configuration and `Initializer::initialize(InitParameter2*)`. Allocator callbacks run with the guest ABI and are copied at initialization. JSON objects, strings and containers use that allocator; each allocation retains its original release callback/context so reinitialization cannot redirect frees. The existing parser reads memory; a file-buffer setting does not add a file parser. The opaque `MemAllocator` vtable interface is not implemented: a non-null allocator fails explicitly, while a null allocator selects default allocation. It must not be confused with the supported callback-based RTTI allocator. |
 | Progress dialogs | Increment/value/message APIs validate state and target, retain progress/text and saturate increments at 100. Native progress dialogs remain RUNNING until Close, and expose GetStatus. The existing headless dialog backend is retained: there is still no visible console dialog. |
 | Local configuration | Accessibility zoom-follow-focus is disabled for the existing local user. Store-icon layout is retained as configuration. Music-player permission is retained as local state; it does not mute game audio or create a system player. |
 | Offline PSN | Entitlement requests/polls and key access return signed-out failures; signaling preparation fails as unavailable. No keys, entitlement success, online request or request ID is fabricated. Reachability unregistration clears retained callback/context pointers. The unavailable request structs stay opaque instead of guessing their layout. |
@@ -22,9 +24,11 @@ SDK specification. Unavailable service paths intentionally do not access opaque
 arguments or fill successful result structures. A title that requires one of these
 services can still fail at runtime after its imports resolve.
 
-The file/thread additions were compared with AnyPS5 commit
-`9ab937b261a5bfdf253dd0f0d3bf371ffbdfb1fa`; the pinned upstream remains
-`0518f0e02187b6c7c00e6f7e7a7265c848efb346`. No wholesale upstream upgrade is used.
+The file/thread additions were originally compared with AnyPS5 commit
+`9ab937b261a5bfdf253dd0f0d3bf371ffbdfb1fa`. The current pin is
+`ee391a5614246338aec9cb7a3a3dd4f479aec9f3`; overlapping upstream definitions
+have been reconciled while retaining descriptor lifetime, allocator ownership
+and unavailable-service error checks.
 
 Host tests also exposed two existing boundary errors. Unsigned conversions now
 saturate both signs of overflow, including Windows CRT negative-overflow behavior,

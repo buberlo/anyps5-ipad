@@ -20,6 +20,6 @@ add_executable(nid_patcher ${nid_sources})
 target_include_directories(nid_patcher PRIVATE "${ANYPS5_SOURCE}/core/libs/nid/include")
 CMAKE
 cmake -S "$out/source" -B "$out/build" -G Ninja \
-    -DANYPS5_SOURCE="$root/upstreams/AnyPS5" -DCMAKE_BUILD_TYPE=Release
+    -DANYPS5_SOURCE="${APS5_ANYPS5_SOURCE:-$root/upstreams/AnyPS5}" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$out/build" --target relinker nid_patcher --parallel "${JOBS:-4}"
 echo "Host tools: $out/build/relinker/relinker and $out/build/nid_patcher"

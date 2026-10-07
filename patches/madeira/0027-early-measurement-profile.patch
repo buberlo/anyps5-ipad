@@ -1,0 +1,112 @@
+diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
+index 71c5e24..2a0d332 100644
+--- a/app/Madeira.xcodeproj/project.pbxproj
++++ b/app/Madeira.xcodeproj/project.pbxproj
+@@ -880,7 +880,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 18;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -913,7 +913,7 @@
+ 					"$(SRCROOT)/Madeira",
+ 				);
+ 				OTHER_LDFLAGS = ("$(inherited)", "-lwinevulkan_unix", "-lMoltenVK", "-framework", IOSurface, "-framework", IOKit);
+-				MARKETING_VERSION = 0.1.3;
++				MARKETING_VERSION = 0.1.9;
+ 				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				PROVISIONING_PROFILE_SPECIFIER = "";
+@@ -932,7 +932,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 18;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -965,7 +965,7 @@
+ 					"$(SRCROOT)/Madeira",
+ 				);
+ 				OTHER_LDFLAGS = ("$(inherited)", "-lwinevulkan_unix", "-lMoltenVK", "-framework", IOSurface, "-framework", IOKit);
+-				MARKETING_VERSION = 0.1.3;
++				MARKETING_VERSION = 0.1.9;
+ 				PRODUCT_BUNDLE_IDENTIFIER = "$(MADEIRA_BUNDLE_IDENTIFIER)";
+ 				PRODUCT_NAME = "$(TARGET_NAME)";
+ 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+@@ -983,7 +983,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 18;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+@@ -993,7 +993,7 @@
+ 					"$(inherited)",
+ 					"@executable_path/../../Frameworks",
+ 				);
+-				MARKETING_VERSION = 0.1.3;
++				MARKETING_VERSION = 0.1.9;
+ 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+ 					"$(inherited)",
+ 					"-framework",
+@@ -1014,7 +1014,7 @@
+ 			buildSettings = {
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 4;
++				CURRENT_PROJECT_VERSION = 18;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+@@ -1024,7 +1024,7 @@
+ 					"$(inherited)",
+ 					"@executable_path/../../Frameworks",
+ 				);
+-				MARKETING_VERSION = 0.1.3;
++				MARKETING_VERSION = 0.1.9;
+ 				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+ 					"$(inherited)",
+ 					"-framework",
+diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
+index 1f8bd51..804a862 100644
+--- a/app/Madeira/Library.swift
++++ b/app/Madeira/Library.swift
+@@ -545,6 +545,16 @@ struct LibraryEntry: Codable, Identifiable {
+         } catch {
+             LogStore.shared.log("[game-cfg] this game's config could not be written: \(error.localizedDescription)")
+         }
++        // Native reporters and FEX read these before Wine imports its late cfg.
++        // Export the selected host-only switches before the JIT pool is taken.
++        // General game env lines still use WineProcessBridge's normal parser.
++        for name in ["APS5_MEASURE", "APS5_PERF_REPORT", "FEX_TSOENABLED",
++                     "FEX_HALFBARRIERTSOENABLED", "FEX_VECTORTSOENABLED",
++                     "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_VOLATILEMETADATA"] {
++            if let value = MadeiraConfig.gameValue("env." + name) ?? MadeiraConfig.get("env." + name) {
++                setenv(name, value, 1)
++            }
++        }
+         fputs("[frontend] launch profile applied\n", stderr)
+         if usesLaunchOptions {
+             fputs("[library] ml1163 start=\(runsInDesktop ? "desktop" : "direct") batch=\(isBatch ? 1 : 0) services=\(servicesScript != nil ? 1 : 0) cwd=\(launchDirectory)\n", stderr)
+diff --git a/app/Madeira/MadeiraApp.swift b/app/Madeira/MadeiraApp.swift
+index 8c030c1..57891ad 100644
+--- a/app/Madeira/MadeiraApp.swift
++++ b/app/Madeira/MadeiraApp.swift
+@@ -30,7 +30,9 @@ struct MadeiraApp: App {
+         }
+         // Touch controls read their defaults before Wine exports cfg env lines.
+         for name in ["MADEIRA_FEX_AVX", "APS5_GUEST_ARENA_LAZY", "APS5_GUEST_ARENA_BASE",
+-                     "APS5_GUEST_ARENA_SIZE", "APS5_GUEST_ARENA_CHUNK", "MADEIRA_CONTROLS_XBOX_DEFAULT"] {
++                     "APS5_GUEST_ARENA_SIZE", "APS5_GUEST_ARENA_CHUNK", "MADEIRA_CONTROLS_XBOX_DEFAULT",
++                     "APS5_MEASURE", "APS5_PERF_REPORT", "FEX_TSOENABLED", "FEX_HALFBARRIERTSOENABLED",
++                     "FEX_VECTORTSOENABLED", "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_VOLATILEMETADATA"] {
+             if let value = MadeiraConfig.get("env." + name) { setenv(name, value, 1) }
+         }
+ 

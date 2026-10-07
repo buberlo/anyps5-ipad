@@ -1,0 +1,46 @@
+diff --git a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
+index ff2bb8bc..4a5e3b2f 100644
+--- a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
++++ b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
+@@ -585,6 +585,41 @@ void VideoOutDriver::presentLoop(std::stop_token token) {
+ }
+ 
+ void VideoOutDriver::vblankLoop(std::stop_token token) {
++    // Present waits for this count and only then calls FIFO present, so the emulated
++    // vblank cannot be advanced from present completion on this thread: that waits
++    // for a count the same call would have to produce. APS5_VBLANK_HZ=60 only
++    // changes the period. Unset stays on 1001/60000.
++    const char* hz = std::getenv("APS5_VBLANK_HZ");
++    if (hz != nullptr && std::strcmp(hz, "60") == 0) {
++        std::fprintf(stderr, "[videoout] APS5_VBLANK_HZ=60; emulated vblank period is 1/60 s\n");
++        std::fflush(stderr);
++        using Frame = std::chrono::duration<int64_t, std::ratio<1, 60>>;
++        const auto start = std::chrono::steady_clock::now();
++        try {
++            for (int64_t frame = 1; !token.stop_requested(); ++frame) {
++                const auto next = start + std::chrono::duration_cast<std::chrono::steady_clock::duration>(Frame(frame));
++                {
++                    std::unique_lock lock(flipQueue->mutex);
++                    flipQueue->changed.wait_until(lock, next, [&] { return token.stop_requested() || flipQueue->failure; });
++                    if (token.stop_requested() || flipQueue->failure) return;
++                }
++                vblankEnd();
++            }
++        } catch (const std::exception& error) {
++            std::fprintf(stderr, "[videoout] vblank failed: %s\n", error.what());
++            std::fflush(stderr);
++            std::terminate();
++        } catch (...) {
++            std::fprintf(stderr, "[videoout] vblank failed with a non-standard exception\n");
++            std::fflush(stderr);
++            std::terminate();
++        }
++        return;
++    }
++    if (hz != nullptr && *hz != '\0') {
++        std::fprintf(stderr, "[videoout] APS5_VBLANK_HZ=%s ignored; emulated vblank stays 1001/60000\n", hz);
++        std::fflush(stderr);
++    }
+     using Frame = std::chrono::duration<int64_t, std::ratio<1001, 60000>>;
+     const auto start = std::chrono::steady_clock::now();
+     try {

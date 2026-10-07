@@ -1,0 +1,14 @@
+diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvModuleSetup.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvModuleSetup.cpp
+index 9100ce94..b4ae6ebd 100644
+--- a/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvModuleSetup.cpp
++++ b/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvModuleSetup.cpp
+@@ -120,6 +120,9 @@ void DefineModule(SpirvEmitterState& state) {
+         state.module.EmitExtension(extension);
+     }
+     if (state.requirements.bufferInt64Atomics) {
++        if (std::find(state.supportedCapabilities.begin(), state.supportedCapabilities.end(), static_cast<std::uint32_t>(spv::CapabilityInt64Atomics)) == state.supportedCapabilities.end()) {
++            throw std::runtime_error("64-bit buffer atomics need shaderBufferInt64Atomics (VK_KHR_shader_atomic_int64), which this device does not report. MoltenVK leaves the feature false; the shader is not compiled.");
++        }
+         state.module.EmitCapability(spv::CapabilityInt64);
+         state.module.EmitCapability(spv::CapabilityInt64Atomics);
+     }

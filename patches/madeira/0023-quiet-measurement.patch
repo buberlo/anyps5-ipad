@@ -1,0 +1,19 @@
+diff --git a/app/Madeira/WineProcessBridge.m b/app/Madeira/WineProcessBridge.m
+index 9b67cad..a7bef7c 100644
+--- a/app/Madeira/WineProcessBridge.m
++++ b/app/Madeira/WineProcessBridge.m
+@@ -877,8 +877,13 @@ static void madeira_publish_host_probe(void)
+          * For debugging, set MADEIRA_DEBUG_VERBOSE=1 in the environment to
+          * restore the full trace channel set. */
+         {
++            const char *measure = getenv("APS5_MEASURE");
+             const char *verbose = getenv("MADEIRA_DEBUG_VERBOSE");
+-            if (verbose && *verbose && *verbose != '0') {
++            if (measure && measure[0] == '1' && measure[1] == '\0') {
++                setenv("WINEDEBUG", "-all", 1);
++                setenv("MVK_CONFIG_LOG_LEVEL", "1", 1);
++                LOG("WINEDEBUG = -all; MVK_CONFIG_LOG_LEVEL = 1 (APS5_MEASURE)");
++            } else if (verbose && *verbose && *verbose != '0') {
+                 setenv("WINEDEBUG", "err+all,fixme+all,warn+module,warn+file,trace+process,trace+module,trace+loaddll,trace+loadorder,trace+win,trace+user32,trace+syscall,trace+file", 1);
+                 LOG("WINEDEBUG = verbose (MADEIRA_DEBUG_VERBOSE set)");
+             } else {

@@ -37,6 +37,33 @@ static int extension(const VkExtensionProperties *items, uint32_t count, const c
     for (uint32_t i = 0; i < count; ++i) if (!strcmp(items[i].extensionName, name)) return 1;
     return 0;
 }
+/* Capability queries are evidence of support, not an MSAA execution test. */
+static void sample_capabilities(Probe *p, const VkPhysicalDeviceProperties *props) {
+    const VkPhysicalDeviceLimits *l = &props->limits;
+    fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"capability\":\"sample_count_limits\","
+            "\"color_mask\":%u,\"depth_mask\":%u,\"stencil_mask\":%u,\"no_attachment_mask\":%u}\n",
+            l->framebufferColorSampleCounts, l->framebufferDepthSampleCounts,
+            l->framebufferStencilSampleCounts, l->framebufferNoAttachmentsSampleCounts);
+    const struct { VkFormat format; VkImageUsageFlags usage; const char *name; } cases[] = {
+        {VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, "rgba8_unorm"},
+        {VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, "rgba8_srgb"},
+        {VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, "bgra8_unorm"},
+        {VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, "rgba16_float"},
+        {VK_FORMAT_D16_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, "d16_s8"},
+        {VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, "d32_s8"},
+        {VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, "d32"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        VkImageFormatProperties image = {0};
+        const VkResult rc = vkGetPhysicalDeviceImageFormatProperties(p->physical, cases[i].format,
+            VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, cases[i].usage, 0, &image);
+        fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"capability\":\"image_sample_counts\","
+                "\"format\":\"%s\",\"vk_format\":%u,\"usage\":%u,\"code\":%ld,\"sample_mask\":%u}\n",
+                cases[i].name, (unsigned)cases[i].format, cases[i].usage, (long)rc,
+                rc == VK_SUCCESS ? image.sampleCounts : 0u);
+    }
+    fflush(p->report);
+}
 static VkResult initialize(Probe *p) {
     uint32_t count = 0;
     VkResult rc = vkEnumerateInstanceExtensionProperties(NULL, &count, NULL);
@@ -86,6 +113,7 @@ static VkResult initialize(Probe *p) {
     const int hardware = props.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU;
     result(p, "hardware_device", hardware, (long)props.deviceType);
     if (!hardware) return VK_ERROR_FEATURE_NOT_PRESENT;
+    sample_capabilities(p, &props);
     if (props.apiVersion < VK_API_VERSION_1_1) return VK_ERROR_INCOMPATIBLE_DRIVER;
 
     count = 0;
@@ -385,14 +413,15 @@ int aps5_gpu_probe_run(const char *shader_dir, FILE *report) {
     Probe p = {.report = report ? report : stdout};
     VkResult rc = initialize(&p); int failed = rc != VK_SUCCESS;
     result(&p, "device_creation", !failed, rc);
-    if (!failed) {
+    const int capabilities_only = shader_dir && !strcmp(shader_dir, "--capabilities");
+    if (!failed && !capabilities_only) {
         rc = bda_test(&p, shader_dir); result(&p, "bda_8bit_readback", rc == VK_SUCCESS, rc); failed |= rc != VK_SUCCESS;
         rc = bc_test(&p, shader_dir); result(&p, "bc1_sample_readback", rc == VK_SUCCESS, rc); failed |= rc != VK_SUCCESS;
     }
     if (p.pool) vkDestroyCommandPool(p.device, p.pool, NULL);
     if (p.device) vkDestroyDevice(p.device, NULL);
     if (p.instance) vkDestroyInstance(p.instance, NULL);
-    result(&p, "offscreen_complete", !failed, failed);
+    result(&p, capabilities_only ? "capability_query_complete" : "offscreen_complete", !failed, failed);
     return failed ? 1 : 0;
 }
 

@@ -2,7 +2,7 @@
   "schema": 1,
   "date": "2026-10-08",
   "title": "15in1 Solitaire",
-  "status": "shader_repair_host_qualified_device_test_pending_unlock",
+  "status": "combined_graphics_candidate_device_tested_no_gameplay",
   "installed_app_build": "28",
   "shared_runtime_pr_head_rechecked": "e783c4f1f8baf987cba33145ca32481a6fa6c645",
   "shared_runtime_adoption_commit": "54e36f670bc7993f5829b2fcc1435f87bcca0be8",
@@ -67,7 +67,7 @@
     "candidate_packaged_libraries_checked": 51,
     "candidate_guest_nids_checked": 3225,
     "candidate_dependency_audit_passed": true,
-    "device_candidate_installed": false,
+    "device_candidate_installed": true,
     "device_candidate_rendering_qualified": false
   },
   "special_apc_probe": {
@@ -81,9 +81,15 @@
     "host_redzone_errors": 0,
     "host_exit_code": 1,
     "host_preemptive_delivery_passed": false,
-    "device_execution_status": "not_executed_device_locked",
+    "device_execution_status": "executed_preemption_failed",
     "checks": "Target spins without calls or waits during preemption observation, then enters a bounded alertable wait. Success requires preemption on the correct target thread and preserved SysV scratch.",
-    "production_gc_signal_delivery_qualified": false
+    "production_gc_signal_delivery_qualified": false,
+    "device_queue_status": 0,
+    "device_preemptive_callbacks": 0,
+    "device_alertable_callbacks": 1,
+    "device_wrong_thread_or_argument_count": 0,
+    "device_redzone_errors": 0,
+    "device_exit_code": 1
   },
   "production_restored": {
     "manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
@@ -124,9 +130,8 @@
   "remaining_blockers": [
     "Unity target-thread GC signal delivery and full guest context",
     "graphics worker invalid pointer with normal memory tracking",
-    "unsupported multisampling or coverage state",
-    "out-of-range viewport depth support",
-    "device qualification of the new scalar vertex branch"
+    "8-sample emulation: queried native attachment sample counts are only 1,2,4",
+    "audio distortion and actual playable controls"
   ],
   "visible_gameplay_qualified": false,
   "controls_qualified": false,
@@ -136,6 +141,8 @@
     "build/solitaire-investigation/build28-uniform-branch-replay/comparison.json": "2b474b6ca0aa17ce267f45ed62a046d89001449ea66d2f15ea260b9cc36872b2",
     "build/solitaire-investigation/build-uniform-branch-runtime.log": "ce59f0a3eab1321c3d1de486d7876e96ef06b29c3abdc9f42fc2d09a9ce4d5ab",
     "build/solitaire-investigation/special-apc-host.log": "85a8ea302a9e5977ab9457b80574e6f376a742ece7a5d34070265c3fb432fa48",
-    "build/solitaire-investigation/build28-shader-capture-device.log": "9c3ff80aa0c813a04c2c402afb7a65a7f1ca1010498eaf4fe37c238b4db16438"
-  }
+    "build/solitaire-investigation/build28-shader-capture-device.log": "9c3ff80aa0c813a04c2c402afb7a65a7f1ca1010498eaf4fe37c238b4db16438",
+    "build/pr1-port/special-apc-build28-default-smoke/app-final.log": "01320fce639382f4e87e1dfceb509ce3b93c8399a13a23c049cb26995b9b1dac"
+  },
+  "device_followup_record": "solitaire-unobserved-stencil-depth.json"
 }

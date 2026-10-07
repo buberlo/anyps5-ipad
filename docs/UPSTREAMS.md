@@ -34,3 +34,7 @@ commits AnyPS5 itself recorded. Vulkan-Headers inside that pin is
 
 Clones are shallow (`--depth 1`) except where a submodule add had already
 fetched a branch tip. The gitlink is the full commit id either way.
+
+The [2026-10-08 AnyPS5 refresh audit](UPSTREAM-REFRESH.md) tracks a newer
+merged-main candidate. Its integration and runtime checks are incomplete; the
+production pin above remains authoritative.

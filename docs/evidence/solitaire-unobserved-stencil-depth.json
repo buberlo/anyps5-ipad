@@ -3,7 +3,7 @@
   "date": "2026-10-08",
   "title": "15in1 Solitaire",
   "installed_app_build": "28",
-  "status": "unobserved_stencil_depth_repair_host_qualified_device_test_blocked_by_lock",
+  "status": "combined_graphics_candidate_device_tested_white_output_msaa_blocker",
   "register_capture": {
     "source": "completed private production-package restore readback",
     "files_found": 18,
@@ -71,11 +71,12 @@
   "device": {
     "latest_live_lock_query_success": true,
     "unlocked_since_boot": true,
-    "passcode_required": true,
-    "candidate_installed": false,
-    "candidate_test_executed": false,
-    "original_production_installation_changed_this_turn": false,
-    "visible_gameplay_qualified": false
+    "passcode_required": false,
+    "candidate_installed": true,
+    "candidate_test_executed": true,
+    "original_production_installation_changed_this_turn": true,
+    "visible_gameplay_qualified": false,
+    "production_restored_after_bounded_tests": true
   },
   "prepared_private_test": {
     "verified_files": 138,
@@ -87,13 +88,13 @@
     "refuses_unexpected_original_manifest": true,
     "rolls_back_partial_copy_attempts": true,
     "restores_known_production_package_after_test": true,
-    "prepared_workflow_executed": false
+    "prepared_workflow_executed": true
   },
   "remaining": [
-    "iPad verification of both new graphics repairs",
     "production asynchronous GC signal delivery",
     "invalid graphics-worker pointer with normal private write watching",
-    "complete 8-sample color/depth/coverage/resolve implementation and actual device capabilities",
+    "8-sample color/depth/coverage/resolve emulation: native queried attachment counts are only 1,2,4",
+    "audio distortion reported by user; not fully explained by observed device underrun",
     "actual playable menu and touch controls"
   ],
   "pinned_stack_validation": [
@@ -138,6 +139,38 @@
     "build/solitaire-investigation/graphics-register-summary.json": "6d6794d1d723a2929b73c13feaf6ba5b7444b1dfdc05f3502e0b74d9daf20457",
     "build/solitaire-investigation/device-lock-state-current.json": "e05df27e9f79943b45eb5160e463dcf4101234375b32eafcf62ce0031a4a7717",
     "build/solitaire-investigation/build-unobserved-depth-fixed.log": "785e09425758102dd382013fb641f45668f2dba52922732d4537685fc4b2a39e",
-    "build/solitaire-investigation/graphics-tests-high-arena2.log": "c16802445e0f531f7677e6cc35cfcd1e8527f67fbd00f3ea8161bb5a33c127f2"
+    "build/solitaire-investigation/graphics-tests-high-arena2.log": "c16802445e0f531f7677e6cc35cfcd1e8527f67fbd00f3ea8161bb5a33c127f2",
+    "build/pr1-port/solitaire-unobserved-depth-off-smoke/app-final.log": "1b9ac594389feb8b39c76188df7417530b4f64d3b4b600482c796d2733b96ba9",
+    "build/pr1-port/solitaire-unobserved-depth-on-smoke/app-final.log": "d75ed734805f5f21297bb41be05797997e02581f44a866683725fd559b3bd87f"
+  },
+  "device_runs": {
+    "controlled_variable": "Only APS5_NO_WRITE_WATCH presence differed; multiblock=true, maxinst=5000 and DFE enabled in both runs",
+    "normal_private_tracking": {
+      "duration_seconds": 60,
+      "fatal": true,
+      "thread": "UnityGfxDeviceWorker",
+      "instruction": "game.exe+0x1461222",
+      "read_address": "0x30",
+      "visible_gameplay": false
+    },
+    "no_private_tracking_diagnostic": {
+      "duration_seconds": 60,
+      "fatal_reported": false,
+      "visible_output": "white",
+      "new_driver_vertex_vote_or_viewport_depth_rejections_observed": false,
+      "skipped_draws_reported": "8-sample multisampling or coverage conversion",
+      "screenshots_seconds": [
+        15,
+        60
+      ],
+      "screenshot_35_failed": "CoreDevice remote XPC connection invalidated",
+      "user_report": "White after loading; audio audible but distorted",
+      "audio_device_short_passes": 1,
+      "audio_device_short_ms": 21.3,
+      "audio_source_peak_max_logged": 0.387,
+      "audio_quality_qualified": false
+    },
+    "production_manifest_restored": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "readback_scope": "Replaced libs, preparation and manifest read back and verified; unchanged assets reuse the independently verified original device readback; config and library byte-identical"
   }
 }

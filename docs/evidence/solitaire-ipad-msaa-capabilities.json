@@ -1,0 +1,214 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "app_build": "28",
+  "device_model": "iPad14,10",
+  "os": "27.0.1 (24A446)",
+  "route": "x86-64 PE through Wine/FEX and Vulkan/MoltenVK on the physical iPad",
+  "status": "capability_queries_passed_not_msaa_execution",
+  "source": "tools/gpu-probe/gpu_probe.c",
+  "probe_source_sha256": "2c4a4bbbae924b3ed6280a7cfbd641c8750bdd71bf57fe0a5d314966b481c8b3",
+  "probe_exe_sha256": "4b04db33d1d1bf5896f3480df29d61178d238a13df300fc87fd70ea033796eb1",
+  "wine_exit_code": 0,
+  "records": [
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "device": "Apple M2 GPU",
+      "api_version": 4198757,
+      "driver_version": 10403,
+      "device_type": 1,
+      "vendor_id": 4203,
+      "device_id": 452984840
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "hardware_device",
+      "status": "pass",
+      "code": 1
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "sample_count_limits",
+      "color_mask": 7,
+      "depth_mask": 7,
+      "stencil_mask": 7,
+      "no_attachment_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "rgba8_unorm",
+      "vk_format": 37,
+      "usage": 16,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "rgba8_srgb",
+      "vk_format": 43,
+      "usage": 16,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "bgra8_unorm",
+      "vk_format": 44,
+      "usage": 16,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "rgba16_float",
+      "vk_format": 97,
+      "usage": 16,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "d16_s8",
+      "vk_format": 128,
+      "usage": 32,
+      "code": -11,
+      "sample_mask": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "d32_s8",
+      "vk_format": 130,
+      "usage": 32,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "image_sample_counts",
+      "format": "d32",
+      "vk_format": 126,
+      "usage": 32,
+      "code": 0,
+      "sample_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "VK_KHR_buffer_device_address",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "VK_KHR_8bit_storage",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "VK_KHR_shader_float_controls",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "bufferDeviceAddress",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "storageBuffer8BitAccess",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "shaderInt64",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "textureCompressionBC",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "vertexPipelineStoresAndAtomics",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "fragmentStoresAndAtomics",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "samplerAnisotropy",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "shaderSignedZeroInfNanPreserveFloat32",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "device_creation",
+      "status": "pass",
+      "code": 0
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "test": "capability_query_complete",
+      "status": "pass",
+      "code": 0
+    }
+  ],
+  "supported_attachment_sample_counts": [
+    1,
+    2,
+    4
+  ],
+  "native_eight_sample_attachment_supported": false,
+  "captured_guest_sample_count": 8,
+  "format_queries_only": true,
+  "msaa_draw_or_resolve_executed": false,
+  "gameplay_qualified": false,
+  "configuration_and_library_restored_byte_identical": true,
+  "private_log_sha256": "c86f895611423ac8b5e52f568f2caaab5523ba12482d359caa1f5324d40ed77d"
+}

@@ -981,14 +981,14 @@ guest-NID audit. These host results do not establish correct device rendering.
 A separate special-APC fixture checks whether a CPU-bound target can be
 interrupted without entering an alertable Windows wait. Local x86 Wine accepts
 the queue but only delivers after the target enters `SleepEx`; preemption fails
-with exit 1. Target identity, arguments and SysV scratch pass. The next iPad
-attempt is refused because the device is locked; no device result is inferred
-from that attempt or from the preceding game's log. This is why the cooperative
+with exit 1. Target identity, arguments and SysV scratch pass. A later unlocked iPad run gives the same result: queue status 0, no callback
+while spinning, one callback during the alertable wait, correct target/arguments
+and preserved scratch, then process exit 1. This is a failed preemption test. This is why the cooperative
 GC prototype is not promoted to production signal delivery.
 
-The regular game package, configuration and library are restored. The new driver
-is prepared locally for a controlled device test. Memory tracking, depth/MSAA
-support and real GC preemption remain separate unresolved work. See the
+The regular game package, configuration and library are restored. The combined
+0027/0028 driver has now run in the controlled device pair below. Memory tracking,
+MSAA and real GC preemption remain separate unresolved work. See the
 [shader and preemption record](evidence/solitaire-uniform-vertex-branch.json).
 
 ### Exact stencil and eight-sample register states
@@ -1030,11 +1030,34 @@ Definitions and logarithmic encoding are available in AMD's
 [register declarations](https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/chip/gfx9_plus_merged_registers.h)
 and [MSAA setup](https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/gfx9MsaaState.cpp).
 
-A private 138-file diagnostic package is prepared without changing the original
-packages or device installation. Its bounded helper checks live unlock state
-before replacing runtime files, rejects an unexpected manifest, includes partial
-copies in rollback, captures normal and diagnostic no-private-watch runs separately,
-and restores the known production package. It has not run: the current device
-query reports `passcodeRequired=true`. Actual graphics, asynchronous GC delivery,
-normal memory tracking and playable Solitaire remain unqualified. See the
-[stencil-depth record](evidence/solitaire-unobserved-stencil-depth.json).
+A private 138-file diagnostic package has now completed both bounded device
+runs. Both keep multiblock enabled, MAXINST=5000 and DFE enabled; only the presence
+of `APS5_NO_WRITE_WATCH` differs. Normal tracking fails in the graphics worker at
+`game.exe+0x1461222`, reading 0x30. Without private tracking, the 60-second run
+reports no fatal exception, but output remains white. The previous vertex vote
+and unused viewport depth rejections do not recur; the remaining logged skipped
+draws request eight samples. One screenshot transfer failed due to a remote XPC
+connection invalidation; the later screenshot and closed-log transfer succeeded.
+
+The original production runtime units and manifest were read back and verified
+after restoration. Unchanged assets retain the independently verified original
+device readback, avoiding a redundant full asset transfer on the nearly full Mac.
+Configuration and library are byte-identical to their originals. The diagnostic
+kernel and no-private-watch launch flag are not promoted to production.
+See the [device pair record](evidence/solitaire-unobserved-stencil-depth.json).
+
+A separate x86 Windows Vulkan capability probe ran through the actual iPad
+Wine/FEX/MoltenVK route, exited 0 and returned to the library. The Apple M2 GPU
+reports attachment sample masks 7, meaning 1, 2 and 4 samples, with no native
+8-sample support. Queried RGBA8 UNORM/SRGB, BGRA8, RGBA16 float, D32 and D32/S8
+attachment formats also report mask 7; D16/S8 is unsupported. These are queries,
+not rendered MSAA or resolve tests. `gpu-probe --capabilities` performs this
+query without claiming offscreen shader execution. Preserving the captured
+8-sample rendering would require emulation. Merely deleting the validation
+would request an unsupported image format/sample combination.
+See the [actual device capability record](evidence/solitaire-ipad-msaa-capabilities.json).
+
+The user reports audible but distorted audio. In this diagnostic run, native
+streams mostly receive approximately real-time audio, with one 21.3-ms device
+shortfall and source peaks below 0.4. Those counters do not establish correct
+waveforms or explain the full audible defect. Audio remains unqualified.

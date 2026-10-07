@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "installed_app_build": "28",
+  "status": "unobserved_stencil_depth_repair_host_qualified_device_test_blocked_by_lock",
+  "register_capture": {
+    "source": "completed private production-package restore readback",
+    "files_found": 18,
+    "raw_registers_public": false,
+    "viewport_capture_sha256": "2fef67395e0fdc1a2e3ef664c983440389f3e079713a494ab24f07cb7ad6c303",
+    "viewport_depth": [
+      -1.0,
+      1.0
+    ],
+    "depth_control": "0x771",
+    "depth_test": false,
+    "depth_write": false,
+    "stencil_test": true,
+    "negative_one_to_one_clip_convention": true,
+    "matched_fragment_program_address": "0x7411540d00",
+    "matched_fragment_spirv_sha256": "51167f614a2aef54a6cf5e43483158a7c39a76c27274bbc6621e07459be170c0",
+    "fragment_fragcoord_or_fragdepth_builtin": false,
+    "multisample_captures": 4,
+    "multisample_aa_config": "0x0030e003",
+    "raster_samples": 8,
+    "exposed_samples": 8,
+    "color_samples": 8,
+    "color_fragments": 8,
+    "multisample_rendering_supported_by_this_change": false
+  },
+  "viewport_repair": {
+    "patch": "patches/anyps5/0028-unobserved-viewport-depth.patch",
+    "patch_sha256": "4fb84d136541695f04067a19861f5e7e659d59f17d00a51b8e0b16aa7a7de892",
+    "rule": "Use a legal [0,1] viewport depth only when no depth test/write/bounds/bias/clamp or fragment coordinate/depth consumer can observe the original range.",
+    "changes_clip_coordinates": false,
+    "changes_clip_convention": false,
+    "changes_xy_or_stencil_operations": false,
+    "changes_guest_state": false,
+    "normal_and_recipe_draw_paths_updated": true,
+    "feature_and_range_validation_retained": true,
+    "native_unrestricted_or_already_legal_ranges_preserved": true
+  },
+  "host_qualification": {
+    "runtime": "macOS x86 Wine; state validation, not native Windows GPU or iPad rendering",
+    "unobserved_depth_eligibility_tests_passed": true,
+    "depth_and_stencil_state_suite_exit_code": 0,
+    "captured_viewport_replay_exit_code": 0,
+    "captured_before": [
+      -1,
+      1
+    ],
+    "captured_after": [
+      0,
+      1
+    ],
+    "captured_replay_uses_empty_scratch_reservations_for_color_range_checks": true,
+    "captured_image_contents_or_gpu_work_executed": false,
+    "original_fragment_shader_changed": false,
+    "positive_test_fragment_spirv_validated_target": "vulkan1.3",
+    "full_graphics_suite_exit_code": 1,
+    "full_graphics_failure": "fixed-function interpolation requires unmodified center I/J pairs and complete P1/P2 sequences on a proven entry/discard path (pc=0)",
+    "earlier_full_graphics_suite_also_failed_interpolation_at_pc0": true,
+    "full_renderer_suite_passed": false,
+    "graphics_driver_built": true,
+    "candidate_driver_sha256": "5882d9c0c6ec36d3e466112fb96b77dde0324a93dd6fdd99aa4eb58e677b6f85",
+    "candidate_packaged_libraries_checked": 51,
+    "candidate_guest_nids_checked": 3225,
+    "candidate_import_audit_passed": true
+  },
+  "device": {
+    "latest_live_lock_query_success": true,
+    "unlocked_since_boot": true,
+    "passcode_required": true,
+    "candidate_installed": false,
+    "candidate_test_executed": false,
+    "original_production_installation_changed_this_turn": false,
+    "visible_gameplay_qualified": false
+  },
+  "prepared_private_test": {
+    "verified_files": 138,
+    "manifest_sha256": "dec35768662295641ae585c485f4abf7d8d34465ec04f04d9a6f6f71e1a7c331",
+    "contains_private_cooperative_gc_prototype": true,
+    "source_package_hashes_preserved": true,
+    "bounded_normal_tracking_and_diagnostic_no_private_watch_runs_prepared": true,
+    "requires_live_unlocked_device_before_any_replacement": true,
+    "refuses_unexpected_original_manifest": true,
+    "rolls_back_partial_copy_attempts": true,
+    "restores_known_production_package_after_test": true,
+    "prepared_workflow_executed": false
+  },
+  "remaining": [
+    "iPad verification of both new graphics repairs",
+    "production asynchronous GC signal delivery",
+    "invalid graphics-worker pointer with normal private write watching",
+    "complete 8-sample color/depth/coverage/resolve implementation and actual device capabilities",
+    "actual playable menu and touch controls"
+  ],
+  "pinned_stack_validation": [
+    {
+      "component": "AnyPS5",
+      "pin": "ee391a5614246338aec9cb7a3a3dd4f479aec9f3",
+      "patches": 28,
+      "files_verified": 62,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "FEX",
+      "pin": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+      "patches": 10,
+      "files_verified": 8,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    },
+    {
+      "component": "Madeira",
+      "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+      "patches": 25,
+      "files_verified": 43,
+      "applied": true,
+      "isolated_source_matches": true,
+      "reverse_restores_pin": true
+    }
+  ],
+  "primary_references": [
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkViewport.html",
+    "https://docs.vulkan.org/spec/latest/chapters/vertexpostproc.html",
+    "https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/chip/gfx9_plus_merged_registers.h",
+    "https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/gfx9MsaaState.cpp"
+  ],
+  "private_evidence_sha256": {
+    "build/solitaire-investigation/run-unobserved-depth-state.log": "f4e55c1c35fe03bc12b51511f67fe756c0a53a912c4ca64f8d7f6024d939183c",
+    "build/solitaire-investigation/run-unobserved-full-graphics.log": "dde1fcc4f834c5a169e5ad051c0e0b779b495cbcc1f9240cb33134edcc22ae22",
+    "build/solitaire-investigation/run-captured-viewport-scratch.log": "797a994d9f4d64593534cb22549fae2b40cc70a6020e56fa60a752f1b4eba66d",
+    "build/solitaire-investigation/graphics-register-summary.json": "6d6794d1d723a2929b73c13feaf6ba5b7444b1dfdc05f3502e0b74d9daf20457",
+    "build/solitaire-investigation/device-lock-state-current.json": "e05df27e9f79943b45eb5160e463dcf4101234375b32eafcf62ce0031a4a7717",
+    "build/solitaire-investigation/build-unobserved-depth-fixed.log": "785e09425758102dd382013fb641f45668f2dba52922732d4537685fc4b2a39e",
+    "build/solitaire-investigation/graphics-tests-high-arena2.log": "c16802445e0f531f7677e6cc35cfcd1e8527f67fbd00f3ea8161bb5a33c127f2"
+  }
+}

@@ -990,3 +990,51 @@ The regular game package, configuration and library are restored. The new driver
 is prepared locally for a controlled device test. Memory tracking, depth/MSAA
 support and real GC preemption remain separate unresolved work. See the
 [shader and preemption record](evidence/solitaire-uniform-vertex-branch.json).
+
+### Exact stencil and eight-sample register states
+
+The completed readback also contains eighteen `.regs` files written by the
+existing rejected-draw path. Additional capture instrumentation is unnecessary.
+The relevant viewport failure has Z scale 1, offset 0 and the negative-one-to-one
+clip convention, producing a [-1,1] viewport. `DB_DEPTH_CONTROL=0x771` enables
+stencil while disabling depth tests/writes. Its matched fragment program at
+`0x7411540d00` has no `FragCoord` or `FragDepth` builtin.
+
+AnyPS5 0028 resolves only an unobserved depth range to [0,1]. Its conservative
+proof excludes depth tests, writes, bounds, bias, clamping, fragment depth exports
+and all fragment-coordinate declarations. It requires one known fragment entry
+point and walks bounded, length-checked SPIR-V instructions. Native unrestricted
+ranges and legal/reversed ranges are kept. Clipping happens in clip coordinates
+with the original convention; the adaptation does not change those coordinates,
+XY, interpolation, stencil state or the original guest state. The same rule is
+applied to the ordinary and cached-recipe draw paths. The
+[Vulkan viewport equations](https://docs.vulkan.org/refpages/latest/refpages/source/VkViewport.html)
+and [clip-volume rules](https://docs.vulkan.org/spec/latest/chapters/vertexpostproc.html)
+explain why an unused framebuffer Z transform can be replaced independently.
+
+Eligibility and depth/stencil state regressions pass under local x86 Wine. A
+metadata replay loads the actual captured registers and matched fragment module,
+reserving empty host memory only for the decoder's color-range check. Original
+viewport validation fails; the resolved [0,1] range passes. This replay consumes
+no image contents and performs no GPU rendering. The full graphics suite still
+fails a fixed-function interpolation contract at PC 0; the full renderer is not
+qualified. The rebuilt driver's native imports and 3,225 guest NIDs pass the
+existing package's dependency audit.
+
+Four other dumps describe real eight-sample targets: `PA_SC_AA_CONFIG=0x0030e003`
+and `CB_COLOR_ATTRIB=0x0001b000` both encode sample counts of eight, with eight
+stored fragments. This is not a harmless unused control bit. The backend's
+single-sample attachments, depth surfaces, resource layouts, shader coverage and
+resolve paths need actual multisample support; 0028 does not admit those draws.
+Definitions and logarithmic encoding are available in AMD's
+[register declarations](https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/chip/gfx9_plus_merged_registers.h)
+and [MSAA setup](https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/gfx9MsaaState.cpp).
+
+A private 138-file diagnostic package is prepared without changing the original
+packages or device installation. Its bounded helper checks live unlock state
+before replacing runtime files, rejects an unexpected manifest, includes partial
+copies in rollback, captures normal and diagnostic no-private-watch runs separately,
+and restores the known production package. It has not run: the current device
+query reports `passcodeRequired=true`. Actual graphics, asynchronous GC delivery,
+normal memory tracking and playable Solitaire remain unqualified. See the
+[stencil-depth record](evidence/solitaire-unobserved-stencil-depth.json).

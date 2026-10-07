@@ -1,0 +1,287 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
+@@ -85,6 +85,10 @@
+ void ClearCachedPipelines(VkDevice device);
+ // Device limit checks of the viewport, which is dynamic state and so no longer checked by Pipeline.
+ void ValidateViewport(const Context& context, const VkViewport& viewport);
++// A viewport depth with no consumer can use [0,1] on restricted hosts. Clip
++// coordinates, clip convention and all XY/interpolation state remain unchanged.
++// Unsafe or unknown cases retain their original range and normal validation.
++VkViewport ResolveUnobservedViewportDepth(const Context& context, const State& state, std::span<const CompiledShader> shaders);
+ void ValidateDepthBounds(const Context& context, const State& state);
+ 
+ void ValidateShaderPair(const ShaderRecompiler::RecompileResult& vertex, const ShaderRecompiler::RecompileResult& fragment);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -1448,7 +1448,14 @@
+     return std::nullopt;
+ }
+ 
+-void Draw(const Context& context, const State& state, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, std::shared_ptr<const DrawRecipe>* recipeOut) {
++void Draw(const Context& context, const State& guestState, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, std::shared_ptr<const DrawRecipe>* recipeOut) {
++    const auto viewport = ResolveUnobservedViewportDepth(context, guestState, shaders);
++    std::optional<State> adapted;
++    if (viewport.minDepth != guestState.viewport.minDepth || viewport.maxDepth != guestState.viewport.maxDepth) {
++        adapted = guestState;
++        adapted->viewport = viewport;
++    }
++    const State& state = adapted ? *adapted : guestState;
+     PerformanceTimer timing("Graphics.Draw");
+     // APS5_PROFILE_DRAW prints the time of each phase of the draw (microseconds) and the [draws] totals.
+     static const bool profile = std::getenv("APS5_PROFILE_DRAW") != nullptr;
+@@ -1964,7 +1971,14 @@
+     APS5_LOG_CHARS_OUT_DEBUG("Draw finished");
+ }
+ 
+-DrawRecipeOutcome DrawWithRecipe(const Context& context, const State& state, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, const DrawRecipe& recipe) {
++DrawRecipeOutcome DrawWithRecipe(const Context& context, const State& guestState, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, const DrawRecipe& recipe) {
++    const auto viewport = ResolveUnobservedViewportDepth(context, guestState, shaders);
++    std::optional<State> adapted;
++    if (viewport.minDepth != guestState.viewport.minDepth || viewport.maxDepth != guestState.viewport.maxDepth) {
++        adapted = guestState;
++        adapted->viewport = viewport;
++    }
++    const State& state = adapted ? *adapted : guestState;
+     static_cast<void>(snapshots);
+     PerformanceTimer timing("Graphics.DrawWithRecipe");
+     static const bool profile = std::getenv("APS5_PROFILE_DRAW") != nullptr;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+@@ -1,3 +1,4 @@
++#include <spirv/unified1/spirv.hpp>
+ #include "prx/libSceAgcDriver/Execution/include/ProfileOutput.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Pipeline.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
+@@ -80,6 +81,48 @@
+ 
+ void ValidateDepthBounds(const Context& context, const State& state) {
+     Require(!state.depthBoundsTest || context.depthRangeUnrestricted || (state.minDepthBounds >= 0.0f && state.minDepthBounds <= 1.0f && state.maxDepthBounds >= 0.0f && state.maxDepthBounds <= 1.0f), "depth bounds outside [0, 1] require VK_EXT_depth_range_unrestricted");
++}
++
++VkViewport ResolveUnobservedViewportDepth(const Context& context, const State& state, std::span<const CompiledShader> shaders) {
++    auto viewport = state.viewport;
++    if (context.depthRangeUnrestricted ||
++        (viewport.minDepth >= 0 && viewport.minDepth <= 1 && viewport.maxDepth >= 0 && viewport.maxDepth <= 1) ||
++        !std::isfinite(viewport.minDepth) || !std::isfinite(viewport.maxDepth) ||
++        state.depthTest || state.depthWrite || state.depthBoundsTest || state.depthBias || state.depthClamp)
++        return viewport;
++    // Stencil tests do not consume Z. Preserve clip-space clipping (including
++    // negativeOneToOne), geometry, XY, interpolation and every stencil operation.
++    // Reject all FragCoord use conservatively, even an XY-only declaration, and
++    // any fragment depth export. ValidateShaders still validates the programs.
++    unsigned fragments = 0;
++    for (const auto& shader : shaders) {
++        if (shader.stage != ShaderRecompiler::ShaderStage::Fragment) continue;
++        if (++fragments != 1 || shader.program == nullptr) return viewport;
++        const auto& words = shader.program->spirv.Words();
++        if (words.size() < 5 || words[0] != 0x07230203u) return viewport;
++        unsigned entryPoints = 0;
++        for (std::size_t offset = 5; offset < words.size();) {
++            const auto count = words[offset] >> 16u;
++            const auto opcode = static_cast<spv::Op>(words[offset] & 0xffffu);
++            if (count == 0 || count > words.size() - offset) return viewport;
++            if (opcode == spv::OpEntryPoint &&
++                (++entryPoints != 1 || count < 4 || words[offset + 1] != spv::ExecutionModelFragment)) return viewport;
++            const auto observes = [](std::uint32_t builtin) {
++                return builtin == spv::BuiltInFragCoord || builtin == spv::BuiltInFragDepth;
++            };
++            if (opcode == spv::OpDecorate && count >= 4 && words[offset + 2] == spv::DecorationBuiltIn && observes(words[offset + 3])) return viewport;
++            if (opcode == spv::OpMemberDecorate && count >= 5 && words[offset + 3] == spv::DecorationBuiltIn && observes(words[offset + 4])) return viewport;
++            if (opcode == spv::OpDecorateId && count >= 3 && words[offset + 2] == spv::DecorationBuiltIn) return viewport;
++            if (opcode == spv::OpExecutionMode && count >= 3 && words[offset + 2] == spv::ExecutionModeDepthReplacing) return viewport;
++            offset += count;
++        }
++        if (entryPoints != 1) return viewport;
++    }
++    if (fragments == 1) {
++        viewport.minDepth = 0.0f;
++        viewport.maxDepth = 1.0f;
++    }
++    return viewport;
+ }
+ 
+ void ValidateViewport(const Context& context, const VkViewport& viewport) {
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -16,6 +16,11 @@
+ #include <cstring>
+ #include <initializer_list>
+ #include <iostream>
++#include <fstream>
++#include <sstream>
++#ifdef _WIN32
++#include <windows.h>
++#endif
+ #include <map>
+ #include <optional>
+ #include <set>
+@@ -811,6 +816,146 @@
+     }
+ }
+ 
++void ReplayUnobservedViewport(const char* registersPath, const char* fragmentPath) {
++    using namespace AgcDriver::Graphics;
++    std::ifstream file(registersPath, std::ios::binary | std::ios::ate);
++    Require(file && file.tellg() <= 2 * 1024 * 1024, "missing or oversized register capture");
++    file.seekg(0);
++    AgcDriver::QueueState queue;
++    for (std::string line; std::getline(file, line);) {
++        std::istringstream input(line);
++        std::string bank;
++        std::uint32_t offset, value;
++        if (!(input >> bank >> std::hex >> offset >> value)) continue;
++        if (bank == "context") queue.context[offset] = value;
++        if (bank == "shader") queue.shader[offset] = value;
++        if (bank == "uconfig") queue.userConfig[offset] = value;
++    }
++#ifdef _WIN32
++    // DecodeState validates color address ranges. Reserve empty scratch at the
++    // captured addresses solely for that range check; no captured image data or
++    // GPU work is consumed by this metadata replay. Never replace an existing map.
++    struct ScratchMaps {
++        std::vector<void*> values;
++        ~ScratchMaps() { for (void* value : values) VirtualFree(value, 0, MEM_RELEASE); }
++    } scratch;
++    const auto word = [&](std::uint32_t offset) {
++        const auto it = queue.context.find(offset);
++        return it == queue.context.end() ? 0u : it->second;
++    };
++    const auto active = word(0x8e) & word(0x8f);
++    std::set<std::uint64_t> bases;
++    for (unsigned slot = 0; slot < 8; ++slot) {
++        if ((active & (0xfu << (slot * 4))) == 0) continue;
++        const auto address = (static_cast<std::uint64_t>(word(0x390 + slot) & 0xffu) << 40u) |
++                             (static_cast<std::uint64_t>(word(0x318 + slot * 15)) << 8u);
++        const auto base = address & ~0xffffull;
++        Require(base >= 0x10000 && base < 0x1000000000000ull, "invalid captured color address");
++        if (!bases.insert(base).second) continue;
++        auto* requested = reinterpret_cast<void*>(static_cast<std::uintptr_t>(base));
++        void* allocated = VirtualAlloc(requested, 32u * 1024 * 1024, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
++        Require(allocated == requested, "cannot reserve isolated captured color range");
++        scratch.values.push_back(allocated);
++    }
++#else
++    throw std::runtime_error("register replay with scratch address reservations requires a Windows host");
++#endif
++    const auto state = DecodeState(queue);
++    std::ifstream module(fragmentPath, std::ios::binary | std::ios::ate);
++    Require(static_cast<bool>(module), "missing captured fragment SPIR-V");
++    const auto bytes = static_cast<std::streamoff>(module.tellg());
++    Require(bytes >= 20 && bytes <= 2 * 1024 * 1024 && bytes % 4 == 0, "invalid fragment byte size");
++    module.seekg(0);
++    std::vector<std::uint32_t> words(static_cast<std::size_t>(bytes) / 4);
++    module.read(reinterpret_cast<char*>(words.data()), bytes);
++    Require(static_cast<bool>(module), "incomplete fragment read");
++    ShaderRecompiler::RecompileResult fragment;
++    fragment.spirv = std::move(words);
++    const std::array<CompiledShader, 1> shaders{{{ShaderRecompiler::ShaderStage::Fragment, &fragment, 0}}};
++    Context restricted{};
++    restricted.depthClipControl = true;
++    restricted.limits.maxViewportDimensions[0] = restricted.limits.maxViewportDimensions[1] = 16384;
++    restricted.limits.viewportBoundsRange[0] = -32768;
++    restricted.limits.viewportBoundsRange[1] = 32767;
++    expectFailure([&] { ValidateViewport(restricted, state.viewport); }, "viewport depth outside [0, 1]");
++    const auto resolved = ResolveUnobservedViewportDepth(restricted, state, shaders);
++    ValidateViewport(restricted, resolved);
++    Require(!state.depthTest && !state.depthWrite && state.stencilTest && state.negativeOneToOne,
++            "capture is not the intended stencil-only negative clip convention");
++    std::cout << "Captured stencil viewport before=" << state.viewport.minDepth << "," << state.viewport.maxDepth
++              << " after=" << resolved.minDepth << "," << resolved.maxDepth
++              << " depthTest=" << state.depthTest << " depthWrite=" << state.depthWrite
++              << " stencil=" << state.stencilTest << " negativeOneToOne=" << state.negativeOneToOne << "\n";
++}
++
++void UnobservedViewportDepthTests() {
++    using namespace AgcDriver::Graphics;
++    using ShaderRecompiler::ShaderStage;
++    Context restricted{};
++    restricted.depthClipControl = true;
++    State stencil{};
++    stencil.viewport = {13, 17, 128, -64, -1, 1};
++    stencil.negativeOneToOne = true;
++    stencil.stencilTest = true;
++    // A valid, original no-depth/no-coordinate fragment module with an empty
++    // main function. The test checks eligibility without requiring a GPU.
++    ShaderRecompiler::RecompileResult fragment;
++    fragment.spirv = std::vector<std::uint32_t>{
++        0x07230203, 0x00010000, 0, 5, 0,
++        (2u << 16) | spv::OpCapability, spv::CapabilityShader,
++        (3u << 16) | spv::OpMemoryModel, spv::AddressingModelLogical, spv::MemoryModelGLSL450,
++        (5u << 16) | spv::OpEntryPoint, spv::ExecutionModelFragment, 3, 0x6e69616d, 0,
++        (3u << 16) | spv::OpExecutionMode, 3, spv::ExecutionModeOriginUpperLeft,
++        (2u << 16) | spv::OpTypeVoid, 1,
++        (3u << 16) | spv::OpTypeFunction, 2, 1,
++        (5u << 16) | spv::OpFunction, 1, 3, spv::FunctionControlMaskNone, 2,
++        (2u << 16) | spv::OpLabel, 4,
++        (1u << 16) | spv::OpReturn,
++        (1u << 16) | spv::OpFunctionEnd,
++    };
++    const std::array<CompiledShader, 1> shaders{{{ShaderStage::Fragment, &fragment, 0}}};
++    const auto same = [](const VkViewport& a, const VkViewport& b) {
++        return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height && a.minDepth == b.minDepth && a.maxDepth == b.maxDepth;
++    };
++    const auto adapted = ResolveUnobservedViewportDepth(restricted, stencil, shaders);
++    Require(adapted.x == 13 && adapted.y == 17 && adapted.width == 128 && adapted.height == -64 && adapted.minDepth == 0 && adapted.maxDepth == 1,
++            "unobserved depth was not adapted without changing XY");
++    Require(stencil.viewport.minDepth == -1 && stencil.negativeOneToOne && stencil.stencilTest,
++            "guest depth or stencil/clip state was changed");
++    for (const auto flag : {&State::depthTest, &State::depthWrite, &State::depthBoundsTest, &State::depthBias, &State::depthClamp}) {
++        auto observed = stencil;
++        observed.*flag = true;
++        Require(same(ResolveUnobservedViewportDepth(restricted, observed, shaders), observed.viewport), "an observable depth operation was adapted");
++    }
++    auto native = restricted;
++    native.depthRangeUnrestricted = true;
++    Require(same(ResolveUnobservedViewportDepth(native, stencil, shaders), stencil.viewport), "native unrestricted range changed");
++    auto legal = stencil;
++    legal.viewport.minDepth = 0.8f;
++    legal.viewport.maxDepth = 0.2f;
++    Require(same(ResolveUnobservedViewportDepth(restricted, legal, shaders), legal.viewport), "legal reversed depth changed");
++    Require(same(ResolveUnobservedViewportDepth(restricted, stencil, {}), stencil.viewport), "missing fragment proof accepted");
++    const auto original = fragment.spirv;
++    for (const auto builtin : {spv::BuiltInFragCoord, spv::BuiltInFragDepth}) {
++        fragment.spirv = original;
++        fragment.spirv.insert(fragment.spirv.end(), {(4u << 16) | spv::OpDecorate, 7, spv::DecorationBuiltIn, static_cast<std::uint32_t>(builtin)});
++        Require(same(ResolveUnobservedViewportDepth(restricted, stencil, shaders), stencil.viewport), "a fragment depth/coordinate observer was adapted");
++        fragment.spirv = original;
++        fragment.spirv.insert(fragment.spirv.end(), {(5u << 16) | spv::OpMemberDecorate, 7, 0, spv::DecorationBuiltIn, static_cast<std::uint32_t>(builtin)});
++        Require(same(ResolveUnobservedViewportDepth(restricted, stencil, shaders), stencil.viewport), "an interface-block depth observer was adapted");
++    }
++    fragment.spirv = original;
++    fragment.spirv.insert(fragment.spirv.end(), {(3u << 16) | spv::OpExecutionMode, 3, spv::ExecutionModeDepthReplacing});
++    Require(same(ResolveUnobservedViewportDepth(restricted, stencil, shaders), stencil.viewport), "depth replacement accepted");
++    fragment.spirv = original;
++    fragment.spirv.insert(fragment.spirv.end(), {0});
++    Require(same(ResolveUnobservedViewportDepth(restricted, stencil, shaders), stencil.viewport), "malformed fragment module accepted");
++    fragment.spirv = std::vector<std::uint32_t>{0x07230203, 0x00010000, 0, 1, 0};
++    Require(same(ResolveUnobservedViewportDepth(restricted, stencil, shaders), stencil.viewport), "missing fragment entry point accepted");
++    fragment.spirv = original;
++    std::cout << "Unobserved viewport depth eligibility tests passed\n";
++}
++
+ void DepthClipTests() {
+     auto queue = makeState();
+     const auto direct = AgcDriver::Graphics::DecodeState(queue);
+@@ -2075,6 +2220,10 @@
+     setenv("APS5_PIN_WAIT_MS", "200", 1);
+ #endif
+     try {
++        if (argc == 4 && std::string_view(argv[1]) == "--replay-viewport") {
++            ReplayUnobservedViewport(argv[2], argv[3]);
++            return 0;
++        }
+         {
+             const AgcDriver::Graphics::Context context{};
+             const AgcDriver::Graphics::State state{};
+@@ -2105,6 +2254,7 @@
+             unrestricted.depthRangeUnrestricted = true;
+             AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
+         }
++        UnobservedViewportDepthTests();
+         stateTests();
+         shaderEnginePartitionTests();
+         equivalentStencilClearTests();

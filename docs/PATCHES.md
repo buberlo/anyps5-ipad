@@ -548,3 +548,23 @@ One additional capture is incomplete and is not counted as a successful replay.
 The driver builds and its prepared private overlay passes import/NID checks;
 the iPad candidate has not been installed or tested. See the
 [qualification record](evidence/solitaire-uniform-vertex-branch.json).
+
+## Unobserved stencil-draw viewport depth: 2026-10-08
+
+AnyPS5 0028 admits an out-of-range viewport depth on restricted hosts only when
+that depth has no consumer: no depth test, write, bounds, bias or clamping, and a
+single known fragment module with no `FragCoord`/`FragDepth` interface or depth
+replacement. It substitutes [0,1] for that unused viewport range in both normal
+and recipe draw paths. Clip coordinates/convention, XY, interpolation and stencil
+state stay intact. Observable or unknown cases retain the original range and
+normal Vulkan rejection. Supported native ranges are unchanged.
+
+The captured stencil draw uses [-1,1], depth testing/writing disabled, and a
+matched fragment shader with no depth-coordinate builtin. Its host metadata replay
+changes from a depth-range validation failure to an accepted [0,1] range. Empty
+scratch reservations satisfy color-address range checks; no captured image data
+or GPU work is replayed. The eligibility and depth/stencil state suites pass.
+The full graphics suite still fails an interpolation contract at PC 0; an earlier
+full run also failed interpolation there. This does not qualify the whole renderer.
+The candidate driver and dependency audit pass, with device testing still blocked
+by the locked iPad. See the [record](evidence/solitaire-unobserved-stencil-depth.json).

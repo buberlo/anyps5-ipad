@@ -7,7 +7,7 @@ submodule by hand and forget to refresh the patch.
 
 | Series | Files |
 | --- | --- |
-| `anyps5` | 27 patches: qualified lazy arena, Vulkan portability, dword-aligned serialized shader headers, shader validation, hardware shader-engine partition controls, Unity module paths, local/offline APIs, Windows descriptor and stack correctness, three swapchain images, opt-in pacing/cache counters, stencil clearing, qualified interpolation and conservative scalar wave-branch folding. |
+| `anyps5` | 28 patches: qualified lazy arena, Vulkan portability, dword-aligned serialized shader headers, shader validation, hardware shader-engine partition controls, Unity module paths, local/offline APIs, Windows descriptor and stack correctness, three swapchain images, opt-in pacing/cache counters, stencil clearing, qualified interpolation and conservative scalar wave-branch folding and unobserved viewport-depth adaptation. |
 | `madeira` | 25 patches: static Vulkan/binder integration, memory repair, atomic write-fault classification and lifecycle with explicit menu activation, reported display timing, bounded diagnostics, quiet measurement, memory reporting, hardware audio period, menu-app identity and device build checkpoints. |
 | `fex` | Ten default patches: rpmalloc logging/declarations, opt-in ordering and compiler diagnostics, unused arithmetic IR repair, terminal memory-notification lifetime protection, per-compiler capture ownership and SysV red-zone preservation. Diagnostic instrumentation remains opt-in. `experimental/` is excluded. |
 | `wine` | Linux portability guards and bounded diagnostics, rebased on `257f271c`. |

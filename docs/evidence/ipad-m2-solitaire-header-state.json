@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "app_build": "19",
+  "game": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000"
+  },
+  "repairs": {
+    "menu_vulkan_lifecycle": "device and three swapchain images created",
+    "serialized_shader_headers": "96-byte header retained; dword alignment and memcpy pointer relocation",
+    "shader_engine_partition": "bit 17 admitted; logical raster controls still rejected"
+  },
+  "checks": {
+    "pinned_patch_apply_source_match_reverse": "passed all five series",
+    "hle_host_contracts": "12 Windows binaries passed under local macOS Wine",
+    "portable_contracts": "four groups passed ASan and UBSan",
+    "graphics_state_contracts": "passed with --state-only",
+    "full_graphics_suite": "fails independent fixed-function interpolation shader-recompiler case",
+    "device_shader_header_package_readback": "138 files verified; library and global configuration byte-preserved"
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "builtin_jit": "activated in successful header-repair run",
+    "shader_registration": "passes corrected alignment",
+    "startup_blocker": "sceKernelRaiseException signal 30 (Unity GC target-thread delivery)",
+    "visible_gameplay": false,
+    "controls_audio_saves": "not qualified"
+  },
+  "limits": [
+    "The hardware partition change is qualified by a focused state test, not the full renderer.",
+    "A local macOS Wine game comparison later lost its Vulkan device; no native Windows GPU reference was completed.",
+    "Experimental cooperative signal delivery is kept outside the production patch series.",
+    "No game assets, shader code, pairing material or raw private logs are included."
+  ]
+}

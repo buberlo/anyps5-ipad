@@ -26,6 +26,7 @@ def main():
     if sys.platform != "darwin":
         parser.error("This sanitizer adapter currently supports macOS; use the Windows CMake targets on Windows")
     groups = [
+        ("GuestShaderAlignment", ["libSceAgc/Shader/src/CreateShader.cpp", "libSceAgc/Shader/src/ShaderUtils.cpp"]),
         ("GuestJson", ["libSceJson2/Export.cpp"]),
         ("GuestJson2Initialization", ["libSceJson2/Export.cpp"]),
         ("GuestCompatibilityApis", ["libSceSsl/Export.cpp", "libSceHttp2/Export.cpp",
@@ -39,7 +40,7 @@ def main():
         for name, sources in groups:
             output = temp / name
             subprocess.run(shlex.split(args.cxx) + ["-std=c++20", "-g", "-fsanitize=address,undefined",
-                "-Wno-return-type-c-linkage", "-Wl,-dead_strip", "-I" + str(libs),
+                "-fno-sanitize-recover=all", "-Wno-return-type-c-linkage", "-Wl,-dead_strip", "-I" + str(libs),
                 str(libs / "tests" / (name + ".cpp")), *[str(libs / "prx" / source) for source in sources],
                 str(shim), "-o", str(output)], check=True)
             subprocess.run([str(output)], check=True, timeout=30)

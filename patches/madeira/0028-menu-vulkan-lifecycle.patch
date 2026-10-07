@@ -1,0 +1,62 @@
+diff --git a/app/Madeira.xcodeproj/project.pbxproj b/app/Madeira.xcodeproj/project.pbxproj
+index 2a0d332..6c6b1b6 100644
+--- a/app/Madeira.xcodeproj/project.pbxproj
++++ b/app/Madeira.xcodeproj/project.pbxproj
+@@ -880,7 +880,7 @@
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 18;
++				CURRENT_PROJECT_VERSION = 19;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -932,7 +932,7 @@
+ 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+ 				CODE_SIGN_ENTITLEMENTS = Madeira/Madeira.entitlements;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 18;
++				CURRENT_PROJECT_VERSION = 19;
+ 				DEVELOPMENT_TEAM = "";
+ 				GENERATE_INFOPLIST_FILE = NO;
+ 				HEADER_SEARCH_PATHS = (
+@@ -983,7 +983,7 @@
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_IDENTITY = "Apple Development";
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 18;
++				CURRENT_PROJECT_VERSION = 19;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+@@ -1014,7 +1014,7 @@
+ 			buildSettings = {
+ 				APPLICATION_EXTENSION_API_ONLY = YES;
+ 				CODE_SIGN_STYLE = Automatic;
+-				CURRENT_PROJECT_VERSION = 18;
++				CURRENT_PROJECT_VERSION = 19;
+ 				DEVELOPMENT_TEAM = "";
+ 				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/Frameworks/StikJIT.xcframework/ios-arm64";
+ 				GENERATE_INFOPLIST_FILE = NO;
+diff --git a/app/Madeira/ContentView.swift b/app/Madeira/ContentView.swift
+index 36c6c88..6314b40 100644
+--- a/app/Madeira/ContentView.swift
++++ b/app/Madeira/ContentView.swift
+@@ -1331,10 +1331,17 @@ struct ContentView: View {
+                 }
+             } message: { Text(library.cloudNotice?.message ?? "") }
+             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
++                aps5_vulkan_set_active(1)
+                 library.refreshFlag()
+                 if library.enabled && library.current == nil { MetalHostView.shared.isHidden = true }
+             }
++            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
++                aps5_vulkan_set_active(0)
++            }
+             .onAppear {
++                // The admission gate starts closed. Seed it even when SwiftUI
++                // appears after UIKit's initial didBecomeActive notification.
++                aps5_vulkan_set_active(UIApplication.shared.applicationState == .active ? 1 : 0)
+                 jit_install_trap_handler()
+                 entitlements = EntitlementStatus.check()
+                 logEntitlementStatus()

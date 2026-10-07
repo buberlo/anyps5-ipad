@@ -26,7 +26,7 @@ PYTHON_SHA = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3'
 TESTS = ('windows_exception_tests', 'guest_formatting_tests', 'host_thread_local_tests',
          'guest_environment_tests', 'file_position_tests', 'guest_math_tests',
          'guest_json_tests', 'guest_json2_initialization_tests', 'guest_compatibility_api_tests',
-         'guest_filesystem_tests', 'guest_pthread_attr_tests')
+         'guest_filesystem_tests', 'guest_pthread_attr_tests', 'guest_shader_alignment_tests')
 
 
 def digest(path):

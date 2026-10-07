@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "recorded_date": "2026-10-08",
+  "app": {
+    "display_name": "madeira-anyps5",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "version": "0.1.9",
+    "build": "19",
+    "development_signed": true,
+    "installed_version_verified": true,
+    "library_byte_preserved": true,
+    "global_config_byte_preserved": true
+  },
+  "change": "Restore UIKit activation/resignation and initial SwiftUI state to the native Vulkan admission gate.",
+  "build": {
+    "native_frontend_rebuilt": true,
+    "arm64ec_pe_components_unchanged_from_build18_hash_verified": true,
+    "codesign_deep_strict": "passed",
+    "host_c_objc_optimization": "O2",
+    "host_swift_optimization": "O",
+    "optional_moltenvk_patches_applied": false
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "27.0.1",
+    "builtin_jit_activated": true,
+    "wasapi_hardware_period_ms": 21.333
+  },
+  "game": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000",
+    "installed_package_unchanged_from_build18": true,
+    "vulkan_device_created": true,
+    "swapchain_extent": [
+      768,
+      432
+    ],
+    "requested_and_created_swapchain_images": 3,
+    "startup_result": "AGC driver: null or misaligned address",
+    "visible_game_scene": false,
+    "gameplay_audio_controls_saves": "not_qualified"
+  },
+  "comparison": {
+    "local_mac_wine": "same AGC exception after device and swapchain creation",
+    "native_windows_gpu_reference": "not_run"
+  },
+  "checks": {
+    "native_vulkan_gate_dispatch_quiescence_error_propagation": "passed"
+  },
+  "limits": [
+    "A created swapchain is not visible gameplay.",
+    "No game assets or raw private diagnostics are included.",
+    "Only this app bundle was updated; other installed app bundles remain untouched.",
+    "Own app processes closed after bounded capture; device lease released."
+  ]
+}

@@ -20,7 +20,7 @@ upstream commits; the patches are the delta.
 ## Current local refresh: 2026-10-07
 
 The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All
-20 AnyPS5, 16 Madeira, two FEX and two Wine patches apply to pristine pinned
+22 AnyPS5, 17 Madeira, two FEX and two Wine patches apply to pristine pinned
 sources, match the built source and reverse successfully. The four optional
 MoltenVK patches pass apply/reverse checks but were not used in Build 18.
 
@@ -37,6 +37,38 @@ installed with a complete dependency closure, but its bounded launch reached
 Unity initialization without a game image. See the
 [Build 18 record](evidence/ipad-m2-menu-build18-solitaire-install.json) and
 [runtime measurement details](RUNTIME-PERFORMANCE.md).
+
+## Menu lifecycle and serialized shader headers: 2026-10-08
+
+Madeira 0028 restores explicit activation and resignation of the Vulkan gate
+from the menu frontend, including its initial state when SwiftUI appears after
+UIKit's first activation notification. Build 19 creates the device and three
+swapchain images on the iPad; the native gate's quiescence/dispatch tests pass.
+The bounded Solitaire launch then exposes an AGC shader-header alignment failure,
+also reproduced under local macOS Wine. See the [Build 19 record](evidence/ipad-m2-menu-build19-solitaire-startup.json).
+
+AnyPS5 0022 uses the dword alignment of serialized AGC shader headers and nested
+user-data pointer tables, preserves the 96-byte header and field offsets, and
+relocates packed pointer fields with byte copies. Code alignment and mapped-range
+checks remain enforced. Its opt-in unreadable-range trace now reports the rejected
+address, range, alignment and caller. The production creation/relocation test
+checks headers at an address congruent to four modulo eight, null relative fields,
+program-address register patching, and rejection of misaligned shader code.
+
+The header/relocation change passes four portable ASan/UBSan contract groups
+and all 12 qualified WinLibs Windows contracts under local macOS Wine. On the
+iPad, the updated package's 138 files were hash-verified, and shader registration
+now passes. Startup next aborts at `sceKernelRaiseException` with signal 30:
+Unity installs a handler and needs real target-thread/context delivery for GC.
+This call is not replaced by a successful no-op.
+
+AnyPS5 0023 admits PA_SC_MODE_CNTL_1 bit 17, which partitions primitives across
+AMD shader engines; Vulkan handles hardware distribution of the full draw.
+Logical raster controls such as pixel killing, sample iteration and out-of-order
+rasterization remain rejected. The focused `agc_driver_graphics_tests --state-only`
+run passes; the full graphics suite still fails a separate fixed-function
+interpolation shader-recompiler case. The focused result does not qualify the
+whole renderer. See the [runtime repair record](evidence/ipad-m2-solitaire-header-state.json).
 
 ## Historical foundation evidence
 

@@ -1,0 +1,65 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+index 02a893d2..14057558 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -67,7 +67,11 @@ constexpr std::uint32_t DepthControlMask = ~0x007007f0u;
+ constexpr std::uint32_t ShaderControlMask = ~(0x0000f870u | 0x00020600u);
+ constexpr std::uint32_t AlphaToCoverageMask = ~0x0001ff00u;
+ constexpr std::uint32_t ScanModeMask = ~2u;
+-constexpr std::uint32_t ScanControlMask = ~0x06003fffu;
++// MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE (bit 17) partitions work among
++// AMD shader engines. This backend submits the full primitive stream once;
++// Vulkan owns hardware partitioning. It does not request logical raster discard.
++// GC 10.1 PA_SC_MODE_CNTL_1: Linux gc_10_1_0_sh_mask.h, bit 17 (0x00020000).
++constexpr std::uint32_t ScanControlMask = ~0x06023fffu;
+ constexpr std::uint32_t ScreenOffsetMask = ~0x01ff01ffu;
+ // Bits 26/27 (ZCLIP_NEAR/FAR_DISABLE) become depth clamping; bit 19 selects the [0, 1] clip space.
+ constexpr std::uint32_t ClipControlMask = ~(0x80000u | 0x01000000u | 0x0c000000u);
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+index d7f88166..8c136be9 100644
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -214,6 +214,21 @@ void stateTests() {
+     for (const auto mode : unset.targetOutputMode) Require(mode == 0, "an unset SPI_SHADER_COL_FORMAT exported a color");
+ }
+ 
++void shaderEnginePartitionTests() {
++    auto queue = makeState();
++    const auto reference = AgcDriver::Graphics::DecodeState(queue);
++    const auto baselineRejection = AgcDriver::Graphics::DrawRejection(queue, false);
++    queue.context[0x293] = 0x06020000;
++    Require(AgcDriver::Graphics::DrawRejection(queue, false) == baselineRejection, "hardware shader-engine partition changed draw admission");
++    const auto state = AgcDriver::Graphics::DecodeState(queue);
++    Require(state.color.address == reference.color.address && state.topology == reference.topology && state.renderExtent.width == reference.renderExtent.width && state.renderExtent.height == reference.renderExtent.height, "hardware partition changed the logical draw");
++    for (const auto unsupported : {0x00010000u, 0x00004000u, 0x08000000u}) {
++        queue.context[0x293] = 0x06020000 | unsupported;
++        Require(AgcDriver::Graphics::DrawRejection(queue, false).find("sample iteration, primitive discard or out-of-order rasterization") != std::string::npos, "logical raster control was silently accepted");
++        expectFailure([&] { AgcDriver::Graphics::DecodeState(queue); }, "sample iteration, primitive discard or out-of-order rasterization");
++    }
++}
++
+ void hardwareScreenOffsetTests() {
+     auto queue = makeState();
+     queue.context[0x90] = 0x80010003;
+@@ -1984,7 +1999,7 @@ void vertexCopyTests() {
+     }
+ }
+ 
+-int main() {
++int main(int argc, char** argv) {
+ #ifdef _WIN32
+     _putenv_s("APS5_PIN_WAIT_MS", "200");
+ #else
+@@ -2022,7 +2037,12 @@ int main() {
+             AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
+         }
+         stateTests();
++        shaderEnginePartitionTests();
+         hardwareScreenOffsetTests();
++        if (argc == 2 && std::string_view(argv[1]) == "--state-only") {
++            std::cout << "Graphics state validation tests passed\n";
++            return 0;
++        }
+         DepthClipTests();
+         DepthStencilTests();
+         DepthBoundsBiasTests();

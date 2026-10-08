@@ -1,4 +1,4 @@
-/* Independent protected-store CPU-state probe; no game or HLE data. */
+/* Private extended scalar/vector protected-store CPU-state probe; no game or HLE data. */
 #include <windows.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -8,6 +8,8 @@
 static LONG (WINAPI *QueryState)(HANDLE,DWORD,void*,ULONG,ULONG*);
 static int BridgeActive;
 void *Page, *NestedPage;
+static void *Allocation;
+int StoreMode;
 static int Nest;
 /* Visible to synchronous exception re-entry; the faulting store cannot reorder it. */
 static volatile LONG InNested;
@@ -29,7 +31,7 @@ static LONG CALLBACK repair_original(EXCEPTION_POINTERS *p) {
     memcpy(ContextGprs,g,sizeof(g));
     memcpy(ContextVectors,&c->Xmm0,sizeof(ContextVectors));
     DWORD old;
-    if(!VirtualProtect(Page,0x4000,PAGE_READWRITE,&old))return EXCEPTION_CONTINUE_SEARCH;
+    if(!VirtualProtect(Allocation,0x4000,PAGE_READWRITE,&old))return EXCEPTION_CONTINUE_SEARCH;
     ++Faults;
     if(UseAvx) __asm__ volatile("vzeroall" : : : "xmm0","xmm1","xmm2","xmm3","xmm4","xmm5","xmm6","xmm7","xmm8","xmm9","xmm10","xmm11","xmm12","xmm13","xmm14","xmm15");
     return EXCEPTION_CONTINUE_EXECUTION;
@@ -87,7 +89,7 @@ static LONG CALLBACK repair(EXCEPTION_POINTERS *p) {
         info.operation=1;info.resume_rip=p->ContextRecord->Rip;info.resume_rsp=p->ContextRecord->Rsp;info.flags=p->ContextRecord->EFlags;
         ULONG returned=0;
         LONG status=QueryState(GetCurrentThread(),APS5_THREAD_VEH_STATE,&info,sizeof(info),&returned);
-        if(status)printf("[fault-state] native preparation failed status=%lx\n",(unsigned long)status);
+        if(status){printf("[fault-state] native preparation failed status=%lx\n",(unsigned long)status);++QueryErrors;}
     }
     return result;
 }
@@ -135,9 +137,57 @@ __asm__(
     "movabsq $0x12345b789abcdef0, %r13\n"
     "movabsq $0x123458789abcdef0, %r14\n"
     "movabsq $0x123459789abcdef0, %r15\n"
+    "cmpl $5, StoreMode(%rip)\n"
+    "je 8f\n"
+    "cmpl $6, StoreMode(%rip)\n"
+    "je 9f\n"
+    "cmpl $1, StoreMode(%rip)\n"
+    "je 3f\n"
+    "cmpl $2, StoreMode(%rip)\n"
+    "je 4f\n"
+    "cmpl $3, StoreMode(%rip)\n"
+    "je 5f\n"
+    "cmpl $4, StoreMode(%rip)\n"
+    "je 6f\n"
     "pushq InputFlags(%rip)\n"
     "popfq\n"
     "movq %rax, (%rdi)\n"
+    "jmp 7f\n"
+    "3: pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovdqu %xmm0, (%rdi)\n"
+    "jmp 7f\n"
+    "4: pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovdqu %ymm0, (%rdi)\n"
+    "jmp 7f\n"
+    "5: pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovupd %ymm0, (%rdi)\n"
+    "jmp 7f\n"
+    "6: pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovups %ymm0, (%rdi)\n"
+    "jmp 7f\n"
+    "8: movq Page(%rip), %rbx\n"
+    "pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovupd %ymm0, (%rbx)\n"
+    "jmp 7f\n"
+    "9: movq Page(%rip), %rbx\n"
+    "leaq InputVectors-16(%rip), %r13\n"
+    "movq $16, %rcx\n"
+    "vmovupd (%r13,%rcx), %ymm0\n"
+    "vmovupd 32(%r13,%rcx), %ymm1\n"
+    "vmovups 64(%r13,%rcx), %ymm2\n"
+    "vmovups 80(%r13,%rcx), %ymm3\n"
+    "pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovupd %ymm0, (%rbx)\n"
+    "vmovups %ymm3, 80(%rbx)\n"
+    "vmovups %ymm2, 64(%rbx)\n"
+    "vmovupd %ymm1, 32(%rbx)\n"
+    "7:\n"
     "movq %rax, OutputGprs+0(%rip)\n"
     "movq %rcx, OutputGprs+8(%rip)\n"
     "movq %rdx, OutputGprs+16(%rip)\n"
@@ -187,9 +237,10 @@ __asm__(
 int main(void) {
     __builtin_cpu_init();
     const int avx=__builtin_cpu_supports("avx")!=0;
-    Page=VirtualAlloc((void*)UINT64_C(0x7400000000),0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
-    if((uintptr_t)Page!=UINT64_C(0x7400000000))return 10;
-    NestedPage=(char*)Page+0x4000;
+    Allocation=VirtualAlloc((void*)UINT64_C(0x7400000000),0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
+    if((uintptr_t)Allocation!=UINT64_C(0x7400000000))return 10;
+    Page=Allocation;
+    NestedPage=(char*)Allocation+0x8000;
     BridgeActive=getenv("APS5_VEH_CONTEXT_BRIDGE") && strcmp(getenv("APS5_VEH_CONTEXT_BRIDGE"),"1")==0;
     QueryState=(void*)GetProcAddress(GetModuleHandleA("ntdll.dll"),"NtQueryInformationThread");
     if(BridgeActive && !QueryState)return 14;
@@ -197,27 +248,42 @@ int main(void) {
     for(unsigned i=0;i<64;i++)InputVectors[i]=UINT64_C(0xa1b2c3d4e5f60718) ^ ((uint64_t)(i+1)*UINT64_C(0x0101010101010101));
     unsigned errors=0,cases=0;
     const uint64_t flags[]={0x202,0xad7,0xed7};
-    for(Nest=0;Nest<=BridgeActive;Nest++)for(Mutate=0;Mutate<=BridgeActive;Mutate++)for(UseAvx=0;UseAvx<=avx;UseAvx++)for(unsigned f=0;f<3;f++){
+    for(Nest=0;Nest<=BridgeActive;Nest++)for(Mutate=0;Mutate<=BridgeActive;Mutate++)for(UseAvx=0;UseAvx<=avx;UseAvx++)
+      for(StoreMode=0;StoreMode<=(UseAvx?6:0);StoreMode++)for(unsigned offset=0;offset<=16;offset+=16)for(unsigned f=0;f<3;f++){
+        Page=(char*)Allocation+offset;
         InputFlags=flags[f];memset(OutputGprs,0,sizeof(OutputGprs));memset(OutputVectors,0,sizeof(OutputVectors));
-        DWORD old; if(!VirtualProtect(Page,0x4000,PAGE_READONLY,&old))return 12;
+        memset(Allocation,0xa5,0x4000);
+        DWORD old; if(!VirtualProtect(Allocation,0x4000,PAGE_READONLY,&old))return 12;
         FaultState();
         unsigned gprErrors=0,vectorErrors=0,contextVectorErrors=0;
         for(unsigned i=0;i<15;i++){
-            const uint64_t expected=i==6?(uintptr_t)Page:UINT64_C(0x123456789abcdef0)^((uint64_t)(i+1)<<40);
+            uint64_t expected=i==6?(uintptr_t)Page:UINT64_C(0x123456789abcdef0)^((uint64_t)(i+1)<<40);
+            if(StoreMode>=5 && i==3)expected=(uintptr_t)Page;
+            if(StoreMode==6 && i==1)expected=16;
+            if(StoreMode==6 && i==12)expected=(uintptr_t)InputVectors-16;
             if(ContextGprs[i]!=expected || OutputGprs[i]!=(expected ^ ((Mutate && i==2)?Mutation:0))){++gprErrors;printf("GPR=%u expected=%llx context=%llx resumed=%llx\n",i,(unsigned long long)expected,(unsigned long long)ContextGprs[i],(unsigned long long)OutputGprs[i]);}
         }
         if(UseAvx)for(unsigned i=0;i<64;i++){
-            if(OutputVectors[i]!=(InputVectors[i]^(Mutate?Mutation:0))){++vectorErrors;printf("YMM=%u lane=%u expected=%llx resumed=%llx\n",i/4,i%4,(unsigned long long)InputVectors[i],(unsigned long long)OutputVectors[i]);}
-            if(i%4<2 && ContextVectors[(i/4)*2+i%4]!=InputVectors[i])++contextVectorErrors;
+            const uint64_t expected=InputVectors[StoreMode==6 && i/4==3 ? 10+i%4 : i];
+            if(OutputVectors[i]!=(expected^(Mutate?Mutation:0))){++vectorErrors;printf("YMM=%u lane=%u expected=%llx resumed=%llx\n",i/4,i%4,(unsigned long long)expected,(unsigned long long)OutputVectors[i]);}
+            if(i%4<2 && ContextVectors[(i/4)*2+i%4]!=expected)++contextVectorErrors;
         }
         unsigned flagErrors=(ContextGprs[15]&0xcd5)!=(InputFlags&0xcd5) || (OutputGprs[15]&0xcd5)!=((InputFlags^(Mutate?0xcd5:0))&0xcd5);
         unsigned callbackError=(CallbackFlags&0x400)!=0;
-        unsigned dataError=*(uint64_t*)Page!=UINT64_C(0x123457789abcdef0);
+        unsigned dataError=0;
+        const unsigned writtenBytes=StoreMode==0?8:StoreMode==1?16:StoreMode==6?112:32;
+        uint64_t written[14]={UINT64_C(0x123457789abcdef0)};
+        if(StoreMode)for(unsigned i=0;i<writtenBytes/8;i++)written[i]=InputVectors[i]^(Mutate?Mutation:0);
+        const unsigned char* expectedBytes=(const unsigned char*)written;
+        for(unsigned i=0;i<0x4000;i++){
+            const unsigned char expectedByte=i>=offset && i<offset+writtenBytes ? expectedBytes[i-offset] : 0xa5;
+            if(((const unsigned char*)Allocation)[i]!=expectedByte)++dataError;
+        }
         errors+=gprErrors+vectorErrors+contextVectorErrors+flagErrors+callbackError+dataError;
         ++cases;
-        printf("[fault-state] case=%u avx=%d gpr_errors=%u vector_errors=%u saved_xmm_errors=%u flags=%llx/%llx/%llx callback_df=%u data_error=%u faults=%u\n",cases,UseAvx,gprErrors,vectorErrors,contextVectorErrors,(unsigned long long)(InputFlags&0xcd5),(unsigned long long)(ContextGprs[15]&0xcd5),(unsigned long long)(OutputGprs[15]&0xcd5),callbackError,dataError,Faults);fflush(stdout);
+        printf("[fault-state] case=%u avx=%d store_mode=%d offset=%u gpr_errors=%u vector_errors=%u saved_xmm_errors=%u flags=%llx/%llx/%llx callback_df=%u data_error=%u faults=%u\n",cases,UseAvx,StoreMode,offset,gprErrors,vectorErrors,contextVectorErrors,(unsigned long long)(InputFlags&0xcd5),(unsigned long long)(ContextGprs[15]&0xcd5),(unsigned long long)(OutputGprs[15]&0xcd5),callbackError,dataError,Faults);fflush(stdout);
     }
-    RemoveVectoredExceptionHandler(h);VirtualFree(Page,0,MEM_RELEASE);
+    RemoveVectoredExceptionHandler(h);VirtualFree(Allocation,0,MEM_RELEASE);
     printf("[fault-state] cases=%u faults=%u errors=%u AVX=%s\n",cases,Faults,errors,avx?"verified":"skipped");fflush(stdout);
     printf("[fault-state] nested_faults=%u rejected_requests=%u query_errors=%u\n",NestedFaults,RejectedRequests,QueryErrors);fflush(stdout);
     return errors || InvalidFaults || Faults!=cases || NestedFaults!=(BridgeActive?cases/2:0) || QueryErrors || (BridgeActive && RejectedRequests!=3*(Faults+NestedFaults));

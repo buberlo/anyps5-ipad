@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "expanded_scalar_vector_protected_store_state_probe",
+  "source_base_commit": "cd660ff742de9e2a8d4e971208f18b7174ad94f6",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app": {
+    "build": 40,
+    "bundle": "com.buberlo.anyps5ipad",
+    "signed": true,
+    "installed": true,
+    "binary_sha256": "63ff1c611d59ed5e8161e6ac9229104d36b73d954e4aed9d466ba18bb2d12462",
+    "native_only_rebuild": true
+  },
+  "switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_VEH_CONTEXT_TRACE": false
+  },
+  "probe": {
+    "outer_cases": 192,
+    "outer_faults": 192,
+    "nested_faults": 96,
+    "rejected_requests": 864,
+    "errors": 0,
+    "query_errors": 0,
+    "avx": "verified",
+    "wine_exit_code": 0,
+    "duration_seconds": 27.173099375,
+    "exe_sha256": "5c1e43a2148c564314c7aee8f47a6bcd1bf30d3c305d2c8307006388fc55ebce",
+    "readback_sha256": "5c1e43a2148c564314c7aee8f47a6bcd1bf30d3c305d2c8307006388fc55ebce",
+    "source_sha256": "92652577447cc90a1a60b7cc25677d71e8d69bb27c4124c60eb643b8b1ef8533",
+    "log_sha256": "f8373d74c75d492d9143f15e34dc72b4ad992e1bfbe6d83de6e5b20247b3a3f7",
+    "receipt_sha256": "cb49b3a61ab3960f102dfc0b1dc4847683bc0f0e9bf291f20d3e3a8ba5a66fbc",
+    "build_log_sha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c"
+  },
+  "contract": {
+    "general_registers": 15,
+    "ymm_registers": 16,
+    "flags": [
+      "CF",
+      "PF",
+      "AF",
+      "ZF",
+      "SF",
+      "DF",
+      "OF"
+    ],
+    "store_modes": [
+      "scalar_64",
+      "vmovdqu_xmm_128",
+      "vmovdqu_ymm_256",
+      "vmovupd_ymm_256",
+      "vmovups_ymm_256",
+      "vmovupd_ymm_rbx_destination",
+      "indexed_four_load_112_byte_overlapping_packet_copy"
+    ],
+    "destination_offsets_bytes": [
+      0,
+      16
+    ],
+    "handler_changes_checked": true,
+    "callback_df_zero_checked": true,
+    "retried_store_data_checked": true,
+    "destination_page_bytes_checked": 16384,
+    "one_nested_level_checked": true
+  },
+  "host_comparison": {
+    "cases": 6,
+    "errors": 0,
+    "avx": "skipped",
+    "nested_faults": 0,
+    "native_bridge_qualified": false,
+    "log_sha256": "9769ffe1ba70a29891e902564f54c1d69a1e280ba3443f2eb903dc4052f9b8a7"
+  },
+  "cleanup": {
+    "config_and_library_byte_restored": true,
+    "own_processes_closed": true,
+    "config_sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "library_sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+  },
+  "limits": [
+    "Two destination offsets do not qualify arbitrary page crossings or alignment.",
+    "A synthetic indexed packet copy is not proof of the actual game producer or object lifetime.",
+    "Only one nested fault level is qualified; arbitrary nesting and concurrent handlers remain unqualified.",
+    "This test does not qualify rendered Solitaire, audio, or gameplay."
+  ],
+  "previous_paired_runtime_evidence": "ipad-protected-store-state-20261008.json",
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false,
+  "raw_game_or_shader_data_published": false
+}

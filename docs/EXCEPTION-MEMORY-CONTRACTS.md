@@ -62,10 +62,15 @@ x86_64-w64-mingw32-gcc -std=gnu11 -O2 -Wall -Wextra -Werror -static-libgcc \
 ```
 
 On the paired iPad runtime, set `APS5_VEH_CONTEXT_BRIDGE=1` before Wine starts.
-The test checks 24 outer faults and twelve nested faults. It verifies all fifteen
-general registers, seven arithmetic/direction flags, lower/upper halves of all
-sixteen YMM registers, handler changes, DF=0 on callback entry, retried store data,
-and 108 rejected malformed-length, wrong-token or invalid-flags requests.
+The expanded test checks 192 outer faults and 96 nested faults. It verifies all
+fifteen general registers, seven arithmetic/direction flags, lower/upper halves
+of all sixteen YMM registers, handler changes, DF=0 on callback entry, retried
+store data, and 864 rejected malformed-length, wrong-token or invalid-flags
+requests. Stores cover scalar, 128-bit and 256-bit `vmovdqu`, `vmovupd` and
+`vmovups`, an RBX destination, and an indexed four-load 112-byte packet copy
+with overlapping vector loads. Both zero and sixteen-byte destination offsets
+are checked; all untouched bytes in the 16-KiB destination page must retain
+their guard pattern. Arbitrary page crossings are not qualified.
 A host without AVX or the native bridge does not qualify those cases.
 
 `GuestMemory.cpp` separately exercises the real libc handler with native CRT
@@ -80,7 +85,11 @@ size, flag fields, RSP index, and the transport layout. No FEX implementation is
 changed by this bridge. Future dependency updates must pass this check again.
 
 The [paired bridge evidence](evidence/ipad-protected-store-state-20261008.json)
-records the binaries, source hashes, positive/negative probes, and game limits.
+records the binaries, source hashes, initial positive/negative probes, and game
+limits. The [expanded vector-store evidence](evidence/ipad-vector-protected-stores-20261008.json)
+records the subsequent 192-case Build 40 run, with zero errors and Wine exit 0.
+The host comparison passes six scalar cases but skips AVX; it does not qualify
+the vector or native bridge path.
 
 The separate asynchronous opt-in path uses `APS5_X64_SIGNAL_SUSPEND=1`,
 `APS5_PRESERVE_ASYNC_AVX=1` and `APS5_PRESERVE_ASYNC_FLAGS=1`; its 1,004 device

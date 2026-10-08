@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "frozen_source_delta_mock_contract_and_native_gpu_passed_full_hle_device_and_performance_pending",
+  "patch": {
+    "path": "patches/anyps5/0059-cache-stencil-transfer-programs.patch",
+    "sha256": "a93b0c612b383a670d2701999e70cb6c1a1729bb09874a5c5857803603c6844b",
+    "baselinePatchCount": 58,
+    "sourcePaths": 4,
+    "isolatedForwardReverseByteExact": true,
+    "baselineManifestSha256": "d25ed41671cab62ab6ca0a41f0192ebbaaf4334110ca83bff2c27f7003627c83",
+    "sourceManifestSha256": "afc65193c01540fcbbe8790f03363d30030b0126e35ac3f11d6588fe0f33f276",
+    "roundtripReportSha256": "c42c758f294a60edf09c6aa5ee07ae15e5e4ae0fc3cd1e3f52028e96011c0d82",
+    "candidateRecordSha256": "db57522c7a3671ac05cd98eb0612699ad939c2bcb3f19dbe94f61eb38b2ce1d9"
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp": {
+      "baselineSha256": "2c5e7ef4887eb53e09e7f7070fdba7eae1ec80ca564e256ba95ee6b1be550b20",
+      "candidateSha256": "a43f83197b4089ec03793df55e958498d6feaecb70c222b45af063e3b6b60962"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/StencilSampleTransfer.cpp": {
+      "baselineSha256": "0e153882d5fc2abb987eaee48299fd5ba0fcadff842ae9803258226fac6e2fa1",
+      "candidateSha256": "0a1e6bfd3d0bdc2bcfcda757925b932a42b9554525d92b15212403f74413bd21"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": {
+      "baselineSha256": "be245c3a835e92af0e82bc5b627987106513f3e99f12eec9741a78b9819439da",
+      "candidateSha256": "1d1853d105fbf550ae446eb12e3b3df180fbff3b0cfd96f4201b925f34ffb187"
+    },
+    "core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp": {
+      "baselineSha256": "b50822eaff734cb285be733a6e38a0d1945443727a1eeabdf4ca5edc5285c06a",
+      "candidateSha256": "a1b0618e39787105a53836ebda114066ad5c520a1da248293513f513ba6247fa"
+    }
+  },
+  "change": {
+    "option": "APS5_CACHE_STENCIL_TRANSFER_PIPELINES",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off",
+    "scope": "Reuse immutable stencil upload/readback programs only. No S8 tiling, guest-data/resource caching, residency, sample count, raster count, quality or timing changes.",
+    "key": {
+      "deviceDomain": "Per-cache lifetime identity, VkDevice and VkPhysicalDevice match",
+      "metadata": "Combined depth/stencil format, logical/native/group sample counts and fixed program schema",
+      "positions": "Full ordered x/y sequence, compared by exact float bit patterns; +0 and -0 remain distinct"
+    },
+    "admission": "All existing transfer image, extent, capability, format, descriptor, workgroup and sample-position validation executes before cache lookup, including warm hits.",
+    "cacheEntriesMaximum": 8,
+    "cachePolicy": "Mutex-protected LRU; eviction and Clear drop references only. A transfer retains a shared immutable program bundle through its caller GPU completion fence. Live evicted bundles are not included in the eight retained cache entries.",
+    "immutableBundle": "Compatible render pass, upload/readback descriptor layouts, pipeline layouts and sample-location-specialized graphics/compute pipelines. An eight-sample miss creates eight upload pipelines and one readback pipeline.",
+    "perTransferOwnership": "Image views, framebuffers, descriptor pools/sets and buffers remain separate. Upload still performs 64 stencil bitplane raster draws across two native four-sample groups.",
+    "teardown": "Existing device idle, presentation retirement and recorder synchronization/destruction precede cache Clear/destruction; cached Vulkan handles are released before VkDevice destruction.",
+    "failurePolicy": "Partial bundle construction unwinds program/module/layout/pass handles. Per-transfer failure unwinds local views/framebuffers. Cache insertion occurs only after complete bundle construction; retry remains possible."
+  },
+  "validation": {
+    "mockContract": {
+      "status": "PASS",
+      "sanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "fixture": {
+        "path": "tools/checks/stencil_transfer_program_cache_contract.cpp",
+        "sha256": "b6d0f3b0f63c131b871f333b3765edd3d8df64391eab0cd85ad94d03e7f5d684"
+      },
+      "script": {
+        "path": "scripts/check-stencil-transfer-program-cache.py",
+        "sha256": "4cbe4a04da7f9853c633fa4acd1d8da301c9bb567f835f5f362b24e1674726da"
+      },
+      "logSha256": "8b13939c0e096e2dd8dc7526974d76b50df9803d31f77a8990e6d56569903ab4",
+      "invalidCapacityControls": [
+        0,
+        9
+      ],
+      "invalidWarmContextControls": 8,
+      "failureUnwindRetryCases": 19,
+      "activeBundleSurvivesEvictionAndClear": true,
+      "retainedUploadRasterDraws": 64,
+      "leakedHandles": 0,
+      "keyControls": [
+        "Unchanged key reuses all programs",
+        "Ordered position swap creates a new bundle",
+        "Bit-exact positive/negative zero differs",
+        "D16S8/D32S8 formats remain separate",
+        "Logical/native sample count tuples remain separate",
+        "Independent cache/device/physical-device domains remain separate"
+      ],
+      "boundary": "Actual production constructor/cache code with counted Vulkan mocks, not GPU execution."
+    },
+    "legacyTransferContract": {
+      "status": "PASS",
+      "formatSampleLayouts": 6,
+      "rejectUnwindCases": 234,
+      "logSha256": "78b8be37bf46020f5d817305b9efe8b7110f703da1c09916784901d5a0b0bb6c",
+      "coverage": "Existing descriptor isolation, per-layer sample positions, stencil-only clear, depth load/store, bitplane sample mapping and cleanup remain passed."
+    },
+    "shaderValidation": "Unchanged original stencil-transfer GLSL compiles to matching embedded SPIR-V and validates for Vulkan1.1.",
+    "nativeGpu": {
+      "status": "PASS",
+      "exitCode": 0,
+      "device": "Apple M3 Pro",
+      "backend": "Native macOS MoltenVK 1.4.2",
+      "cpuSanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "productionTranslationUnits": [
+        "GpuStencilSampleTiler.cpp",
+        "DepthTargetLayout.cpp",
+        "StencilSampleTransfer.cpp"
+      ],
+      "cacheCases": {
+        "misses": 3,
+        "hits": 3,
+        "newStencilPrograms": 27,
+        "clearWithLiveTransferBeforeSubmit": true
+      },
+      "graphicsUploadProgramsCreated": 24,
+      "computeStencilReadbackProgramsCreated": 3,
+      "cachedTilerPrograms": 2,
+      "descriptorPoolsCreated": 80,
+      "descriptorPoolsDestroyed": 80,
+      "summary": {
+        "computeCases": 42,
+        "imageChainCases": 6,
+        "amdCoordinateComparisons": 21313064,
+        "logicalOutputBytesChecked": 64608968,
+        "paddingBytesChecked": 89348960,
+        "unchangedDepthSamples": 669776,
+        "distinctS8Values": 256,
+        "errors": 0
+      },
+      "nativeImageChain": {
+        "format": "VK_FORMAT_D32_SFLOAT_S8_UINT",
+        "logicalSamples": 8,
+        "nativeSamples": 4,
+        "groups": 2,
+        "uploadRasterDrawsPerChain": 64,
+        "separateAndReusedPackedBufferCases": true,
+        "positionsChangedBetweenBundles": true,
+        "clearWithLiveTransferBeforeActualSubmit": true,
+        "syntheticImageOwner": true,
+        "actualProductionDepthSurfaceUsed": false,
+        "initializedZ": 0.625,
+        "depthTolerance": 1e-06,
+        "arbitraryDepthValuesOrBitwiseDepthIdentityTested": false
+      },
+      "falsePassControls": "Independent AMD coordinate and byte goldens, poisoned source/packed intermediates, unchanged seeded padding and guarded nonzero offsets; separate and chained GPU directions prevent omitted or mutually cancelling transfers from passing.",
+      "fixture": {
+        "path": "tools/gpu-probe/stencil_transfer_program_cache_probe.cpp",
+        "sha256": "cbc1b8d4b8eecbc68775ce7be832453d9b999a3bc76423a2aab859fb59b67246"
+      },
+      "script": {
+        "path": "scripts/build-stencil-transfer-program-cache-probe.py",
+        "sha256": "c1f638774c070fd67fe2cc47778944c104c02b46fa6180cd2ec26c1940548b88"
+      },
+      "sourceSha256": {
+        "core/libs/prx/libSceAgcDriver/Graphics/src/GpuStencilSampleTiler.cpp": "91ef8881162955381b9ad2ebab17e5bbcf0431a856b94b910b24349e27798f2c",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp": "06843a14809722b92a482294411f262aab90501c8b3231fda81807d2a6bdb8e9",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/StencilSampleTransfer.cpp": "0a1e6bfd3d0bdc2bcfcda757925b932a42b9554525d92b15212403f74413bd21",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/GpuStencilSampleTiler.hpp": "d1213a4ad3a0957749fee59c9ea9b00e6a0666e82f75d1cea9b006e941e185bd",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp": "5116918930da970ddb5c8763c9492912ee5046e89fc9343622ec0791adbfd124",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp": "94acd8fa48729e4adb3fd855e0c4fe02aa3c7b6aee5152be34ed64dcc6574689",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "1d1853d105fbf550ae446eb12e3b3df180fbff3b0cfd96f4201b925f34ffb187",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp": "a43f83197b4089ec03793df55e958498d6feaecb70c222b45af063e3b6b60962",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "426513c4764b441126a2f1b11d6b6a8020bf8ac72d493dce082feb3a4493bf56",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "17179f135e2b4d06ee117d7f64e176046d0b9d6fd9bc42a36fb3ad53d74a46f4",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.frag": "9df9b045c6e7f19bdcec0bd76f3f03e9263e806314f55b04ee875d524f26da8c",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleReadback.comp": "7b9efd81d2dd72a3c1fc84c30271343a139696e45e4a83df0500279d3c59977c",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleTransfer_spv.h": "8b523a80555cc5d6704a18db3f83d7758b35a476b7d531c8f45a990e27210270",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleTiling_spv.h": "a681f513a13d1d2f8c7b6dd1d84f86149eac6be6c170ddbad2d87cfed67e014e",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleTiling.comp": "22033272f3cbf5c200bccd843af60bdd40d58a40ce484c57d69d397095964721",
+        "tools/gpu-probe/stencil_sample_depth_readback.comp": "16eabba9715622ca30bab0867aa13732def4976d393325f66e722793f8091156"
+      },
+      "amdAddrLib": {
+        "librarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+        "headerSha256": "566a5b9815094818027fc2b8b84382b5fa217310846ea5d0cb855139fd55fae2"
+      },
+      "vulkanLibrarySha256": "e21bceade8d0638bb2bc041f3166fbd54da19fa0958d8bbaff584afd7958d542",
+      "artifactsSha256": {
+        "probe": "576e028f508b6b278b79a24771e7ed6eeb58f1114fa039f9cef68712c1f3ba16",
+        "compile.log": "486a2119806e1933cbb7aad0a5153eb792079989a3fe030e3fa822b17b5cc4b1",
+        "run.log": "f8ec621b76c241bdb96089b0fab710c7fd87ef6d26069592699449771b7188cf",
+        "depth-probe.spv": "4a66a5b0776f3a97cd4894a96d26bac1ab711c2f572ea06d5a4947404d74a84d",
+        "StencilSampleDepthProbe_spv.h": "7aad5a2e7e9baa5f88b6bfdd01ce8ee4ea9d62583dcd7024581b81aedfa3fc7b"
+      },
+      "manifestSha256": "de22be0e9728c5c54d195abbc3394b1744654c59af4c45b4fd2bd1e9db6cd937",
+      "boundary": "Actual production cache/StencilSampleTransfer/S8 tiler with an original synthetic D32S8 owner and uniform-depth reader on a real Mac GPU. No actual Draw/DepthSurface/GuestMemory, Wine/FEX or iPad integration is established."
+    },
+    "independentReadOnlyReview": {
+      "status": "Pending at this source/native checkpoint",
+      "requiredBeforeFullHleBuild": true
+    }
+  },
+  "qualification": {
+    "isolatedSourceDeltaVerified": true,
+    "mockContractPassed": true,
+    "nativeGpuPassed": true,
+    "fullHleBuildQualifiedByThisRecord": false,
+    "fullHleBuildStateAtPublication": "Pending; later full build/runtime results require a separate record.",
+    "actualDrawDepthSurfaceIntegrationQualified": false,
+    "windowsIntegratedCacheQualified": false,
+    "deviceExecutionQualified": false,
+    "arm64ecFexExecutionQualified": false,
+    "gameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "displayedFps": null,
+    "optimizationSpeedupAccepted": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "All six native image chains use D32S8; D16S8 and other supported tuples are tested with counted constructor mocks only.",
+    "Z checks cover unchanged initialized 0.625 within 1e-6, not arbitrary-depth or bitwise preservation.",
+    "The maximum applies to entries retained by the cache; active transfers can retain evicted bundles until their fences complete.",
+    "Native mock/GPU lifetimes do not measure iPad memory pressure, pipeline memory, real concurrency, repeated app teardown or performance.",
+    "Full HLE, complete renderer and physical iPad execution are pending; no measured speed/FPS improvement or accepted gameplay follows from this record."
+  ],
+  "privacy": {
+    "rawPrivateDumpLogsShaderCapturesPairingOrDeviceIdentifiersPublished": false,
+    "nativeLogsContainOnlyOriginalSyntheticProbeData": true,
+    "absolutePrivatePathsOrBuildCommandsPublished": false
+  }
+}

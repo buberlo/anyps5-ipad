@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "completed_local59_hle_host_tests_and_private_preparation_verified_device_and_performance_not_included",
+  "source": {
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "projectCommitAtBuild": "756628558879f9a634d2efb04cfc6a4262ea92fc",
+    "asBuiltSourceDiffSha256": "a8f0884fa12561aac251aa366a566673cc4a504e76adb50ea8b786f3fb002fcb",
+    "patchCount": 59,
+    "checkedPaths": 150,
+    "forwardApply": true,
+    "matchesCheckedSource": true,
+    "reverseRestoresPin": true,
+    "seriesReportSha256": "79618c102a8f1c20a291fe20dc4cf62892dbda0ba2b4b9f3658344f193b2e803",
+    "candidatePatch": {
+      "path": "patches/anyps5/0059-cache-stencil-transfer-programs.patch",
+      "sha256": "a93b0c612b383a670d2701999e70cb6c1a1729bb09874a5c5857803603c6844b"
+    },
+    "diffHashBoundary": "The diff digest covers Git tracked changes. The checked59-patch series, four-path delta manifest and frozen150-path source snapshot also cover added production files.",
+    "frozenSourceSnapshotFilesVerified": 150,
+    "frozenSourceSnapshotManifestSha256": "422e8726af2ba45beae27c0c5154b643e53e67d8f333fc6fa6daec6ee32551ba",
+    "sourceVerificationBoundary": "Independent hash review uses preserved59 source bytes and all59 patch digests, without asserting equivalence to a mutable later checkout.",
+    "currentCheckoutAsBuiltEquivalenceAsserted": false,
+    "fourPathSourceManifestSha256": "afc65193c01540fcbbe8790f03363d30030b0126e35ac3f11d6588fe0f33f276"
+  },
+  "candidate": {
+    "option": "APS5_CACHE_STENCIL_TRANSFER_PIPELINES",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off",
+    "scope": "Per-device immutable stencil upload/readback program bundles are reused by exact metadata/ordered bit-exact sample-position keys. Existing prelookup validation, per-transfer image/descriptor/framebuffer ownership,64 bitplane raster draws and GPU fences remain. No guest-content or resource cache is introduced.",
+    "focusedEvidence": {
+      "path": "docs/evidence/stencil-transfer-program-cache-native-20261009.json",
+      "sha256": "56c01da28d2f4b748a5b8c990067f096194a1dc6c426376b083dd7a03dcf1835",
+      "immutableAtBuildReview": true
+    },
+    "maximumRetainedEntries": 8,
+    "activeTransfersMayRetainEvictedBundlesBeyondCapacity": true,
+    "unchangedGraphicsValidationAndTracking": true
+  },
+  "build": {
+    "location": "Local Mac using the pinned Windows toolchain through Wine",
+    "githubActionsUsed": false,
+    "configuration": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "selectedPrxTargets": 50,
+    "archiveSha256": "19e05fa3303b2f299e0c5fdc8f9609571db693624fc13ad0fdc16cf8dba8d3d6",
+    "archiveBytes": 28377118,
+    "binaryFilesVerified": 53,
+    "prxFiles": 50,
+    "runtimeDllFiles": 3,
+    "embeddedManifestSha256": "01f16257fa272d7abd6ea1857f512f7414ecfb4879a22cffec8982138f01af40",
+    "provenanceSidecarSha256": "e1f34a684e3446c874bde31021a62f87ac0a29d9c0c6d4b6816dfeb2f44cebc0",
+    "embeddedProvenanceMatchesSidecarExceptArchiveSelfHash": true,
+    "verificationReportSha256": "db36e0813a8bebc61bdf6509f5a57b8956e48ff91f39639775db06e958a1798a",
+    "toolchain": "WinLibs GCC 15.2.0 posix-seh UCRT r7",
+    "dependencyArchiveSha256": {
+      "compiler": "a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b3",
+      "ffmpeg": "e4be9938b321da5f53e248d8ae947c984390e09d0f59fb6855644a972126e26b",
+      "python": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"
+    },
+    "binarySha256": {
+      "unpatched/libSceAgc.prx": "c45bdb7cca1ffeb7391facc947f32038155a21d217166f414d405d6aa1d2b53a",
+      "unpatched/libSceAgcDriver.prx": "2908efe813270e34c7cd0b2c899159146d3f0c1a76eb14a098dde94d024aa7a6",
+      "unpatched/libSceAjm.native.prx": "42a54c8a784365e818087a0eb390c8f8c22ed66e83d75f5b47ec136768834963",
+      "unpatched/libSceAmpr.prx": "652cc2093d3e70f573d234672586e2459d94ff8cc51f086b59278a6d1800219f",
+      "unpatched/libSceAppContent.prx": "5a7b02aeef2aac5f940de2b40a75dd3419980b35c968abb46bd8cd3781f44507",
+      "unpatched/libSceAudio3d.prx": "a28de1ce53c3c7e19335641f1a0f16b5431ccb58b1d922de5a0ab36ba6b9a44a",
+      "unpatched/libSceAudioIn.prx": "1c38308ef7f84b83c7cd8b312d322bbd84220bf4518d4c5142a4b83bb0f2d8c9",
+      "unpatched/libSceAudioOut.prx": "b05fd452ed047a4a1aee228546379bb015cbddbc84746533c4d59d6e3a6d89b0",
+      "unpatched/libSceAvPlayer.native.prx": "d7d5ef498191aafddbcf52ef40ac5456732cb0a1acbe0aab2dd5eaab8f1c50aa",
+      "unpatched/libSceCommonDialog.prx": "528e235df1337c3c18b9586d32ba1f90d05e627b91970c25de24716d8da7709f",
+      "unpatched/libSceGameUpdate.prx": "72d131fcb7d693de733ab162cee5e0bd00423f431d233c2b0379e2f14947879a",
+      "unpatched/libSceHttp.prx": "47f99f670d88b8a15d08a0c0d33bb2d6a882c29f48ba96ec8d483f34bb9c3c0f",
+      "unpatched/libSceHttp2.prx": "4a2e767e2925988ad32bd98aa01f9606e3c98f19060288e3a6e7814bafaea0e4",
+      "unpatched/libSceIme.prx": "f4acc854363a11685c5ccec3b3cf8955c5e1be9ef8b3608d549dac6618889dbe",
+      "unpatched/libSceImeBackend.prx": "2772365adb4900a50e44335acffb78053a4f39199c40031e9ca481666d29b1a7",
+      "unpatched/libSceImeDialog.prx": "0e6af0869e92f74fffa59a1f05c041565350122388810323c0c41e8299ba9bee",
+      "unpatched/libSceJson2.prx": "f7a7e49f265e20202fb1a8e5b0807884db9295696ba043d8b7414a0c1f3bbcb2",
+      "unpatched/libSceKeyboard.prx": "66a93795ac909ab73013ffdfaa5d37522796289ac5c9dfc27c141f8f19aaea13",
+      "unpatched/libSceLibcInternal.prx": "3e91b06d7d7b141124047f60a3adf60aa9f45b52ea9261572bb68bb57dd165b4",
+      "unpatched/libSceMouse.prx": "f1d07959fd55e76de751b33aa9c4b9bacb69a8935467c43e171c4140ed3759cd",
+      "unpatched/libSceMsgDialog.native.prx": "36f16ec59c323955d21f29bc0dee3592810bbaaefac06b1e74b6c9b6a3ebfc81",
+      "unpatched/libSceNet.prx": "6cfc0bc2a7eeeaaf6ba50cc934f116e927d4b2d74a6d5cc1959ea3fa21f08d37",
+      "unpatched/libSceNetCtl.prx": "aea9ff8db372303ab8938390bff9973ae97bfd84c715e2646a9189c5ccede10d",
+      "unpatched/libSceNpAuth.prx": "4846ce5051c59085cb629bd2f2b9ce761569d9a73af12caf7b08e64a081e44db",
+      "unpatched/libSceNpCommerce.prx": "03d8dc18aefbd6a31a8b27560b4ededb4f94746956351df60d4a936a22294bb2",
+      "unpatched/libSceNpEntitlementAccess.prx": "5bb555252558a49ccb6a6874f69d610d9225f7dcacd916052161f88cb9d2e87a",
+      "unpatched/libSceNpGameIntent.prx": "b8352b3aaf86c06953550dfaea868f6174fc86ebe077b509336d82f7398669da",
+      "unpatched/libSceNpManager.prx": "f8d061957330a4c44a4e09228291b9d1d6340cd4141f26eacb4050cd86832fdc",
+      "unpatched/libSceNpSessionSignaling.prx": "9f8caebb89f805dcbdea89e7137b629660e70bd7ab623cc3d94cfe9f2bb7c490",
+      "unpatched/libSceNpTrophy2.prx": "11b27fc45265509ed40f02b00dcff0b43ee830d9b2b32ee3c5a6502b2a094bf2",
+      "unpatched/libSceNpUniversalDataSystem.prx": "f02269b89b081e64712aa1bbf61a8662dda8b27aebd39a68a272049daae977de",
+      "unpatched/libSceNpUtility.prx": "2712795f2ea0ba642490f253f294d8ac5370411c64d841d394a210855952ec5d",
+      "unpatched/libSceNpWebApi2.prx": "4110244141f5e0020dfd8db8f06a7b8179e8944b222a7aa2f4950dd07d2099af",
+      "unpatched/libScePad.prx": "b201cf84d9c4d7fcc464a220f7faef7d609d8350b421b3d79b71d98f1f835a72",
+      "unpatched/libScePlayerInvitationDialog.prx": "4420cb7bcc060d56a658dbb0ec4400843307c86b3e1f4eca3461f6fee5e6aa35",
+      "unpatched/libSceRandom.prx": "097cc26739f70adeba49593bdd6a09ce65beb95c8d7e27f666396d19cf320cd4",
+      "unpatched/libSceRazorCpu.prx": "6426ea4a710f176da6ade88602ec23e02c9cd742c6202548ef69665917f8e1de",
+      "unpatched/libSceRemoteplay.prx": "cd5707c2f29c2bc05870f9d65a244043ebe32f47cf8090d3f229d11c92db2fb0",
+      "unpatched/libSceRtc.prx": "9957cace32dce64930ad90da8ae6adf98f05c6c0fbc1f6a1e805e77bdd7a60ed",
+      "unpatched/libSceSaveData.native.prx": "90b81bcb86fedf3899ad5bb0a2318883599ec1ddc112ffece3b8a743f1da1c6a",
+      "unpatched/libSceSaveDataDialog.native.prx": "890410e154d38eb1284ed932dc3ee9458f4d873bb8305235fcb62f3bce4aa9fb",
+      "unpatched/libSceSsl.prx": "badb72fbeab751b27157fdad49c4edb72813b0ee8b045bf2a0c8c9b19f493988",
+      "unpatched/libSceSysmodule.prx": "39fbd7d8028d65a4d6536d65c7b27ae6f9d04b6852a33f2266f312a4eed448bc",
+      "unpatched/libSceSystemService.prx": "3af87ad686d4b7a6071f6072244a8ef207d993ce1dfa6daae3c664db0aa6d7d3",
+      "unpatched/libSceUlt.prx": "9cd6d9d2609cbd5d838550e68ba52d487e800998e76df15fcb09145305f323f7",
+      "unpatched/libSceUserService.prx": "e2d473361c193861030aa6bda870873865fa64a56af8c33d1e0ededc160ac45f",
+      "unpatched/libSceVideoOut.prx": "8b5ed1bd09571d5f7220d7a319ebba87999ab514390e703b054e24eed539d9ae",
+      "unpatched/libSceWebBrowserDialog.prx": "db693c7f6e7fdd8997f3c5120d98855e6affa9df734034a987d6f01572a3c318",
+      "unpatched/libc.prx": "cafd5e54a7fb17fc97e857abe5c4703a397f2310e7460abf62453738e27b9a99",
+      "unpatched/libkernel.prx": "8fd003a3079f001eb28760c408902d9d7b336f77596507731513583aa3eac0b9",
+      "runtime/libgcc_s_seh-1.dll": "0e41bb41c8d5d5a1c16150cf860225e835ff8fdbb351073835bf45eaa8fe831d",
+      "runtime/libstdc++-6.dll": "d1aebaa36202db736b96a7e4f491eb457256ff6e3cac8e225dae05790bacd147",
+      "runtime/libwinpthread-1.dll": "a9230c9b3590af438066c18afa2185ac6c74b544f58606a0d20d80039b102179"
+    },
+    "comparisonTo58": {
+      "changedUnpatchedBinaryCount": 3,
+      "changedBinaries": [
+        "libSceAgc.prx",
+        "libSceAgcDriver.prx",
+        "libSceVideoOut.prx"
+      ],
+      "remainingBinaryHashesUnchanged": 50
+    }
+  },
+  "localHostTests": {
+    "runtime": "Local desktop Wine",
+    "cpuApiTestsPassed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "cpuApiTestCount": 22,
+    "hostArena": {
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000"
+    },
+    "runtimeOptions": {
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_CACHE_STENCIL_TRANSFER_PIPELINES": "1"
+    },
+    "allCompletedTestLogsVerified": 25,
+    "testLogSha256": {
+      "test-audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-audio_out2_port_layouts_tests.log": "420653bd5decb093244c26e965e8835072c5d7fa384f1c1744fe46ef32817400",
+      "test-audio_out2_timing_tests.log": "9ab92457a8b6ddc3b1173f64fb88426f24cd4965af5be59e8c4efa4a0c713be9",
+      "test-audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out_mix_level_pad_spk_tests.log": "70a1617776dc6acae2e025ca2977c8932a5fe0c605b94f05af377155c7cf2689",
+      "test-file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "test-guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_filesystem_tests.log": "a714225da5410a68f38ea0f3510f9f89cce7781c71835251d151866b39f40ccd",
+      "test-guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "test-guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "test-guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_memory_tests.log": "3ecd4f22185aec6c548887fdb67894b58708df9f1c4c508adf7530f5d52ae4ff",
+      "test-guest_pthread_attr_tests.log": "1bb467c74691b9c49d36f182819c127fa05e261387c68c1a139a2d3b072c5399",
+      "test-guest_raise_exception_tests.log": "a115734104f31efab5d16c50adb03bfeea6a341f39a09397e586721d34842bfd",
+      "test-guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-stencil-transfer-program-cache-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-stencil-transfer-program-cache-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "test-stencil-transfer-program-cache-tracking.log": "f0c22bb34595f876689ef7c2846655f22ee5f232d9681438d4011eb86a2c38ea",
+      "test-uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "test-wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "test-windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    "hostTestLogHashRecordSha256": "ff24f7e4f9ba9e1e0747e4689b8826308e573b55c2249c092faafdfdd40a5c3d",
+    "buildAndAdditionalTests": [
+      {
+        "name": "build-graphics-and-tracking",
+        "exitCode": 0,
+        "logSha256": "7a0a1c6c63e19d6f2c5e05402b667d43494270a5e9d2bfeeee775ba070c3b311",
+        "commandSha256": "497624485e43262712286ef90cd47ea114c016e5b245b2e746b482ffc2afa502"
+      },
+      {
+        "name": "test-stencil-transfer-program-cache-tracking",
+        "exitCode": 0,
+        "logSha256": "f0c22bb34595f876689ef7c2846655f22ee5f232d9681438d4011eb86a2c38ea",
+        "commandSha256": "107de9fb88ff5d1a0fe0ba1439bdff7b2dadc7566bce3928331af131be35335a"
+      },
+      {
+        "name": "test-stencil-transfer-program-cache-resource",
+        "exitCode": 0,
+        "logSha256": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+        "commandSha256": "d8fa14a255a80b7d27e4f1a294e464965f13fa4ae9c4ea572ed818c87a045454"
+      },
+      {
+        "name": "test-stencil-transfer-program-cache-full-graphics",
+        "exitCode": 0,
+        "logSha256": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+        "commandSha256": "73ad2416796326fa7d3971e1bf043783ea0859d9799c35594e8561e77cebcaaa"
+      }
+    ],
+    "actualTrackingTarget": {
+      "name": "agc_write_tracking_tests",
+      "source": "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp",
+      "sourceSha256": "2fafd6dbc2cbdd032588150df1551113f784ce5a95552cdf5df3605e58c1fac3",
+      "guestMemorySourceLinked": true,
+      "calledRegression": "CheckGpuSampleChangedWriteback",
+      "executableSha256": "e8bc22461adb6831a1cd4981bdbdcb3e4374eac858b5a8ec992610db07c5a587",
+      "regressionPassMarkerPresent": true,
+      "ordinaryTrackingPassMarkerPresent": true,
+      "boundary": "The actual ordinary CMake tracking target executes against real Windows shared mappings/aliases. GPU output bytes are simulated. This does not establish S8 GPU-to-GuestMemory Draw execution, concurrent CPU races or physical-iPad tracking."
+    },
+    "graphicsTarget": {
+      "name": "agc_driver_graphics_tests",
+      "executableSha256": "5118674d704fe137bb9d161ee961795addad299923fb417c52a4585c1eed717b",
+      "resourceWriteClassificationPassed": true,
+      "fullGraphicsValidationPassed": true,
+      "boundary": "Host source/validation/resource contracts, not full production Draw or GPU execution under Wine/FEX/MoltenVK on the iPad."
+    },
+    "exitEvidence": "Build/test runners use checked subprocess completion and preserve command exit codes. The retained completed provenance lists 22 successful CPU/API suites; four separate build/runtime commands finish 0. Empty successful logs are retained as empty-file hashes.",
+    "testExecutableHashBoundary": "Hashes captured from completed59 local build products before a later rebuild; no equivalence to future mutable products is asserted.",
+    "hostTestLogHashRecordScope": {
+      "originalCpuApiLogs": 22,
+      "completedVerificationReportLogs": 25,
+      "additionalRuntimeLogs": 3,
+      "boundary": "The frozen22-log CPU/API map predates the3 additional runtime suites. All25 logs in verified-local-package were independently rehashed; the22-log map is preserved, not represented as a25-log map."
+    }
+  },
+  "privatePreparation": {
+    "status": "prepared_and_hash_verified_not_playability_accepted",
+    "installationManifestSha256": "c7642d333d091e80a05324724e35ede849f5a693ea532d130768f17b4e99bcb7",
+    "filesVerified": 137,
+    "loadedHleLibraries": 47,
+    "guestElfDependencySets": 6,
+    "dependencyClosurePassed": true,
+    "missingLibraries": 0,
+    "unresolvedGuestImports": 0,
+    "unresolvedGuestNids": 0,
+    "unresolvedNativeImports": 0,
+    "archiveSha256MatchesBuild": true,
+    "embeddedHleManifestMatchesArchive": true,
+    "matchedLifecycleToolSha256": {
+      "relinker": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "nidPatcher": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee"
+    },
+    "preparerSha256": "fa8864fb80a55399a40f8c7f141c962aca66e9f5b6223400e6cb637607d09476",
+    "originalAssetsSaveDataAndPairingIncludedInPublicRecord": false,
+    "boundary": "Canonical preparation and full 137-file/dependency audit are separate from installation, launch, actual GPU behavior and gameplay. No private game contents, module hashes, raw relocation data or pairing files are published.",
+    "comparisonTo58": {
+      "sameFileSet": true,
+      "changedFileCount": 5,
+      "changedRuntimeBinaries": [
+        "libSceAgc.prx",
+        "libSceAgcDriver.prx",
+        "libSceVideoOut.prx"
+      ],
+      "changedPreparationLogs": 2,
+      "gameExecutableAndFiveGuestModuleHashesUnchanged": true,
+      "remainingFilesUnchanged": 132
+    }
+  },
+  "qualification": {
+    "fullHleBuildPassed": true,
+    "localHostTestsPassed": true,
+    "privatePreparationVerified": true,
+    "focusedNativeRecordPreserved": true,
+    "deviceResultIncluded": false,
+    "displayedFps": null,
+    "constant60FpsAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "gameplayAccepted": false,
+    "actualIpadStencilProgramCacheQualifiedByThisRecord": false
+  },
+  "limits": [
+    "Completed source/build/host-test/private-preparation evidence is separate from the physical device result. No device or displayed-FPS result is included here.",
+    "The preserved source/native59 checkpoint uses counted constructor mocks and six syntheticD32S8 GPU image chains; actualDraw/DepthSurface/GuestMemory GPU cache execution on the iPad remains unqualified by this record.",
+    "The cache retains at most8 entries, but active transfers may retain evicted bundles beyond that number through completion. No pipeline-memory, thermal or speed improvement is measured.",
+    "All existing samples,64 bitplane raster draws, source resolution, quality, guest-memory tracking, barriers and synchronous fences remain. The inherited58 tiled buffer budget is unchanged.",
+    "Foreign concurrent CPU writes to GPU-changed logical bytes and inherited own-store attribution remain unqualified.",
+    "No full-game cadence, legal card action, sound quality, save/load/background or constant60FPS acceptance follows from this build checkpoint."
+  ]
+}

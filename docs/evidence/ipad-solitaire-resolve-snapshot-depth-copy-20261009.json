@@ -1,0 +1,949 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "bounded_ipad56_menu_golf_and_stock_response_verified_still_slow_not_gameplay_or_fps_accepted",
+  "candidate": {
+    "hostBuild": 47,
+    "anyps5Patches": 56,
+    "buildEvidence": {
+      "path": "docs/evidence/resolve-snapshot-depth-copy-build-20261009.json",
+      "sha256": "2eb9ac70c08466d5a45d5bc5740cfe7bdfc791441d00ac33429bfc8fc9c49f81"
+    },
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "asBuiltSourceDiffSha256": "a99149bc91f0a35e556a1f83c6d1945ebd4ee50da0a692811094cf0a0ad30bcf",
+    "hleArchiveSha256": "05be830f8cc2e211d2d52d5d5a3364381169e9c3ce2e994fb307ff5b56d1b3c3",
+    "hleProvenanceSha256": "30539b710ea4573ea4bfacf4e7be0c0c4e922a13da44d6e5b4685ccf3cb0104f",
+    "privateInstallationManifestSha256": "ca5d6788f23f4e46cafbd79642dd294b06dfc6908999634b4377c303673e5b66",
+    "installedReadbackFilesVerifiedAgainstManifest": 56,
+    "unpatchedAgcDriverSha256": "3b7597efa22ce8b9be3b7c603f9e232f8c1c8138ba67522853c7970b2d92be19",
+    "nidPatchedInstalledAgcDriverSha256": "a4802beaca5a4d57e0c5fc758e2da78560f9b21c8e245c6918e3746736124cf8",
+    "privateManifestEmbeddedProvenanceMatchesArchiveSidecarExceptArchiveSelfHash": true,
+    "runtimeBinariesChangedFrom53": [
+      "libSceAgc.prx",
+      "libSceAgcDriver.prx",
+      "libSceVideoOut.prx"
+    ],
+    "gameAndFiveGuestModuleHashesUnchangedFrom53": true,
+    "matchedHostToolHashes": {
+      "relinker": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "nidPatcher": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee"
+    },
+    "currentCheckoutSourceEquivalenceAsserted": false
+  },
+  "run": {
+    "nominalRuntimeSeconds": 420,
+    "operationDurationSeconds": 437.447575583,
+    "sameRetainedNativeHostAndPhysicalIpadAs53": true,
+    "normalMemoryTracking": true,
+    "jitEnabledAndDebuggerAttached": {
+      "logLines": [
+        22,
+        23
+      ]
+    },
+    "exactOptions": {
+      "MADEIRA_FEX_AVX": "1",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_PROFILE_DRAW": "1"
+    },
+    "fixedDepthCopies": "Always present in the as-built56 HLE; no separate runtime switch or activation marker.",
+    "selectedSourceGpuCaptures": {
+      "limit": 6,
+      "every": 16,
+      "scale": 4,
+      "finalSwapchainPixels": false
+    },
+    "frameGeneration": false,
+    "forcedTerminationAfterBoundedRun": true,
+    "guestExitCode": null,
+    "displayedFps": null
+  },
+  "rawEvidence": {
+    "logSha256": "60d1525c993d7d776690d56c4bad1752985f432eaa944f4c70b2ce74ad7d32f6",
+    "receiptSha256": "7c225e190353c7da71f92db215fa26b192850bf2a5c5ce9dfd4822655d122d6f",
+    "decodedLogLines": 40048,
+    "drawProfileOccurrences": 40,
+    "completeDrawProfileRows": 39,
+    "interleavedIncompleteProfileLogLines": [
+      14376
+    ],
+    "bulkMarker": {
+      "count": 1,
+      "logLines": [
+        13086
+      ],
+      "bytes": 66846720,
+      "registeredMappings": 1
+    },
+    "rawSnapshotMarker": {
+      "count": 1,
+      "logLines": [
+        13094
+      ],
+      "bytes": 66846720
+    },
+    "firstPipelineCacheReport": {
+      "logLine": 14370,
+      "lookups": 71,
+      "hits": 63,
+      "misses": 8,
+      "private": 0,
+      "evicted": 0,
+      "cached": 8
+    },
+    "SkippedDrawStringOccurrences": 0,
+    "AGCGraphicsErrorPrefixOccurrences": 0,
+    "badAllocStringOccurrences": 0,
+    "fatalStringOccurrences": 0,
+    "temporaryConfigurationBytesSha256": "79d6d68104c63d266e56cf2cf09ed393306df1c4a625b9219ecdfec1eb57dd52",
+    "temporaryConfigurationCommandReceiptSha256": "4ba37a75d35a4673247aa696e99481b5862782d40be21349e40600fd5281f9d1"
+  },
+  "diagnosticProfileComparison": {
+    "reference53": {
+      "path": "docs/evidence/ipad-solitaire-scoped-bulk-driver-writes-profile-20261009.json",
+      "sha256": "b689b4f316488521e955bba8145230f377e47cec8aca68872bd997dd69b5ba70",
+      "logSha256": "9e603d1c152158032fda13cd82bad9761b6c6d4ceb19dc007637727fa8ee8bbc",
+      "nominalRuntimeSeconds": 180,
+      "selectedRows": [
+        {
+          "logLine": 34475,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 731885,
+          "phaseTotalsMs": {
+            "validate": 2.2,
+            "vertex": 6.3,
+            "setup": 0.3,
+            "readTarget": 1168.8,
+            "prepare": 2259.7,
+            "lookup": 5.3,
+            "resources": 46.0,
+            "pipeline": 20.2,
+            "record": 25.3,
+            "keep": 4.2,
+            "sync": 175.2,
+            "writeBack": 3684.6
+          }
+        },
+        {
+          "logLine": 34611,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 734337,
+          "phaseTotalsMs": {
+            "validate": 2.1,
+            "vertex": 3.7,
+            "setup": 0.3,
+            "readTarget": 1169.1,
+            "prepare": 2259.3,
+            "lookup": 5.0,
+            "resources": 41.0,
+            "pipeline": 19.2,
+            "record": 25.0,
+            "keep": 4.1,
+            "sync": 194.9,
+            "writeBack": 3689.7
+          }
+        },
+        {
+          "logLine": 34736,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 732705,
+          "phaseTotalsMs": {
+            "validate": 2.1,
+            "vertex": 3.7,
+            "setup": 0.3,
+            "readTarget": 1160.0,
+            "prepare": 2261.2,
+            "lookup": 5.1,
+            "resources": 40.8,
+            "pipeline": 20.7,
+            "record": 25.1,
+            "keep": 4.1,
+            "sync": 178.1,
+            "writeBack": 3697.1
+          }
+        },
+        {
+          "logLine": 34915,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 734168,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.7,
+            "setup": 0.3,
+            "readTarget": 1165.3,
+            "prepare": 2256.4,
+            "lookup": 5.1,
+            "resources": 41.7,
+            "pipeline": 19.8,
+            "record": 24.5,
+            "keep": 4.1,
+            "sync": 194.5,
+            "writeBack": 3695.5
+          }
+        },
+        {
+          "logLine": 35042,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 731762,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.6,
+            "setup": 0.3,
+            "readTarget": 1161.7,
+            "prepare": 2256.3,
+            "lookup": 5.0,
+            "resources": 41.3,
+            "pipeline": 19.1,
+            "record": 24.2,
+            "keep": 4.1,
+            "sync": 177.8,
+            "writeBack": 3692.5
+          }
+        },
+        {
+          "logLine": 35169,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 732437,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.6,
+            "setup": 0.2,
+            "readTarget": 1169.0,
+            "prepare": 2257.9,
+            "lookup": 5.1,
+            "resources": 41.5,
+            "pipeline": 19.5,
+            "record": 25.7,
+            "keep": 4.1,
+            "sync": 171.7,
+            "writeBack": 3694.7
+          }
+        },
+        {
+          "logLine": 35343,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 732236,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.7,
+            "setup": 0.2,
+            "readTarget": 1165.3,
+            "prepare": 2262.1,
+            "lookup": 5.1,
+            "resources": 40.2,
+            "pipeline": 19.7,
+            "record": 24.9,
+            "keep": 4.1,
+            "sync": 183.3,
+            "writeBack": 3681.4
+          }
+        },
+        {
+          "logLine": 35469,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 731712,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.7,
+            "setup": 0.3,
+            "readTarget": 1158.7,
+            "prepare": 2261.9,
+            "lookup": 5.0,
+            "resources": 41.8,
+            "pipeline": 19.3,
+            "record": 24.6,
+            "keep": 4.1,
+            "sync": 180.8,
+            "writeBack": 3686.0
+          }
+        },
+        {
+          "logLine": 35592,
+          "draws": 250,
+          "recorded": 240,
+          "recordedWithCompletion": 30,
+          "synchronous": 10,
+          "reportedSynchronousMeanUs": 731142,
+          "phaseTotalsMs": {
+            "validate": 2.0,
+            "vertex": 3.6,
+            "setup": 0.2,
+            "readTarget": 1158.9,
+            "prepare": 2259.5,
+            "lookup": 5.1,
+            "resources": 41.0,
+            "pipeline": 19.6,
+            "record": 24.4,
+            "keep": 4.0,
+            "sync": 184.7,
+            "writeBack": 3678.7
+          }
+        }
+      ],
+      "rowCount": 9,
+      "medianReportedSynchronousMeanMs": 732.236,
+      "medianPhaseTotalDividedBySynchronousCountMs": {
+        "validate": 0.2,
+        "vertex": 0.37,
+        "setup": 0.03,
+        "readTarget": 116.53,
+        "prepare": 225.95,
+        "lookup": 0.51,
+        "resources": 4.13,
+        "pipeline": 1.96,
+        "record": 2.49,
+        "keep": 0.41,
+        "sync": 18.08,
+        "writeBack": 368.97
+      }
+    },
+    "candidate56": {
+      "selectedRows": [
+        {
+          "logLine": 34238,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483926,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.1,
+            "setup": 0.5,
+            "readTarget": 2331.2,
+            "prepare": 2066.1,
+            "lookup": 9.8,
+            "resources": 76.7,
+            "pipeline": 32.4,
+            "record": 51.7,
+            "keep": 8.2,
+            "sync": 389.1,
+            "writeBack": 4830.0
+          }
+        },
+        {
+          "logLine": 34388,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483553,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.2,
+            "setup": 0.5,
+            "readTarget": 2323.7,
+            "prepare": 2062.1,
+            "lookup": 10.0,
+            "resources": 73.0,
+            "pipeline": 31.1,
+            "record": 51.9,
+            "keep": 7.9,
+            "sync": 403.4,
+            "writeBack": 4820.0
+          }
+        },
+        {
+          "logLine": 34548,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 482369,
+          "phaseTotalsMs": {
+            "validate": 3.9,
+            "vertex": 7.0,
+            "setup": 0.5,
+            "readTarget": 2315.8,
+            "prepare": 2066.2,
+            "lookup": 9.8,
+            "resources": 62.2,
+            "pipeline": 30.8,
+            "record": 52.5,
+            "keep": 8.1,
+            "sync": 387.3,
+            "writeBack": 4815.6
+          }
+        },
+        {
+          "logLine": 34750,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 481832,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.0,
+            "setup": 0.5,
+            "readTarget": 2311.8,
+            "prepare": 2062.8,
+            "lookup": 9.6,
+            "resources": 62.9,
+            "pipeline": 31.1,
+            "record": 52.6,
+            "keep": 8.0,
+            "sync": 394.7,
+            "writeBack": 4804.7
+          }
+        },
+        {
+          "logLine": 34904,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 481949,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.1,
+            "setup": 0.5,
+            "readTarget": 2308.0,
+            "prepare": 2067.7,
+            "lookup": 9.8,
+            "resources": 63.3,
+            "pipeline": 30.9,
+            "record": 53.4,
+            "keep": 8.0,
+            "sync": 394.1,
+            "writeBack": 4805.3
+          }
+        },
+        {
+          "logLine": 35055,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 480949,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.1,
+            "setup": 0.6,
+            "readTarget": 2312.7,
+            "prepare": 2064.6,
+            "lookup": 9.8,
+            "resources": 62.4,
+            "pipeline": 30.7,
+            "record": 55.0,
+            "keep": 8.1,
+            "sync": 387.4,
+            "writeBack": 4789.4
+          }
+        },
+        {
+          "logLine": 35264,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483436,
+          "phaseTotalsMs": {
+            "validate": 4.0,
+            "vertex": 7.0,
+            "setup": 0.5,
+            "readTarget": 2324.4,
+            "prepare": 2064.9,
+            "lookup": 9.8,
+            "resources": 79.0,
+            "pipeline": 30.7,
+            "record": 51.1,
+            "keep": 8.0,
+            "sync": 387.5,
+            "writeBack": 4830.7
+          }
+        },
+        {
+          "logLine": 35425,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 484544,
+          "phaseTotalsMs": {
+            "validate": 4.0,
+            "vertex": 7.0,
+            "setup": 0.5,
+            "readTarget": 2325.7,
+            "prepare": 2063.2,
+            "lookup": 9.9,
+            "resources": 82.3,
+            "pipeline": 31.0,
+            "record": 51.5,
+            "keep": 7.9,
+            "sync": 411.9,
+            "writeBack": 4828.4
+          }
+        },
+        {
+          "logLine": 35576,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483356,
+          "phaseTotalsMs": {
+            "validate": 4.0,
+            "vertex": 7.1,
+            "setup": 0.5,
+            "readTarget": 2325.9,
+            "prepare": 2062.7,
+            "lookup": 9.8,
+            "resources": 80.9,
+            "pipeline": 31.1,
+            "record": 50.9,
+            "keep": 8.2,
+            "sync": 395.6,
+            "writeBack": 4820.8
+          }
+        },
+        {
+          "logLine": 35778,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483075,
+          "phaseTotalsMs": {
+            "validate": 4.1,
+            "vertex": 7.1,
+            "setup": 0.5,
+            "readTarget": 2326.9,
+            "prepare": 2060.5,
+            "lookup": 9.8,
+            "resources": 80.0,
+            "pipeline": 31.0,
+            "record": 51.7,
+            "keep": 8.0,
+            "sync": 398.0,
+            "writeBack": 4814.4
+          }
+        },
+        {
+          "logLine": 35933,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483620,
+          "phaseTotalsMs": {
+            "validate": 4.0,
+            "vertex": 7.1,
+            "setup": 0.5,
+            "readTarget": 2329.9,
+            "prepare": 2060.9,
+            "lookup": 9.8,
+            "resources": 80.1,
+            "pipeline": 31.1,
+            "record": 52.2,
+            "keep": 8.0,
+            "sync": 399.2,
+            "writeBack": 4819.4
+          }
+        },
+        {
+          "logLine": 36083,
+          "draws": 500,
+          "recorded": 480,
+          "recordedWithCompletion": 60,
+          "synchronous": 20,
+          "reportedSynchronousMeanUs": 483477,
+          "phaseTotalsMs": {
+            "validate": 4.0,
+            "vertex": 7.2,
+            "setup": 0.5,
+            "readTarget": 2325.1,
+            "prepare": 2060.9,
+            "lookup": 9.9,
+            "resources": 80.5,
+            "pipeline": 30.8,
+            "record": 51.5,
+            "keep": 8.1,
+            "sync": 401.0,
+            "writeBack": 4821.0
+          }
+        }
+      ],
+      "rowCount": 12,
+      "medianReportedSynchronousMeanMs": 483.396,
+      "medianPhaseTotalDividedBySynchronousCountMs": {
+        "validate": 0.2025,
+        "vertex": 0.355,
+        "setup": 0.025,
+        "readTarget": 116.2375,
+        "prepare": 103.15,
+        "lookup": 0.49,
+        "resources": 3.8925,
+        "pipeline": 1.55,
+        "record": 2.59,
+        "keep": 0.4,
+        "sync": 19.7575,
+        "writeBack": 240.985
+      }
+    },
+    "scope": "Stable title/selection-menu windows selected by the observed repeated draw counts: 53 has 250 draws / 10 synchronous draws per reported interval; 56 has 500 draws / 20 synchronous draws. This is a combined diagnostic observation, not a repeated one-change benchmark.",
+    "phaseBoundary": "Phase totals include work across all recorded and synchronous draws. Division by synchronous count is workload normalization, not isolated per-frame phase timing. Reported synchronous means measure those synchronous draws only.",
+    "diagnosticsMatchedWith53Profile": "Identical environment apart from exact raw-snapshot/pipeline-cache opt-ins; captures, trace, bounded pixel statistics, profiling, transition control and bulk writes enabled in both.",
+    "different53UiDiagnosticState": "The 420-second 53 UI baseline does not enable APS5_PROFILE_DRAW; candidate 56 does. Its visual/source-trace comparison must not be substituted for the separate 53 profile comparison.",
+    "temperatureAndRepeatedPairQualification": false,
+    "isolatedSpeedupAccepted": false
+  },
+  "selectedSourceTraceComparison": {
+    "reference53Profile": {
+      "sha256": "90c18519f584b570df4ce0f79f07db31fc1bbb017de8c0bbaf2bec1c495ccc87",
+      "lines": 51938,
+      "lastEventSeconds": 175.211098,
+      "eventCounts": {
+        "present": 167,
+        "blit": 168,
+        "flip": 168,
+        "draw": 2610,
+        "submit": 788
+      },
+      "commonFirst175TraceSeconds": {
+        "present": {
+          "count": 166,
+          "firstSeconds": 1.206207,
+          "lastSeconds": 174.193279,
+          "medianIntervalMs": 1004.766
+        },
+        "blit": {
+          "count": 167,
+          "firstSeconds": 0.139654,
+          "lastSeconds": 174.193286,
+          "medianIntervalMs": 1004.9135
+        }
+      },
+      "entireTraceMedianBlitIntervalMs": 1005.061
+    },
+    "reference53Ui": {
+      "sha256": "df88b4614af031007ab5af83b12c76cb4a6f4a370c2893bd1c01b33f6d00956b",
+      "lines": 155875,
+      "lastEventSeconds": 414.921802,
+      "eventCounts": {
+        "present": 406,
+        "blit": 407,
+        "flip": 407,
+        "draw": 9618,
+        "submit": 1976
+      },
+      "commonFirst175TraceSeconds": {
+        "present": {
+          "count": 167,
+          "firstSeconds": 1.158677,
+          "lastSeconds": 174.516314,
+          "medianIntervalMs": 1001.478
+        },
+        "blit": {
+          "count": 168,
+          "firstSeconds": 0.14097,
+          "lastSeconds": 174.516322,
+          "medianIntervalMs": 1001.483
+        }
+      },
+      "entireTraceMedianBlitIntervalMs": 1001.6405
+    },
+    "candidate56": {
+      "sha256": "e22b3f242b83e3c05ac9c2400a7ef74b70680d3c9fba771331adcd7c27894fcb",
+      "lines": 313187,
+      "lastEventSeconds": 415.075602,
+      "eventCounts": {
+        "present": 787,
+        "blit": 788,
+        "flip": 788,
+        "draw": 19552,
+        "submit": 3894
+      },
+      "commonFirst175TraceSeconds": {
+        "present": {
+          "count": 323,
+          "firstSeconds": 1.236388,
+          "lastSeconds": 174.696429,
+          "medianIntervalMs": 513.1325
+        },
+        "blit": {
+          "count": 324,
+          "firstSeconds": 0.142717,
+          "lastSeconds": 174.696437,
+          "medianIntervalMs": 513.138
+        }
+      },
+      "entireTraceMedianBlitIntervalMs": 515.261
+    },
+    "boundary": "present/blit events are selected-source rendering/presentation requests, not display timestamps, display cadence, unique visible frames or an FPS benchmark. The common 175-second interval ends before menu input in the UI runs.",
+    "sourceExtent": [
+      1920,
+      1080
+    ],
+    "selectedSourceResident": true,
+    "directBlit": false,
+    "displayedFps": null,
+    "gpuCaptureSha256": [
+      "1e24ae3eb992b74667566bb04b54facc9b4103d4ebafe057aff3b6f7532195b4",
+      "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c"
+    ]
+  },
+  "visualAndInput": {
+    "screenshotExtent": [
+      2732,
+      2048
+    ],
+    "imagesPublished": false,
+    "candidate56": [
+      {
+        "nominalSeconds": 15,
+        "sha256": "f5368721a9dbed5fcfcd814e0e0a2a3a311c2649c917e072d134a5d6cfcfbc76",
+        "observation": "Green background; complete title/selection menu not yet visible."
+      },
+      {
+        "nominalSeconds": 60,
+        "sha256": "dda690140f39b6059ce7de0a4c66da5298e6f643ab70dd5854a56a80964cb226",
+        "observation": "Full title/selection menu visible."
+      },
+      {
+        "nominalSeconds": 120,
+        "sha256": "a57cf38d6d4ac65fece0206ea63d5a2e851f314b6f69bcc8975c7826e5b6ab34",
+        "observation": "Full menu remains visible before input."
+      },
+      {
+        "nominalSeconds": 220,
+        "sha256": "4ed514ef83f5110dab241c98fbd2ce338cfad001c45372cd232a860030a907f7",
+        "observation": "Golf deal in progress; seventh tableau column still empty."
+      },
+      {
+        "nominalSeconds": 240,
+        "sha256": "50c70a5c9e97ecc25c91dc898e4bb291d5315133347e8d99154236e1d566331d",
+        "observation": "Full seven-column, 35-card Golf tableau; waste10 diamonds."
+      },
+      {
+        "nominalSeconds": 300,
+        "sha256": "48f38cabd89d496303dc84d033cb13977e01c2d48bd06a23b9f9a02e47e10a9e",
+        "observation": "Same complete tableau and waste10 diamonds before stock input."
+      },
+      {
+        "elapsedAfterLaunchSeconds": 315.86847674999996,
+        "sha256": "81eac70bed11ba1faa3a2a67f4a1520215bcb7c5c0596609ecdb902647f8c745",
+        "observation": "After Y, waste changes to4 clubs with tableau unchanged; timer 00:01."
+      },
+      {
+        "nominalSeconds": 420,
+        "sha256": "568080591fe6ecd0d11acdd18496201099c591d777a81fa4b239a1b4c77135a1",
+        "observation": "Complete tableau and waste4 clubs remain; timer 00:21."
+      }
+    ],
+    "reference53Ui": {
+      "logSha256": "aa123a3374d986f2caea41c60455c3314e01c66393c40f64478a77cb303a28d9",
+      "receiptSha256": "3cc543d656955af7c2b0d056aa54fb3040f86280f40f78dd5af57cea1e9c4abf",
+      "screen60": {
+        "sha256": "0abed79405bdbcd71e6f26f8c420ece686f67124cc5376e6ae05761d8d30ff0d",
+        "observation": "Only flat blue background."
+      },
+      "screen120": {
+        "sha256": "d5d77d13363f5d233b2db8950117a05a9606befd04371851448d2107c1f81d6a",
+        "observation": "Full menu visible."
+      },
+      "screen240": {
+        "sha256": "ef58de81a4ba598e87411a431fc57ff064b67ff708b256829712f50e925a03e8",
+        "observation": "Golf deal still in progress, seventh column empty."
+      },
+      "screen300": {
+        "sha256": "504bc7724dd6b73c3a0beab150c6891a77c83db9392cf7f2bbc3a341492e8657",
+        "observation": "Full seven-column tableau, waste King of hearts, timer 00:00."
+      },
+      "afterStock": {
+        "sha256": "69370cb3f5e4ffc9ec713e6329778474f7f42ce5ce3321767811b5e025913e3c",
+        "elapsedAfterLaunchSeconds": 316.661354125,
+        "observation": "After Y, waste 10 clubs, timer 00:00."
+      },
+      "screen420": {
+        "sha256": "ea8cc8fed5fd8001278d138aef355ebdcee91deaa4762453f2b721af1a7b38b6",
+        "observation": "Full board, waste 10 clubs, timer 00:10."
+      }
+    },
+    "rightThenA": {
+      "xctestExitCode": 0,
+      "receiptSha256": "34d7f8558cce8a1eaedc169715aaabf5915643aa92229c9d41744c657e5b65ce",
+      "runnerLogSha256": "3ddcb315e1251d76df909c537e466f3b62ca85674f19d0567bfa9d3fdf1685ca",
+      "elapsedAfterLaunchSeconds": 217.743143292,
+      "mainProcessContinuity": true,
+      "golfEntryVisuallyVerified": true
+    },
+    "stockY": {
+      "xctestExitCode": 0,
+      "receiptSha256": "5b92052bfc7e8ff58ce33ab8d317c5cff745f19cf2d6a60d37bee09f508c0d1f",
+      "runnerLogSha256": "49b80a66be5c55740f439bed12297a9b23b6be9e5094ac169cfeb08a17d2c5e9",
+      "elapsedAfterLaunchSeconds": 315.86847674999996,
+      "mainProcessContinuity": true,
+      "stockResponseVisuallyVerified": true
+    },
+    "timerBoundary": "Candidate 56 advances about 20 shown game seconds during about 104 real seconds between the post-stock capture and nominal 420-second capture. Screenshot sampling and capture latency prevent an exact simulation-clock measurement. It is clearly slower than real time.",
+    "randomDealsDiffer": true,
+    "legalTableauMoveVerified": false,
+    "completeGameplayAccepted": false
+  },
+  "audio": {
+    "candidate56": {
+      "pacingReports": 82,
+      "underrunReports": [
+        {
+          "logLine": 14367,
+          "shortMs": 21.3,
+          "shortPasses": 1,
+          "passes": 469,
+          "largestPassFrames": 1024,
+          "timerLoopWorstLateWakeMs": 0.0,
+          "clampedSamples": 0
+        }
+      ],
+      "loggedShortPasses": 1,
+      "loggedOutputClampedSamples": 0,
+      "maximumLoggedTimerLoopLateWakeMs": 0.1,
+      "sourceReports": 84,
+      "maximumSourcePeak": 0.997,
+      "sourceNearFullScaleSamples": 2423,
+      "nearFullScaleReportLines": [
+        37620,
+        37814,
+        37957,
+        38105,
+        38296,
+        38449
+      ],
+      "secondSourceSlotAlwaysLoggedSilent": true
+    },
+    "reference53Profile": {
+      "pacingReports": 34,
+      "underrunReports": [],
+      "loggedShortPasses": 0,
+      "loggedOutputClampedSamples": 0,
+      "maximumLoggedTimerLoopLateWakeMs": 0.1,
+      "sourceReports": 36,
+      "maximumSourcePeak": 0.275,
+      "sourceNearFullScaleSamples": 0,
+      "nearFullScaleReportLines": [],
+      "secondSourceSlotAlwaysLoggedSilent": true
+    },
+    "reference53Ui": {
+      "pacingReports": 82,
+      "underrunReports": [],
+      "loggedShortPasses": 0,
+      "loggedOutputClampedSamples": 0,
+      "maximumLoggedTimerLoopLateWakeMs": 0.1,
+      "sourceReports": 84,
+      "maximumSourcePeak": 0.773,
+      "sourceNearFullScaleSamples": 0,
+      "nearFullScaleReportLines": [],
+      "secondSourceSlotAlwaysLoggedSilent": true
+    },
+    "sampleRate": 48000,
+    "format": "Stereo 32-bit float sources",
+    "nearFullScaleDefinition": "Native source statistic named clipped counts abs(sample)>=0.99; these 2423 source values with logged peak 0.997 do not establish >1 output clipping.",
+    "timerLoopLatencyBoundary": "Worst late wake is timer-loop pacing telemetry, not independent real-time callback jitter.",
+    "audibleOutputReviewed": false,
+    "audioAccepted": false,
+    "attributedRegressionFromThreeChanges": false
+  },
+  "faultDiagnostics": {
+    "candidate56": {
+      "faultRipRows": 112,
+      "maximumThrottledFaultCounter": 22000,
+      "machUnhandledRows": 205,
+      "counterIsExactTotal": false,
+      "unhandledProvesTerminalCrash": false
+    },
+    "reference53Profile": {
+      "faultRipRows": 81,
+      "maximumThrottledFaultCounter": 5500,
+      "machUnhandledRows": 64,
+      "counterIsExactTotal": false,
+      "unhandledProvesTerminalCrash": false
+    },
+    "reference53Ui": {
+      "faultRipRows": 96,
+      "maximumThrottledFaultCounter": 13000,
+      "machUnhandledRows": 137,
+      "counterIsExactTotal": false,
+      "unhandledProvesTerminalCrash": false
+    },
+    "boundary": "Counters are throttled and some fault paths are recoverable. Total-count comparisons are not matched per source frame or cause. Successful later rendering/input means UNHANDLED rows alone cannot be classified as terminal failures."
+  },
+  "cleanupAndRestore": {
+    "mainAndHelperPidsContinuousAcrossBothUiSequences": true,
+    "mainPid": 7756,
+    "helperPid": 7758,
+    "mainProcessTerminatedByBoundedCleanup": true,
+    "helperTerminationResult": "NoSuchProcess; helper absent in final process list.",
+    "bothOwnPidsAbsentAfterCleanup": true,
+    "restoredRuntimeFilesVerifiedByteForByte": 56,
+    "configurationRestoredSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "libraryRestoredSha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "manifestRestoredSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "priorDiagnosticsRestored": true,
+    "privateDumpSavePairingPreserved": true,
+    "receiptSha256": {
+      "ui-before-processes": "cff5e807a1ca29a7b960fe24d0cd568c47a6fa1aed8777a04515a340fa5832ca",
+      "ui-after-processes": "4600b6883a54ec1d671472fec906dc328612a7160ff482dd877ad968afebdcb5",
+      "stock-before-processes": "4074997c5f7381e2bcc5a22427545154f20233a7485c13c56c0e47350ee9c8e6",
+      "stock-after-processes": "03e6f89fd4cfeb9e2babefd0e06927556d81ae7cbfce8f76e59d9c75099d7db1",
+      "cleanup-after": "99bcc64e67f45105d6d9de399a4a225e266f47369f604a25d165cf9c16218d49",
+      "close-7756": "39975d3a6d29892b8a280256d368d67c8e19d296fa70f0307a29647c269ad589",
+      "close-7758": "2bf02146179ae1e09af8ba20fcc1058cfffa8b85779ee61cb704d9f131c53ee9"
+    }
+  },
+  "qualification": {
+    "boundedDeviceRunCompleted": true,
+    "menuVisible": true,
+    "golfBoardVisible": true,
+    "oneStockActionVerified": true,
+    "fullGameplayAccepted": false,
+    "realTimeGameSpeedAccepted": false,
+    "displayedFps": null,
+    "constant60FpsAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "backgroundRecoveryAccepted": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "Three changes 0054/0055/0056 are combined; this record cannot attribute a gain to one patch.",
+    "One run per comparison, differing random deals, no matched thermal control and active diagnostic overhead prevent a sustained-performance acceptance.",
+    "Selected-source trace/dumps do not measure final display cadence; screen images corroborate visible state only.",
+    "A visible menu,Golf entry and one stock action do not qualify legal tableau moves, full gameplay, save/load, background behavior or all controls.",
+    "The single 21.3 ms audio shortage is retained; source/callback telemetry is not an audible-quality review.",
+    "The candidate was forcibly stopped after its bounded test; no successful guest exit code is claimed.",
+    "Private assets,full images,raw logs,shader captures,pairing data and device identifiers remain local."
+  ]
+}

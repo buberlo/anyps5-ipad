@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "bounded_ipad59_stencil_cache_reuse_reported_menu_and_golf_visible_no_legal_action_or_performance_acceptance",
+  "candidate": {
+    "hostBuild": 48,
+    "anyps5Patches": 59,
+    "hostBuildEvidence": {
+      "path": "docs/evidence/display-telemetry-whole-row-20261009.json",
+      "sha256": "dbf1315e79175840447ac94008ac47352d88111e4c2555bf0cb58a9238a8e730"
+    },
+    "buildEvidence": {
+      "path": "docs/evidence/stencil-transfer-program-cache-build-20261009.json",
+      "sha256": "a08a99af472b6ddb511abd304e6347690afabab5786ac73b23ef591c4b0e01d9"
+    },
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "asBuiltSourceDiffSha256": "a8f0884fa12561aac251aa366a566673cc4a504e76adb50ea8b786f3fb002fcb",
+    "hleArchiveSha256": "19e05fa3303b2f299e0c5fdc8f9609571db693624fc13ad0fdc16cf8dba8d3d6",
+    "hleProvenanceSha256": "e1f34a684e3446c874bde31021a62f87ac0a29d9c0c6d4b6816dfeb2f44cebc0",
+    "privateInstallationManifestSha256": "c7642d333d091e80a05324724e35ede849f5a693ea532d130768f17b4e99bcb7",
+    "installedReadbackFilesVerifiedAgainstManifest": 56,
+    "unpatchedAgcDriverSha256": "2908efe813270e34c7cd0b2c899159146d3f0c1a76eb14a098dde94d024aa7a6",
+    "nidPatchedInstalledAgcDriverSha256": "a9e065bbe546ad8f6685d3733ec17f8760753de1d838f4473bf016ca3e5b8d83",
+    "option": "APS5_CACHE_STENCIL_TRANSFER_PIPELINES=1",
+    "optionDefault": "Off",
+    "currentCheckoutSourceEquivalenceAsserted": false
+  },
+  "run": {
+    "nominalRuntimeSeconds": 360,
+    "operationDurationSeconds": 379.825377,
+    "normalMemoryTracking": true,
+    "exactLaunchOptions": {
+      "MADEIRA_ONBOARDING": "0",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_X64_SIGNAL_SUSPEND": "1",
+      "APS5_PRESERVE_ASYNC_AVX": "1",
+      "APS5_PRESERVE_ASYNC_FLAGS": "1",
+      "APS5_VEH_CONTEXT_BRIDGE": "1",
+      "APS5_FIXED_FUNCTION_INTERPOLATION": "1",
+      "MADEIRA_NO_DFE": "0",
+      "FEX_SILENTLOG": "0",
+      "APS5_CRASH_RAW_CONTEXT": "0",
+      "APS5_SAFE_SELF_READ": "1",
+      "MADEIRA_TRACE_FEX_CONFIG": "1",
+      "FEX_MULTIBLOCK": "1",
+      "FEX_MAXINST": "5000",
+      "APS5_DUMP_FRAMES": "6",
+      "APS5_DUMP_FRAMES_EVERY": "16",
+      "APS5_DUMP_SCALE": "4",
+      "APS5_CAPTURE_TRACE": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_PROFILE_DRAW": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_CACHE_STENCIL_TRANSFER_PIPELINES": "1",
+      "APS5_PERF_REPORT": "1"
+    },
+    "frameGeneration": false,
+    "guestExitCode": null,
+    "jitEnabledAndDebuggerAttachedLogLines": [
+      22,
+      23
+    ],
+    "earlyDebuggerDetachLogLine": 61,
+    "stencilProgramReuseMarkerLogLine": 13752,
+    "markerMeaning": "The actual production path reports reuse of an immutable stencil bundle with matching ordered sample positions. It does not measure cache hit rates or speed.",
+    "comparisonBoundary": "Same native48 host, but different dealt board, earlier menu/start inputs and shorter runtime than58. No repeated scene/thermal route or accepted single-factor performance comparison."
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (Build 24A446)",
+    "loggedRamMb": 7623,
+    "cores": 8,
+    "initialThermalState": "nominal",
+    "initialLowPowerMode": false,
+    "maximumDisplayRefreshHz": 60,
+    "sourceTargetResolution": [
+      1920,
+      1080
+    ],
+    "swapchainResolution": [
+      768,
+      432
+    ],
+    "screenshotResolution": [
+      2732,
+      2048
+    ],
+    "hostDisplayShapeConfiguration": [
+      1280,
+      720
+    ],
+    "resolutionBoundary": "Source target, configured host display shape, swapchain and screenshot are different measurements; no resolution/interpolation reduction is accepted."
+  },
+  "rawEvidence": {
+    "logSha256": "31509c6e53396d679adbbc08d56b499f60819a16e3035b62998c166ce0a72afb",
+    "logLines": 44533,
+    "receiptSha256": "837b4ad994f542062e014c754fbf9fed6963c9374d69ed0ed18a1980ddbbf873",
+    "launchCommandReceiptSha256": "942d7a280cb0daf0823a43040534239b6503c9bf9e5f9da9b21e745f15a9f4b4",
+    "temporaryConfigurationBytesSha256": "0429413dcfd002c38379e7777b34dc857b3106bead9e4a59ed193d1078dccd74",
+    "rootRestoreVerificationSha256": "68626940c382154e5e1eee514131273194e5bb1585c45fb1109b39d2154d5d9c",
+    "screenshotSha256": {
+      "action-right01-after.png": "542c3c738a7fb0e17e7f57fe93484299f74078ed5a48dcb8db4b5b9d2f654c0d",
+      "action-startgolf01-after.png": "c0a9101bdb6bbc8efba67858ff9d04c24f0bfd2147ed11fa383b00b71999574b",
+      "screen-120.png": "542c3c738a7fb0e17e7f57fe93484299f74078ed5a48dcb8db4b5b9d2f654c0d",
+      "screen-15.png": "30b463c81f86e25fc322608ea614f87a1fb7029d574a8412d46c59c130d7f087",
+      "screen-175.png": "c0a9101bdb6bbc8efba67858ff9d04c24f0bfd2147ed11fa383b00b71999574b",
+      "screen-180.png": "c0a9101bdb6bbc8efba67858ff9d04c24f0bfd2147ed11fa383b00b71999574b",
+      "screen-220.png": "c0a9101bdb6bbc8efba67858ff9d04c24f0bfd2147ed11fa383b00b71999574b",
+      "screen-240.png": "3be22d23c525bea5406388efff8dc048785943d3deedaccf7da197c874d82031",
+      "screen-300.png": "6193edef129059a9039e3c1c1f861d626311a9ee283c1d19879fb6a4f2ef3582",
+      "screen-340.png": "6193edef129059a9039e3c1c1f861d626311a9ee283c1d19879fb6a4f2ef3582",
+      "screen-360.png": "07de8ad09a6c9ea4263e6c57945e8d56bb1237b2a97f1ca49e7fdf65c1f80804",
+      "screen-60.png": "fcce9a050cd32ffe5386372816a8e3fb4a1d052fed91896ee88f28772d07a512"
+    }
+  },
+  "visualsAndInput": {
+    "actions": [
+      {
+        "name": "right01",
+        "button": "Right",
+        "holdMs": 250,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 110.58629266700001,
+        "mainProcessContinuity": true,
+        "receiptSha256": "1f01d9069e442f9847ceb28fc312fa040ec6b0df5a9422ed0aa07ce44086ae94",
+        "screenshotSha256": "542c3c738a7fb0e17e7f57fe93484299f74078ed5a48dcb8db4b5b9d2f654c0d"
+      },
+      {
+        "name": "startgolf01",
+        "button": "A",
+        "holdMs": 500,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 192.775650959,
+        "mainProcessContinuity": true,
+        "receiptSha256": "ddc0f92e161f7ed0c887e2ab77e1758189f37f80d92f9a8409fcc12f1d7ea6a9",
+        "screenshotSha256": "c0a9101bdb6bbc8efba67858ff9d04c24f0bfd2147ed11fa383b00b71999574b"
+      }
+    ],
+    "golfBoard": {
+      "columns": 7,
+      "cardsPerColumn": 5,
+      "waste": "Ace spades",
+      "exposedBottomRanks": [
+        4,
+        6,
+        8,
+        7,
+        9,
+        12,
+        3
+      ],
+      "selectedColumn": 0,
+      "last360SecondTimer": "00:00"
+    },
+    "legalTableauMoveVerified": false,
+    "stockResponseVerified": false,
+    "boundary": "Only menu Right and startA were sent. The full Golf board is visible at360 seconds. No legal card move or stock response occurs in this run; timer00:00 without a legal action does not measure simulation speed.",
+    "rawImagesPublished": false
+  },
+  "displayCompletionTelemetry": {
+    "source": "VK_GOOGLE_display_timing",
+    "parserPath": "tools/perf/summarize_display.py",
+    "parserSha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+    "rawOccurrences": 337,
+    "completeJsonRows": 337,
+    "wholeLogStrictParserStatus": "Accepted without repairs",
+    "wholeLogStrictSummary": {
+      "schema": 1,
+      "source": "VK_GOOGLE_display_timing",
+      "status": "measured",
+      "warmup_seconds_per_epoch": 60,
+      "minimum_seconds": 30,
+      "segments": [
+        {
+          "epoch": 2,
+          "swapchain_id": 1,
+          "resolution": [
+            768,
+            432
+          ],
+          "seconds": 284.884942542,
+          "displayed_intervals": 2784,
+          "displayed_fps": 9.772366258316938,
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "missed_vblanks": 14309,
+          "refresh_hz": 60.0000024000001,
+          "minimum_duration_met": true
+        }
+      ],
+      "limits": [
+        "Display-completion timing requires separate visible foreground verification.",
+        "No claim about guest simulation speed, visual correctness, touch, thermal stability or device acceptance.",
+        "Percentiles are conservative 0.1 ms histogram upper bounds; overflow is explicitly unbounded."
+      ]
+    },
+    "boundary": "The production displayed_fps field reports native completion timestamps per second, not identified unique physical display images. Whole span mixes startup/menu/dealing and an idle Golf board; no gameplay or 60 FPS acceptance."
+  },
+  "drawProfiles": {
+    "completeIntervals": 35,
+    "menuDiagnosticWindow": {
+      "nativeClockSeconds": [
+        35,
+        95
+      ],
+      "completeIntervals": 6,
+      "originalLogLines": [
+        35500,
+        35808,
+        36162,
+        36442,
+        36708,
+        37016
+      ],
+      "drawsPerIntervalBounds": [
+        2275,
+        3050
+      ],
+      "synchronousPerIntervalBounds": [
+        91,
+        122
+      ],
+      "medianReportedSynchronousMeanMs": 62.4075,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.757396694214876,
+        "prepare": 3.5879545454545454,
+        "writeBack": 7.28671359223301,
+        "pipeline": 1.5852924656984675,
+        "sync": 38.32110246329134
+      }
+    },
+    "lateIdleGolfDiagnosticWindow": {
+      "nativeClockSeconds": [
+        220,
+        340
+      ],
+      "completeIntervals": 12,
+      "originalLogLines": [
+        40787,
+        41050,
+        41384,
+        41650,
+        41911,
+        42234,
+        42497,
+        42772,
+        43090,
+        43366,
+        43628,
+        43958
+      ],
+      "drawsPerIntervalBounds": [
+        2969,
+        3000
+      ],
+      "synchronousPerIntervalBounds": [
+        99,
+        100
+      ],
+      "medianReportedSynchronousMeanMs": 68.6725,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 8.88030303030303,
+        "prepare": 3.434242424242424,
+        "writeBack": 7.170348484848485,
+        "pipeline": 1.5585858585858585,
+        "sync": 46.11616161616162
+      }
+    },
+    "boundary": "Phase totals include all draws. Dividing by synchronous count is normalization, not isolated per-frame cost. Membership follows most recent periodic native report. Source cache-reuse marker is not a measured cache hit rate."
+  },
+  "memory": {
+    "nativeReports": 337,
+    "nativePhysicalFootprintMbBounds": [
+      1260,
+      3991
+    ],
+    "nativeAvailableMbBounds": [
+      4200,
+      6931
+    ],
+    "lastNativePhysicalFootprintMb": 3991,
+    "lastNativeAvailableMb": 4200,
+    "footprintReports": 199,
+    "maximumLoggedPhysicalFootprintMb": 4065,
+    "noFootprintPoolApplied": false,
+    "boundary": "Logged MB units retained, samplers run at different moments, shared pool remains jetsam-counted. No stable-memory or thermal acceptance."
+  },
+  "audio": {
+    "pacingReports": 70,
+    "deviceShortReports": 0,
+    "nonzeroSharedOutputClampReports": 0,
+    "maximumLoggedLateWakeMs": 0.1,
+    "sourceReports": 72,
+    "largestSourcePeakMagnitude": 0.467,
+    "largestSourceNearFullScaleCount": 0,
+    "soundQualityAccepted": false,
+    "boundary": "Zero logged shortage/clamp deltas in this idle-board run do not accept audible sound quality. No listening or device-only capture was performed; the58 legal-move scene is not matched."
+  },
+  "renderAndFaultLogs": {
+    "markerCounts": {
+      "SkippedDraw:": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "VK_ERROR": 0
+    },
+    "machUnhandledRows": 205,
+    "maximumThrottledNativeFaultCounter": 20000,
+    "boundary": "Native UNHANDLED is not automatically terminal. Main/helper survive cleanup-before; explicit termination ends this bounded run."
+  },
+  "lifecycleAndRollback": {
+    "mainPid": 8134,
+    "helperPid": 8139,
+    "sameMainAndHelperThroughoutBothInputsAndCleanupBefore": true,
+    "processReceiptSha256": {
+      "action-right01-before-processes.json": "8613a167dfc10f3a1052c47860d0d983ed04761bb463f1779a53c204d4dea26a",
+      "action-right01-after-processes.json": "44d52857f6009e639d4ffd8b51170f3d8799d70a651b7fd2dc83eb4d7143e75b",
+      "action-startgolf01-before-processes.json": "31a3253dba09da0ccf585905463124543e7cd25bad21f5e5fe23e473c1694511",
+      "action-startgolf01-after-processes.json": "8ad4f118cdac5659f452e405c63a98bacbd9896a066d632a2e02dc4ee61a71b3",
+      "cleanup-before.json": "ebb276bde13a726a472d9b077e54ca7fb2e98a39a033fad8721ab62bf552b162",
+      "cleanup-after.json": "890b0e5003edd7b9f7c2df3e744cba3e95a20325dedc6a5ffd16aff86baf0c28"
+    },
+    "observedOwnPids": {
+      "action-right01-before-processes.json": [
+        8134,
+        8139
+      ],
+      "action-right01-after-processes.json": [
+        8134,
+        8139
+      ],
+      "action-startgolf01-before-processes.json": [
+        8134,
+        8139
+      ],
+      "action-startgolf01-after-processes.json": [
+        8134,
+        8139
+      ],
+      "cleanup-before.json": [
+        8134,
+        8139
+      ],
+      "cleanup-after.json": []
+    },
+    "ownProcessesAbsentAfterCleanup": true,
+    "endMethod": "Main 8134 explicitly SIGKILLed; helper 8139 termination reports NoSuchProcess afterward. No clean guest-exit code is reported.",
+    "runtimeFileSetAndBytesRestored": true,
+    "restoredRuntimeFiles": 56,
+    "restoredConfigurationSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "restoredLibrarySha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "restoredInstallationManifestSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "installedNativeHostAfterRuntimeRollback": 48,
+    "priorDiagnosticFilesWithSuccessfulBackupAndRestoreCopyReceipts": 7,
+    "priorDiagnosticRestoredBytesIndependentlyReadBack": false,
+    "boundary": "All 56 runtime bytes and configuration/library/manifest independently match backups. Prior diagnostic copy receipts do not add a separate restored-byte readback. Native host48 remains installed."
+  },
+  "qualification": {
+    "physicalIpadLaunched": true,
+    "actualStencilProgramReuseMarkerObserved": true,
+    "menuAndFullGolfBoardVisible": true,
+    "golfSelectionAndStartVerified": true,
+    "strictWholeLogDisplayParserAccepted": true,
+    "legalTableauMoveAccepted": false,
+    "stockResponseAccepted": false,
+    "constant60FpsAccepted": false,
+    "fullGameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "backgroundRecoveryAccepted": false,
+    "singleFactorPerformanceAccepted": false,
+    "currentSourceAsBuiltEquivalenceAsserted": false
+  },
+  "privacy": {
+    "rawPrivateLogPublished": false,
+    "screenshotsOrGamePixelsPublished": false,
+    "gameAssetsShaderCodePairingOrSecretsPublished": false,
+    "githubActionsUsed": false
+  }
+}

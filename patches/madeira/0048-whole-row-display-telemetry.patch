@@ -1,0 +1,101 @@
+diff --git a/build/win32u-unix/aps5_display_timing.h b/build/win32u-unix/aps5_display_timing.h
+--- a/build/win32u-unix/aps5_display_timing.h
++++ b/build/win32u-unix/aps5_display_timing.h
+@@ -8,7 +8,11 @@
+ #include <stdint.h>
+ #include <stddef.h>
+ #include <stdatomic.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <errno.h>
+ #include <time.h>
++#include <unistd.h>
+ #ifdef __APPLE__
+ #include <mach/mach.h>
+ extern size_t os_proc_available_memory(void);
+@@ -61,6 +65,40 @@
+     *available_mb = (unsigned long long)(os_proc_available_memory() >> 20);
+ #endif
+ }
++/* A uint64_t histogram bucket needs at most 20 digits and one comma. The
++ * extra 2048 bytes cover the fixed schema and every other field at its widest
++ * value. Build the whole row before touching stderr: native dprintf/write
++ * callers bypass stdio's FILE lock, and stderr is an O_APPEND regular file. */
++#define APS5_REPORT_LINE_CAPACITY (2048 + APS5_HISTOGRAM_BINS * 21)
++struct aps5_report_line {
++    char bytes[APS5_REPORT_LINE_CAPACITY];
++    size_t used;
++    int valid;
++};
++static void __attribute__((format(printf, 2, 3))) aps5_report_append(
++        struct aps5_report_line *line, const char *format, ...)
++{
++    if (!line->valid) return;
++    va_list args;
++    va_start(args, format);
++    int length = vsnprintf(line->bytes + line->used, sizeof(line->bytes) - line->used, format, args);
++    va_end(args);
++    if (length < 0 || (size_t)length >= sizeof(line->bytes) - line->used) {
++        line->valid = 0;
++        return;
++    }
++    line->used += (size_t)length;
++}
++static int aps5_report_emit(const struct aps5_report_line *line)
++{
++    if (!line->valid || !line->used) return 0;
++    ssize_t written;
++    do { written = write(STDERR_FILENO, line->bytes, line->used); }
++    while (written < 0 && errno == EINTR);
++    /* Do not append a short-write tail: another writer can intervene and turn
++     * corrupt output into an apparently valid report. Keep parser rejection. */
++    return written == (ssize_t)line->used;
++}
+ static uint64_t aps5_now_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec; }
+ static uint64_t aps5_phase_begin(void)
+ {
+@@ -80,6 +118,26 @@
+ }
+ __attribute__((visibility("default"))) uint64_t aps5_vulkan_displayed_count(void) { return atomic_load_explicit(&aps5_display_count, memory_order_relaxed); }
+ __attribute__((visibility("default"))) int aps5_vulkan_display_timing_available(void) { return atomic_load_explicit(&aps5_display_available, memory_order_relaxed); }
++static void aps5_report_telemetry(const struct aps5_timed_swapchain *s, uint64_t now,
++        uint64_t mean, uint64_t p95, uint64_t p99)
++{
++    struct aps5_report_line line = {.valid = 1};
++    aps5_report_append(&line, "[anyps5-display] {\"schema\":1,\"source\":\"VK_GOOGLE_display_timing\",\"monotonic_ns\":%llu,\"displayed_total\":%llu,\"samples\":%u,\"mean_ns\":%llu,\"p95_ns\":%llu,\"p99_ns\":%llu,\"refresh_ns\":%llu,\"missed_vblanks\":%llu,\"width\":%u,\"height\":%u,\"active\":%d,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu,\"actual_ns\":%llu,\"histogram_step_ns\":%llu,\"interval_histogram\":[", (unsigned long long)now, (unsigned long long)aps5_vulkan_displayed_count(), s->stats.used, (unsigned long long)mean, (unsigned long long)p95, (unsigned long long)p99, (unsigned long long)s->stats.refresh_ns, (unsigned long long)s->stats.missed_vblanks, s->width, s->height, aps5_display_active, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count, (unsigned long long)s->stats.last_ns, (unsigned long long)APS5_HISTOGRAM_STEP_NS);
++    for (unsigned bucket = 0; bucket < APS5_HISTOGRAM_BINS; ++bucket)
++        aps5_report_append(&line, "%s%llu", bucket ? "," : "", (unsigned long long)s->stats.histogram[bucket]);
++    aps5_report_append(&line, "]}\n");
++    aps5_report_emit(&line);
++    line.used = 0;
++    line.valid = 1;
++    aps5_report_append(&line, "[anyps5-native] {\"schema\":1,\"monotonic_ns\":%llu,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu", (unsigned long long)now, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count);
++    static const char *names[4] = {"submit", "present", "acquire", "idle"};
++    for (unsigned phase = 0; phase < 4; ++phase)
++        aps5_report_append(&line, ",\"%s_calls\":%llu,\"%s_ns\":%llu,\"%s_max_ns\":%llu", names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].calls), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].ns), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].max_ns));
++    unsigned long long footprint_mb = 0, available_mb = 0;
++    aps5_memory_sample(&footprint_mb, &available_mb);
++    aps5_report_append(&line, ",\"phys_footprint_mb\":%llu,\"available_mb\":%llu}\n", footprint_mb, available_mb);
++    aps5_report_emit(&line);
++}
+ /* A count delta at the HUD's 1 Hz poll aliases the driver's 4 Hz history polls.
+  * Derive the displayed rate from actual presentation intervals instead. */
+ __attribute__((visibility("default"))) double aps5_vulkan_display_fps(void)
+@@ -280,16 +338,7 @@
+                 if (aps5_report_enabled && now - aps5_reported_ns >= 1000000000ULL) {
+                     uint64_t mean, p95, p99;
+                     aps5_display_summary(&s->stats, &mean, &p95, &p99);
+-                    fprintf(stderr, "[anyps5-display] {\"schema\":1,\"source\":\"VK_GOOGLE_display_timing\",\"monotonic_ns\":%llu,\"displayed_total\":%llu,\"samples\":%u,\"mean_ns\":%llu,\"p95_ns\":%llu,\"p99_ns\":%llu,\"refresh_ns\":%llu,\"missed_vblanks\":%llu,\"width\":%u,\"height\":%u,\"active\":%d,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu,\"actual_ns\":%llu,\"histogram_step_ns\":%llu,\"interval_histogram\":[", (unsigned long long)now, (unsigned long long)aps5_vulkan_displayed_count(), s->stats.used, (unsigned long long)mean, (unsigned long long)p95, (unsigned long long)p99, (unsigned long long)s->stats.refresh_ns, (unsigned long long)s->stats.missed_vblanks, s->width, s->height, aps5_display_active, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count, (unsigned long long)s->stats.last_ns, (unsigned long long)APS5_HISTOGRAM_STEP_NS);
+-                    for (unsigned bucket = 0; bucket < APS5_HISTOGRAM_BINS; ++bucket) fprintf(stderr, "%s%llu", bucket ? "," : "", (unsigned long long)s->stats.histogram[bucket]);
+-                    fputs("]}\n", stderr);
+-                    fprintf(stderr, "[anyps5-native] {\"schema\":1,\"monotonic_ns\":%llu,\"epoch\":%llu,\"swapchain_id\":%llu,\"swapchain_displayed_total\":%llu", (unsigned long long)now, (unsigned long long)aps5_display_epoch, (unsigned long long)s->identity, (unsigned long long)s->stats.count);
+-                    static const char *names[4] = {"submit", "present", "acquire", "idle"};
+-                    for (unsigned phase = 0; phase < 4; ++phase) fprintf(stderr, ",\"%s_calls\":%llu,\"%s_ns\":%llu,\"%s_max_ns\":%llu", names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].calls), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].ns), names[phase], (unsigned long long)atomic_load(&aps5_phases[phase].max_ns));
+-                    unsigned long long footprint_mb = 0, available_mb = 0;
+-                    aps5_memory_sample(&footprint_mb, &available_mb);
+-                    fprintf(stderr, ",\"phys_footprint_mb\":%llu,\"available_mb\":%llu", footprint_mb, available_mb);
+-                    fputs("}\n", stderr);
++                    aps5_report_telemetry(s, now, mean, p95, p99);
+                     aps5_reported_ns = now;
+                 }
+             }

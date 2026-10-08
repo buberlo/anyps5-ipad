@@ -1,0 +1,985 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "bounded_ipad_host48_with58_hle_legal_golf_move_visible_strict_completion_telemetry_accepted_no60fps_or_audio_acceptance",
+  "candidate": {
+    "hostBuild": 48,
+    "anyps5Patches": 58,
+    "buildEvidence": {
+      "path": "docs/evidence/gpu-stencil-sample-tiling-build-20261009.json",
+      "sha256": "a59b85a9f0a6a9dc19edc701678f9760adf675854e33b3346e830ea82c2664ee"
+    },
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "asBuiltSourceDiffSha256": "643db77016562f2c85029e127064c877cda72d68fe6a5f36b7e38ac0795c5e6e",
+    "hleArchiveSha256": "a42b3211085926d476117a29cd31faf1184489e7bcfd0665bb666d16e72abb30",
+    "hleProvenanceSha256": "2771607a7d81f50932ac1c0cdb21f9b309bfb77083d2829af8eb95243e72019f",
+    "privateInstallationManifestSha256": "5dabb04a80af55262bd9ea489c95ef2f049f5c06087f308c1573aa262431d24e",
+    "installedReadbackFilesVerifiedAgainstManifest": 56,
+    "unpatchedAgcDriverSha256": "c65c175ef093075a4900cb6e0452ee0a31c4cc1f3743774f8d46f4855279d15a",
+    "nidPatchedInstalledAgcDriverSha256": "6e7c820104234051a4afd11486b4f55fbb3ccd37ac2ca3c476e71a47751a051b",
+    "currentCheckoutSourceEquivalenceAsserted": false,
+    "newOption": null,
+    "hostBuildEvidence": {
+      "path": "docs/evidence/display-telemetry-whole-row-20261009.json",
+      "sha256": "dbf1315e79175840447ac94008ac47352d88111e4c2555bf0cb58a9238a8e730"
+    },
+    "hostMachOSha256": "707010f20df7dfe127ab4a240b4a3d3bc99e81aa0f837ff7faef976ef17a8682",
+    "jitHelperMachOSha256": "33a5047b96c47d4bb8d0758d966d3f18c1a5e6d89e2f71fe23f58fb41801b573",
+    "hostNativeArchiveSha256": "8383c94892774f12b4f46857f963e505298b5d5622235c05a2ac89218027aa02",
+    "changedNativeHost": "Whole-row display telemetry; AnyPS5 58-patch runtime reused unchanged.",
+    "hostPatchSha256": "8aed58ebb00f88e436bdfa696c09a34301224d01be34a25dcf1b2b054f11bcf4"
+  },
+  "run": {
+    "nominalRuntimeSeconds": 720,
+    "operationDurationSeconds": 742.991354583,
+    "normalMemoryTracking": true,
+    "exactLaunchOptions": {
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_CAPTURE_TRACE": "1",
+      "APS5_CRASH_RAW_CONTEXT": "0",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_DUMP_FRAMES": "6",
+      "APS5_DUMP_FRAMES_EVERY": "16",
+      "APS5_DUMP_SCALE": "4",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_FIXED_FUNCTION_INTERPOLATION": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_PERF_REPORT": "1",
+      "APS5_PRESERVE_ASYNC_AVX": "1",
+      "APS5_PRESERVE_ASYNC_FLAGS": "1",
+      "APS5_PROFILE_DRAW": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_SAFE_SELF_READ": "1",
+      "APS5_VEH_CONTEXT_BRIDGE": "1",
+      "APS5_X64_SIGNAL_SUSPEND": "1",
+      "FEX_MAXINST": "5000",
+      "FEX_MULTIBLOCK": "1",
+      "FEX_SILENTLOG": "0",
+      "MADEIRA_NO_DFE": "0",
+      "MADEIRA_ONBOARDING": "0",
+      "MADEIRA_TRACE_FEX_CONFIG": "1"
+    },
+    "jitEnabledAndDebuggerAttachedLogLines": [
+      22,
+      23
+    ],
+    "debuggerDetachedLogLines": [
+      63,
+      68
+    ],
+    "selectedSourceGpuCaptures": {
+      "limit": 6,
+      "every": 16,
+      "scale": 4,
+      "finalSwapchainPixels": false
+    },
+    "frameGeneration": false,
+    "forcedTerminationAfterBoundedRun": true,
+    "guestExitCode": null,
+    "qualifiedGameplayFps": null,
+    "comparisonBoundary": "The same58-patch HLE and launch options are reused with the48 whole-row native telemetry host. Input timing and the dealt Golf board differ from the prior58 run. No repeated thermal/route-controlled or accepted single-factor speed comparison is asserted.",
+    "selectedMarkers": {
+      "gpuColorTiling": [
+        13111
+      ],
+      "gpuStencilTiling": [
+        13137
+      ],
+      "rawResolveSnapshot": [
+        13708
+      ],
+      "bulkDriverWrite": [
+        24312
+      ]
+    }
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (Build 24A446)",
+    "loggedRamMb": 7623,
+    "cores": 8,
+    "initialThermalState": "nominal",
+    "initialLowPowerMode": false,
+    "maximumDisplayRefreshHz": 60,
+    "sourceTargetResolution": [
+      1920,
+      1080
+    ],
+    "swapchainResolution": [
+      768,
+      432
+    ],
+    "screenshotResolution": [
+      2732,
+      2048
+    ],
+    "hostDisplayShapeConfiguration": [
+      1280,
+      720
+    ],
+    "resolutionBoundary": "Source target, configured host display shape, swapchain and screenshot are different measurements; no resolution/interpolation reduction is accepted."
+  },
+  "rawEvidence": {
+    "logSha256": "2c584ff469de07b91e5d2f0ba818f0fe2a75a5cf295c2cdaa45f9a7c62f38ec3",
+    "logLines": 54538,
+    "logNulBytes": 92,
+    "receiptSha256": "6400d8b33d9732d4d1f1fea078f4d65790398db01693d853d18bf2926b1f975e",
+    "installationReceiptSha256": "2dea335e1e49617f8be0ab03dd24c421abe5632faf8e0dda69a57e762ad1e082",
+    "temporaryConfigurationBytesSha256": "1b92e25acebdc3fd48c62ad0b21a099c5c6d6e08bb5b2dbc11830fd01f038a6f",
+    "temporaryConfigurationCommandReceiptSha256": "8030c10fd0a05a00300326282979833b5a51060eeb144fd0a33c2afad42a8b5e",
+    "rootRestoreVerificationSha256": "d354f00fdb6a6cfdaf493e47d481b61448825ffa59c0ad024097be01ba87654e",
+    "strictDisplaySummarySha256": "e41564ae95e577064c6a89bbf584bfd69eca871335b866ff321e31f54cd8b12f",
+    "selectedSourceTraceSha256": "79b2669b84cb7f3550f2377ddeb9f1bc98e5198170e0038e32cbd67f3ebdcad9",
+    "selectedSourceTraceBytes": 237825035,
+    "screenshotSha256": {
+      "action-movequeen01-after.png": "515cba511eff1fe16693a0066da1ef1da09af86dfc87bdeba554e87f032f864d",
+      "action-right01-after.png": "5293f1b69bf35d94087333807e850013ae40a692fdf3abb9bce61fc626eecaf9",
+      "action-selectqueen01-after.png": "3aa5e977e5dc517f2155187407e1bad4d64d842e1751ea28fc03cbf6845aa39e",
+      "action-startgolf01-after.png": "074dc9e4afbe5c62eec9a2a92900531161dac3767770972a60958bdeb6526d5b",
+      "action-stock01-after.png": "9f4636b8d5562a4eccc4a4d92d1aa7dd93bf50ed2d4df5e49d329241fd88bea9",
+      "action-stock02-after.png": "7ab6808fb042d960beeba38d3c05a87bcc715c15ec3b8ac9bece5f5cc55c3103",
+      "screen-120.png": "f8c69be7414db3070ef9dae6154218ba3117c34387ac52ab594bc5dcf52b6319",
+      "screen-15.png": "5b722d9fe3f263b4af15a16a4372c34eb6a30cc0fbc47884442b2fd3fd1da9f6",
+      "screen-175.png": "98eeddb06436018c56741f20e13ed325d4123c945ec75e8bf0d0396aba9eed21",
+      "screen-180.png": "98eeddb06436018c56741f20e13ed325d4123c945ec75e8bf0d0396aba9eed21",
+      "screen-220.png": "5293f1b69bf35d94087333807e850013ae40a692fdf3abb9bce61fc626eecaf9",
+      "screen-240.png": "5293f1b69bf35d94087333807e850013ae40a692fdf3abb9bce61fc626eecaf9",
+      "screen-300.png": "074dc9e4afbe5c62eec9a2a92900531161dac3767770972a60958bdeb6526d5b",
+      "screen-340.png": "3aa5e977e5dc517f2155187407e1bad4d64d842e1751ea28fc03cbf6845aa39e",
+      "screen-360.png": "3aa5e977e5dc517f2155187407e1bad4d64d842e1751ea28fc03cbf6845aa39e",
+      "screen-420.png": "a0cafe594083cedb6c0c38d3aca6dd008057db11a7c8a50b6cc78203a8e59f43",
+      "screen-480.png": "d5de8dc82773ff85c1fbdd6b8e11a99547ce980aa99aef481458d0df72780056",
+      "screen-540.png": "dd5059373fc7a00dae3e7be62fcabbeb80c57e2a2933d75906da5f92b22e9c0a",
+      "screen-60.png": "3c2f07f014f8e3c4a3a043c0901e00414ce39cae50dbb75d107f33aa146ac9a8",
+      "screen-600.png": "9adec373a80409c585a3307c8b7222104b43de1405190bb4e82e3b31fef8791a",
+      "screen-660.png": "a415a2989c1fb072820999cfa70487052812c082b1e164dae172fb21d260a039",
+      "screen-720.png": "6e160339ed702f8a98408ea5724b17c316d2d6682bf75d052eb5fe051119b644"
+    },
+    "visibleReviewSha256": {
+      "visible-movequeen01-review.json": "e40747b21d16b07316c34aeb9fd1d86377f8bca4e036f9ddde951439b40dac10",
+      "visible-right01-review.json": "1d01da3af101150390a76bc30ca9f3e8edaa83e89e0710400b629e3c354f1d66",
+      "visible-selectqueen01-review.json": "ed75eb654455f722d10a3de957074a64c90a36ace3286a41206c6bfda34f8500",
+      "visible-startgolf01-review.json": "52d5dc01116780ad8136c32ea4829d3f9c64193de5262924d8ca21079d6ac88d",
+      "visible-stock01-review.json": "00ce78b6df34b9f8f349495bdd3c918378592958ea5127e382d9a099b3a7a2f0",
+      "visible-stock02-review.json": "2df6b8d0be377648e36b162558e9c738bad5f216ca0d3c99152f963fea845328"
+    },
+    "launchCommandReceiptSha256": "47a5e929ed91549ac0cd9daad125b5e883298a79ad382ceac8e3d1cf4ed6d6ee"
+  },
+  "visualsAndInput": {
+    "actions": [
+      {
+        "name": "right01",
+        "button": "Right",
+        "holdMs": 250,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 223.750329042,
+        "mainProcessContinuity": true,
+        "receiptSha256": "4a0be6da70c6fd847a1670b6e13e1c34df0a9a110e901c7cc2484deac46ddb29",
+        "screenshotSha256": "5293f1b69bf35d94087333807e850013ae40a692fdf3abb9bce61fc626eecaf9"
+      },
+      {
+        "name": "startgolf01",
+        "button": "A",
+        "holdMs": 500,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 273.79662387499997,
+        "mainProcessContinuity": true,
+        "receiptSha256": "17fdf3c5187326d3b4fd8f878578be4087a80bf5b77c903e462cf25274656cf9",
+        "screenshotSha256": "074dc9e4afbe5c62eec9a2a92900531161dac3767770972a60958bdeb6526d5b"
+      },
+      {
+        "name": "selectqueen01",
+        "button": "Right",
+        "holdMs": 250,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 326.027618125,
+        "mainProcessContinuity": true,
+        "receiptSha256": "1b529074d5dcbfb11618c85985824a1a4943f0510dc2144f52c7b442e55a3b3d",
+        "screenshotSha256": "3aa5e977e5dc517f2155187407e1bad4d64d842e1751ea28fc03cbf6845aa39e"
+      },
+      {
+        "name": "movequeen01",
+        "button": "A",
+        "holdMs": 500,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 392.05230829199996,
+        "mainProcessContinuity": true,
+        "receiptSha256": "8a8b7bb2af22b47a20b4bd9a84d7a6508f4c2259b7c889fa2ef5f192fe1ef821",
+        "screenshotSha256": "515cba511eff1fe16693a0066da1ef1da09af86dfc87bdeba554e87f032f864d"
+      },
+      {
+        "name": "stock01",
+        "button": "Y",
+        "holdMs": 250,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 484.44926129199996,
+        "mainProcessContinuity": true,
+        "receiptSha256": "bf7c004c7f2670e0a3982ec5531862050b930ac99ff9013360aa4b84aa16fb53",
+        "screenshotSha256": "9f4636b8d5562a4eccc4a4d92d1aa7dd93bf50ed2d4df5e49d329241fd88bea9"
+      },
+      {
+        "name": "stock02",
+        "button": "Y",
+        "holdMs": 250,
+        "xctestExitCode": 0,
+        "receiptElapsedAfterLaunchSeconds": 563.291574125,
+        "mainProcessContinuity": true,
+        "receiptSha256": "29de2c060143394075ceb5ec037c956b6376cf38200a869f501a6a5da45ca964",
+        "screenshotSha256": "7ab6808fb042d960beeba38d3c05a87bcc715c15ec3b8ac9bece5f5cc55c3103"
+      }
+    ],
+    "golfBoard": {
+      "columns": 7,
+      "cardsPerColumn": 5,
+      "initialWaste": "King clubs",
+      "initialExposedBottomRanks": [
+        3,
+        12,
+        7,
+        8,
+        12,
+        10,
+        3
+      ],
+      "selectedColumnAfterRight": 1,
+      "legalTableauMoveVerified": true
+    },
+    "legalTableauMove": {
+      "action": "movequeen01",
+      "priorWaste": "King clubs",
+      "removedFromColumn": 1,
+      "removedCard": "Queen spades",
+      "newWaste": "Queen spades",
+      "newExposedCard": "5 diamonds",
+      "timer": "00:12",
+      "independentSequentialOriginalImageReview": true
+    },
+    "stockResponses": [
+      {
+        "action": "stock01",
+        "priorWaste": "Queen spades",
+        "newWaste": "10 clubs",
+        "timer": "01:39",
+        "responseVerified": true
+      },
+      {
+        "action": "stock02",
+        "priorWaste": "10 clubs",
+        "newWaste": "Ace clubs",
+        "responseVerified": true
+      }
+    ],
+    "last720SecondCapture": {
+      "boardVisible": true,
+      "waste": "Ace clubs",
+      "timer": "05:26",
+      "tableauCardRemovalRetained": true
+    },
+    "refusedBackAction": {
+      "receiptSha256": "c813c82b47d7406a315d66aff1fddd77303d83066ad7a0e3efb1b203d8f557f8",
+      "elapsedAfterLaunchSeconds": 594.539091667,
+      "status": "Refused outside bounded input window; no B input or return-to-menu behavior is claimed."
+    },
+    "boundary": "One legal tableau action and two stock responses are directly visible. Held buttons may repeat. A timer and isolated actions do not establish continuous playability, exact input latency, or simulation-speed acceptance.",
+    "rawImagesPublished": false
+  },
+  "displayCompletionTelemetry": {
+    "source": "VK_GOOGLE_display_timing",
+    "parserPath": "tools/perf/summarize_display.py",
+    "parserSha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+    "wholeLogStrictParserStatus": "Accepted without repairs",
+    "rawOccurrences": 682,
+    "completeJsonRows": 682,
+    "nativeTimestampRowsWithNonzeroActualNs": 679,
+    "wholeLogStrictSummary": {
+      "schema": 1,
+      "source": "VK_GOOGLE_display_timing",
+      "status": "measured",
+      "warmup_seconds_per_epoch": 60,
+      "minimum_seconds": 30,
+      "segments": [
+        {
+          "epoch": 2,
+          "swapchain_id": 1,
+          "resolution": [
+            768,
+            432
+          ],
+          "seconds": 646.621257458,
+          "displayed_intervals": 6198,
+          "displayed_fps": 9.585209159942563,
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "missed_vblanks": 32599,
+          "refresh_hz": 60.0000024000001,
+          "minimum_duration_met": true
+        }
+      ],
+      "limits": [
+        "Display-completion timing requires separate visible foreground verification.",
+        "No claim about guest simulation speed, visual correctness, touch, thermal stability or device acceptance.",
+        "Percentiles are conservative 0.1 ms histogram upper bounds; overflow is explicitly unbounded."
+      ]
+    },
+    "menuCaptureWindow": {
+      "nativeClockSeconds": [
+        60,
+        175
+      ],
+      "completeTelemetryRows": 112,
+      "originalLogLines": [
+        36102,
+        36148,
+        36165,
+        36188,
+        36206,
+        36254,
+        36279,
+        36300,
+        36325,
+        36346,
+        36387,
+        36428,
+        36447,
+        36471,
+        36487,
+        36533,
+        36556,
+        36577,
+        36597,
+        36627,
+        36664,
+        36701,
+        36720,
+        36740,
+        36771,
+        36869,
+        36891,
+        36912,
+        36934,
+        36971,
+        37017,
+        37040,
+        37064,
+        37081,
+        37130,
+        37148,
+        37171,
+        37193,
+        37212,
+        37248,
+        37294,
+        37312,
+        37337,
+        37362,
+        37410,
+        37429,
+        37454,
+        37473,
+        37505,
+        37548,
+        37581,
+        37604,
+        37625,
+        37649,
+        37744,
+        37765,
+        37788,
+        37806,
+        37838,
+        37888,
+        37907,
+        37939,
+        37955,
+        37978,
+        38018,
+        38039,
+        38056,
+        38080,
+        38116,
+        38163,
+        38182,
+        38203,
+        38220,
+        38269,
+        38286,
+        38305,
+        38326,
+        38348,
+        38389,
+        38431,
+        38455,
+        38479,
+        38500,
+        38597,
+        38617,
+        38639,
+        38658,
+        38684,
+        38726,
+        38763,
+        38782,
+        38806,
+        38826,
+        38870,
+        38891,
+        38912,
+        38933,
+        38962,
+        39000,
+        39044,
+        39063,
+        39086,
+        39103,
+        39149,
+        39169,
+        39189,
+        39209,
+        39237,
+        39277,
+        39310,
+        39329,
+        39350
+      ],
+      "strictSummary": {
+        "schema": 1,
+        "source": "VK_GOOGLE_display_timing",
+        "status": "measured",
+        "warmup_seconds_per_epoch": 0,
+        "minimum_seconds": 30,
+        "segments": [
+          {
+            "epoch": 2,
+            "swapchain_id": 1,
+            "resolution": [
+              768,
+              432
+            ],
+            "seconds": 113.934446708,
+            "displayed_intervals": 1128,
+            "displayed_fps": 9.900429875180116,
+            "p50": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "p95": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "p99": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "missed_vblanks": 5708,
+            "refresh_hz": 60.0000024000001,
+            "minimum_duration_met": true
+          }
+        ],
+        "limits": [
+          "Display-completion timing requires separate visible foreground verification.",
+          "No claim about guest simulation speed, visual correctness, touch, thermal stability or device acceptance.",
+          "Percentiles are conservative 0.1 ms histogram upper bounds; overflow is explicitly unbounded."
+        ]
+      }
+    },
+    "lateGolfCaptureWindow": {
+      "nativeClockSeconds": [
+        580,
+        700
+      ],
+      "completeTelemetryRows": 116,
+      "originalLogLines": [
+        50744,
+        50770,
+        50796,
+        50838,
+        50872,
+        50892,
+        50914,
+        50936,
+        50981,
+        50997,
+        51022,
+        51047,
+        51076,
+        51107,
+        51142,
+        51160,
+        51181,
+        51214,
+        51312,
+        51330,
+        51355,
+        51381,
+        51423,
+        51441,
+        51471,
+        51491,
+        51514,
+        51537,
+        51577,
+        51601,
+        51625,
+        51660,
+        51697,
+        51726,
+        51745,
+        51766,
+        51787,
+        51834,
+        51850,
+        51874,
+        51900,
+        51925,
+        51958,
+        51990,
+        52009,
+        52028,
+        52062,
+        52156,
+        52177,
+        52202,
+        52227,
+        52266,
+        52288,
+        52319,
+        52337,
+        52360,
+        52384,
+        52424,
+        52450,
+        52472,
+        52507,
+        52542,
+        52568,
+        52594,
+        52614,
+        52636,
+        52686,
+        52705,
+        52727,
+        52751,
+        52780,
+        52813,
+        52848,
+        52869,
+        52889,
+        52918,
+        53018,
+        53036,
+        53060,
+        53086,
+        53120,
+        53148,
+        53183,
+        53202,
+        53222,
+        53243,
+        53287,
+        53305,
+        53333,
+        53361,
+        53401,
+        53423,
+        53453,
+        53472,
+        53490,
+        53512,
+        53554,
+        53576,
+        53598,
+        53622,
+        53660,
+        53683,
+        53709,
+        53734,
+        53763,
+        53835,
+        53875,
+        53898,
+        53923,
+        53950,
+        53982,
+        54014,
+        54032,
+        54052,
+        54076,
+        54117
+      ],
+      "strictSummary": {
+        "schema": 1,
+        "source": "VK_GOOGLE_display_timing",
+        "status": "measured",
+        "warmup_seconds_per_epoch": 0,
+        "minimum_seconds": 30,
+        "segments": [
+          {
+            "epoch": 2,
+            "swapchain_id": 1,
+            "resolution": [
+              768,
+              432
+            ],
+            "seconds": 118.650678083,
+            "displayed_intervals": 1149,
+            "displayed_fps": 9.68388903092688,
+            "p50": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "p95": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "p99": {
+              "upper_ms": null,
+              "over_ms": 25.6
+            },
+            "missed_vblanks": 5970,
+            "refresh_hz": 60.0000024000001,
+            "minimum_duration_met": true
+          }
+        ],
+        "limits": [
+          "Display-completion timing requires separate visible foreground verification.",
+          "No claim about guest simulation speed, visual correctness, touch, thermal stability or device acceptance.",
+          "Percentiles are conservative 0.1 ms histogram upper bounds; overflow is explicitly unbounded."
+        ]
+      }
+    },
+    "clockScope": "Native clock relative to first report; not an exact app-launch alignment. Window membership preserves original file order and no row is repaired.",
+    "boundary": "The production summary field is named displayed_fps; here it is interpreted as native completion timestamps per second. It does not identify unique physical display images or prove game simulation cadence. The whole span includes menu, dealing, gameplay actions and idle board. No 60-FPS or matched thermal-route acceptance."
+  },
+  "drawProfiles": {
+    "completeIntervals": 71,
+    "menuDiagnosticWindow": {
+      "nativeClockSeconds": [
+        35,
+        175
+      ],
+      "completeIntervals": 14,
+      "originalLogLines": [
+        35482,
+        35791,
+        36119,
+        36393,
+        36658,
+        36992,
+        37260,
+        37536,
+        37858,
+        38129,
+        38393,
+        38723,
+        38994,
+        39265
+      ],
+      "drawsPerIntervalBounds": [
+        2450,
+        3099
+      ],
+      "synchronousPerIntervalBounds": [
+        98,
+        124
+      ],
+      "medianReportedSynchronousMeanMs": 69.3235,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.240817294659799,
+        "prepare": 3.888,
+        "writeBack": 7.058946608946609,
+        "pipeline": 1.5328061224489795,
+        "sync": 45.96532323232323
+      }
+    },
+    "lateGolfDiagnosticWindow": {
+      "nativeClockSeconds": [
+        580,
+        710
+      ],
+      "completeIntervals": 13,
+      "originalLogLines": [
+        50819,
+        51082,
+        51409,
+        51677,
+        51932,
+        52254,
+        52524,
+        52791,
+        53116,
+        53382,
+        53641,
+        53957,
+        54219
+      ],
+      "drawsPerIntervalBounds": [
+        2729,
+        2789
+      ],
+      "synchronousPerIntervalBounds": [
+        96,
+        98
+      ],
+      "medianReportedSynchronousMeanMs": 69.881,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.49278350515464,
+        "prepare": 3.984536082474227,
+        "writeBack": 7.244897959183674,
+        "pipeline": 1.5701030927835053,
+        "sync": 46.1
+      }
+    },
+    "comparison58Menu": {
+      "record": "docs/evidence/ipad-solitaire-gpu-stencil-sample-tiling-20261009.json",
+      "nativeClockSeconds": [
+        35,
+        175
+      ],
+      "completeIntervals": 14,
+      "originalLogLines": [
+        35392,
+        35679,
+        36000,
+        36270,
+        36547,
+        36870,
+        37145,
+        37417,
+        37735,
+        38005,
+        38267,
+        38589,
+        38860,
+        39115
+      ],
+      "drawsPerIntervalBounds": [
+        2426,
+        2975
+      ],
+      "synchronousPerIntervalBounds": [
+        97,
+        119
+      ],
+      "medianReportedSynchronousMeanMs": 70.2255,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.776530612244898,
+        "prepare": 4.140366146458584,
+        "writeBack": 7.101742758959253,
+        "pipeline": 1.5005050505050503,
+        "sync": 46.04795918367347
+      }
+    },
+    "boundary": "Phase totals include all draws in each interval; dividing by synchronous count is diagnostic normalization, not isolated per-frame cost. Window membership follows the most recent native report and has periodic-report latency. The host change, different deal and input schedule are not a matched single-factor performance acceptance."
+  },
+  "selectedSourceTrace": {
+    "presentRequests": 6811,
+    "blitRequests": 6812,
+    "lastPresentTraceSeconds": 715.324861,
+    "windows": [
+      {
+        "traceClockSeconds": [
+          0,
+          175
+        ],
+        "presentRequests": 1664,
+        "presentMedianIntervalMs": 100.21899999999562,
+        "blitRequests": 1665,
+        "blitMedianIntervalMs": 100.21950000000146
+      },
+      {
+        "traceClockSeconds": [
+          300,
+          380
+        ],
+        "presentRequests": 752,
+        "presentMedianIntervalMs": 103.59399999998686,
+        "blitRequests": 752,
+        "blitMedianIntervalMs": 103.59399999998686
+      },
+      {
+        "traceClockSeconds": [
+          480,
+          700
+        ],
+        "presentRequests": 2107,
+        "presentMedianIntervalMs": 103.36000000000922,
+        "blitRequests": 2107,
+        "blitMedianIntervalMs": 103.36599999999407
+      }
+    ],
+    "boundary": "Source trace requests and blits are not displayed frames. Trace starts with its own stream; timing is not exact app-launch alignment."
+  },
+  "memory": {
+    "nativeReports": 682,
+    "nativePhysicalFootprintMbBounds": [
+      1264,
+      3963
+    ],
+    "nativeAvailableMbBounds": [
+      4228,
+      6927
+    ],
+    "lastNativePhysicalFootprintMb": 3899,
+    "lastNativeAvailableMb": 4292,
+    "footprintReports": 380,
+    "maximumLoggedPhysicalFootprintMb": 4031,
+    "noFootprintPoolApplied": false,
+    "boundary": "Logged MB units retained. Samplers run at different moments; shared pool remains jetsam-counted. No stable-memory/no-growth or thermal acceptance."
+  },
+  "audio": {
+    "pacingReports": 142,
+    "deviceShortReports": 1,
+    "deviceShortRows": [
+      {
+        "logLine": 16135,
+        "milliseconds": 21.3,
+        "shortPasses": 1,
+        "totalPasses": 469,
+        "largestPassFrames": 1024
+      }
+    ],
+    "nonzeroSharedOutputClampReports": 58,
+    "maximumSharedOutputClampDeltaSamples": 3283,
+    "firstNonzeroClampLogLine": 46545,
+    "lastNonzeroClampLogLine": 54429,
+    "maximumLoggedLateWakeMs": 0.1,
+    "sourceReports": 144,
+    "largestSourcePeakMagnitude": 1.502,
+    "largestSourceNearFullScaleCount": 3290,
+    "sourceNearFullScaleThresholdMagnitude": 0.99,
+    "soundQualityAccepted": false,
+    "boundary": "Pacing rows are per stream and report deltas of a shared output-clamp counter; overlapping deltas are not summed as unique output samples. The source label clipped means sampled magnitudes >=0.99, not proof of clipping itself. Peak1.502 and actual output-clamp deltas occur, but source/material and input timing differ from58. No listening or device-only audio capture was performed."
+  },
+  "renderAndFaultLogs": {
+    "markerCounts": {
+      "SkippedDraw:": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "VK_ERROR": 0
+    },
+    "machUnhandledRows": 206,
+    "maximumThrottledNativeFaultCounter": 100000,
+    "boundary": "Native UNHANDLED rows are not automatically terminal. Main8044 survives all actions and cleanup-before; explicitSIGKILL ends this run."
+  },
+  "lifecycleAndRollback": {
+    "mainPid": 8044,
+    "helperPid": 8048,
+    "sameMainProcessThroughoutInputsAndCleanupBefore": true,
+    "helperPresentAfterStartAbsentAfterMove": true,
+    "helperAbsenceBoundary": "JIT helper completed and detached near startup; its later absence is not loss of the game process. Both-process continuity is not claimed.",
+    "processReceiptSha256": {
+      "action-right01-before-processes.json": "75041488cc4b799ade9e884bb5aa616d9d3b0727ccd94831d26739c6034079e3",
+      "action-right01-after-processes.json": "6250b634d700ef76f1dbd9ada8b764186ba40e3081aa4a4e51b69766a6eb286a",
+      "action-startgolf01-before-processes.json": "24e2d2e0e8e97889edec871682b7c00165b0547a619fd260e7cecacc09d28b33",
+      "action-startgolf01-after-processes.json": "ff3a80e6766bd2cfbc5939761c45a8e76460dcf0e25c40cfae4b24bc37bb2070",
+      "action-selectqueen01-before-processes.json": "b550e80097c369a4b46e6823afd980e90e704cb7f61a4544925a805c1e72b8fc",
+      "action-selectqueen01-after-processes.json": "80a232b06f0049619a136b4a5265e6a819fc8c120273ee4e265e89ab83737d32",
+      "action-movequeen01-before-processes.json": "03aa763bcb0fd03c4a3fc1f9893fdb820d3a95341079180fb281d9fe00259bdf",
+      "action-movequeen01-after-processes.json": "99a5e25de06f50dab8455ba33a96b0f62be2a04c849c85a4bced5c9557d212f9",
+      "action-stock01-before-processes.json": "ac8c1f77f0280fdb4cf1513757b17e0d957a758acd38569b8186307180b26419",
+      "action-stock01-after-processes.json": "80563fdacecb595a74ce55ac91d1e634575a2e415d09c7f14b7e7c06ac027293",
+      "action-stock02-before-processes.json": "b5ebec67b467f29d8d8a0a5408808dc227f68e2cc96666e19ee1c3d78d6130d0",
+      "action-stock02-after-processes.json": "99040e7fe7c20bc72d13be2954dff95fb627c9cf102f04cb7665e15a2f9460ee",
+      "cleanup-before.json": "a25fc78d2f48e5eb12e9ee5990e48c25a92b5ea624cc9d797017e9d361c795b4",
+      "cleanup-after.json": "90905fc992bf6abff25f9c520e6cc0a4dc13e0bc6ad8eb906345beadf941e05c"
+    },
+    "observedOwnPids": {
+      "action-right01-before-processes.json": [
+        8044,
+        8048
+      ],
+      "action-right01-after-processes.json": [
+        8044,
+        8048
+      ],
+      "action-startgolf01-before-processes.json": [
+        8044,
+        8048
+      ],
+      "action-startgolf01-after-processes.json": [
+        8044,
+        8048
+      ],
+      "action-selectqueen01-before-processes.json": [
+        8044,
+        8048
+      ],
+      "action-selectqueen01-after-processes.json": [
+        8044,
+        8048
+      ],
+      "action-movequeen01-before-processes.json": [
+        8044,
+        8048
+      ],
+      "action-movequeen01-after-processes.json": [
+        8044
+      ],
+      "action-stock01-before-processes.json": [
+        8044
+      ],
+      "action-stock01-after-processes.json": [
+        8044
+      ],
+      "action-stock02-before-processes.json": [
+        8044
+      ],
+      "action-stock02-after-processes.json": [
+        8044
+      ],
+      "cleanup-before.json": [
+        8044
+      ],
+      "cleanup-after.json": []
+    },
+    "ownProcessesAbsentAfterCleanup": true,
+    "endMethod": "Explicit SIGKILL of app8044; no successful guest-exit code is reported.",
+    "runtimeFileSetAndBytesRestored": true,
+    "restoredRuntimeFiles": 56,
+    "restoredConfigurationSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "restoredLibrarySha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "restoredInstallationManifestSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "prior47OriginalMetadataByteEqual": true,
+    "installedNativeHostAfterRuntimeRollback": 48,
+    "priorDiagnosticFilesWithSuccessfulBackupAndRestoreCopyReceipts": 7,
+    "priorDiagnosticRestoredBytesIndependentlyReadBack": false,
+    "boundary": "All56 runtime bytes plus configuration/library/manifest are independently rehashed against backups. Native host48 remains installed; runtime rollback does not restore host47. Prior diagnostics have copy receipts without a separate restored-byte readback."
+  },
+  "qualification": {
+    "physicalIpadLaunched": true,
+    "menuAndFullGolfBoardVisible": true,
+    "golfSelectionAndStartVerified": true,
+    "legalTableauMoveAccepted": true,
+    "twoStockResponsesVerified": true,
+    "strictWholeLogDisplayParserAccepted": true,
+    "returnToMenuAccepted": false,
+    "constant60FpsAccepted": false,
+    "fullGameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "backgroundRecoveryAccepted": false,
+    "singleFactorPerformanceAccepted": false,
+    "currentSourceAsBuiltEquivalenceAsserted": false,
+    "anyps559DeviceQualificationIncluded": false
+  },
+  "privacy": {
+    "rawPrivateLogPublished": false,
+    "screenshotsOrGamePixelsPublished": false,
+    "gameAssetsShaderCodePairingOrSecretsPublished": false,
+    "githubActionsUsed": false
+  }
+}

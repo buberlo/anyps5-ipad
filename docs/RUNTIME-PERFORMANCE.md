@@ -194,3 +194,253 @@ The package combines three changes and is not a matched one-change benchmark.
 No device speed improvement or constant-60-FPS acceptance is recorded here.
 [Pipeline-cache checks](evidence/color-resolve-pipeline-cache-native-20261009.json),
 [combined source/build qualification](evidence/resolve-snapshot-depth-copy-build-20261009.json).
+
+## Bounded iPad run of candidates 0054–0056
+
+The combined 56-patch HLE now has a separate 420-second physical-iPad run
+with the retained Build 47 host. The full selection menu is visible at the
+60-second capture, and Right followed by A enters Golf. The complete seven-column
+tableau is visible at 240 seconds. A later Y input changes the waste card from
+10♦ to 4♣ while the same app and JIT-helper processes remain alive. The earlier
+53-patch UI run shows its full menu at 120 seconds, is still dealing at 240 seconds,
+and shows the full board at 300 seconds. The deals differ, so this is evidence of
+startup, rendering and one stock action rather than a matched gameplay route.
+
+The diagnostic menu profiles use the same environment apart from the new raw
+snapshot and pipeline-cache opt-ins. Nine stable 53 intervals contain 250 draws and
+ten synchronous draws each; twelve stable 56 intervals contain 500 draws and twenty
+synchronous draws each. Their median reported synchronous-draw means are
+732.236 ms and 483.396 ms. The phase totals, divided by each interval's synchronous
+draw count, are:
+
+| Diagnostic phase | 53 normalized median | 56 normalized median |
+| --- | ---: | ---: |
+| Read target | 116.53 ms | 116.2375 ms |
+| Prepare | 225.95 ms | 103.15 ms |
+| Write back | 368.97 ms | 240.985 ms |
+| Pipeline | 1.96 ms | 1.55 ms |
+
+These phase totals include work across all draws; the normalization does not
+turn them into isolated per-frame measurements. Captures, trace, bounded pixel
+statistics, profiling and the per-draw transition control remain enabled. The
+separate 53 UI run has profiling off, unlike 56. Neither comparison isolates one
+of the three changes, repeats matched thermal conditions, or accepts a sustained
+speedup.
+
+During the common first 175 seconds, the selected-source trace records 323 present
+requests for 56, compared with 166 for the 53 profile run and 167 for the 53 UI run.
+Median source-blit intervals are 513.138 ms, 1004.9135 ms and 1001.483 ms respectively.
+These are source requests, not actual display timestamps or displayed FPS. More
+directly, 56's visible Golf timer advances from 00:01 after the stock input to 00:21
+at the 420-second capture, roughly 104 real seconds later. The game still runs
+substantially slower than real time.
+
+The audio telemetry records one actual shortage: 21.3 ms, one 1024-frame pass in
+a 469-pass reporting interval. Its other pacing reports show no shortage, and no
+post-mix output clamps are logged. The source statistic named `clipped` counts
+values at or above 0.99 in magnitude; its 2423 near-full-scale samples with peak
+0.997 do not prove hard output clipping. No listening or recorded-audio quality
+review was performed.
+
+The bounded test ends by terminating the app. All 56 backed-up runtime files,
+configuration, library metadata, installation manifest and prior diagnostics
+are restored; the app/helper are absent afterward. No successful guest exit,
+legal tableau move, full gameplay, audio, save/load, background recovery or 60-FPS
+acceptance is claimed. Private screenshots and raw logs stay local; their hashes
+and the measured boundaries are in the
+[separate physical-device record](evidence/ipad-solitaire-resolve-snapshot-depth-copy-20261009.json).
+
+## Bounded iPad run of candidate 0057
+
+The 57-patch HLE has a separate 720-second physical-iPad run with the retained
+Build 47 host and exact `APS5_GPU_COLOR_SAMPLE_TILING=1`. Its preparation marker
+is present, normal guest-memory tracking remains enabled, and all 56 backed-up
+runtime files are restored afterward. This run also enables `APS5_PERF_REPORT=1`,
+so its comparison with 56 includes an additional diagnostic cost.
+
+The original screenshots show the selection menu at 60, 120 and 180 seconds.
+Right followed by A enters a different board: thirteen four-card columns and
+four foundation slots, rather than the prior Golf layout. The mode name is not
+verified. Its captured board region remains identical through 720 seconds, and
+the Y capture is byte-identical to the preceding 300-second screenshot. No legal
+move or stock response is established. The timer remains 00:00; without a verified
+action starting it, that does not measure simulation speed. Black results from an
+inconsistent image preview were rejected by decoding the original PNG files;
+they are not a device rendering regression.
+
+Twelve stable diagnostic intervals contain 900 draws and 36 synchronous draws
+each. Their median reported synchronous-draw mean is 256.215 ms. The corresponding
+phase totals divided by synchronous count are 9.2736 ms for `readTarget`,
+102.8819 ms for `prepare`, 106.2778 ms for `writeBack`, 1.5417 ms for pipeline work
+and 34.6542 ms for `sync`. These aggregates include all draws in each interval.
+They are not isolated per-frame timings, and the differing board mode and added
+diagnostics prevent a matched gameplay or single-change speed claim.
+
+The strict display parser rejects the complete log at line 37547; a second
+interleaved display row occurs at 43047. Separate unchanged contiguous ranges
+around those rows pass the same strict reader and report approximately 3.50–3.52
+display completions per second at 768 × 432. No row was repaired and no ranges
+were joined. The first range includes startup/menu and an input boundary; the
+last shows the different card board without a verified legal action. This is
+partial completion-timing evidence, not an accepted gameplay-FPS measurement.
+The source trace separately records 568 present requests in its first 175 seconds,
+with a median blit interval of 283.5755 ms. Requests do not establish displayed FPS.
+
+Native memory reports range from 1262 to 3848 logged MB; the separate fast sampler
+reaches 3916 MB. The shared pool remains jetsam-counted. Audio records no device
+shortage, but ten overlapping stream reports contain nonzero deltas of the shared
+output-clamp counter, up to 10318 samples in one report. Those deltas cannot be
+summed as unique clamped samples. No listening review, stable-memory qualification,
+legal card move, save/load, background recovery or 60-FPS acceptance is recorded.
+The same app/helper processes survive both input sequences and are absent after
+explicit termination and verified runtime/configuration restoration. See the
+[separate physical-device record](evidence/ipad-solitaire-gpu-color-sample-tiling-20261009.json).
+
+## Bounded iPad run of candidate 0058
+
+The 58-patch HLE has a separate 720-second run with the retained Build 47 host,
+normal memory tracking and exact `APS5_GPU_STENCIL_SAMPLE_TILING=1`. Both GPU
+color and stencil transfer admission markers appear. The diagnostics and other
+opt-ins from 57 remain enabled. Four separately guarded inputs use the visible
+state after each action: Right250 selects Golf, A500 starts its complete seven by
+five tableau, and Y500 followed later by Y250 changes the waste from 3♣ to 5♠
+and then 4♠. Held buttons can repeat; exactly one drawn card per input is not
+asserted. The timer reads 00:00 after start, 00:12 after the first stock input,
+00:56 after the second, and 03:18 at the 720-second capture. No legal tableau move
+was completed before the input cutoff.
+
+Fourteen complete menu diagnostic intervals in native-clock seconds 35–175
+contain 2426–2975 draws and 97–119 synchronous draws each. Their median reported
+synchronous-draw mean is 70.2255 ms. Phase totals divided by synchronous count are:
+
+| Diagnostic phase | 57 menu normalized median | 58 menu normalized median |
+| --- | ---: | ---: |
+| Read target | 9.2736 ms | 9.7765 ms |
+| Prepare | 102.8819 ms | 4.1404 ms |
+| Write back | 106.2778 ms | 7.1017 ms |
+| Pipeline | 1.5417 ms | 1.5005 ms |
+| Sync | 34.6542 ms | 46.0480 ms |
+
+The large remaining aggregate is synchronization. These totals cover all draws;
+normalizing them does not isolate per-frame work. Later Golf intervals have a
+70.0905 ms median synchronous mean. Inputs occur later than in 57 and enter a
+different game mode; deals, thermal repetitions and legal gameplay routes are not
+matched. These observations do not accept a single-change performance result.
+
+The complete log still fails the unchanged strict display parser at line 40195;
+other malformed display rows occur at 44221 and 54214. Separate untouched
+contiguous ranges report approximately 9.44–9.77 display completions per second.
+An uninterrupted original range during late Golf-board captures reports 942
+completions over 99.3006 seconds, or 9.4863 per second. Its p50, p95 and p99 all
+overflow the histogram above 25.6 ms. No malformed rows were repaired or ranges
+joined, and whole-log acceptance remains rejected. The first 175 source-trace
+seconds separately contain 1633 present requests with a 101.709 ms median blit
+interval, compared with 568 requests and 283.5755 ms for 57. Source requests are
+not displayed FPS; completion telemetry also does not prove unique correct game
+images or simulation speed.
+
+Native physical-footprint reports span 1281–3973 logged MB, with a separate
+footprint maximum of 4048 MB. Two nearby per-stream audio reports each contain a
+21.3 ms shortage in one 1024-frame pass; their unique physical output duration is
+not established. All reported output clamps are zero, and the largest source
+peak is 0.349. No listening review accepts sound quality. There are no logged
+skipped draws, AGC graphics rejections, `bad_alloc`, `FATAL` or `VK_ERROR` markers.
+Throttled native fault diagnostics remain and are not treated as terminal errors.
+
+The same main app survives all four input actions and cleanup-before. The JIT
+helper has already detached and is absent by the start-game receipt; continuity
+of both processes is not claimed. Explicit app termination ends the bounded run.
+Independent hashes verify all 56 restored runtime files and exact configuration,
+library and installation-manifest bytes. Prior diagnostics have successful copy
+receipts without an additional byte readback. Full gameplay, a legal tableau
+move, audio, save/load, background recovery, stable memory and constant 60 FPS
+remain unqualified. See the
+[separate physical-device record](evidence/ipad-solitaire-gpu-stencil-sample-tiling-20261009.json).
+
+## Build 48 telemetry and a verified Golf move
+
+The next bounded 720-second run uses the same 58-patch HLE and launch options
+with the Build 48 host. Its native display telemetry emits each complete row
+in one write. The unchanged strict parser accepts all 682 rows without repairs.
+After a 60-second warmup, it reports 6198 completion intervals over 646.6213
+seconds, or 9.5852 native display completions per second, with 32599 missed
+vblanks at 768 × 432. The p50, p95 and p99 exceed the histogram's 25.6 ms upper
+range. A late Golf-board window reports 1149 completions over 118.6507 seconds,
+or 9.6839 per second. These are completion timestamps; they do not identify
+unique correct physical display images or establish simulation cadence.
+
+Six separately guarded actions preserve the main process. Right250 selects
+Golf, A500 starts its seven by five tableau, and another Right250 selects the
+visible Q♠ in column 1, using zero-based column indices. A500 then removes Q♠
+onto the K♣ waste and exposes 5♦. Original before/after screenshots independently
+verify this first legal tableau move. Two later Y250 inputs change the waste
+from Q♠ to 10♣ and then A♣. The final capture retains the changed board and reads
+05:26. A queued B request is refused at 594.539 seconds outside the bounded
+input window; no Back or return-to-menu behavior is accepted.
+
+Fourteen menu diagnostic intervals have a 69.3235 ms median synchronous-draw
+mean; thirteen late Golf intervals have 69.881 ms. The late phase totals divided
+by synchronous count are 9.4928 ms for target reads, 3.9845 ms for preparation,
+7.2449 ms for writeback, 1.5701 ms for pipelines and 46.1 ms for synchronization.
+These totals include all draws and do not isolate individual frame costs.
+The source trace records 6811 present requests and 6812 blits; its first 175
+seconds contain 1664 requests with a 100.2195 ms median blit interval. Source
+requests do not establish displayed FPS. Different deals and input schedules
+prevent a matched performance claim against the preceding run.
+
+The audio log contains one per-stream 21.3 ms shortage in one 1024-frame pass.
+It also contains 58 nonzero reports of the shared output-clamp counter, with a
+maximum delta of 3283 samples. Their overlapping per-stream windows cannot be
+summed as unique clamped output. Sampled source peaks reach 1.502. The source
+field named `clipped` counts magnitudes of at least 0.99; it is distinct from
+the output callback's actual clamp to ±1. No recording or listening review
+accepts sound quality. Native physical-footprint reports span 1264–3963 logged
+MB, with a separate footprint maximum of 4031 MB; stable memory remains
+unqualified. No skipped-draw, AGC graphics rejection, `bad_alloc`, `FATAL` or
+`VK_ERROR` marker appears. The 206 throttled native `UNHANDLED` reports are not
+treated as terminal failures.
+
+Main process 8044 remains present through all six actions and cleanup-before;
+the already detached JIT helper is absent by the move receipt. Explicit
+termination ends the run. All 56 runtime files and configuration, library and
+installation-manifest bytes are independently verified after rollback. The
+native Build 48 host remains installed; this rollback restores the prior runtime
+data, not Build 47. The immutable host-build record retains its earlier
+pre-installation status. One legal move and two stock responses are accepted;
+continuous gameplay, audio, save/load, background recovery, stable memory and
+constant 60 FPS remain open. See the
+[separate Build 48 device record](evidence/ipad-solitaire-build48-whole-row-telemetry-20261009.json).
+
+## Bounded iPad run of candidate 0059
+
+A separate 360-second run uses the retained Build 48 host and the 59-patch HLE
+with exact `APS5_CACHE_STENCIL_TRANSFER_PIPELINES=1`. The production path logs
+reuse of an immutable stencil bundle after matching its ordered sample positions.
+The menu and complete Golf board render, but this run sends only Right250 to
+select Golf and A500 to start it. The final board has A♠ waste and remains at
+00:00; no legal tableau move or stock action was attempted. This idle-board timer
+does not measure simulation speed.
+
+All 337 display rows pass the unchanged strict parser without repairs. After
+60 seconds of warmup, it reports 2784 completion intervals over 284.8849 seconds,
+or 9.7724 native display completions per second, and 14309 missed vblanks at
+768 × 432. The p50, p95 and p99 exceed 25.6 ms. Native completion timestamps
+do not establish unique physical images, gameplay cadence or constant 60 FPS.
+Twelve late idle-board diagnostic intervals have a 68.6725 ms median
+synchronous-draw mean. Their normalized phase totals are 8.8803 ms for target
+reads, 3.4342 ms for preparation, 7.1703 ms for writeback, 1.5586 ms for pipelines
+and 46.1162 ms for synchronization. These totals cover all draws. The changed
+deal, earlier inputs and shorter run prevent a matched speed comparison with 58.
+
+Seventy audio pacing reports contain no logged shortage or output-clamp delta;
+sampled source peaks reach 0.467. No listening or output recording accepts sound
+quality, and this is not the preceding legal-move scene. Native physical-footprint
+reports span 1260–3991 logged MB; the separate footprint maximum is 4065 MB.
+There are no skipped-draw, AGC graphics rejection, `bad_alloc`, `FATAL` or
+`VK_ERROR` markers. Both main process 8134 and helper 8139 remain present through
+the two actions and cleanup-before. Explicit termination ends the run; all 56
+runtime files and configuration, library and manifest bytes match the backups,
+and both processes are absent afterward. The native Build 48 host remains.
+Cache hit rate, measured speed, legal gameplay, audio, save/load, background
+recovery, stable memory and 60 FPS remain unqualified by this run. See the
+[separate 59 device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json).

@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "production_helper_native_gpu_and_actual_windows_tracker_checks_passed_full_runtime_separate",
+  "patch": {
+    "path": "patches/anyps5/0057-gpu-color-sample-tiling.patch",
+    "sha256": "73815e594ad7db0960be26c7009e4dd208ec7f23a97525893a813be52dc07455",
+    "sourcePaths": 9,
+    "isolatedForwardReverseByteExact": true,
+    "sourceManifestSha256": "bfcea103526de96ea26fcfd3f17f9a2f91a2f48f8065c8afafee632aa0f429a0",
+    "roundtripReportSha256": "153329dc2c4a6791ce327d32735fcb59bcd6865334aabe69634c63f19ef90603"
+  },
+  "sourceSeries": {
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "patchCount": 57,
+    "checkedPaths": 146,
+    "forwardApply": true,
+    "matchesCheckedSource": true,
+    "reverseRestoresPin": true,
+    "reportSha256": "7bfe05e56fb609efae37dfbbe9f6d58f9145038204d582409791568b7de4438a"
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/CMakeLists.txt": {
+      "baselineSha256": "560ad304f94cf7cb5ae186822ebb0bf5e0ec6ac4ce58fd735542e8d84d57134a",
+      "candidateSha256": "33e435c87fdf529b3443d397c25a81e2674496a01f80dd9abfeb7e57809bb584"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": {
+      "baselineSha256": "13aab71af71b65d26eded796afac6616782a0b8df394d964c4b9f955654e64d2",
+      "candidateSha256": "daedb352d5bfd05557d22ee5856e47339dec03b2d38cecb30605a726078784e6"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": {
+      "baselineSha256": "ae4267df67b78c78070396e0f1c7f412cd026321c36baea8d88cbc7a75b38684",
+      "candidateSha256": "65775dc5c6eec3558bc180edce6e7e540fb1204d5cc03d4f479969ad8bcb2233"
+    },
+    "core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp": {
+      "baselineSha256": "1dfca2f8a4d65ac9bf618bb74bfad3819818fe892529782f55324a14e6c62ba8",
+      "candidateSha256": "028d6c29e75756b233b4b4df87dd0517d8d22c557e5dd8b7ed9e4e332462c919"
+    },
+    "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp": {
+      "baselineSha256": "5f165de2a2a7854eee7b3f4912075f2935c265b09b9b658e8b913095be31307b",
+      "candidateSha256": "2fafd6dbc2cbdd032588150df1551113f784ce5a95552cdf5df3605e58c1fac3"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp": {
+      "baselineSha256": null,
+      "candidateSha256": "a8bd0169f733c4650e9dfa0ac581cbc317fba7b6454025a7ef31014f444a6cc1"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp": {
+      "baselineSha256": null,
+      "candidateSha256": "41333cbbeddda5b98ed881ff86b73e2e005a827ae515ad5d48b02496609ea2be"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp": {
+      "baselineSha256": null,
+      "candidateSha256": "4fca473726eba13b9cf6e0dcdcfb00e9f50e5ace0c4a3a2cfba37c79c33e5296"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h": {
+      "baselineSha256": null,
+      "candidateSha256": "a71714341ded2010786bdaa267ecaf0c485900c4653a4c17a4ca329bc4efde89"
+    }
+  },
+  "change": {
+    "option": "APS5_GPU_COLOR_SAMPLE_TILING",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off",
+    "eligibility": "Uncompressed RGBA8 UNORM R64KB_X full single-mip 2D surfaces, equal 2/4/8 samples and fragments, exact ColorTargetLayout size/alignment and device descriptor/storage/index/workgroup limits. Unsupported metadata keeps the CPU path and existing validation.",
+    "programOwnership": "One per-device helper; at most six immutable programs specialize the reviewed AMD equation and direction. No guest address, surface bytes or resident guest state is cached.",
+    "transferOwnership": "Separate checked storage buffers and a distinct descriptor pool/set for every recording call, retained through the existing synchronous batch. Device teardown waits idle before helper destruction.",
+    "barriers": [
+      "Host-written tiled source to detile compute read",
+      "Detile compute write to fragment upload read",
+      "Fragment upload read to compute readback overwrite",
+      "Readback compute write to retile compute read",
+      "Prior detile compute read and seeded host write to retile compute write",
+      "Retile compute write to host read before the existing fence completes"
+    ],
+    "writeback": "After the same synchronous fence, resource fault checks and resource WriteBack, byte-exact GuestMemory::WriteChanged compares GPU output with the pre-draw seed. Unchanged padding and unchanged logical bytes retain intervening CPU/alias stores.",
+    "preservedLimits": "Existing grouped draw eligibility, sample positions/counts, depth/stencil restrictions, shader validation and fault checks remain active. No lowered image quality, skipped samples or asynchronous residency shortcut.",
+    "additionalRetainedStagingBytesAt1920x1080Samples8": 133693440,
+    "stagingBoundary": "Two additional 66,846,720-byte source/tiled-output backings; this is an allocation-size calculation, not measured RSS, device peak memory or jetsam qualification."
+  },
+  "validation": {
+    "productionContract": {
+      "status": "PASS",
+      "sanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "metadataFallbackControls": 22,
+      "cachedPrograms": 6,
+      "coverage": [
+        "Exact buffer ranges/offsets, device identity and non-overlap",
+        "Distinct descriptors retained across multiple recordings",
+        "All six specialization tuples cached once",
+        "Explicit producer/consumer stage-access barriers",
+        "Zero-command rejection for missing dispatch or invalid ranges",
+        "Constructor/pool/descriptor failures and partial-pipeline cleanup"
+      ],
+      "fixture": {
+        "path": "tools/checks/gpu_color_sample_tiling_contract.cpp",
+        "sha256": "3629116a9749d201aec4e9b03bd299c7f1d20913c9b2cb23c1e7a56cb845f978"
+      },
+      "script": {
+        "path": "scripts/check-gpu-color-sample-tiling.py",
+        "sha256": "c43cac907522dbd403c75b98ca6df13d7451840db267b27269f9f2a4915ce49a"
+      },
+      "logSha256": "e0c0f3a29508499af2151aacac7b9c09f1cbdeb8a57b8866d82de13514fe6d8f",
+      "boundary": "Actual helper/layout code with counted Vulkan mocks; no GPU, Draw or real command-buffer lifecycle execution."
+    },
+    "nativeGpu": {
+      "status": "PASS",
+      "device": "Apple M3 Pro",
+      "backend": "Native macOS MoltenVK 1.4.2",
+      "cpuSanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "productionTranslationUnits": [
+        "GpuColorSampleTiler.cpp",
+        "ColorTargetLayout.cpp",
+        "ColorSampleTransfer.cpp",
+        "ColorRenderTarget.cpp"
+      ],
+      "independentReference": "AMD AddrLib at PAL c5e800072a32f68b6ccc4422936d96167c6e0728",
+      "cases": {
+        "computeDirectionsAndPoisonedChains": 99,
+        "productionImageTransferChains": 3,
+        "layouts": 33
+      },
+      "reportedComputeCounters": {
+        "amdCoordinateComparisons": 36639764,
+        "logicalSampleWordsChecked": 109919292,
+        "paddingBytesChecked": 134045536,
+        "errors": 0
+      },
+      "extents": "Complete 1920x1080 sample2/4/8 surfaces, odd extents and full-axis 2049/4097/8193 boundaries; image chains use17x19 at each sample count.",
+      "falsePassControls": "Separate AMD coordinate/byte oracles for detile and changed-word retile. Chained GPU poison overwrites source or packed intermediates; image chains seed output padding separately. Missing transfers cannot pass by retaining input.",
+      "cachedTilingPrograms": 6,
+      "additionalImageReadbackPrograms": 3,
+      "descriptorPoolsCreated": 144,
+      "descriptorPoolsDestroyed": 144,
+      "fixture": {
+        "path": "tools/gpu-probe/gpu_color_sample_tiling_probe.cpp",
+        "sha256": "a4e85a756111b5823159f6e09b73866298e66a1b5e87dd753e4c6c10eac82737"
+      },
+      "script": {
+        "path": "scripts/build-gpu-color-sample-tiling-probe.py",
+        "sha256": "213c7941289bdf0e612ac4aed4e30e84ae8a02a4d0129bbfba509fdc3d52cad4"
+      },
+      "sourceSha256": {
+        "core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp": "41333cbbeddda5b98ed881ff86b73e2e005a827ae515ad5d48b02496609ea2be",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleTransfer.cpp": "9c66aaf1bec0fda477a47dcba7be2badbd29aceeb5f26c18c97bb2fbe8f9b129",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp": "7042a932836768ddf060cd8683b73971186f8b7288f099645e4692eacddfc285",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp": "a8bd0169f733c4650e9dfa0ac581cbc317fba7b6454025a7ef31014f444a6cc1",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/ColorTargetLayout.hpp": "f917553f9039b54063ed3d73aa224427a76d8401d6c822bd47c39b3af2b6237e",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSwizzleEquations.hpp": "d20d2b85589828390f0aeefcf9217875b2b0d2fca84fe77069ec966c0e709c46",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "daedb352d5bfd05557d22ee5856e47339dec03b2d38cecb30605a726078784e6",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "426513c4764b441126a2f1b11d6b6a8020bf8ac72d493dce082feb3a4493bf56",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "17179f135e2b4d06ee117d7f64e176046d0b9d6fd9bc42a36fb3ad53d74a46f4",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleReadback.comp": "2e0bed3040ab29e6c2eb6868b7ba446e0f6bbe57619a9fbc3c09ac1973f5212e",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp": "4fca473726eba13b9cf6e0dcdcfb00e9f50e5ace0c4a3a2cfba37c79c33e5296",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h": "a71714341ded2010786bdaa267ecaf0c485900c4653a4c17a4ca329bc4efde89",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.frag": "8a62aea574c9d61bcad56e1eb6647c2664526b0f9159d0046f9b9e861f4604b6",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTransfer_spv.h": "a9bce2ff9f216f0423bf76dd7ec736f7d77422c6542a0e0d7cfac585a48fea41"
+      },
+      "amdAddrLib": {
+        "librarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+        "headerSha256": "566a5b9815094818027fc2b8b84382b5fa217310846ea5d0cb855139fd55fae2"
+      },
+      "vulkanLibrarySha256": "e21bceade8d0638bb2bc041f3166fbd54da19fa0958d8bbaff584afd7958d542",
+      "artifactsSha256": {
+        "probe": "75b1d3f46bf3e972003852ff92045125e760c3bd65f7114668f4d1ba7df116d7",
+        "compile.log": "444253a744ce8ae4e336b23e8bc11b724f628509b8b03c52be325fb74f6004ff",
+        "run.log": "0fc3cfa5945a9010f2ccf2ead3ffc7144b92d15fda4ed38c7f4615c14f65caf5"
+      },
+      "manifestSha256": "f42c6d4d809a1d16a3b6e9b30a32a2bbcd26f2c8ada4764f5d8553b83c17cd87",
+      "boundary": "Actual production helper plus RenderTarget/ColorSampleTransfer on a real Mac GPU. The probe does not execute Draw, GuestMemory GPU integration, Wine/FEX or the iPad graphics stack."
+    },
+    "windowsWriteTracking": {
+      "status": "PASS",
+      "runtime": "Local desktop Wine Windows executable",
+      "productionTranslationUnits": [
+        "GuestMemory.cpp",
+        "GuestArena.cpp",
+        "GuestAllocations.cpp"
+      ],
+      "newProductionFixture": "CheckGpuSampleChangedWriteback in libSceAgcDriver/tests/WriteTracking.cpp",
+      "coverage": [
+        "Real shared tracked guest mappings and aliases",
+        "GPU-result changed runs preserve later padding and unchanged logical CPU/alias bytes",
+        "Changed driver stores invalidate tracked readers",
+        "Unchanged output does not dirty tracked pages",
+        "Foreign alias CPU stores remain visible to collected generation checks"
+      ],
+      "optionUnderTest": "APS5_BULK_DRIVER_WRITES",
+      "runs": [
+        {
+          "option": null,
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "577436c12c6a690b5f3683e0f2cf06a82f7e06c0a3ff9490a1f9f00df0b1e8c8"
+        },
+        {
+          "option": "0",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "577436c12c6a690b5f3683e0f2cf06a82f7e06c0a3ff9490a1f9f00df0b1e8c8"
+        },
+        {
+          "option": "1",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": true,
+          "logSha256": "4eddb30a177fb922482728a40dafe4320916231edc153e81309eaf18befbaf12"
+        },
+        {
+          "option": "yes",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "577436c12c6a690b5f3683e0f2cf06a82f7e06c0a3ff9490a1f9f00df0b1e8c8"
+        }
+      ],
+      "allExitCodes": 0,
+      "sourceSha256": {
+        "core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp": "1f1d6d60614ef5eff1d693b63b333ba27f114995ac439f869087292406f9f65c",
+        "core/libs/prx/libc/src/GuestArena.cpp": "a314ff66e9ccf838029a115e9fcafb7a672e3a31bd9471859c78a670e889cbde",
+        "core/libs/prx/libc/src/GuestAllocations.cpp": "8eacb4048a87e5c20f4a3152bf6d116f38ff0615dc07b570a85fe899407adaea",
+        "core/libs/prx/libc/include/WindowsMappings.hpp": "43ff03ef98d364134795ac658f185aeeab9098f3832c92f337041df54254530c",
+        "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp": "2fafd6dbc2cbdd032588150df1551113f784ce5a95552cdf5df3605e58c1fac3"
+      },
+      "fixtureSha256": {
+        "tools/checks/bulk_driver_write_windows.cpp": "6b773646a410e663b6ab846f5f887a70b135f383468f2d005e2771909aee4785",
+        "tools/checks/bulk_driver_write_protection.hpp": "126953b6a08cd72217c92264543c84688980bdeadf01f09f3a579b92c25f9ffd",
+        "scripts/check-bulk-driver-writes.py": "151db7d0dd1109c6989dfcfe623a40f3c49cdb677dc00aeb2fb23bb035c8f961"
+      },
+      "executableSha256": "d216bc120cf93ed8bdcae49462bffc4891fab4a1dd8705bdd22404ffc4866b54",
+      "reportSha256": "bb57ee04dafb183215088b091be0db842314ed46c25339fa6640142188181db9",
+      "boundary": "Actual Windows memory and tracker code with test-only syscall failure injection and a dedicated exception handler. GPU results are simulated bytes; no concurrent GPU/CPU race, ARM64EC, iPad or rendering measurement."
+    },
+    "independentSourceReview": "No blocking issue found. Frozen source, patch, fixture, executable and archived logs match their reported hashes; batch and device teardown order retain new resources through completion."
+  },
+  "qualification": {
+    "sourceSeriesVerified": true,
+    "nativeGpuPassed": true,
+    "focusedWindowsTrackingPassed": true,
+    "fullHleBuildQualifiedByThisRecord": false,
+    "deviceExecutionQualified": false,
+    "gameplayAccepted": false,
+    "displayedFps": null,
+    "optimizationSpeedupAccepted": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "The complete57 HLE build and runtime suites are separate from these completed focused checks.",
+    "Native Mac GPU results do not establish the physical iPad Draw/guest-memory path or target MoltenVK version.",
+    "Per-device cached programs and scoped descriptor lifetimes do not cache guest contents; real-device memory pressure, repeat teardown and visual correctness need separate evidence.",
+    "Unchanged-byte preservation is tested for ordered alias stores before commit; inherited racing foreign CPU-write attribution during an own-store callback is not qualified.",
+    "No sustained FPS, measured speed gain, complete gameplay, audio/save/lifecycle or release acceptance follows from this record.",
+    "Only public source and sanitized evidence hashes are published; private dumps, shader captures, logs, pairing and device identifiers remain local."
+  ]
+}

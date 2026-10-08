@@ -1,0 +1,621 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "bounded_ipad57_menu_and_different_card_board_visible_no_legal_move_or_60fps_acceptance",
+  "candidate": {
+    "hostBuild": 47,
+    "anyps5Patches": 57,
+    "buildEvidence": {
+      "path": "docs/evidence/gpu-color-sample-tiling-build-20261009.json",
+      "sha256": "68f4287189c0b46d97562a5b08f79fd060f195c22df30cfddf5c869033aa3ce7"
+    },
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "asBuiltSourceDiffSha256": "2f98f9c0875e2caf93c47a6e1c0a31452d6e7696bb89bcb199a5f4671881b589",
+    "hleArchiveSha256": "2013c73430fa90917a6f08bf25da2bf625a2274d4ef77580769d4c0e361f20aa",
+    "hleProvenanceSha256": "54a117617a3408d9db4cb806b42a4fac9cbdd024010eda3b2dad24ecd7939af4",
+    "privateInstallationManifestSha256": "14a490ac18788e8b92a863ef5825a0ee8366188d44ad42020c2c7f92476c7c87",
+    "installedReadbackFilesVerifiedAgainstManifest": 56,
+    "unpatchedAgcDriverSha256": "ef48632f09fe64c2b3d5ace4be2f9428ad4517e8649ad0971b3b0140f71a635d",
+    "nidPatchedInstalledAgcDriverSha256": "739f68d7cbfe06e701b0487039597460721e0440b9c3896be52730f6f5c21fd4",
+    "currentCheckoutSourceEquivalenceAsserted": false,
+    "newOption": "APS5_GPU_COLOR_SAMPLE_TILING=1",
+    "optionDefault": "Off"
+  },
+  "run": {
+    "nominalRuntimeSeconds": 720,
+    "operationDurationSeconds": 737.862731,
+    "normalMemoryTracking": true,
+    "exactLaunchOptions": {
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_CAPTURE_TRACE": "1",
+      "APS5_CRASH_RAW_CONTEXT": "0",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_DUMP_FRAMES": "6",
+      "APS5_DUMP_FRAMES_EVERY": "16",
+      "APS5_DUMP_SCALE": "4",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_FIXED_FUNCTION_INTERPOLATION": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_PERF_REPORT": "1",
+      "APS5_PRESERVE_ASYNC_AVX": "1",
+      "APS5_PRESERVE_ASYNC_FLAGS": "1",
+      "APS5_PROFILE_DRAW": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_SAFE_SELF_READ": "1",
+      "APS5_VEH_CONTEXT_BRIDGE": "1",
+      "APS5_X64_SIGNAL_SUSPEND": "1",
+      "FEX_MAXINST": "5000",
+      "FEX_MULTIBLOCK": "1",
+      "FEX_SILENTLOG": "0",
+      "MADEIRA_NO_DFE": "0",
+      "MADEIRA_ONBOARDING": "0",
+      "MADEIRA_TRACE_FEX_CONFIG": "1"
+    },
+    "additionalDiagnosticDifferenceFrom56": "APS5_PERF_REPORT=1 adds periodic native phase, display-completion and memory reports; this is not a pristine one-change comparison.",
+    "jitEnabledAndDebuggerAttachedLogLines": [
+      22,
+      23
+    ],
+    "selectedSourceGpuCaptures": {
+      "limit": 6,
+      "every": 16,
+      "scale": 4,
+      "finalSwapchainPixels": false
+    },
+    "frameGeneration": false,
+    "forcedTerminationAfterBoundedRun": true,
+    "guestExitCode": null,
+    "qualifiedGameplayFps": null
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (Build 24A446)",
+    "loggedRamMb": 7623,
+    "cores": 8,
+    "initialThermalState": "nominal",
+    "initialLowPowerMode": false,
+    "maximumDisplayRefreshHz": 60,
+    "sourceTargetResolution": [
+      1920,
+      1080
+    ],
+    "swapchainResolution": [
+      768,
+      432
+    ],
+    "screenshotResolution": [
+      2732,
+      2048
+    ],
+    "resolutionBoundary": "Source target, swapchain and screenshot dimensions are different measurements. No resolution or interpolation reduction is accepted."
+  },
+  "rawEvidence": {
+    "logSha256": "3cb5635d7088b4c77a810ea33bfeeafd731cfbe5d7a2b837a9df56fd06192b85",
+    "receiptSha256": "f9a2b0080a24cab68d3c9c3139dde7c788239aa4531fab4ed0936bcb073755cf",
+    "traceSha256": "814febfac15bc62c7b1287a89f652173a65f910b3648bcd803e395c1c6d49775",
+    "decodedLogLines": 47561,
+    "drawProfileOccurrences": 69,
+    "completeDrawProfileRows": 69,
+    "temporaryConfigurationBytesSha256": "f51a5acd175d904e0d01ac8fb76fb09e78ca31713a2d2d15a8de37f76383343e",
+    "temporaryConfigurationCommandReceiptSha256": "5eb724e884041f64844364995bc597b9f35053be16573d218e1b9e447444b053",
+    "sampleTilingMarker": {
+      "count": 1,
+      "logLines": [
+        13106
+      ],
+      "boundary": "Marker is emitted after qualified guest read and transfer preparation; it is not by itself completed GPU execution proof."
+    },
+    "rawSnapshotMarker": {
+      "count": 1,
+      "logLines": [
+        13699
+      ],
+      "bytes": 66846720
+    },
+    "bulkMarker": {
+      "count": 1,
+      "logLines": [
+        24441
+      ],
+      "bytes": 65536,
+      "registeredMappings": 1
+    },
+    "screenshotSha256": {
+      "screen-15.png": "794db89306d27ba9841532420f0bafc95f3a422e13e7aa7b5872e08eedff5be4",
+      "screen-60.png": "2b6bf2d0d81102f01afc8c309a29301834741569b701cfeac11e46f88cf660a0",
+      "screen-120.png": "3b721e69543f1b4b3d95d5b2891dddbd8f7b6cef157caf98679257e208899e2c",
+      "screen-180.png": "eef202ad5a4d0d89122b4211c59150afa571dfbdb5009b96e2460c11a90dba4a",
+      "screen-after-input.png": "16dce9481bbe7414ba1937c444574e5312156f19904086329a86aad535c42361",
+      "screen-220.png": "a94885fe411ac480a48ba30a4a7f9c4a3eee08c1aa404448b0b40d1584f9a3b4",
+      "screen-240.png": "576937f3ff1aa58fec9b79f374a15efbe9149a61fe3007841697d71178caabd3",
+      "screen-300.png": "8296091775eaa27b3637cfb4bf103a714cd3842a82964892fbd65b59d4ee1edb",
+      "screen-after-stock.png": "8296091775eaa27b3637cfb4bf103a714cd3842a82964892fbd65b59d4ee1edb",
+      "screen-340.png": "8296091775eaa27b3637cfb4bf103a714cd3842a82964892fbd65b59d4ee1edb",
+      "screen-360.png": "d6ac02d7ce2921a7935fb507f126645fa97ac0933011cca5048eada6cc3658b6",
+      "screen-420.png": "a41036052b892f667e4b71244ccf81984dc728f97bf83e14b1d585c78e979e0d",
+      "screen-480.png": "b67094811a6a40a79cd032251fd588e20e0eaf094b75464e2f930387b90eeba6",
+      "screen-540.png": "276b8b6f16f2453016f8fb9d59708727381f4f78bd1a5c86a6ee593e0780a586",
+      "screen-600.png": "c11cfd36639109d9bcd14b739004acfdc24972ee4a3544c15271134db32ced1c",
+      "screen-660.png": "4820ed68d735371efc092bd3661016da64dd959108cd37f9da7145973f45a11f",
+      "screen-720.png": "f79933cc4cf51e1e51fc1f53fd136989e451a38c61aa964e135969d7f473b7dc"
+    }
+  },
+  "visualsAndInput": {
+    "menuVisibleAtNominalSeconds": [
+      60,
+      120,
+      180
+    ],
+    "visibleMenuSelection": "Canfield before the controlled Right/A sequence",
+    "rightThenA": {
+      "xctestExitCode": 0,
+      "receiptSha256": "2d46c3fb4becd4b4368b0266ce847dc9ca65784050f11c244d926c87e279ebeb",
+      "receiptElapsedAfterLaunchSeconds": 217.40138841700002,
+      "sameMainAndHelperProcesses": true,
+      "result": "A face-up card board is visible after the sequence."
+    },
+    "cardBoard": {
+      "columns": 13,
+      "cardsPerColumn": 4,
+      "totalVisibleFaceUpCards": 52,
+      "layout": "Seven columns above six columns; four foundation slots on the right.",
+      "modeNameVerified": false,
+      "sameGolfModeAs56": false,
+      "timerTextAtCapturedBoardStates": "00:00",
+      "legalTableauMoveVerified": false,
+      "timerBoundary": "Without a verified legal action starting the timer, 00:00 does not prove halted simulation or establish game-speed measurements."
+    },
+    "ySequence": {
+      "xctestExitCode": 0,
+      "receiptSha256": "4c5294f55d8970fae646be2381c62398761fd43b9ece3c4d24c0df69a946478b",
+      "receiptElapsedAfterLaunchSeconds": 316.16402395800003,
+      "sameMainAndHelperProcesses": true,
+      "afterImageByteIdenticalTo300SecondCapture": true,
+      "stockResponseVerified": false,
+      "boundary": "This board is not the Golf stock/waste layout. An unchanged Y capture does not establish input failure."
+    },
+    "decodedScreenshotCheck": {
+      "method": "Original PNGs decoded independently; RGB region (500,600)-(2200,1650).",
+      "regionPixels": 1785000,
+      "blackRgbPixelsInEveryCapturedRegion": 0,
+      "menuRegionRgbSha256": "e2a709187477fa19118d6cfaeb244a94fcd6b2013eed98fd9aef91024f760b2d",
+      "boardRegionRgbSha256": "c7b36df0d10e526e716f1da3fe4b43cc4caa27e12e50c2018a8511770a888d9c",
+      "boardRegionIdenticalFromAfterInputThrough720": true,
+      "imagePreviewBlackObservationsRejected": true,
+      "boundary": "Sampled screenshots establish visible menu/board regions at their capture times, not continuous gameplay or full-display correctness."
+    }
+  },
+  "displayCompletionTelemetry": {
+    "source": "VK_GOOGLE_display_timing",
+    "parserPath": "tools/perf/summarize_display.py",
+    "parserSha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+    "wholeLogStrictParserStatus": "Rejected",
+    "wholeLogStrictParserError": "Malformed display telemetry at line 37547",
+    "allMalformedDisplayLogLines": [
+      37547,
+      43047
+    ],
+    "rawOccurrences": 623,
+    "completeJsonRows": 621,
+    "fragmentMethod": "Run the unchanged strict production reader/summarizer separately on complete contiguous original log ranges. Malformed lines are not repaired and fragments are not joined. Whole-log acceptance remains rejected.",
+    "fragments": [
+      {
+        "phaseScope": "startup_and_menu_with_possible_input_boundary",
+        "inclusiveOriginalLogLines": [
+          1,
+          37546
+        ],
+        "completeTelemetryRows": 149,
+        "warmupSeconds": 60,
+        "clockScope": "Relative to first native telemetry row, not exact app-launch clock alignment",
+        "nativeClockSpanSecondsFromFirstReport": [
+          0.0,
+          175.061242
+        ],
+        "epoch": 2,
+        "swapchainId": 1,
+        "resolution": [
+          768,
+          432
+        ],
+        "reportedCompletionIntervals": 376,
+        "actualTimestampSpanSeconds": 106.786112208,
+        "reportedCompletionRatePerSecond": 3.5210571133783772,
+        "missedVblanksDelta": 6031,
+        "histogramPercentiles": {
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          }
+        }
+      },
+      {
+        "phaseScope": "input_transition_and_card_board",
+        "inclusiveOriginalLogLines": [
+          37550,
+          43046
+        ],
+        "completeTelemetryRows": 255,
+        "warmupSeconds": 0,
+        "clockScope": "Relative to first native telemetry row, not exact app-launch clock alignment",
+        "nativeClockSpanSecondsFromFirstReport": [
+          177.344281,
+          467.309327
+        ],
+        "epoch": 2,
+        "swapchainId": 1,
+        "resolution": [
+          768,
+          432
+        ],
+        "reportedCompletionIntervals": 1016,
+        "actualTimestampSpanSeconds": 289.972402458,
+        "reportedCompletionRatePerSecond": 3.503781709527199,
+        "missedVblanksDelta": 16382,
+        "histogramPercentiles": {
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          }
+        }
+      },
+      {
+        "phaseScope": "late_card_board_without_verified_legal_action",
+        "inclusiveOriginalLogLines": [
+          43048,
+          47561
+        ],
+        "completeTelemetryRows": 217,
+        "warmupSeconds": 0,
+        "clockScope": "Relative to first native telemetry row, not exact app-launch clock alignment",
+        "nativeClockSpanSecondsFromFirstReport": [
+          469.576201,
+          714.901494
+        ],
+        "epoch": 2,
+        "swapchainId": 1,
+        "resolution": [
+          768,
+          432
+        ],
+        "reportedCompletionIntervals": 864,
+        "actualTimestampSpanSeconds": 245.320720709,
+        "reportedCompletionRatePerSecond": 3.5219201928926287,
+        "missedVblanksDelta": 13855,
+        "histogramPercentiles": {
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          }
+        }
+      }
+    ],
+    "qualifiedDisplayedGameFps": null,
+    "boundary": "These are reported display-completion timestamps under the existing MoltenVK timing source, not qualified unique correct game images or guest simulation FPS. The late segment is a board with no verified legal action, not an accepted gameplay route."
+  },
+  "drawProfiles": {
+    "stable900DrawIntervals": {
+      "completeIntervals": 12,
+      "originalLogLines": [
+        35519,
+        35682,
+        35851,
+        36067,
+        36233,
+        36401,
+        36629,
+        36793,
+        36959,
+        37179,
+        37344,
+        37517
+      ],
+      "drawsPerInterval": 900,
+      "recordedPerInterval": 864,
+      "recordedWithCompletionPerInterval": 108,
+      "synchronousPerInterval": 36,
+      "medianReportedSynchronousMeanMs": 256.21500000000003,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.273611111111112,
+        "prepare": 102.88194444444444,
+        "pipeline": 1.5416666666666667,
+        "sync": 34.65416666666667,
+        "writeBack": 106.27777777777777
+      }
+    },
+    "stable936DrawIntervals": {
+      "completeIntervals": 46,
+      "originalLogLines": [
+        38553,
+        38720,
+        38948,
+        39112,
+        39290,
+        39517,
+        39685,
+        39932,
+        40497,
+        40666,
+        40833,
+        41060,
+        41234,
+        41402,
+        41623,
+        41788,
+        41957,
+        42184,
+        42354,
+        42527,
+        42752,
+        42923,
+        43096,
+        43320,
+        43482,
+        43651,
+        43874,
+        44048,
+        44216,
+        44439,
+        44610,
+        44779,
+        45012,
+        45180,
+        45346,
+        45569,
+        45737,
+        45910,
+        46128,
+        46301,
+        46468,
+        46690,
+        46869,
+        47039,
+        47260,
+        47428
+      ],
+      "drawsPerInterval": 936,
+      "recordedPerInterval": 900,
+      "recordedWithCompletionPerInterval": 108,
+      "synchronousPerInterval": 36,
+      "medianReportedSynchronousMeanMs": 255.7665,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 9.0,
+        "prepare": 102.87777777777778,
+        "pipeline": 1.4833333333333334,
+        "sync": 34.669444444444444,
+        "writeBack": 106.21805555555557
+      }
+    },
+    "comparison56": {
+      "completeStableIntervals": 12,
+      "drawsPerInterval": 500,
+      "synchronousPerInterval": 20,
+      "medianReportedSynchronousMeanMs": 483.396,
+      "phaseTotalDividedBySynchronousCountMedianMs": {
+        "readTarget": 116.2375,
+        "prepare": 103.15,
+        "writeBack": 240.985,
+        "pipeline": 1.55
+      },
+      "record": "docs/evidence/ipad-solitaire-resolve-snapshot-depth-copy-20261009.json"
+    },
+    "boundary": "Phase totals include all recorded and synchronous draws in an interval. Dividing by synchronous count is a diagnostic normalization, not isolation of frame work. Extra native diagnostics, differing board mode, no matched thermal repetition and no legal move prevent one-factor speed or gameplay acceptance."
+  },
+  "selectedSourceTrace": {
+    "presentRequests": 2465,
+    "blitRequests": 2466,
+    "lastPresentTraceSeconds": 715.058207,
+    "windows": [
+      {
+        "traceClockSeconds": [
+          0,
+          175
+        ],
+        "presentRequests": 568,
+        "presentMedianIntervalMs": 283.56899999999996,
+        "blitRequests": 569,
+        "blitMedianIntervalMs": 283.57549999999776
+      },
+      {
+        "traceClockSeconds": [
+          220,
+          300
+        ],
+        "presentRequests": 281,
+        "presentMedianIntervalMs": 283.77050000003123,
+        "blitRequests": 281,
+        "blitMedianIntervalMs": 283.7680000000091
+      },
+      {
+        "traceClockSeconds": [
+          480,
+          700
+        ],
+        "presentRequests": 774,
+        "presentMedianIntervalMs": 283.9519999999993,
+        "blitRequests": 774,
+        "blitMedianIntervalMs": 283.9529999999968
+      }
+    ],
+    "first175SecondsComparison": {
+      "run53ProfilePresentRequests": 166,
+      "run53UiPresentRequests": 167,
+      "run56PresentRequests": 323,
+      "run57PresentRequests": 568,
+      "run53ProfileMedianBlitIntervalMs": 1004.9135,
+      "run53UiMedianBlitIntervalMs": 1001.483,
+      "run56MedianBlitIntervalMs": 513.138,
+      "run57MedianBlitIntervalMs": 283.57549999999776
+    },
+    "boundary": "Trace timestamps start with the trace stream, not the app launch. These are source presentation requests/blits, not displayed FPS; later windows must not be interpreted as Golf gameplay."
+  },
+  "memory": {
+    "nativeReports": 623,
+    "nativePhysicalFootprintMbBounds": [
+      1262,
+      3848
+    ],
+    "nativeAvailableMbBounds": [
+      4343,
+      6929
+    ],
+    "lastNativePhysicalFootprintMb": 3848,
+    "lastNativeAvailableMb": 4343,
+    "periodicFootprintReports": 356,
+    "maximumPeriodicPhysicalFootprintMb": 3913,
+    "fastFootprintReports": 16,
+    "maximumFastPhysicalFootprintMb": 3916,
+    "noFootprintPoolApplied": false,
+    "noFootprintPoolFailureLogLines": [
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55
+    ],
+    "boundary": "Native telemetry, periodic and fast reports sample at different moments. The maximum is 3916 logged MB. The shared pool remains jetsam-counted. No full-runtime no-growth or thermal acceptance is established."
+  },
+  "audio": {
+    "pacingReports": 142,
+    "deviceShortReports": 0,
+    "maximumLoggedLateWakeMs": 0.1,
+    "nonzeroClampReports": [
+      {
+        "logLine": 40164,
+        "globalClampedCounterDelta": 6776
+      },
+      {
+        "logLine": 40165,
+        "globalClampedCounterDelta": 6798
+      },
+      {
+        "logLine": 40333,
+        "globalClampedCounterDelta": 10318
+      },
+      {
+        "logLine": 40334,
+        "globalClampedCounterDelta": 10318
+      },
+      {
+        "logLine": 40551,
+        "globalClampedCounterDelta": 10318
+      },
+      {
+        "logLine": 40552,
+        "globalClampedCounterDelta": 10318
+      },
+      {
+        "logLine": 40715,
+        "globalClampedCounterDelta": 10296
+      },
+      {
+        "logLine": 40716,
+        "globalClampedCounterDelta": 10318
+      },
+      {
+        "logLine": 40887,
+        "globalClampedCounterDelta": 638
+      },
+      {
+        "logLine": 40889,
+        "globalClampedCounterDelta": 594
+      }
+    ],
+    "largestReportedGlobalClampDelta": 10318,
+    "clampTotalUniqueSamples": null,
+    "clampCounterBoundary": "clamped is a shared device counter sampled by two stream reporters over overlapping intervals. Adding report deltas would double-count; no unique total is asserted.",
+    "sourceReports": 144,
+    "largestSourcePeakMagnitude": 1.534,
+    "largestSourceNearFullScaleCount": 10787,
+    "sourceNearFullScaleReports": 5,
+    "soundQualityAccepted": false,
+    "boundary": "No device shortage is logged, but nonzero output clamps and source peak1.534 remain an audio concern. Source clipped counts magnitudes>=0.99. No listening/recorded-audio review was performed."
+  },
+  "renderAndFaultLogs": {
+    "markerCounts": {
+      "SkippedDraw:": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "VK_ERROR": 0
+    },
+    "machUnhandledRows": 205,
+    "maximumThrottledNativeFaultCounter": 75000,
+    "retainedFixedMapDiagnosticLogLine": 290,
+    "boundary": "UNHANDLED mach lines are not automatically fatal. The same live app/helper survive the input/cleanup-before checks; the run ends by explicit termination."
+  },
+  "lifecycleAndRollback": {
+    "sameAppAndHelperThroughoutUiAndCleanupBefore": true,
+    "mainPid": 7829,
+    "helperPid": 7831,
+    "processReceiptSha256": {
+      "ui-before-processes.json": "933c8005ea4546d9ffc4f7342246b5bcb44b8bf4f89f1e96da4e4d9bc2d814e8",
+      "ui-after-processes.json": "858036622148b28a83aeb6d394bd7ba1068fc9a362e4b1b4610d5fa15ff1ad54",
+      "stock-before-processes.json": "f47d113353c98cedcb70a85cbc999ac205dfb4b9b5a000403ba40b33997d4024",
+      "stock-after-processes.json": "a90e6f751d0dda06410643fc2e2a711111e47d2a92239a324dad78d7b0346e3f",
+      "cleanup-before.json": "9872518fcd3c3702e4e5e3b2113e47702e11cb6c5aee5226f877882b45ca06c9",
+      "cleanup-after.json": "1591de0056c7a17b3f3378611ae0022c143b744a0a5073c9322441089af28d20"
+    },
+    "ownProcessesAbsentAfterCleanup": true,
+    "endMethod": "App explicitly SIGKILLed; helper already absent afterward, producing NoSuchProcess on its separate close.",
+    "runtimeFileSetAndBytesRestored": true,
+    "restoredRuntimeFiles": 56,
+    "restoredConfigurationSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "restoredLibrarySha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "restoredInstallationManifestSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "priorDiagnosticFilesWithSuccessfulBackupAndRestoreCopyReceipts": 7,
+    "priorDiagnosticRestoredBytesIndependentlyReadBack": false,
+    "boundary": "Runtime/config/library/manifest restoration is verified against independent readback bytes. Prior diagnostics have successful copy receipts without a separate restored-byte readback directory."
+  },
+  "qualification": {
+    "physicalIpadLaunched": true,
+    "menuAndDifferentCardBoardVisible": true,
+    "rightASequenceEntersCardBoard": true,
+    "stockResponseAccepted": false,
+    "legalCardMoveAccepted": false,
+    "sameGameplayRouteAs56": false,
+    "strictWholeLogDisplayParserAccepted": false,
+    "constant60FpsAccepted": false,
+    "fullGameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "backgroundRecoveryAccepted": false,
+    "singleFactorPerformanceAccepted": false,
+    "currentSourceAsBuiltEquivalenceAsserted": false
+  },
+  "privacy": {
+    "rawPrivateLogPublished": false,
+    "screenshotsOrGamePixelsPublished": false,
+    "gameAssetsShaderCodePairingOrSecretsPublished": false,
+    "githubActionsUsed": false
+  }
+}

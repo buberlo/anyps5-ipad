@@ -1,0 +1,803 @@
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -142,6 +142,7 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Resources.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorRenderTarget.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorSampleTransfer.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/GpuColorSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Recorder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderInputState.cpp
+@@ -462,6 +463,7 @@
+         Graphics/src/Resources.cpp
+         Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/ColorSampleTransfer.cpp
++        Graphics/src/GpuColorSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
+         Graphics/src/ShaderResources.cpp
+         Graphics/src/ShaderAddressResources.cpp
+@@ -516,6 +518,7 @@
+         Graphics/src/Resources.cpp
+         Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/ColorSampleTransfer.cpp
++        Graphics/src/GpuColorSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
+         Graphics/src/BufferAddress.cpp
+ )
+@@ -627,6 +630,7 @@
+             Graphics/src/Resources.cpp
+             Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/ColorSampleTransfer.cpp
++        Graphics/src/GpuColorSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
+             Graphics/src/ShaderResources.cpp
+             Graphics/src/ShaderAddressResources.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+@@ -15,6 +15,7 @@
+ 
+ class TextureDetiler;
+ class GpuColorTransfer;
++class GpuColorSampleTiler;
+ class BufferPool;
+ class TextureCache;
+ class RenderCache;
+@@ -150,6 +151,8 @@
+     bool imageViewMinLod = false;
+     bool pipelineExecutableInfo = false;
+     std::uint32_t srgbDecodeFormats = 0;
++    // Opt-in, per-device RGBA8 MSAA tiled/linear transfer; no resident guest state.
++    GpuColorSampleTiler* colorSampleTiler = nullptr;
+ 
+     template<typename TFunction>
+     TFunction Function(const char* name) const {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -2,6 +2,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/ColorTargetTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+@@ -1581,6 +1582,7 @@
+     struct TargetBinding {
+         ColorTarget color;
+         bool gpuTiling = false;
++        bool sampleGpuTiling = false;
+         // Resident target: the surface's cached storage image is attached directly and marked dirty
+         // afterwards, so nothing is copied in or out per draw.
+         std::shared_ptr<StorageTexture> resident;
+@@ -1595,6 +1597,7 @@
+         TileMipLayout mip{};
+         std::unique_ptr<RenderTarget> target;
+         std::unique_ptr<ColorSampleTransfer> sampleTransfer;
++        std::unique_ptr<GpuColorSampleTiler::Transfer> sampleTiling;
+         // APS5_DUMP_TARGETS: the rendered linear pixels, read back for target_<address>_<n>.raw.
+         std::unique_ptr<Buffer> dump;
+         // Only bounded sampled statistics survive the transfer's GPU overwrite.
+@@ -1614,6 +1617,8 @@
+         binding.color = state.colors[index];
+         const auto& color = binding.color;
+         binding.gpuTiling = !groupedSamples && color.tileMode == ColorTileMode::RenderTarget && context.detiler != nullptr;
++        binding.sampleGpuTiling = groupedSamples && context.colorSampleTiler != nullptr &&
++            GpuColorSampleTiler::Supports(context, color);
+         APS5_LOG_OUT_DEBUG("Creating color target %zu address=0x%llx bytes=%llu extent=%ux%u", index, static_cast<unsigned long long>(color.address), static_cast<unsigned long long>(color.bytes), color.extent.width, color.extent.height);
+         const ColorTargetLayout colorLayout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes, color.fragments);
+         constexpr VkBufferUsageFlags copies = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+@@ -1653,7 +1658,15 @@
+             std::memcpy(binding.tiled->Bytes().data(), binding.original.data(), binding.original.size());
+         } else {
+             binding.transfer = std::make_unique<Buffer>(context, colorLayout.LinearBytes(), copies | (groupedSamples ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0u));
+-            ReadColorTarget(color, binding.transfer->Bytes());
++            if (binding.sampleGpuTiling) {
++                binding.original.resize(colorLayout.Bytes());
++                GuestMemory::Read(color.address, binding.original, colorLayout.Alignment());
++                binding.tiled = std::make_unique<Buffer>(context, colorLayout.Bytes(), copies | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++                std::memcpy(binding.tiled->Bytes().data(), binding.original.data(), binding.original.size());
++                binding.sampleTiling = std::make_unique<GpuColorSampleTiler::Transfer>(*context.colorSampleTiler, color);
++                static std::once_flag reportedSampleTiling;
++                std::call_once(reportedSampleTiling, [] { std::fprintf(stderr, "[sample-tiling] GPU RGBA8 R64KB_X 2/4/8 transfer enabled\n"); });
++            } else ReadColorTarget(color, binding.transfer->Bytes());
+         }
+         // A fast-cleared DCC target holds its clear value wherever the draw does not write.
+         if (color.dccAddress != 0) {
+@@ -1673,9 +1686,14 @@
+         }
+         if (groupedSamples && binding.transfer != nullptr) {
+             const auto event = FramePixelDiagnosticEvent(FramePixelDiagnosticStage::Producer);
+-            if (event) binding.pixelDiagnostic = std::make_unique<TargetBinding::PixelDiagnosticInput>(
+-                TargetBinding::PixelDiagnosticInput{*event, SampleFramePixels(binding.transfer->Bytes(),
+-                    color.extent.width, color.extent.height, color.samples)});
++            if (event) {
++                // Bounded diagnostics alone need the pre-draw pixels on the CPU.
++                // Ordinary draws leave conversion entirely to the GPU.
++                if (binding.sampleGpuTiling) colorLayout.Detile(binding.original, binding.transfer->Bytes());
++                binding.pixelDiagnostic = std::make_unique<TargetBinding::PixelDiagnosticInput>(
++                    TargetBinding::PixelDiagnosticInput{*event, SampleFramePixels(binding.transfer->Bytes(),
++                        color.extent.width, color.extent.height, color.samples)});
++            }
+         }
+         timer.phase(PhaseReadTarget);
+         binding.target = std::make_unique<RenderTarget>(context, color, state.blends.at(color.exportIndex).blendEnable != 0);
+@@ -2005,8 +2023,14 @@
+             continue;
+         }
+         if (binding.sampleTransfer) {
++            if (binding.sampleTiling) binding.sampleTiling->Record(commands, false,
++                {context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                {context.device, binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+             binding.sampleTransfer->RecordUpload(commands,
+-                {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(),
++                 binding.sampleTiling ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_HOST_BIT,
++                 binding.sampleTiling ? VK_ACCESS_SHADER_WRITE_BIT : VK_ACCESS_HOST_WRITE_BIT},
+                 {VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0},
+                 {VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT});
+             continue;
+@@ -2068,6 +2092,12 @@
+                 {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
+                 {VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT},
+                 {VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
++                binding.sampleTiling ? (VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT) : VK_PIPELINE_STAGE_HOST_BIT,
++                binding.sampleTiling ? (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT) : VK_ACCESS_HOST_READ_BIT);
++            if (binding.sampleTiling) binding.sampleTiling->Record(commands, true,
++                {context.device, binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT},
++                {context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(),
++                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_WRITE_BIT},
+                 VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
+             continue;
+         }
+@@ -2192,7 +2222,10 @@
+                 static_cast<unsigned>(back.compareOp), static_cast<unsigned>(back.failOp),
+                 static_cast<unsigned>(back.passOp), static_cast<unsigned>(back.depthFailOp), back.compareMask, back.writeMask, back.reference);
+         }
+-        if (binding.gpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
++        // A seed captured before GPU work must never overwrite newer padding or
++        // unchanged CPU/alias stores. Commit only byte runs changed by the GPU,
++        // after resource writeback and the same synchronous fault-checked fence.
++        if (binding.gpuTiling || binding.sampleGpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
+         else WriteColorTarget(binding.color, binding.transfer->Bytes());
+         // The stored texels are the whole target now, so later reads must see them rather than a fast clear.
+         MarkDccUncompressed(binding.color.dccAddress, ColorTargetLayout(binding.color.extent.width, binding.color.extent.height, binding.color.tileMode, binding.color.elementBytes, binding.color.fragments).Bytes());
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -16,6 +16,7 @@
+ #include "prx/libSceAgcDriver/Execution/include/DisplayFormat.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureDetiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/BufferPool.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureCache.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/PipelineCache.hpp"
+@@ -256,6 +257,7 @@
+     std::mutex computePipelinesMutex;
+     std::map<std::uint64_t, std::shared_ptr<ComputePipelineObjects>> computePipelines;
+     std::unique_ptr<Graphics::GpuColorTransfer> colorTransfer;
++    std::unique_ptr<Graphics::GpuColorSampleTiler> colorSampleTiler;
+     std::shared_ptr<Graphics::BufferPool> bufferPool;
+     std::unique_ptr<Graphics::Buffer> emptyBuffer;
+     std::unique_ptr<Graphics::TextureCache> textureCache;
+@@ -550,6 +552,7 @@
+             textureCache.reset();
+             detiler.reset();
+             colorTransfer.reset();
++            colorSampleTiler.reset();
+             scaler.reset();
+             pipelineCache.reset();
+             context.bufferPool.reset();
+@@ -1188,6 +1191,10 @@
+         Graphics::FillDeviceFunctions(graphicsContext(), state->deviceFunctions);
+         state->functionsReady = true;
+     }
++    // Programs are lazy; the exact opt-in leaves the ordinary path unchanged.
++    const auto* sampleTiling = std::getenv("APS5_GPU_COLOR_SAMPLE_TILING");
++    if (sampleTiling != nullptr && std::strcmp(sampleTiling, "1") == 0)
++        state->colorSampleTiler = std::make_unique<Graphics::GpuColorSampleTiler>(graphicsContext());
+     state->context = buildContext();
+     state->contextReady = true;
+     if (window != nullptr) {
+@@ -2555,6 +2562,7 @@
+         state->depthClamp,
+         state->hostImportAlignment
+     };
++    context.colorSampleTiler = state->colorSampleTiler.get();
+     context.dmaBufImport = state->dmaBufImport;
+     context.recorder = state->recorder.get();
+     context.descriptorCache = state->descriptorCache.get();
+diff --git a/core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp b/core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp
+@@ -211,6 +211,72 @@
+     std::cout << "shared full own-store bytes, guards, alias/CPU/driver classifications and callback cleanup passed; bulk=" << bulk << '\n';
+ #endif
+ }
++
++// Simulate the GPU's pre-draw seed and changed-byte result on real tracked,
++// shared Windows guest pages. This validates the commit policy, not GPU pixels.
++void CheckGpuSampleChangedWriteback() {
++#ifdef _WIN32
++    constexpr std::size_t length = 2 * Block;
++    void* memory = GuestArena::GuestArenaAllocate_nid_postfix(2 * length, Block);
++    void* alias = static_cast<std::byte*>(memory) + length;
++    HANDLE section = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, length, nullptr);
++    Require(section != nullptr, "cannot create the GPU writeback section");
++    GuestArena::GuestArenaMap_nid_postfix(memory, length, section, 0, PAGE_READWRITE);
++    GuestArena::GuestArenaMap_nid_postfix(alias, length, section, 0, PAGE_READWRITE);
++    CloseHandle(section);
++    {
++        GuestAllocations::Mutation mutation;
++        mutation.Add(memory, length, true, true);
++        mutation.Add(alias, length, true, true);
++    }
++    struct Release {
++        void* memory; void* alias;
++        ~Release() {
++            { GuestAllocations::Mutation mutation; mutation.Remove(memory); mutation.Remove(alias); }
++            GuestArena::GuestArenaReset_nid_postfix(memory, 2 * length);
++            GuestArena::GuestArenaRelease_nid_postfix(memory, 2 * length);
++        }
++    } release{memory, alias};
++    const auto base = reinterpret_cast<std::uint64_t>(memory);
++    const auto peer = reinterpret_cast<std::uint64_t>(alias);
++    const auto collectPeer = [&] {
++        std::array<void*, 128> pages{}; std::size_t count = pages.size();
++        Require(GuestArena::GuestArenaCollectWrites_nid_postfix(peer, length, pages.data(), &count, true),
++            "cannot collect GPU writeback alias");
++        return count;
++    };
++    std::memset(memory, 0x5a, length);
++    CollectWritesUncached(base, length); collectPeer();
++    const auto beforeCpu = CollectWritesUncached(base, length);
++    std::vector<std::byte> original(static_cast<std::byte*>(memory), static_cast<std::byte*>(memory) + length);
++    auto gpuResult = original;
++    for (std::size_t at = 3; at < 7; ++at) gpuResult[at] = std::byte{0xa7};
++    // Writes during the GPU wait: one padding byte and one unchanged logical
++    // byte in the very same 256-byte comparison block as the GPU result.
++    static_cast<volatile std::uint8_t*>(alias)[Block + 123] = 0x77;
++    static_cast<volatile std::uint8_t*>(alias)[100] = 0x66;
++    const auto beforeCommit = CollectWritesUncached(base, length);
++    collectPeer();
++    WriteChanged(base, gpuResult, original);
++    for (std::size_t at = 0; at < length; ++at) {
++        const auto expected = at >= 3 && at < 7 ? std::byte{0xa7} :
++            at == 100 ? std::byte{0x66} : at == Block + 123 ? std::byte{0x77} : std::byte{0x5a};
++        Require(static_cast<std::byte*>(memory)[at] == expected && static_cast<std::byte*>(alias)[at] == expected,
++            "GPU changed writeback overwrote padding, an unchanged alias byte, or guards");
++    }
++    Require(!UnchangedSince(base + 3, 4, beforeCommit) && StoredOver(base + 3, 4, beforeCommit),
++        "GPU changed bytes did not invalidate tracked readers");
++    Require(!StoredOver(base + 7, 1, beforeCommit) && !StoredOver(base + Block, Block, beforeCommit),
++        "GPU writeback classified untouched bytes as a driver store");
++    Require(UnchangedSinceCollected(base + 3, 4, beforeCommit), "GPU changed writeback became a CPU store");
++    Require(!UnchangedSinceCollected(base + Block, Block, beforeCpu), "GPU writeback hid the foreign alias CPU store");
++    Require(collectPeer() != 0 && collectPeer() == 0, "GPU changed writeback alias invalidation did not reset");
++    const auto beforeNoop = CollectWritesUncached(base, length);
++    WriteChanged(base, gpuResult, gpuResult);
++    Require(UnchangedSince(base, length, beforeNoop) && collectPeer() == 0, "unchanged GPU result dirtied tracked pages");
++    std::cout << "GPU seeded changed-byte commit preserves shared padding/CPU alias bytes and driver generations passed\n";
++#endif
++}
+ }
+ 
+ int main() {
+@@ -222,6 +288,7 @@
+         CheckSharedBlock();
+         CheckOwnStore();
+         CheckBulkSharedOwnStore();
++        CheckGpuSampleChangedWriteback();
+     } catch (const std::exception& error) {
+         std::cerr << "write tracking test failed: " << error.what() << "\n";
+         return 1;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp
+@@ -0,0 +1,60 @@
++#ifndef ANYPS5_GPU_COLOR_SAMPLE_TILER_HPP
++#define ANYPS5_GPU_COLOR_SAMPLE_TILER_HPP
++#include "prx/libSceAgcDriver/Graphics/include/State.hpp"
++#include <mutex>
++
++namespace AgcDriver::Graphics {
++// Full-buffer storage views created on the stated device. The caller owns the
++// buffers, supplies their real usage/state, and retains them until completion.
++struct ColorSampleTilingBufferAccess {
++    VkDevice device = VK_NULL_HANDLE;
++    VkBuffer buffer = VK_NULL_HANDLE;
++    VkDeviceSize offset = 0, bytes = 0;
++    VkPipelineStageFlags stage = 0;
++    VkAccessFlags access = 0;
++};
++
++// One device owns at most six immutable programs (2/4/8 samples, both directions).
++// No guest address is cached. Only uncompressed RGBA8 R64KB_X is qualified.
++class GpuColorSampleTiler {
++public:
++    explicit GpuColorSampleTiler(const Context& context);
++    ~GpuColorSampleTiler();
++    GpuColorSampleTiler(const GpuColorSampleTiler&) = delete;
++    GpuColorSampleTiler& operator=(const GpuColorSampleTiler&) = delete;
++    static bool Supports(const Context& context, const ColorTarget& color);
++    class Transfer {
++    public:
++        Transfer(GpuColorSampleTiler& owner, const ColorTarget& color);
++        ~Transfer();
++        Transfer(const Transfer&) = delete;
++        Transfer& operator=(const Transfer&) = delete;
++        // Retile preserves every padding word of the destination's prior seed.
++        // Each call retains distinct descriptors until this Transfer is destroyed.
++        // The owner and both buffers must outlive this Transfer and its GPU fence.
++        void Record(VkCommandBuffer commands, bool retile,
++                    ColorSampleTilingBufferAccess source, ColorSampleTilingBufferAccess destination,
++                    VkPipelineStageFlags consumerStage, VkAccessFlags consumerAccess);
++    private:
++        GpuColorSampleTiler& owner;
++        std::uint32_t samples;
++        std::array<std::uint32_t, 5> parameters;
++        std::vector<VkDescriptorPool> pools;
++    };
++private:
++    void release() noexcept;
++    VkPipeline program(std::uint32_t samples, bool retile);
++    Context context;
++    VkShaderModule module = VK_NULL_HANDLE;
++    VkDescriptorSetLayout descriptors = VK_NULL_HANDLE;
++    VkPipelineLayout layout = VK_NULL_HANDLE;
++    std::array<VkPipeline, 6> programs{};
++    std::mutex programsMutex;
++    PFN_vkDestroyShaderModule destroyModule = nullptr;
++    PFN_vkDestroyDescriptorSetLayout destroyDescriptors = nullptr;
++    PFN_vkDestroyPipelineLayout destroyLayout = nullptr;
++    PFN_vkDestroyPipeline destroyPipeline = nullptr;
++    PFN_vkDestroyDescriptorPool destroyPool = nullptr;
++};
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp
+@@ -0,0 +1,179 @@
++#include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorSampleSwizzleEquations.hpp"
++#include "prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h"
++#include <algorithm>
++#include <bit>
++#include <limits>
++
++namespace AgcDriver::Graphics {
++namespace {
++std::array<std::uint32_t, 5> Parameters(const Context& context, const ColorTarget& color) {
++    Require(context.device != VK_NULL_HANDLE && color.format == VK_FORMAT_R8G8B8A8_UNORM &&
++        color.elementBytes == 4 && color.tileMode == ColorTileMode::RenderTarget &&
++        (color.samples == 2 || color.samples == 4 || color.samples == 8) && color.fragments == color.samples,
++        "GPU sample tiling requires RGBA8 R64KB_X and equal 2/4/8 samples/fragments");
++    Require(color.dccAddress == 0 && color.cmaskAddress == 0 && color.cmaskBytes == 0 &&
++        color.mipCount == 1 && color.mip == 0 && !color.mipTail && color.depth == 1 && color.depthSlice == 0 &&
++        (color.surfaceAddress == 0 || color.surfaceAddress == color.address) &&
++        ((color.surfaceExtent.width == 0 && color.surfaceExtent.height == 0) ||
++         (color.surfaceExtent.width == color.extent.width && color.surfaceExtent.height == color.extent.height)),
++        "GPU sample tiling requires an uncompressed, full single-mip 2D surface");
++    const ColorTargetLayout layout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes, color.samples);
++    const auto* equation = FindColorSampleSwizzleEquation(4, color.samples);
++    Require(equation && layout.Alignment() == 65536 && layout.BlocksPerRow() ==
++        (color.extent.width + equation->blockWidth - 1u) / equation->blockWidth,
++        "GPU sample tiling layout/equation mismatch");
++    const auto expectedBytes = std::uint64_t(layout.BlocksPerRow()) *
++        ((color.extent.height + equation->blockHeight - 1u) / equation->blockHeight) * 65536u;
++    Require(color.bytes == layout.Bytes() && expectedBytes == layout.Bytes() &&
++        color.address % layout.Alignment() == 0 && color.address <= std::numeric_limits<std::uint64_t>::max() - color.bytes,
++        "GPU sample tiling guest range/layout mismatch");
++    // The shader's byte offset and packed word arithmetic are both uint32_t.
++    Require(layout.Bytes() <= std::numeric_limits<std::uint32_t>::max() &&
++        layout.LinearBytes() <= std::numeric_limits<std::uint32_t>::max() &&
++        layout.Bytes() <= context.limits.maxStorageBufferRange && layout.LinearBytes() <= context.limits.maxStorageBufferRange,
++        "GPU sample tiling exceeds storage/index limits");
++    Require(context.limits.maxPushConstantsSize >= 20 && context.limits.maxBoundDescriptorSets >= 1 &&
++        context.limits.maxPerStageDescriptorStorageBuffers >= 2 && context.limits.maxDescriptorSetStorageBuffers >= 2 &&
++        context.limits.maxPerStageResources >= 2, "GPU sample tiling descriptor/push limits are unsupported");
++    Require(context.limits.maxComputeWorkGroupSize[0] >= 8 && context.limits.maxComputeWorkGroupSize[1] >= 8 &&
++        context.limits.maxComputeWorkGroupSize[2] >= 1 && context.limits.maxComputeWorkGroupInvocations >= 64 &&
++        (color.extent.width + 7u) / 8u <= context.limits.maxComputeWorkGroupCount[0] &&
++        (color.extent.height + 7u) / 8u <= context.limits.maxComputeWorkGroupCount[1] &&
++        color.samples <= context.limits.maxComputeWorkGroupCount[2], "GPU sample tiling compute limits are unsupported");
++    return {color.extent.width, color.extent.height, layout.BlocksPerRow(),
++        static_cast<std::uint32_t>(layout.Bytes() / 4u), static_cast<std::uint32_t>(layout.LinearBytes() / 4u)};
++}
++void Barrier(PFN_vkCmdPipelineBarrier call, VkCommandBuffer commands, ColorSampleTilingBufferAccess before,
++             VkDeviceSize bytes, VkPipelineStageFlags stage, VkAccessFlags access) {
++    VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
++    barrier.srcAccessMask = before.access; barrier.dstAccessMask = access;
++    barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
++    barrier.buffer = before.buffer; barrier.offset = before.offset; barrier.size = bytes;
++    call(commands, before.stage, stage, 0, 0, nullptr, 1, &barrier, 0, nullptr);
++}
++}
++bool GpuColorSampleTiler::Supports(const Context& context, const ColorTarget& color) {
++    try { static_cast<void>(Parameters(context, color)); return true; }
++    catch (const std::runtime_error&) { return false; }
++}
++GpuColorSampleTiler::GpuColorSampleTiler(const Context& context) : context(context) {
++    Require(context.device != VK_NULL_HANDLE, "GPU sample tiling device is unavailable");
++    destroyModule = context.Function<PFN_vkDestroyShaderModule>("vkDestroyShaderModule");
++    destroyDescriptors = context.Function<PFN_vkDestroyDescriptorSetLayout>("vkDestroyDescriptorSetLayout");
++    destroyLayout = context.Function<PFN_vkDestroyPipelineLayout>("vkDestroyPipelineLayout");
++    destroyPipeline = context.Function<PFN_vkDestroyPipeline>("vkDestroyPipeline");
++    destroyPool = context.Function<PFN_vkDestroyDescriptorPool>("vkDestroyDescriptorPool");
++    try {
++        const std::array<VkDescriptorSetLayoutBinding, 2> bindings{{
++            {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr},
++            {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr}}};
++        VkDescriptorSetLayoutCreateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
++        info.bindingCount = 2; info.pBindings = bindings.data();
++        Check(context.Function<PFN_vkCreateDescriptorSetLayout>("vkCreateDescriptorSetLayout")(
++            context.device, &info, nullptr, &descriptors), "vkCreateDescriptorSetLayout sample tiling");
++        VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, 20};
++        VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
++        layoutInfo.setLayoutCount = 1; layoutInfo.pSetLayouts = &descriptors;
++        layoutInfo.pushConstantRangeCount = 1; layoutInfo.pPushConstantRanges = &push;
++        Check(context.Function<PFN_vkCreatePipelineLayout>("vkCreatePipelineLayout")(
++            context.device, &layoutInfo, nullptr, &layout), "vkCreatePipelineLayout sample tiling");
++        VkShaderModuleCreateInfo moduleInfo{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
++        moduleInfo.codeSize = sizeof(COLOR_SAMPLE_TILING_COMP_SPV); moduleInfo.pCode = COLOR_SAMPLE_TILING_COMP_SPV;
++        Check(context.Function<PFN_vkCreateShaderModule>("vkCreateShaderModule")(
++            context.device, &moduleInfo, nullptr, &module), "vkCreateShaderModule sample tiling");
++    } catch (...) { release(); throw; }
++}
++GpuColorSampleTiler::~GpuColorSampleTiler() { release(); }
++void GpuColorSampleTiler::release() noexcept {
++    for (auto pipeline : programs) if (pipeline) destroyPipeline(context.device, pipeline, nullptr);
++    if (module) destroyModule(context.device, module, nullptr);
++    if (layout) destroyLayout(context.device, layout, nullptr);
++    if (descriptors) destroyDescriptors(context.device, descriptors, nullptr);
++}
++VkPipeline GpuColorSampleTiler::program(std::uint32_t samples, bool retile) {
++    std::lock_guard lock(programsMutex);
++    const auto index = (std::countr_zero(samples) - 1u) * 2u + unsigned(retile);
++    auto& pipeline = programs.at(index);
++    if (pipeline) return pipeline;
++    const auto* equation = FindColorSampleSwizzleEquation(4, samples);
++    Require(equation != nullptr, "GPU sample tiling program has no qualified equation");
++    std::array<std::uint32_t, 20> values{samples, unsigned(retile), equation->blockWidth, equation->blockHeight};
++    std::copy(equation->bits.begin(), equation->bits.end(), values.begin() + 4);
++    std::array<VkSpecializationMapEntry, 20> entries{};
++    for (std::uint32_t i = 0; i < entries.size(); ++i) entries[i] = {i, i * 4u, 4};
++    VkSpecializationInfo specialization{entries.size(), entries.data(), sizeof(values), values.data()};
++    VkComputePipelineCreateInfo info{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
++    info.stage = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
++    info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; info.stage.module = module;
++    info.stage.pName = "main"; info.stage.pSpecializationInfo = &specialization; info.layout = layout;
++    VkPipeline created = VK_NULL_HANDLE;
++    const auto result = context.Function<PFN_vkCreateComputePipelines>("vkCreateComputePipelines")(
++        context.device, context.pipelineCache, 1, &info, nullptr, &created);
++    // Vulkan may return a partial handle even on pipeline creation failure.
++    if (result != VK_SUCCESS) { if (created) destroyPipeline(context.device, created, nullptr); Check(result, "vkCreateComputePipelines sample tiling"); }
++    pipeline = created;
++    return pipeline;
++}
++GpuColorSampleTiler::Transfer::Transfer(GpuColorSampleTiler& owner, const ColorTarget& color)
++    : owner(owner), samples(color.samples), parameters(Parameters(owner.context, color)) {}
++GpuColorSampleTiler::Transfer::~Transfer() {
++    for (const auto pool : pools) owner.destroyPool(owner.context.device, pool, nullptr);
++}
++void GpuColorSampleTiler::Transfer::Record(VkCommandBuffer commands, bool retile,
++    ColorSampleTilingBufferAccess source, ColorSampleTilingBufferAccess destination,
++    VkPipelineStageFlags consumerStage, VkAccessFlags consumerAccess) {
++    const auto& context = owner.context;
++    const VkDeviceSize sourceBytes = VkDeviceSize(parameters[retile ? 4 : 3]) * 4u;
++    const VkDeviceSize destinationBytes = VkDeviceSize(parameters[retile ? 3 : 4]) * 4u;
++    const auto validate = [&](ColorSampleTilingBufferAccess buffer, VkDeviceSize bytes) {
++        const auto alignment = std::max<VkDeviceSize>(4, context.limits.minStorageBufferOffsetAlignment);
++        Require(buffer.device == context.device && buffer.buffer && buffer.stage && buffer.bytes >= bytes &&
++            buffer.offset % alignment == 0 && buffer.offset <= std::numeric_limits<VkDeviceSize>::max() - bytes,
++            "GPU sample tiling buffer device/range/state is invalid");
++    };
++    Require(commands && consumerStage, "GPU sample tiling command/consumer state is unavailable");
++    validate(source, sourceBytes); validate(destination, destinationBytes);
++    Require(source.buffer != destination.buffer || source.offset >= destination.offset + destinationBytes ||
++        destination.offset >= source.offset + sourceBytes, "GPU sample tiling buffers overlap");
++    // Resolve all recording functions and allocate everything before emitting commands.
++    const auto barrier = context.Resolved(&DeviceFunctions::cmdPipelineBarrier, "vkCmdPipelineBarrier");
++    const auto bindPipeline = context.Resolved(&DeviceFunctions::cmdBindPipeline, "vkCmdBindPipeline");
++    const auto bindSets = context.Resolved(&DeviceFunctions::cmdBindDescriptorSets, "vkCmdBindDescriptorSets");
++    const auto push = context.Resolved(&DeviceFunctions::cmdPushConstants, "vkCmdPushConstants");
++    const auto dispatch = context.Resolved(&DeviceFunctions::cmdDispatch, "vkCmdDispatch");
++    const auto allocate = context.Resolved(&DeviceFunctions::allocateDescriptorSets, "vkAllocateDescriptorSets");
++    const auto update = context.Resolved(&DeviceFunctions::updateDescriptorSets, "vkUpdateDescriptorSets");
++    const auto pipeline = owner.program(samples, retile);
++    VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2};
++    VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
++    poolInfo.maxSets = 1; poolInfo.poolSizeCount = 1; poolInfo.pPoolSizes = &size;
++    VkDescriptorPool pool = VK_NULL_HANDLE;
++    Check(context.Function<PFN_vkCreateDescriptorPool>("vkCreateDescriptorPool")(
++        context.device, &poolInfo, nullptr, &pool), "vkCreateDescriptorPool sample tiling");
++    VkDescriptorSet set = VK_NULL_HANDLE;
++    try {
++        VkDescriptorSetAllocateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
++        info.descriptorPool = pool; info.descriptorSetCount = 1; info.pSetLayouts = &owner.descriptors;
++        Check(allocate(context.device, &info, &set), "vkAllocateDescriptorSets sample tiling");
++        pools.push_back(pool);
++    } catch (...) { owner.destroyPool(context.device, pool, nullptr); throw; }
++    const std::array<VkDescriptorBufferInfo, 2> buffers{{
++        {source.buffer, source.offset, sourceBytes}, {destination.buffer, destination.offset, destinationBytes}}};
++    std::array<VkWriteDescriptorSet, 2> writes{};
++    for (std::uint32_t i = 0; i < writes.size(); ++i) {
++        writes[i] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; writes[i].dstSet = set;
++        writes[i].dstBinding = i; writes[i].descriptorCount = 1;
++        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; writes[i].pBufferInfo = &buffers[i];
++    }
++    update(context.device, 2, writes.data(), 0, nullptr);
++    Barrier(barrier, commands, source, sourceBytes, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
++    Barrier(barrier, commands, destination, destinationBytes, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
++    bindPipeline(commands, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
++    bindSets(commands, VK_PIPELINE_BIND_POINT_COMPUTE, owner.layout, 0, 1, &set, 0, nullptr);
++    push(commands, owner.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(parameters), parameters.data());
++    dispatch(commands, (parameters[0] + 7u) / 8u, (parameters[1] + 7u) / 8u, samples);
++    destination.stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT; destination.access = VK_ACCESS_SHADER_WRITE_BIT;
++    Barrier(barrier, commands, destination, destinationBytes, consumerStage, consumerAccess);
++}
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp
+@@ -0,0 +1,66 @@
++#version 450
++
++// Original RGBA8, R64KB_X, samples==fragments compute transfer.
++// Exact Navi1x color sample equations are supplied as immutable specialization
++// values, not guest-controlled data.
++layout(constant_id = 0) const uint SAMPLES = 2u;
++layout(constant_id = 1) const uint RETILE = 0u;
++layout(constant_id = 2) const uint BLOCK_WIDTH = 64u;
++layout(constant_id = 3) const uint BLOCK_HEIGHT = 128u;
++layout(constant_id = 4) const uint EQ0 = 0u;
++layout(constant_id = 5) const uint EQ1 = 0u;
++layout(constant_id = 6) const uint EQ2 = 0u;
++layout(constant_id = 7) const uint EQ3 = 0u;
++layout(constant_id = 8) const uint EQ4 = 0u;
++layout(constant_id = 9) const uint EQ5 = 0u;
++layout(constant_id = 10) const uint EQ6 = 0u;
++layout(constant_id = 11) const uint EQ7 = 0u;
++layout(constant_id = 12) const uint EQ8 = 0u;
++layout(constant_id = 13) const uint EQ9 = 0u;
++layout(constant_id = 14) const uint EQ10 = 0u;
++layout(constant_id = 15) const uint EQ11 = 0u;
++layout(constant_id = 16) const uint EQ12 = 0u;
++layout(constant_id = 17) const uint EQ13 = 0u;
++layout(constant_id = 18) const uint EQ14 = 0u;
++layout(constant_id = 19) const uint EQ15 = 0u;
++
++layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
++layout(set = 0, binding = 0, std430) readonly buffer Input { uint words[]; } source;
++layout(set = 0, binding = 1, std430) writeonly buffer Output { uint words[]; } destination;
++layout(push_constant) uniform Parameters {
++    uint width;
++    uint height;
++    uint blocksPerRow;
++    uint tiledWords;
++    uint linearWords;
++} parameters;
++
++uint sampleOffset(uvec2 pixel, uint sampleIndex) {
++    const uint equations[16] = uint[16](EQ0, EQ1, EQ2, EQ3, EQ4, EQ5, EQ6, EQ7,
++                                       EQ8, EQ9, EQ10, EQ11, EQ12, EQ13, EQ14, EQ15);
++    uint result = 0u;
++    for (uint bit = 0u; bit < 16u; ++bit) {
++        uint mask = equations[bit];
++        // Separate coordinate masks prevent x>=4096 spilling into Y bits,
++        // and y>=4096 spilling into the logical sample bits.
++        uint selected = (pixel.x & mask & 0xfffu) ^
++                        ((pixel.y << 12u) & mask & 0xfff000u) ^
++                        ((sampleIndex << 24u) & mask & 0xff000000u);
++        result |= (bitCount(selected) & 1u) << bit;
++    }
++    uint block = (pixel.y / BLOCK_HEIGHT) * parameters.blocksPerRow + pixel.x / BLOCK_WIDTH;
++    return block * 65536u + result;
++}
++
++void main() {
++    uvec2 pixel = gl_GlobalInvocationID.xy;
++    uint sampleIndex = gl_GlobalInvocationID.z;
++    if (pixel.x >= parameters.width || pixel.y >= parameters.height || sampleIndex >= SAMPLES) return;
++    uint linearWord = (pixel.y * parameters.width + pixel.x) * SAMPLES + sampleIndex;
++    uint tiledWord = sampleOffset(pixel, sampleIndex) / 4u;
++    // Host validation rejects overflow and invalid layouts before recording;
++    // guards prevent out-of-range storage access if an invariant is violated.
++    if (linearWord >= parameters.linearWords || tiledWord >= parameters.tiledWords) return;
++    if (RETILE == 0u) destination.words[linearWord] = source.words[tiledWord];
++    else destination.words[tiledWord] = source.words[linearWord];
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h
+@@ -0,0 +1,181 @@
++// Original ColorSampleTiling.comp; regenerate with scripts/check-gpu-color-sample-tiling.py --regenerate-shaders.
++#ifndef ANYPS5_COLOR_SAMPLE_TILING_SPV_H
++#define ANYPS5_COLOR_SAMPLE_TILING_SPV_H
++#include <cstdint>
++inline constexpr std::uint32_t COLOR_SAMPLE_TILING_COMP_SPV[] = {
++    0x07230203, 0x00010300, 0x0008000b, 0x000000d1, 0x00000000, 0x00020011, 0x00000001, 0x0006000b,
++    0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001,
++    0x0006000f, 0x00000005, 0x00000004, 0x6e69616d, 0x00000000, 0x00000074, 0x00060010, 0x00000004,
++    0x00000011, 0x00000008, 0x00000008, 0x00000001, 0x00030003, 0x00000002, 0x000001c2, 0x00040005,
++    0x00000004, 0x6e69616d, 0x00000000, 0x00080005, 0x0000000d, 0x706d6173, 0x664f656c, 0x74657366,
++    0x32757628, 0x3b31753b, 0x00000000, 0x00040005, 0x0000000b, 0x65786970, 0x0000006c, 0x00050005,
++    0x0000000c, 0x706d6173, 0x6e49656c, 0x00786564, 0x00050005, 0x00000012, 0x61757165, 0x6e6f6974,
++    0x00000073, 0x00030005, 0x00000013, 0x00305145, 0x00030005, 0x00000014, 0x00315145, 0x00030005,
++    0x00000015, 0x00325145, 0x00030005, 0x00000016, 0x00335145, 0x00030005, 0x00000017, 0x00345145,
++    0x00030005, 0x00000018, 0x00355145, 0x00030005, 0x00000019, 0x00365145, 0x00030005, 0x0000001a,
++    0x00375145, 0x00030005, 0x0000001b, 0x00385145, 0x00030005, 0x0000001c, 0x00395145, 0x00040005,
++    0x0000001d, 0x30315145, 0x00000000, 0x00040005, 0x0000001e, 0x31315145, 0x00000000, 0x00040005,
++    0x0000001f, 0x32315145, 0x00000000, 0x00040005, 0x00000020, 0x33315145, 0x00000000, 0x00040005,
++    0x00000021, 0x34315145, 0x00000000, 0x00040005, 0x00000022, 0x35315145, 0x00000000, 0x00040005,
++    0x00000024, 0x75736572, 0x0000746c, 0x00030005, 0x00000026, 0x00746962, 0x00040005, 0x0000002f,
++    0x6b73616d, 0x00000000, 0x00050005, 0x00000033, 0x656c6573, 0x64657463, 0x00000000, 0x00040005,
++    0x00000058, 0x636f6c62, 0x0000006b, 0x00060005, 0x0000005b, 0x434f4c42, 0x45485f4b, 0x54484749,
++    0x00000000, 0x00050005, 0x0000005d, 0x61726150, 0x6574656d, 0x00007372, 0x00050006, 0x0000005d,
++    0x00000000, 0x74646977, 0x00000068, 0x00050006, 0x0000005d, 0x00000001, 0x67696568, 0x00007468,
++    0x00070006, 0x0000005d, 0x00000002, 0x636f6c62, 0x6550736b, 0x776f5272, 0x00000000, 0x00060006,
++    0x0000005d, 0x00000003, 0x656c6974, 0x726f5764, 0x00007364, 0x00060006, 0x0000005d, 0x00000004,
++    0x656e696c, 0x6f577261, 0x00736472, 0x00050005, 0x0000005f, 0x61726170, 0x6574656d, 0x00007372,
++    0x00050005, 0x00000067, 0x434f4c42, 0x49575f4b, 0x00485444, 0x00040005, 0x00000071, 0x65786970,
++    0x0000006c, 0x00080005, 0x00000074, 0x475f6c67, 0x61626f6c, 0x766e496c, 0x7461636f, 0x496e6f69,
++    0x00000044, 0x00050005, 0x00000077, 0x706d6173, 0x6e49656c, 0x00786564, 0x00040005, 0x0000008c,
++    0x504d4153, 0x0053454c, 0x00050005, 0x00000092, 0x656e696c, 0x6f577261, 0x00006472, 0x00050005,
++    0x0000009e, 0x656c6974, 0x726f5764, 0x00000064, 0x00040005, 0x0000009f, 0x61726170, 0x0000006d,
++    0x00040005, 0x000000a1, 0x61726170, 0x0000006d, 0x00040005, 0x000000b7, 0x49544552, 0x0000454c,
++    0x00040005, 0x000000bc, 0x7074754f, 0x00007475, 0x00050006, 0x000000bc, 0x00000000, 0x64726f77,
++    0x00000073, 0x00050005, 0x000000be, 0x74736564, 0x74616e69, 0x006e6f69, 0x00040005, 0x000000c1,
++    0x75706e49, 0x00000074, 0x00050006, 0x000000c1, 0x00000000, 0x64726f77, 0x00000073, 0x00040005,
++    0x000000c3, 0x72756f73, 0x00006563, 0x00040047, 0x00000013, 0x00000001, 0x00000004, 0x00040047,
++    0x00000014, 0x00000001, 0x00000005, 0x00040047, 0x00000015, 0x00000001, 0x00000006, 0x00040047,
++    0x00000016, 0x00000001, 0x00000007, 0x00040047, 0x00000017, 0x00000001, 0x00000008, 0x00040047,
++    0x00000018, 0x00000001, 0x00000009, 0x00040047, 0x00000019, 0x00000001, 0x0000000a, 0x00040047,
++    0x0000001a, 0x00000001, 0x0000000b, 0x00040047, 0x0000001b, 0x00000001, 0x0000000c, 0x00040047,
++    0x0000001c, 0x00000001, 0x0000000d, 0x00040047, 0x0000001d, 0x00000001, 0x0000000e, 0x00040047,
++    0x0000001e, 0x00000001, 0x0000000f, 0x00040047, 0x0000001f, 0x00000001, 0x00000010, 0x00040047,
++    0x00000020, 0x00000001, 0x00000011, 0x00040047, 0x00000021, 0x00000001, 0x00000012, 0x00040047,
++    0x00000022, 0x00000001, 0x00000013, 0x00040047, 0x0000005b, 0x00000001, 0x00000003, 0x00030047,
++    0x0000005d, 0x00000002, 0x00050048, 0x0000005d, 0x00000000, 0x00000023, 0x00000000, 0x00050048,
++    0x0000005d, 0x00000001, 0x00000023, 0x00000004, 0x00050048, 0x0000005d, 0x00000002, 0x00000023,
++    0x00000008, 0x00050048, 0x0000005d, 0x00000003, 0x00000023, 0x0000000c, 0x00050048, 0x0000005d,
++    0x00000004, 0x00000023, 0x00000010, 0x00040047, 0x00000067, 0x00000001, 0x00000002, 0x00040047,
++    0x00000074, 0x0000000b, 0x0000001c, 0x00040047, 0x0000008c, 0x00000001, 0x00000000, 0x00040047,
++    0x000000b7, 0x00000001, 0x00000001, 0x00040047, 0x000000bb, 0x00000006, 0x00000004, 0x00030047,
++    0x000000bc, 0x00000002, 0x00040048, 0x000000bc, 0x00000000, 0x00000019, 0x00050048, 0x000000bc,
++    0x00000000, 0x00000023, 0x00000000, 0x00030047, 0x000000be, 0x00000019, 0x00040047, 0x000000be,
++    0x00000021, 0x00000001, 0x00040047, 0x000000be, 0x00000022, 0x00000000, 0x00040047, 0x000000c0,
++    0x00000006, 0x00000004, 0x00030047, 0x000000c1, 0x00000002, 0x00040048, 0x000000c1, 0x00000000,
++    0x00000018, 0x00050048, 0x000000c1, 0x00000000, 0x00000023, 0x00000000, 0x00030047, 0x000000c3,
++    0x00000018, 0x00040047, 0x000000c3, 0x00000021, 0x00000000, 0x00040047, 0x000000c3, 0x00000022,
++    0x00000000, 0x00040047, 0x000000d0, 0x0000000b, 0x00000019, 0x00020013, 0x00000002, 0x00030021,
++    0x00000003, 0x00000002, 0x00040015, 0x00000006, 0x00000020, 0x00000000, 0x00040017, 0x00000007,
++    0x00000006, 0x00000002, 0x00040020, 0x00000008, 0x00000007, 0x00000007, 0x00040020, 0x00000009,
++    0x00000007, 0x00000006, 0x00050021, 0x0000000a, 0x00000006, 0x00000008, 0x00000009, 0x0004002b,
++    0x00000006, 0x0000000f, 0x00000010, 0x0004001c, 0x00000010, 0x00000006, 0x0000000f, 0x00040020,
++    0x00000011, 0x00000007, 0x00000010, 0x00040032, 0x00000006, 0x00000013, 0x00000000, 0x00040032,
++    0x00000006, 0x00000014, 0x00000000, 0x00040032, 0x00000006, 0x00000015, 0x00000000, 0x00040032,
++    0x00000006, 0x00000016, 0x00000000, 0x00040032, 0x00000006, 0x00000017, 0x00000000, 0x00040032,
++    0x00000006, 0x00000018, 0x00000000, 0x00040032, 0x00000006, 0x00000019, 0x00000000, 0x00040032,
++    0x00000006, 0x0000001a, 0x00000000, 0x00040032, 0x00000006, 0x0000001b, 0x00000000, 0x00040032,
++    0x00000006, 0x0000001c, 0x00000000, 0x00040032, 0x00000006, 0x0000001d, 0x00000000, 0x00040032,
++    0x00000006, 0x0000001e, 0x00000000, 0x00040032, 0x00000006, 0x0000001f, 0x00000000, 0x00040032,
++    0x00000006, 0x00000020, 0x00000000, 0x00040032, 0x00000006, 0x00000021, 0x00000000, 0x00040032,
++    0x00000006, 0x00000022, 0x00000000, 0x0004002b, 0x00000006, 0x00000025, 0x00000000, 0x00020014,
++    0x0000002d, 0x0004002b, 0x00000006, 0x00000038, 0x00000fff, 0x0004002b, 0x00000006, 0x0000003a,
++    0x00000001, 0x0004002b, 0x00000006, 0x0000003d, 0x0000000c, 0x0004002b, 0x00000006, 0x00000041,
++    0x00fff000, 0x0004002b, 0x00000006, 0x00000045, 0x00000018, 0x0004002b, 0x00000006, 0x00000049,
++    0xff000000, 0x00040015, 0x0000004d, 0x00000020, 0x00000001, 0x0004002b, 0x0000004d, 0x00000056,
++    0x00000001, 0x00040032, 0x00000006, 0x0000005b, 0x00000080, 0x0007001e, 0x0000005d, 0x00000006,
++    0x00000006, 0x00000006, 0x00000006, 0x00000006, 0x00040020, 0x0000005e, 0x00000009, 0x0000005d,
++    0x0004003b, 0x0000005e, 0x0000005f, 0x00000009, 0x0004002b, 0x0000004d, 0x00000060, 0x00000002,
++    0x00040020, 0x00000061, 0x00000009, 0x00000006, 0x00040032, 0x00000006, 0x00000067, 0x00000040,
++    0x0004002b, 0x00000006, 0x0000006b, 0x00010000, 0x00040017, 0x00000072, 0x00000006, 0x00000003,
++    0x00040020, 0x00000073, 0x00000001, 0x00000072, 0x0004003b, 0x00000073, 0x00000074, 0x00000001,
++    0x0004002b, 0x00000006, 0x00000078, 0x00000002, 0x00040020, 0x00000079, 0x00000001, 0x00000006,
++    0x0004002b, 0x0000004d, 0x0000007e, 0x00000000, 0x00040032, 0x00000006, 0x0000008c, 0x00000002,
++    0x0004002b, 0x00000006, 0x000000a4, 0x00000004, 0x0004002b, 0x0000004d, 0x000000a7, 0x00000004,
++    0x0004002b, 0x0000004d, 0x000000af, 0x00000003, 0x00040032, 0x00000006, 0x000000b7, 0x00000000,
++    0x00060034, 0x0000002d, 0x000000b8, 0x000000aa, 0x000000b7, 0x00000025, 0x0003001d, 0x000000bb,
++    0x00000006, 0x0003001e, 0x000000bc, 0x000000bb, 0x00040020, 0x000000bd, 0x0000000c, 0x000000bc,
++    0x0004003b, 0x000000bd, 0x000000be, 0x0000000c, 0x0003001d, 0x000000c0, 0x00000006, 0x0003001e,
++    0x000000c1, 0x000000c0, 0x00040020, 0x000000c2, 0x0000000c, 0x000000c1, 0x0004003b, 0x000000c2,
++    0x000000c3, 0x0000000c, 0x00040020, 0x000000c5, 0x0000000c, 0x00000006, 0x0004002b, 0x00000006,
++    0x000000cf, 0x00000008, 0x0006002c, 0x00000072, 0x000000d0, 0x000000cf, 0x000000cf, 0x0000003a,
++    0x00050036, 0x00000002, 0x00000004, 0x00000000, 0x00000003, 0x000200f8, 0x00000005, 0x0004003b,
++    0x00000008, 0x00000071, 0x00000007, 0x0004003b, 0x00000009, 0x00000077, 0x00000007, 0x0004003b,
++    0x00000009, 0x00000092, 0x00000007, 0x0004003b, 0x00000009, 0x0000009e, 0x00000007, 0x0004003b,
++    0x00000008, 0x0000009f, 0x00000007, 0x0004003b, 0x00000009, 0x000000a1, 0x00000007, 0x0004003d,
++    0x00000072, 0x00000075, 0x00000074, 0x0007004f, 0x00000007, 0x00000076, 0x00000075, 0x00000075,
++    0x00000000, 0x00000001, 0x0003003e, 0x00000071, 0x00000076, 0x00050041, 0x00000079, 0x0000007a,
++    0x00000074, 0x00000078, 0x0004003d, 0x00000006, 0x0000007b, 0x0000007a, 0x0003003e, 0x00000077,
++    0x0000007b, 0x00050041, 0x00000009, 0x0000007c, 0x00000071, 0x00000025, 0x0004003d, 0x00000006,
++    0x0000007d, 0x0000007c, 0x00050041, 0x00000061, 0x0000007f, 0x0000005f, 0x0000007e, 0x0004003d,
++    0x00000006, 0x00000080, 0x0000007f, 0x000500ae, 0x0000002d, 0x00000081, 0x0000007d, 0x00000080,
++    0x000400a8, 0x0000002d, 0x00000082, 0x00000081, 0x000300f7, 0x00000084, 0x00000000, 0x000400fa,
++    0x00000082, 0x00000083, 0x00000084, 0x000200f8, 0x00000083, 0x00050041, 0x00000009, 0x00000085,
++    0x00000071, 0x0000003a, 0x0004003d, 0x00000006, 0x00000086, 0x00000085, 0x00050041, 0x00000061,
++    0x00000087, 0x0000005f, 0x00000056, 0x0004003d, 0x00000006, 0x00000088, 0x00000087, 0x000500ae,
++    0x0000002d, 0x00000089, 0x00000086, 0x00000088, 0x000200f9, 0x00000084, 0x000200f8, 0x00000084,
++    0x000700f5, 0x0000002d, 0x0000008a, 0x00000081, 0x00000005, 0x00000089, 0x00000083, 0x0004003d,
++    0x00000006, 0x0000008b, 0x00000077, 0x000500ae, 0x0000002d, 0x0000008d, 0x0000008b, 0x0000008c,
++    0x000500a6, 0x0000002d, 0x0000008e, 0x0000008a, 0x0000008d, 0x000300f7, 0x00000090, 0x00000000,
++    0x000400fa, 0x0000008e, 0x0000008f, 0x00000090, 0x000200f8, 0x0000008f, 0x000100fd, 0x000200f8,
++    0x00000090, 0x00050041, 0x00000009, 0x00000093, 0x00000071, 0x0000003a, 0x0004003d, 0x00000006,
++    0x00000094, 0x00000093, 0x00050041, 0x00000061, 0x00000095, 0x0000005f, 0x0000007e, 0x0004003d,
++    0x00000006, 0x00000096, 0x00000095, 0x00050084, 0x00000006, 0x00000097, 0x00000094, 0x00000096,
++    0x00050041, 0x00000009, 0x00000098, 0x00000071, 0x00000025, 0x0004003d, 0x00000006, 0x00000099,
++    0x00000098, 0x00050080, 0x00000006, 0x0000009a, 0x00000097, 0x00000099, 0x00050084, 0x00000006,
++    0x0000009b, 0x0000009a, 0x0000008c, 0x0004003d, 0x00000006, 0x0000009c, 0x00000077, 0x00050080,
++    0x00000006, 0x0000009d, 0x0000009b, 0x0000009c, 0x0003003e, 0x00000092, 0x0000009d, 0x0004003d,
++    0x00000007, 0x000000a0, 0x00000071, 0x0003003e, 0x0000009f, 0x000000a0, 0x0004003d, 0x00000006,
++    0x000000a2, 0x00000077, 0x0003003e, 0x000000a1, 0x000000a2, 0x00060039, 0x00000006, 0x000000a3,
++    0x0000000d, 0x0000009f, 0x000000a1, 0x00050086, 0x00000006, 0x000000a5, 0x000000a3, 0x000000a4,
++    0x0003003e, 0x0000009e, 0x000000a5, 0x0004003d, 0x00000006, 0x000000a6, 0x00000092, 0x00050041,
++    0x00000061, 0x000000a8, 0x0000005f, 0x000000a7, 0x0004003d, 0x00000006, 0x000000a9, 0x000000a8,
++    0x000500ae, 0x0000002d, 0x000000aa, 0x000000a6, 0x000000a9, 0x000400a8, 0x0000002d, 0x000000ab,
++    0x000000aa, 0x000300f7, 0x000000ad, 0x00000000, 0x000400fa, 0x000000ab, 0x000000ac, 0x000000ad,
++    0x000200f8, 0x000000ac, 0x0004003d, 0x00000006, 0x000000ae, 0x0000009e, 0x00050041, 0x00000061,
++    0x000000b0, 0x0000005f, 0x000000af, 0x0004003d, 0x00000006, 0x000000b1, 0x000000b0, 0x000500ae,
++    0x0000002d, 0x000000b2, 0x000000ae, 0x000000b1, 0x000200f9, 0x000000ad, 0x000200f8, 0x000000ad,
++    0x000700f5, 0x0000002d, 0x000000b3, 0x000000aa, 0x00000090, 0x000000b2, 0x000000ac, 0x000300f7,
++    0x000000b5, 0x00000000, 0x000400fa, 0x000000b3, 0x000000b4, 0x000000b5, 0x000200f8, 0x000000b4,
++    0x000100fd, 0x000200f8, 0x000000b5, 0x000300f7, 0x000000ba, 0x00000000, 0x000400fa, 0x000000b8,
++    0x000000b9, 0x000000c9, 0x000200f8, 0x000000b9, 0x0004003d, 0x00000006, 0x000000bf, 0x00000092,
++    0x0004003d, 0x00000006, 0x000000c4, 0x0000009e, 0x00060041, 0x000000c5, 0x000000c6, 0x000000c3,
++    0x0000007e, 0x000000c4, 0x0004003d, 0x00000006, 0x000000c7, 0x000000c6, 0x00060041, 0x000000c5,
++    0x000000c8, 0x000000be, 0x0000007e, 0x000000bf, 0x0003003e, 0x000000c8, 0x000000c7, 0x000200f9,
++    0x000000ba, 0x000200f8, 0x000000c9, 0x0004003d, 0x00000006, 0x000000ca, 0x0000009e, 0x0004003d,
++    0x00000006, 0x000000cb, 0x00000092, 0x00060041, 0x000000c5, 0x000000cc, 0x000000c3, 0x0000007e,
++    0x000000cb, 0x0004003d, 0x00000006, 0x000000cd, 0x000000cc, 0x00060041, 0x000000c5, 0x000000ce,
++    0x000000be, 0x0000007e, 0x000000ca, 0x0003003e, 0x000000ce, 0x000000cd, 0x000200f9, 0x000000ba,
++    0x000200f8, 0x000000ba, 0x000100fd, 0x00010038, 0x00050036, 0x00000006, 0x0000000d, 0x00000000,
++    0x0000000a, 0x00030037, 0x00000008, 0x0000000b, 0x00030037, 0x00000009, 0x0000000c, 0x000200f8,
++    0x0000000e, 0x0004003b, 0x00000011, 0x00000012, 0x00000007, 0x0004003b, 0x00000009, 0x00000024,
++    0x00000007, 0x0004003b, 0x00000009, 0x00000026, 0x00000007, 0x0004003b, 0x00000009, 0x0000002f,
++    0x00000007, 0x0004003b, 0x00000009, 0x00000033, 0x00000007, 0x0004003b, 0x00000009, 0x00000058,
++    0x00000007, 0x00130050, 0x00000010, 0x00000023, 0x00000013, 0x00000014, 0x00000015, 0x00000016,
++    0x00000017, 0x00000018, 0x00000019, 0x0000001a, 0x0000001b, 0x0000001c, 0x0000001d, 0x0000001e,
++    0x0000001f, 0x00000020, 0x00000021, 0x00000022, 0x0003003e, 0x00000012, 0x00000023, 0x0003003e,
++    0x00000024, 0x00000025, 0x0003003e, 0x00000026, 0x00000025, 0x000200f9, 0x00000027, 0x000200f8,
++    0x00000027, 0x000400f6, 0x00000029, 0x0000002a, 0x00000000, 0x000200f9, 0x0000002b, 0x000200f8,
++    0x0000002b, 0x0004003d, 0x00000006, 0x0000002c, 0x00000026, 0x000500b0, 0x0000002d, 0x0000002e,
++    0x0000002c, 0x0000000f, 0x000400fa, 0x0000002e, 0x00000028, 0x00000029, 0x000200f8, 0x00000028,
++    0x0004003d, 0x00000006, 0x00000030, 0x00000026, 0x00050041, 0x00000009, 0x00000031, 0x00000012,
++    0x00000030, 0x0004003d, 0x00000006, 0x00000032, 0x00000031, 0x0003003e, 0x0000002f, 0x00000032,
++    0x00050041, 0x00000009, 0x00000034, 0x0000000b, 0x00000025, 0x0004003d, 0x00000006, 0x00000035,
++    0x00000034, 0x0004003d, 0x00000006, 0x00000036, 0x0000002f, 0x000500c7, 0x00000006, 0x00000037,
++    0x00000035, 0x00000036, 0x000500c7, 0x00000006, 0x00000039, 0x00000037, 0x00000038, 0x00050041,
++    0x00000009, 0x0000003b, 0x0000000b, 0x0000003a, 0x0004003d, 0x00000006, 0x0000003c, 0x0000003b,
++    0x000500c4, 0x00000006, 0x0000003e, 0x0000003c, 0x0000003d, 0x0004003d, 0x00000006, 0x0000003f,
++    0x0000002f, 0x000500c7, 0x00000006, 0x00000040, 0x0000003e, 0x0000003f, 0x000500c7, 0x00000006,
++    0x00000042, 0x00000040, 0x00000041, 0x000500c6, 0x00000006, 0x00000043, 0x00000039, 0x00000042,
++    0x0004003d, 0x00000006, 0x00000044, 0x0000000c, 0x000500c4, 0x00000006, 0x00000046, 0x00000044,
++    0x00000045, 0x0004003d, 0x00000006, 0x00000047, 0x0000002f, 0x000500c7, 0x00000006, 0x00000048,
++    0x00000046, 0x00000047, 0x000500c7, 0x00000006, 0x0000004a, 0x00000048, 0x00000049, 0x000500c6,
++    0x00000006, 0x0000004b, 0x00000043, 0x0000004a, 0x0003003e, 0x00000033, 0x0000004b, 0x0004003d,
++    0x00000006, 0x0000004c, 0x00000033, 0x000400cd, 0x0000004d, 0x0000004e, 0x0000004c, 0x0004007c,
++    0x00000006, 0x0000004f, 0x0000004e, 0x000500c7, 0x00000006, 0x00000050, 0x0000004f, 0x0000003a,
++    0x0004003d, 0x00000006, 0x00000051, 0x00000026, 0x000500c4, 0x00000006, 0x00000052, 0x00000050,
++    0x00000051, 0x0004003d, 0x00000006, 0x00000053, 0x00000024, 0x000500c5, 0x00000006, 0x00000054,
++    0x00000053, 0x00000052, 0x0003003e, 0x00000024, 0x00000054, 0x000200f9, 0x0000002a, 0x000200f8,
++    0x0000002a, 0x0004003d, 0x00000006, 0x00000055, 0x00000026, 0x00050080, 0x00000006, 0x00000057,
++    0x00000055, 0x00000056, 0x0003003e, 0x00000026, 0x00000057, 0x000200f9, 0x00000027, 0x000200f8,
++    0x00000029, 0x00050041, 0x00000009, 0x00000059, 0x0000000b, 0x0000003a, 0x0004003d, 0x00000006,
++    0x0000005a, 0x00000059, 0x00050086, 0x00000006, 0x0000005c, 0x0000005a, 0x0000005b, 0x00050041,
++    0x00000061, 0x00000062, 0x0000005f, 0x00000060, 0x0004003d, 0x00000006, 0x00000063, 0x00000062,
++    0x00050084, 0x00000006, 0x00000064, 0x0000005c, 0x00000063, 0x00050041, 0x00000009, 0x00000065,
++    0x0000000b, 0x00000025, 0x0004003d, 0x00000006, 0x00000066, 0x00000065, 0x00050086, 0x00000006,
++    0x00000068, 0x00000066, 0x00000067, 0x00050080, 0x00000006, 0x00000069, 0x00000064, 0x00000068,
++    0x0003003e, 0x00000058, 0x00000069, 0x0004003d, 0x00000006, 0x0000006a, 0x00000058, 0x00050084,
++    0x00000006, 0x0000006c, 0x0000006a, 0x0000006b, 0x0004003d, 0x00000006, 0x0000006d, 0x00000024,
++    0x00050080, 0x00000006, 0x0000006e, 0x0000006c, 0x0000006d, 0x000200fe, 0x0000006e, 0x00010038,
++};
++#endif

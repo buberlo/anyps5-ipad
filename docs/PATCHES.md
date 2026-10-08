@@ -72,6 +72,12 @@ shaders, an opt-in owned raw tiled resolve snapshot, and fixed-size depth/stenci
 texel copies. The complete 56-patch series matches 142 paths; the full HLE rebuild
 and 22 host plus two graphics suites pass. Native correctness and object-code
 checks have separate scopes. Device behavior and speed require separate evidence.
+Patch0057 adds default-off GPU conversion for the qualified RGBA8 multisample
+layout. Its 57-patch/146-path source series, native Mac GPU helper/image-transfer
+probe and actual Windows write-tracking regression pass. The complete HLE rebuild
+contains 53 verified binaries; 22 CPU/API suites, the actual CMake tracking target,
+resource classification and full Graphics suite pass. Physical iPad behavior and
+performance remain separate checks.
 See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
@@ -103,6 +109,9 @@ source, build, device and unqualified-path states.
 | 0054 | Opt-in pipeline-only identity for internal fixed-function resolve shaders, keyed by exact generated fragment and canonical rectangle SPIR-V | Four sanitizer configurations pass; exact-one run checks 3,273 assertions with counted Vulkan mocks. Ordinary unknown shaders and resource/recipe cache gates remain unchanged. Full combined 56-patch HLE/host build passes; no measured device speed gain. |
 | 0055 | Opt-in owned raw tiled RGBA8 resolve-source snapshot, retaining pending flushes, complete range checks and post-copy write stamps | Four sanitizer configurations pass 12 cases each; exact-one run checks 198 assertions. Actual snapshot/layout code is tested with explicit flush/stamp mocks, not actual GPU alias or recycled-address tracking. Full combined HLE/host build passes; default remains off. |
 | 0056 | Dispatch once per depth/stencil Tile/Detile surface to literal-size raw 1/2/4-byte copies | Candidate and prior source pass 84 independent AMD layouts, 35,028,036 address comparisons and 48 guarded misaligned round trips. Optimized actual MinGW TU has zero hot CRT copy calls versus two prior calls. Full 56-patch/142-path series, 53 binary hashes and 22 host plus two graphics suites pass; no additional depth feature or accepted speed gain. |
+| 0057 | Opt-in GPU detile/retile for exact uncompressed RGBA8 R64KB_X 2/4/8-sample targets, retaining the synchronous draw and changed-byte guest commit | Native contract checks and 99 compute plus three production image-transfer chains pass on the Mac GPU against independent AMD bytes/padding. Windows shared-alias commit checks pass with four bulk-option settings. The 57-patch/146-path series and full HLE build pass, including 22 CPU/API and three additional runtime suites. Device/FPS qualification remains separate. [Native evidence](evidence/gpu-color-sample-tiling-native-20261009.json), [build evidence](evidence/gpu-color-sample-tiling-build-20261009.json). |
+| 0058 | Opt-in GPU detile/retile for qualified S8 SW_64KB_Z_X eight-sample planes, preserving the original tiled seed and changed-byte commit | Eight-path round trip, 28 contract controls, 42 native compute and six D32S8 image chains pass. The 58-patch/150-path series, full HLE build with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; private preparation verifies all 137 files. Actual Draw/DepthSurface, iPad and performance qualification remain separate. [Native evidence](evidence/gpu-stencil-sample-tiling-native-20261009.json), [build evidence](evidence/gpu-stencil-sample-tiling-build-20261009.json). |
+| 0059 | Opt-in per-device immutable stencil transfer program cache, keyed by format/counts and full ordered bit-exact sample positions | Four-path source comparison, cache/legacy contracts and six native D32S8 chains pass. The full 59-patch HLE, 22 CPU/API and three additional runtime suites pass; 137 private preparation files are verified. A bounded iPad run logs real program reuse and renders the full Golf board; cache hit rate, speed and gameplay/FPS remain unqualified. [Source/native evidence](evidence/stencil-transfer-program-cache-native-20261009.json), [build checkpoint](evidence/stencil-transfer-program-cache-build-20261009.json), [device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json). |
 
 ## White selected-source comparison: patch0048
 
@@ -379,6 +388,36 @@ are always used. No device or performance acceptance follows from this build.
 See the [combined source/build record](evidence/resolve-snapshot-depth-copy-build-20261009.json)
 and [focused pipeline-cache record](evidence/color-resolve-pipeline-cache-native-20261009.json).
 
+## GPU multisample color conversion: patch0057
+
+Only exact `APS5_GPU_COLOR_SAMPLE_TILING=1` creates the per-device helper.
+Supported uncompressed RGBA8 R64KB_X targets with equal 2/4/8 samples and fragments
+use the reviewed AMD equations to convert between tiled bytes and packed logical
+samples on the GPU. The helper rederives layout size/pitch and checks device,
+descriptor, offset, storage-index and dispatch limits. Other metadata retains
+the existing CPU path. Six immutable programs cover sample count and direction;
+no guest content or address is cached. Each recording retains its own descriptors.
+
+The existing synchronous batch orders detile, fragment sample upload, draw,
+compute sample readback and retile with explicit producer/consumer barriers.
+Retile leaves its destination seed's padding untouched. After the fence and
+resource fault checks/writeback, `WriteChanged` commits only changed byte runs;
+unchanged logical and padding bytes retain intervening CPU/alias stores. The
+actual Windows shared-memory regression verifies ordered stores, stamps and
+no-op behavior in four bulk-option configurations. It does not qualify racing
+foreign CPU-write attribution during the commit callback.
+
+The native Mac GPU probe uses actual helper, RenderTarget and ColorSampleTransfer
+code. Independent AMD byte oracles, separate direction tests and poisoned
+intermediates prevent skipped or mutually cancelling transfers from passing.
+All 99 compute and three image-transfer chains pass, with all 144 descriptor
+pools released. This covers the Mac's MoltenVK 1.4.2 path; full Draw/Wine/iPad
+execution remains separate. At 1920×1080 with eight samples, two retained staging
+backings add 127.5 MiB of allocation capacity, so device peak/RSS needs measurement.
+No speed or FPS improvement is accepted here. See the
+[focused source/native/Windows record](evidence/gpu-color-sample-tiling-native-20261009.json)
+and [completed full HLE build and runtime-suite record](evidence/gpu-color-sample-tiling-build-20261009.json).
+
 The exact RGBA8 and S8 device probes run original synthetic fixtures through
 Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases
 erase the upload source before readback; S8 checks also retain final-word padding
@@ -467,6 +506,160 @@ The foundation measurements below remain historical evidence.
 Apply with `scripts/apply-patches.sh`. Reverse with
 `scripts/apply-patches.sh --reverse`. The submodules in git stay at the
 upstream commits; the patches are the delta.
+
+## GPU eight-sample stencil conversion: patch0058
+
+Only exact `APS5_GPU_STENCIL_SAMPLE_TILING=1` creates the per-device helper;
+unset, `0` and `yes` retain the existing CPU path. This replaces only S8
+Detile/Tile for already qualified uncompressed SW_64KB_Z_X surfaces with eight
+equal coverage/stored samples. The helper checks the exact AMD equation,
+64-KiB alignment, canonical pitch, dimensions, device limits and storage offsets.
+Other metadata keeps the existing CPU conversion and rejection rules.
+The existing grouped-draw restrictions on Z, HTILE, shader effects and attachment
+aliases remain active. No new stencil transfer pipeline cache or resident target
+path is added.
+
+Two immutable per-device compute programs cover detile and retile. Each XY/group
+invocation owns a complete four-byte word; two groups preserve all eight S8
+samples without shared-word writes. The original complete tiled seed initializes
+the output, so logical GPU writes leave every padding word intact. Distinct
+descriptor sets remain owned through the existing synchronous batch. Explicit
+barriers order host seed, detile compute, fragment stencil upload, compute
+readback, retile compute and host read. After the same fence and resource fault
+checks/writeback, existing `WriteChanged` commits only bytes differing from the
+original seed. Unchanged padding and unchanged logical bytes retain later ordered
+CPU/alias stores. Racing writes to a GPU-changed logical byte remain unqualified.
+
+The production helper's sanitizer contract passes 28 metadata fallback controls,
+repeated descriptor ownership, exact barriers and allocation-failure cleanup.
+The native Mac GPU probe passes 42 compute cases and six production
+StencilSampleTransfer image chains against independent AMD AddrLib coordinates
+and bytes: 21,313,064 coordinate comparisons, 64,608,968 checked logical output
+bytes and 89,348,960 checked padding bytes, with all 256 S8 values represented.
+Poisoned intermediate buffers and guards prevent omitted transfers from passing.
+Both tiling programs are cached once; all 80 descriptor pools are released.
+
+The image chains use an original synthetic D32S8 owner, two native four-sample
+groups, and a depth reader. All 669,776 checked depth samples retain initialized
+0.625 within 0.000001; arbitrary depth values and bitwise depth identity are not
+tested. D16S8 has metadata admission checks only. Actual Draw/DepthSurface and
+GuestMemory GPU integration, Wine/FEX/iPad execution and performance are separate
+gates. At 1920 × 1080, one additional tiled GPU buffer retains 16.875 MiB during
+the wait; this is an allocation calculation, not a measured device footprint.
+The completed full HLE rebuild now has a separate record: all 58 patches match
+150 preserved source paths, all 50 PRX and three runtime DLL hashes verify, and
+22 CPU/API plus actual tracking, resource classification and full Graphics
+host suites pass. Canonical private preparation verifies 137 files and the
+dependency closure. Only three HLE binaries and two preparation logs differ
+from 57; the game executable and five converted guest modules are unchanged.
+These host/preparation results do not execute the complete iPad Draw path.
+No speed, FPS or full gameplay acceptance is inferred. See the immutable
+[focused source/native record](evidence/gpu-stencil-sample-tiling-native-20261009.json)
+and the [completed build/preparation record](evidence/gpu-stencil-sample-tiling-build-20261009.json).
+
+## Immutable stencil transfer programs: patch0059
+
+Only exact `APS5_CACHE_STENCIL_TRANSFER_PIPELINES=1` creates the per-device
+cache; its default is off. A cache miss builds the same immutable render pass,
+descriptor/pipeline layouts and stencil upload/readback pipelines as before.
+An eight-sample miss creates eight upload pipelines and one compute readback
+pipeline. The key includes a per-cache device domain, combined depth/stencil
+format, logical/native/group counts, fixed program schema and every ordered
+sample-position float bit pattern. Existing image, extent, feature, format,
+descriptor, workgroup and position checks run before lookup even on warm hits.
+
+The mutex-protected LRU retains at most eight entries. Eviction and `Clear`
+only drop cache references; each transfer holds a shared immutable bundle
+through its caller's existing GPU fence. Active transfers may retain evicted
+bundles beyond those eight entries. Image views, framebuffers, descriptor sets,
+pools and buffers remain owned per transfer. The eight-sample upload still
+performs all 64 bitplane raster draws, with unchanged shaders, sample locations,
+barriers, tiling, Z behavior and synchronous completion. Device idle and recorder
+retirement precede cache destruction, while the Vulkan device still exists.
+
+The sanitizer contract checks invalid capacities 0/9, eight invalid warm
+contexts, ordered and bit-exact position changes, format/sample/device identity,
+active ownership after eviction/clear, and 19 construction-failure/retry cases.
+The unchanged legacy transfer suite passes six layouts and 234 rejection/unwind
+cases. The native Mac GPU probe exercises the production cache and transfer:
+three misses create 27 stencil programs; three hits create zero. One live
+transfer completes correctly after cache clear before actual submit. All six
+D32S8 image chains retain exact S8 bytes, padding and 669,776 initialized 0.625
+Z samples within 0.000001. Independent AMD goldens and poisoned intermediates
+retain the original transfer checks.
+
+These native chains use an original synthetic image owner rather than actual
+Draw/DepthSurface/GuestMemory integration. D16S8 and other tuple controls use
+counted Vulkan mocks. The immutable
+[source/native checkpoint](evidence/stencil-transfer-program-cache-native-20261009.json)
+preserves its publication-time limits. A separate
+[full build checkpoint](evidence/stencil-transfer-program-cache-build-20261009.json)
+now verifies all 59 patches against 150 frozen source paths, 53 archive binaries,
+22 CPU/API suites and three additional actual tracking/resource/Graphics suites.
+The frozen 22-suite log map remains separate from the final 25-log verification.
+Private preparation verifies 137 files and six complete guest dependency sets;
+only three HLE binaries and two preparation logs differ from 58, with the game
+executable and five converted guest modules unchanged. Physical iPad cache integration, pipeline
+memory and matched speed/FPS remain unqualified by this build record. No
+performance gain, accepted gameplay or sound quality is inferred.
+
+A separate 360-second iPad run with the Build 48 host reports actual immutable
+stencil bundle reuse with matching ordered positions. Golf selection and its
+complete board are visible; only menu Right and start A are sent. The unchanged
+strict display reader accepts all 337 rows and reports 2784 completion intervals
+over 284.8849 seconds after warmup. These native completions and one reuse marker
+do not accept cache hit rate, physical frame uniqueness, speed, legal gameplay
+or audio. Runtime rollback independently verifies all 56 files and exact
+configuration/library/manifest bytes; both owned processes are absent afterward.
+See the [separate device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json).
+
+## Whole-row display telemetry: Madeira0048, 2026-10-09
+
+| Patch | Implemented behavior | Qualification |
+|---|---|---|
+| Madeira0048 | Format each existing display/native JSON row completely, then emit it through one direct append write | Production-header ASan/UBSan fixtures pass full-width bounds, exact-one gating, concurrent append writes and failure controls. Build 48 is built, signed and installed on the iPad. Its bounded run with the 58-patch HLE passes the unchanged whole-log display parser and visibly verifies one legal Golf move. Sound quality, game speed and 60 FPS remain unqualified. [Build evidence](evidence/display-telemetry-whole-row-20261009.json), [device evidence](evidence/ipad-solitaire-build48-whole-row-telemetry-20261009.json). |
+
+The existing emitter split its display histogram and native counters across
+multiple `fprintf`/`fputs` calls. Madeira redirects stderr directly into a regular
+`O_APPEND` log file; native `write`/`dprintf` diagnostics bypass the stdio `FILE`
+lock and can enter between those calls. Madeira0048 builds each complete row in
+a bounded 7,445-byte stack buffer before one `write` syscall. A negative
+`EINTR` result retries; a positive short write never receives a tail repair.
+Formatting overflow emits no row. The exact `APS5_PERF_REPORT=1` gate, schema,
+one-second cadence and strict display parser remain unchanged. Pipe atomicity is
+not qualified.
+
+Synthetic production-header fixtures check all 257 histogram buckets at
+`UINT64_MAX`, maximum-width metadata and a 5,969-byte longest row. One thousand
+display and one thousand native rows remain intact amid 4,000 raw writes and
+4,000 `dprintf` writes through separate append descriptors. ASan/UBSan, exact
+gate values and EINTR/short-write/error/overflow controls pass. These are format
+and file-transport checks, with mocked Vulkan results; they measure no GPU or
+device performance.
+
+The build recompiles only `vulkan.o`. All 89 other object members remain
+byte-identical; the archive symbol index is regenerated. The isolated app copy
+reuses FEX, PE, MoltenVK and HLE binaries. All 170 embedded PE files in
+`arm64ec-windows` and 488 original Build47 source/archive files verify unchanged;
+the four required system DLLs retain verified ARM64EC code maps. Build48 retains
+optimized Debug/JIT settings, the bundle ID and JIT helper. Its signature passes
+`codesign --verify --deep --strict`; signed entitlements match Build47's retained
+signing inputs, and the cached profile covers the app, target device and both
+memory permissions. No provisioning update or GitHub Actions ran.
+
+Installation, JIT activation, device row integrity and runtime behavior remain
+separate checks. Historical malformed device telemetry remains invalid for
+strict display summaries; this patch does not repair or reinterpret old logs.
+
+The subsequent physical run installs Build 48, activates and detaches JIT, and
+uses the same 58-patch HLE. All 682 display rows pass the unchanged strict reader
+without repairs. Its warmup-adjusted span reports 6198 intervals over 646.6213
+seconds, or 9.5852 native display completions per second. A visible Q♠ to K♣
+Golf move exposes 5♦, followed by two stock responses. These observations do not
+accept game speed, audio or constant 60 FPS. The dated build JSON preserves its
+earlier pre-installation status; the
+[separate device record](evidence/ipad-solitaire-build48-whole-row-telemetry-20261009.json)
+contains the later installation, actions, telemetry and verified runtime rollback.
 
 ## Native x64 suspension and wait results: 2026-10-08
 

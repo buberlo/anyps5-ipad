@@ -1,0 +1,319 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "whole_row_display_telemetry_source_host_and_build_checkpoint",
+  "status": "built_signed_verified_not_installed",
+  "scope": {
+    "repository": "madeira-anyps5",
+    "component": "Madeira native win32u Vulkan display telemetry",
+    "gpu_executed_by_this_check": false,
+    "device_tested": false,
+    "performance_qualified": false
+  },
+  "source": {
+    "patch": "patches/madeira/0048-whole-row-display-telemetry.patch",
+    "patch_sha256": "8aed58ebb00f88e436bdfa696c09a34301224d01be34a25dcf1b2b054f11bcf4",
+    "baseline_header_sha256": "b3778538ab0fbc7724186b2f90a72c6e058a24c19f651cb34ff384bfec0d353d",
+    "production_header_sha256": "7df50477b0305cbfa01d62374a12bde3accbb56c92d9841cafa91ef2b541fce5",
+    "strict_display_parser_sha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+    "strict_display_parser_unchanged": true,
+    "individual_patch_forward_matches_live": true,
+    "individual_patch_reverse_restores_baseline": true,
+    "complete_madeira_series_reverse_check": {
+      "status": "passed",
+      "patch_count": 37,
+      "highest_patch_number": 48,
+      "method": "disposable touched-file copy, reverse every patch in descending order",
+      "private_report_sha256": "56094ca29065eee549ddc99a246699c326bef0450b9e844e7eb2610b85d62532"
+    },
+    "check_script": {
+      "path": "scripts/check-display-telemetry-rows.py",
+      "sha256": "f2f76c7afb9e6c7c0c7b745e7f353ed2fdf13b2bf7aab1459f0f3b43639b042f"
+    },
+    "production_header_fixture": {
+      "path": "tools/checks/display_telemetry_rows.c",
+      "sha256": "e671a5ec0ddb857c1288650ad00e1ec5b4ba00e1729748e27618b48dcdc408f2"
+    }
+  },
+  "emission_contract": {
+    "enabled_only_with_exact": "APS5_PERF_REPORT=1",
+    "schema_and_one_second_cadence_unchanged": true,
+    "bounded_stack_capacity_bytes": 7445,
+    "one_direct_write_per_complete_json_row": true,
+    "eintr_retry_only_after_negative_zero_byte_result": true,
+    "positive_short_write_tail_never_appended": true,
+    "overflow_emits_no_row": true,
+    "transport": "stderr directly redirected to a regular file opened O_APPEND; concurrent raw write/dprintf callers bypass stdio FILE locks",
+    "pipe_atomicity_qualified": false
+  },
+  "host_checks": {
+    "status": "passed",
+    "kind": "synthetic_production_header_format_and_transport_check",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "address_and_undefined_behavior_sanitizers": true,
+    "strict_parser_used_without_modification": true,
+    "longest_full_width_fixture_row_bytes": 5969,
+    "maximum_histogram_buckets": 257,
+    "concurrent_display_fixture_rows": 1000,
+    "concurrent_native_fixture_rows": 1000,
+    "competing_raw_write_rows": 4000,
+    "competing_separate_append_fd_dprintf_rows": 4000,
+    "checks": [
+      {
+        "fixture": "gate",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": null,
+        "display_rows": 0,
+        "native_rows": 0,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "gate",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "0",
+        "display_rows": 0,
+        "native_rows": 0,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "gate",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "yes",
+        "display_rows": 0,
+        "native_rows": 0,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "gate",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "01",
+        "display_rows": 0,
+        "native_rows": 0,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "gate",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "true",
+        "display_rows": 0,
+        "native_rows": 0,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "gate",
+        "write_calls": 24,
+        "longest_row_bytes": 915,
+        "capacity_bytes": 7445,
+        "log_sha256": "1311efc0cfffbea3198be34209193d75b2974678f2604dbd170815c0d6aefcfe",
+        "env_flag": "1",
+        "display_rows": 12,
+        "native_rows": 12,
+        "exact_one_gate_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "max",
+        "write_calls": 2,
+        "longest_row_bytes": 5969,
+        "capacity_bytes": 7445,
+        "log_sha256": "7b07588053bded6d68692e7eac6df35004fc398e3d694f9fa2b4ed3494157304",
+        "env_flag": "1",
+        "display_rows": 1,
+        "native_rows": 1,
+        "raw_write_noise_rows": 0,
+        "separate_append_fd_dprintf_noise_rows": 0,
+        "full_uint64_bounds_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "concurrent",
+        "write_calls": 2000,
+        "longest_row_bytes": 5969,
+        "capacity_bytes": 7445,
+        "log_sha256": "38cc009ab9311304d218272226021cc5d8490ca157e078313005129ad8f9aaa7",
+        "env_flag": "1",
+        "display_rows": 1000,
+        "native_rows": 1000,
+        "raw_write_noise_rows": 4000,
+        "separate_append_fd_dprintf_noise_rows": 4000,
+        "full_uint64_bounds_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "eintr",
+        "write_calls": 3,
+        "longest_row_bytes": 53,
+        "capacity_bytes": 7445,
+        "log_sha256": "c14fb5a7a62237650d6e845feebae5b2aef5a9b74d3ee69291ed888e01426cfd",
+        "env_flag": "1",
+        "zero_byte_eintr_retries_passed": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "short",
+        "write_calls": 1,
+        "longest_row_bytes": 53,
+        "capacity_bytes": 7445,
+        "log_sha256": "952e1888685b9af438a24b0f6fc709d2e9509ce43813580cf1f3484929eed74a",
+        "env_flag": "1",
+        "short_write_not_repaired_strictly_rejected": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "error",
+        "write_calls": 1,
+        "longest_row_bytes": 53,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "1",
+        "no_report_emitted": true,
+        "fixture_only": true
+      },
+      {
+        "fixture": "overflow",
+        "write_calls": 0,
+        "longest_row_bytes": 0,
+        "capacity_bytes": 7445,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "env_flag": "1",
+        "no_report_emitted": true,
+        "fixture_only": true
+      }
+    ],
+    "executable_sha256": "5d3e373df9d36353ef1851dd176f5a0ec080f9c691adc2cda8f9af222d460e21",
+    "private_report_sha256": "8350494411de52cba9af2716d9a351683490f47cec4d116a49cee70aef2ab8d1",
+    "limits": [
+      "Host regular-file O_APPEND transport; no pipe atomicity guarantee.",
+      "Synthetic counters/native Vulkan fakes; no GPU, iPad or performance qualification.",
+      "A positive short write remains malformed and invalidates strict parsing; no tail repair."
+    ]
+  },
+  "build": {
+    "schema": 1,
+    "date": "2026-10-09",
+    "kind": "whole_row_display_telemetry_host_build",
+    "status": "built_signed_verified_not_installed",
+    "patch": "patches/madeira/0048-whole-row-display-telemetry.patch",
+    "patch_sha256": "8aed58ebb00f88e436bdfa696c09a34301224d01be34a25dcf1b2b054f11bcf4",
+    "production_header_sha256": "7df50477b0305cbfa01d62374a12bde3accbb56c92d9841cafa91ef2b541fce5",
+    "strict_parser_sha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+    "original_build47_win32u_archive_sha256": "85e52a4fc716a66edb2c04e592fee386fede8bdc56201d1f817cecede27a8123",
+    "build48_win32u_archive_sha256": "8383c94892774f12b4f46857f963e505298b5d5622235c05a2ac89218027aa02",
+    "build48_vulkan_object_sha256": "2c6c7e6b584a3ddcac2e3906aea0b08ba41972eca31a88c4c1d3eeb00cf16a58",
+    "changed_native_objects": [
+      "vulkan.o"
+    ],
+    "unchanged_native_object_count": 89,
+    "original_archive_object_count": 90,
+    "original_archive_entry_count_including_symbol_index": 91,
+    "archive_symbol_index_regenerated": true,
+    "only_private_copied_app_archive_replaced": true,
+    "original_build47_source_and_archives_preserved": true,
+    "original_build47_files_rehashed": 488,
+    "app_build": 48,
+    "app_version": "0.1.9",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "architecture": "arm64",
+    "app_macho_sha256": "707010f20df7dfe127ab4a240b4a3d3bc99e81aa0f837ff7faef976ef17a8682",
+    "app_macho_bytes": 32281984,
+    "jit_helper_macho_sha256": "33a5047b96c47d4bb8d0758d966d3f18c1a5e6d89e2f71fe23f58fb41801b573",
+    "codesign_deep_strict_verified": true,
+    "signed_entitlements_match_build47_xcent": true,
+    "get_task_allow": true,
+    "increased_memory_limit": true,
+    "extended_virtual_addressing": true,
+    "cached_profile_covers_app_and_required_memory_entitlements": true,
+    "profile_unexpired": true,
+    "target_device_in_profile": true,
+    "source_allow_jit_omitted_by_ios_signing_in_both_builds": true,
+    "required_arm64ec_components": {
+      "ntdll.dll": {
+        "sha256": "0c595afa3887b3dcebf827811dce303009ea1f21eb43098969290a9a09747184",
+        "bytes": 1572864,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "xtajit64.dll": {
+        "sha256": "1232184daa17913cfdcaca2e4d353b2293368d9195ca077dca533345a2b42d3e",
+        "bytes": 5865472,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "winevulkan.dll": {
+        "sha256": "993b43f4fb1b165fcd9edceaeed99d21773c6369037520305c4729b47913800e",
+        "bytes": 917504,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "vulkan-1.dll": {
+        "sha256": "936895102beaa70c16c154745127bceebe62fe4877c1f9490acc39e58ab70b20",
+        "bytes": 655360,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      }
+    },
+    "host_profile": {
+      "configuration": "Debug",
+      "jit_configuration_preserved": true,
+      "swift_optimization": "-O",
+      "c_optimization": 2,
+      "debug_information": "dwarf-with-dsym"
+    },
+    "native_compile_command_sha256": "5b7e30ffbbd920638eb050299f0a3a63fcbe9ecb47ad7b179236bcf31583807a",
+    "native_compile_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app_build_command_sha256": "a48716061a7187e519f2436a346cd416c0d20085353b6dc8e5b85eff9f92dcd3",
+    "app_build_log_sha256": "016f5ed0af3e9eec8ec1c068922b0b497db0a4f2e436dcf58b78db1abcd77ddc",
+    "focused_transport_check_report_sha256": "8350494411de52cba9af2716d9a351683490f47cec4d116a49cee70aef2ab8d1",
+    "layout_note": "Private app source is materialized in the original Madeira/app/Madeira and sibling wine-header layout; source bytes are unchanged. One earlier compile failed solely because those relative header paths were absent.",
+    "github_actions_used": false,
+    "provisioning_updates_allowed": false,
+    "fex_rebuilt": false,
+    "pe_rebuilt": false,
+    "moltenvk_rebuilt": false,
+    "hle_rebuilt": false,
+    "installed": false,
+    "launched": false,
+    "device_tested": false,
+    "limits": [
+      "Codesign/profile checks do not prove installation, JIT or device runtime.",
+      "Only the native win32u Vulkan object was rebuilt; FEX/PE/MoltenVK/HLE binaries were reused unchanged."
+    ],
+    "unchanged_embedded_pe_files_in_arm64ec_directory": 170
+  },
+  "private_evidence": {
+    "source_and_transport_directory": "build/telemetry-whole-row-20261009",
+    "native_and_app_build_directory": "build/native-telemetry-build48-20261009",
+    "complete_app_verification_sha256": "8073894d9c91279b288cb32145403ed473ccc302e489c90697286f0e8131b147",
+    "sanitized_build_record_sha256": "371c43b875422e5095df02a6995c2ab4f3d7f5e3d5a8931dfad531b78ceb4fcf"
+  },
+  "github_actions_used": false,
+  "installed": false,
+  "launched": false,
+  "device_tested": false,
+  "limits": [
+    "All host counters and native Vulkan results are synthetic format/transport fixtures; no GPU or performance measurement is reported.",
+    "Build48 is signed and verified locally; installation, JIT activation, device row integrity and runtime behavior require separate checks.",
+    "A positive short write remains a malformed partial row; the unchanged strict parser rejects it. No repair, row filtering or counter fabrication is applied.",
+    "Historical malformed device logs remain invalid for strict display summaries. This checkpoint does not reinterpret them."
+  ]
+}

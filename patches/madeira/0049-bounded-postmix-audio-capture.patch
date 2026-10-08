@@ -1,0 +1,467 @@
+diff --git a/build/ntdll-unix/audio_null_ios.c b/build/ntdll-unix/audio_null_ios.c
+--- a/build/ntdll-unix/audio_null_ios.c
++++ b/build/ntdll-unix/audio_null_ios.c
+@@ -497,6 +497,8 @@
+  * FMOD is actually exercising the driver. Cheap atomic increments. */
+ #include <stdatomic.h>
+ #include "aps5_audio_period.h"
++#include "aps5_audio_postmix_capture.h"
++static struct aps5_postmix_capture g_audio_postmix_capture;
+ 
+ static _Atomic int64_t aps5_device_period = APS5_AUDIO_FALLBACK_PERIOD;
+ 
+@@ -763,6 +765,7 @@
+     float *out;
+     UINT32 dev_ch = g_dev.channels ? g_dev.channels : 2;
+     UINT32 dev_rate = g_dev.rate ? g_dev.rate : 48000;
++    UInt32 requested_frames = nframes;
+     size_t total = (size_t)nframes * dev_ch;
+     size_t k, cap_floats, clamped = 0;
+     int i;
+@@ -792,6 +795,20 @@
+         else if (out[k] < -1.0f) { out[k] = -1.0f; clamped++; }
+     }
+     if (clamped) atomic_fetch_add_explicit(&g_dev.clamped, clamped, memory_order_relaxed);
++    if (g_audio_postmix_capture.enabled &&
++        atomic_load_explicit(&g_audio_postmix_capture.state, memory_order_relaxed) == APS5_POSTMIX_ARMED) {
++        struct aps5_postmix_stamp stamp = {
++            .epoch = atomic_load_explicit(&g_dev.cb_epoch, memory_order_relaxed) + 1,
++            .host_ticks = ts ? ts->mHostTime : 0,
++            .sample_time = ts ? ts->mSampleTime : 0,
++            .timestamp_flags = ts ? ts->mFlags : 0,
++            .action_flags = flags ? *flags : 0,
++            .requested_frames = requested_frames,
++            .host_time_valid = ts && (ts->mFlags & kAudioTimeStampHostTimeValid),
++            .sample_time_valid = ts && (ts->mFlags & kAudioTimeStampSampleTimeValid)
++        };
++        aps5_postmix_record(&g_audio_postmix_capture, out, nframes, dev_rate, dev_ch, &stamp);
++    }
+     atomic_fetch_add_explicit(&g_dev.cb_epoch, 1, memory_order_release);
+     return noErr;
+ }
+@@ -869,6 +886,11 @@
+     }
+     fprintf(stderr, "[ios_audio] ml1026 RemoteIO ENDPOINT ready: %u Hz, %u ch, float32 "
+                     "-- shared by every client\n", g_dev.rate, g_dev.channels);
++    if (aps5_postmix_begin(&g_audio_postmix_capture,
++            getenv("MADEIRA_AUDIO_CAPTURE_POSTMIX"), getenv("MADEIRA_AUDIO_CAPTURE_SKIP_FRAMES"),
++            getenv("MADEIRA_DOCS_DIR"), g_dev.rate, g_dev.channels,
++            g_timebase.numer, g_timebase.denom) < 0)
++        fprintf(stderr, "[audio-postmix-capture] unavailable: require existing48k stereo output, valid skip and private Documents directory\n");
+     return 0;
+ fail:
+     AudioComponentInstanceDispose(g_dev.au);
+diff --git a/build/ntdll-unix/aps5_audio_postmix_capture.h b/build/ntdll-unix/aps5_audio_postmix_capture.h
+new file mode 100644
+--- /dev/null
++++ b/build/ntdll-unix/aps5_audio_postmix_capture.h
+@@ -0,0 +1,409 @@
++#ifndef APS5_AUDIO_POSTMIX_CAPTURE_H
++#define APS5_AUDIO_POSTMIX_CAPTURE_H
++
++/* One-shot, default-off capture of the existing output bus. This does not open
++ * an audio device or a microphone. Only the render producer writes samples and
++ * records while ARMED. A worker acquires DONE before reading either array. */
++#include <errno.h>
++#include <fcntl.h>
++#include <math.h>
++#include <pthread.h>
++#include <stdarg.h>
++#include <stdatomic.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <time.h>
++#include <unistd.h>
++
++#define APS5_POSTMIX_RATE 48000u
++#define APS5_POSTMIX_CHANNELS 2u
++#define APS5_POSTMIX_FRAMES (APS5_POSTMIX_RATE * 10u)
++#define APS5_POSTMIX_RECORDS 4096u
++#define APS5_POSTMIX_MAX_SKIP (APS5_POSTMIX_RATE * 600u)
++
++_Static_assert(sizeof(float) == 4, "The capture requires float32");
++_Static_assert(ATOMIC_INT_LOCK_FREE == 2, "The RT guard must be lock-free");
++
++enum aps5_postmix_state { APS5_POSTMIX_OFF, APS5_POSTMIX_ARMED,
++                         APS5_POSTMIX_DONE, APS5_POSTMIX_EXPORTED,
++                         APS5_POSTMIX_EXPORT_FAILED };
++enum aps5_postmix_reason { APS5_POSTMIX_COMPLETE, APS5_POSTMIX_TIMEOUT,
++                          APS5_POSTMIX_BAD_CALLBACK, APS5_POSTMIX_RECORD_LIMIT,
++                          APS5_POSTMIX_CONTENTION };
++#define APS5_POSTMIX_CLOSED (1u << 31)
++
++struct aps5_postmix_stamp {
++    uint64_t epoch, host_ticks;
++    double sample_time;
++    uint32_t timestamp_flags, action_flags, requested_frames;
++    int host_time_valid, sample_time_valid;
++};
++struct aps5_postmix_record {
++    struct aps5_postmix_stamp stamp;
++    uint32_t effective_frames, skipped_frames, captured_offset, captured_frames;
++};
++struct aps5_postmix_capture {
++    /* Immutable after publication; false never allocates or starts a worker. */
++    int enabled;
++    _Atomic int state, contended;
++    _Atomic unsigned writer; /* participant count plus CLOSED admission bit */
++    float *samples;
++    struct aps5_postmix_record *records;
++    uint32_t capacity, record_capacity, frames, record_count, skip_remaining;
++    uint32_t requested_skip, timebase_numer, timebase_denom;
++    enum aps5_postmix_reason reason;
++    uint64_t deadline_ns;
++    int directory_fd;
++    char stem[96];
++};
++
++static uint64_t aps5_postmix_monotonic_ns(void)
++{
++    struct timespec now;
++    if (clock_gettime(CLOCK_MONOTONIC, &now)) return 0;
++    return (uint64_t)now.tv_sec * 1000000000ull + (uint64_t)now.tv_nsec;
++}
++
++static int aps5_postmix_parse_skip(const char *value, uint32_t *frames)
++{
++    uint32_t count = 0;
++    *frames = 0;
++    if (!value) return 1;
++    if (!*value) return 0;
++    for (; *value; value++) {
++        if (*value < '0' || *value > '9' ||
++            count > (APS5_POSTMIX_MAX_SKIP - (uint32_t)(*value - '0')) / 10u)
++            return 0;
++        count = count * 10u + (uint32_t)(*value - '0');
++    }
++    *frames = count;
++    return 1;
++}
++
++/* Producer owns the sole array writer and stays counted through publication. */
++static void aps5_postmix_publish_done(struct aps5_postmix_capture *capture)
++{
++    unsigned participants = atomic_fetch_or_explicit(
++            &capture->writer, APS5_POSTMIX_CLOSED, memory_order_acq_rel);
++    if ((participants & ~APS5_POSTMIX_CLOSED) > 1 ||
++        atomic_load_explicit(&capture->contended, memory_order_acquire))
++        capture->reason = APS5_POSTMIX_CONTENTION;
++    atomic_store_explicit(&capture->state, APS5_POSTMIX_DONE, memory_order_release);
++}
++
++/* No allocation, I/O, logging, clock query, blocking lock or wait on this path.
++ * The nonblocking atomic guard also lets a worker cancel between callbacks
++ * without reading live arrays. A contending callback does not spin or copy. */
++static void aps5_postmix_record(struct aps5_postmix_capture *capture,
++        const float *samples, uint32_t frames, uint32_t rate, uint32_t channels,
++        const struct aps5_postmix_stamp *stamp)
++{
++    unsigned participants;
++    uint32_t skipped, copied;
++    struct aps5_postmix_record *record;
++    if (!capture->enabled ||
++        atomic_load_explicit(&capture->state, memory_order_acquire) != APS5_POSTMIX_ARMED)
++        return;
++    participants = atomic_fetch_add_explicit(&capture->writer, 1, memory_order_acquire);
++    if (participants & APS5_POSTMIX_CLOSED) {
++        atomic_fetch_sub_explicit(&capture->writer, 1, memory_order_release);
++        return;
++    }
++    if (participants) {
++        atomic_store_explicit(&capture->contended, 1, memory_order_relaxed);
++        atomic_fetch_sub_explicit(&capture->writer, 1, memory_order_release);
++        return;
++    }
++    /* The worker may have cancelled between the first state load and guard. */
++    if (atomic_load_explicit(&capture->state, memory_order_acquire) != APS5_POSTMIX_ARMED)
++        goto unlock;
++    if (atomic_load_explicit(&capture->contended, memory_order_relaxed)) {
++        capture->reason = APS5_POSTMIX_CONTENTION;
++        goto done;
++    }
++    if (!frames) goto unlock;
++    if (!samples || rate != APS5_POSTMIX_RATE || channels != APS5_POSTMIX_CHANNELS ||
++        !capture->samples || !capture->records || !capture->capacity ||
++        capture->capacity > APS5_POSTMIX_FRAMES || capture->frames > capture->capacity ||
++        capture->record_capacity > APS5_POSTMIX_RECORDS) {
++        capture->reason = APS5_POSTMIX_BAD_CALLBACK;
++        goto done;
++    }
++    skipped = frames < capture->skip_remaining ? frames : capture->skip_remaining;
++    capture->skip_remaining -= skipped;
++    if (skipped == frames) goto unlock;
++    if (capture->record_count >= capture->record_capacity) {
++        capture->reason = APS5_POSTMIX_RECORD_LIMIT;
++        goto done;
++    }
++    copied = frames - skipped;
++    if (copied > capture->capacity - capture->frames)
++        copied = capture->capacity - capture->frames;
++    record = &capture->records[capture->record_count++];
++    if (stamp) record->stamp = *stamp;
++    else memset(&record->stamp, 0, sizeof(record->stamp));
++    record->effective_frames = frames;
++    record->skipped_frames = skipped;
++    record->captured_offset = capture->frames;
++    record->captured_frames = copied;
++    memcpy(capture->samples + (size_t)capture->frames * APS5_POSTMIX_CHANNELS,
++           samples + (size_t)skipped * APS5_POSTMIX_CHANNELS,
++           (size_t)copied * APS5_POSTMIX_CHANNELS * sizeof(float));
++    capture->frames += copied;
++    if (atomic_load_explicit(&capture->contended, memory_order_relaxed)) {
++        capture->reason = APS5_POSTMIX_CONTENTION;
++        goto done;
++    }
++    if (capture->frames == capture->capacity) {
++        capture->reason = APS5_POSTMIX_COMPLETE;
++        goto done;
++    }
++    goto unlock;
++done:
++    /* Admission closes atomically before publishing. A contender paused before
++     * setting its flag remains in the count; one that left published its flag
++     * before the release decrement. Neither can masquerade as a complete run. */
++    /* All array/metadata writes precede publication, including partial captures. */
++    aps5_postmix_publish_done(capture);
++unlock:
++    atomic_fetch_sub_explicit(&capture->writer, 1, memory_order_release);
++}
++
++/* Worker-only cancellation. Failure means a producer owns the arrays; retry
++ * later outside RT. A successful acquire guards every non-atomic field. */
++static int aps5_postmix_cancel(struct aps5_postmix_capture *capture)
++{
++    unsigned expected = 0;
++    if (!atomic_compare_exchange_strong_explicit(&capture->writer, &expected, APS5_POSTMIX_CLOSED,
++            memory_order_acquire, memory_order_relaxed))
++        return 0;
++    if (atomic_load_explicit(&capture->state, memory_order_acquire) == APS5_POSTMIX_ARMED) {
++        capture->reason = APS5_POSTMIX_TIMEOUT;
++        atomic_store_explicit(&capture->state, APS5_POSTMIX_DONE, memory_order_release);
++    }
++    return 1;
++}
++
++#ifndef APS5_POSTMIX_WRITE
++#define APS5_POSTMIX_WRITE write
++#endif
++static int aps5_postmix_write_all(int fd, const void *bytes, size_t count)
++{
++    const unsigned char *cursor = bytes;
++    while (count) {
++        ssize_t written = APS5_POSTMIX_WRITE(fd, cursor, count);
++        if (written < 0 && errno == EINTR) continue;
++        if (written <= 0 || (size_t)written > count) return 0;
++        cursor += written;
++        count -= (size_t)written;
++    }
++    return 1;
++}
++static int __attribute__((format(printf, 2, 3))) aps5_postmix_emitf(
++        int fd, const char *format, ...)
++{
++    char text[2048];
++    va_list args;
++    int length;
++    va_start(args, format);
++    length = vsnprintf(text, sizeof(text), format, args);
++    va_end(args);
++    return length >= 0 && (size_t)length < sizeof(text) &&
++           aps5_postmix_write_all(fd, text, (size_t)length);
++}
++static void aps5_postmix_u16(unsigned char *out, uint16_t value)
++{
++    out[0] = (unsigned char)value; out[1] = (unsigned char)(value >> 8);
++}
++static void aps5_postmix_u32(unsigned char *out, uint32_t value)
++{
++    for (unsigned i = 0; i < 4; i++) out[i] = (unsigned char)(value >> (i * 8));
++}
++static const char *aps5_postmix_reason_name(enum aps5_postmix_reason reason)
++{
++    switch (reason) {
++    case APS5_POSTMIX_COMPLETE: return "complete";
++    case APS5_POSTMIX_TIMEOUT: return "timeout";
++    case APS5_POSTMIX_BAD_CALLBACK: return "unsupported_callback";
++    case APS5_POSTMIX_RECORD_LIMIT: return "callback_record_limit";
++    case APS5_POSTMIX_CONTENTION: return "producer_contention";
++    }
++    return "unknown";
++}
++
++/* Worker-only. Both names are reserved exclusively before any data is written.
++ * Any failure removes only the files this invocation actually created. */
++static int aps5_postmix_export(const struct aps5_postmix_capture *capture)
++{
++    char wav_name[112], json_name[112];
++    unsigned char header[58] = {0};
++    uint32_t data_bytes;
++    int wav = -1, metadata = -1, own_wav = 0, own_json = 0, ok = 0;
++    if (atomic_load_explicit(&capture->state, memory_order_acquire) != APS5_POSTMIX_DONE ||
++        capture->frames > capture->capacity || capture->capacity > APS5_POSTMIX_FRAMES ||
++        capture->record_count > capture->record_capacity ||
++        capture->record_capacity > APS5_POSTMIX_RECORDS ||
++        (capture->frames && !capture->samples) ||
++        (capture->record_count && !capture->records))
++        return 0;
++    if (snprintf(wav_name, sizeof(wav_name), "%s.wav", capture->stem) >= (int)sizeof(wav_name) ||
++        snprintf(json_name, sizeof(json_name), "%s.json", capture->stem) >= (int)sizeof(json_name))
++        return 0;
++    wav = openat(capture->directory_fd, wav_name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
++    if (wav < 0) goto cleanup;
++    own_wav = 1;
++    metadata = openat(capture->directory_fd, json_name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
++    if (metadata < 0) goto cleanup;
++    own_json = 1;
++    data_bytes = capture->frames * APS5_POSTMIX_CHANNELS * sizeof(float);
++    memcpy(header, "RIFF", 4); aps5_postmix_u32(header + 4, 50u + data_bytes);
++    memcpy(header + 8, "WAVEfmt ", 8); aps5_postmix_u32(header + 16, 18);
++    aps5_postmix_u16(header + 20, 3); /* WAVE_FORMAT_IEEE_FLOAT, no resampling. */
++    aps5_postmix_u16(header + 22, APS5_POSTMIX_CHANNELS);
++    aps5_postmix_u32(header + 24, APS5_POSTMIX_RATE);
++    aps5_postmix_u32(header + 28, APS5_POSTMIX_RATE * APS5_POSTMIX_CHANNELS * sizeof(float));
++    aps5_postmix_u16(header + 32, APS5_POSTMIX_CHANNELS * sizeof(float));
++    aps5_postmix_u16(header + 34, 32); /* cbSize at 36 remains zero. */
++    memcpy(header + 38, "fact", 4); aps5_postmix_u32(header + 42, 4);
++    aps5_postmix_u32(header + 46, capture->frames);
++    memcpy(header + 50, "data", 4); aps5_postmix_u32(header + 54, data_bytes);
++    if (!aps5_postmix_write_all(wav, header, sizeof(header)) ||
++        !aps5_postmix_write_all(wav, capture->samples, data_bytes))
++        goto cleanup;
++    if (!aps5_postmix_emitf(metadata,
++            "{\"schema\":1,\"source\":\"existing_RemoteIO_postmix_postclamp_bus\","
++            "\"rate\":48000,\"channels\":2,\"sample_format\":\"float32le\","
++            "\"requested_frames\":%u,\"captured_frames\":%u,\"skip_frames\":%u,"
++            "\"result\":\"%s\",\"host_timebase_numer\":%u,\"host_timebase_denom\":%u,"
++            "\"record_count\":%u,\"microphone_used\":false,\"callbacks\":[\n",
++            capture->capacity, capture->frames, capture->requested_skip, aps5_postmix_reason_name(capture->reason),
++            capture->timebase_numer, capture->timebase_denom, capture->record_count))
++        goto cleanup;
++    for (uint32_t i = 0; i < capture->record_count; i++) {
++        const struct aps5_postmix_record *record = &capture->records[i];
++        const struct aps5_postmix_stamp *stamp = &record->stamp;
++        char sample_time[64] = "null";
++        if (stamp->sample_time_valid && isfinite(stamp->sample_time))
++            snprintf(sample_time, sizeof(sample_time), "%.17g", stamp->sample_time);
++        if (!aps5_postmix_emitf(metadata,
++                "%s{\"epoch\":%llu,\"host_ticks\":%llu,\"host_time_valid\":%s,"
++                "\"sample_time\":%s,\"timestamp_flags\":%u,\"action_flags\":%u,"
++                "\"requested_frames\":%u,\"effective_frames\":%u,\"skipped_frames\":%u,"
++                "\"captured_offset\":%u,\"captured_frames\":%u}\n",
++                i ? "," : "", (unsigned long long)stamp->epoch,
++                (unsigned long long)stamp->host_ticks, stamp->host_time_valid ? "true" : "false",
++                sample_time, stamp->timestamp_flags, stamp->action_flags,
++                stamp->requested_frames, record->effective_frames, record->skipped_frames,
++                record->captured_offset, record->captured_frames))
++            goto cleanup;
++    }
++    if (!aps5_postmix_emitf(metadata, "]}\n")) goto cleanup;
++    if (close(wav)) { wav = -1; goto cleanup; }
++    wav = -1;
++    if (close(metadata)) { metadata = -1; goto cleanup; }
++    metadata = -1;
++    ok = 1;
++cleanup:
++    if (wav >= 0) close(wav);
++    if (metadata >= 0) close(metadata);
++    if (!ok) {
++        if (own_wav) unlinkat(capture->directory_fd, wav_name, 0);
++        if (own_json) unlinkat(capture->directory_fd, json_name, 0);
++    }
++    return ok;
++}
++
++static void *aps5_postmix_worker(void *argument)
++{
++    struct aps5_postmix_capture *capture = argument;
++    const struct timespec pause = {0, 25000000};
++    int success;
++    while (atomic_load_explicit(&capture->state, memory_order_acquire) == APS5_POSTMIX_ARMED) {
++        uint64_t now = aps5_postmix_monotonic_ns();
++        if ((!now || now >= capture->deadline_ns) && aps5_postmix_cancel(capture))
++            break;
++        nanosleep(&pause, NULL);
++    }
++    success = aps5_postmix_export(capture);
++    fprintf(stderr, "[audio-postmix-capture] %s frames=%u records=%u result=%s stem=%s\n",
++            success ? "exported" : "export_failed", capture->frames,
++            capture->record_count, aps5_postmix_reason_name(capture->reason), capture->stem);
++    close(capture->directory_fd);
++    /* No future producer can pass its second ARMED check. Context itself stays
++     * process-owned; its state remains valid even after the arrays are freed. */
++    free(capture->samples);
++    free(capture->records);
++    atomic_store_explicit(&capture->state,
++            success ? APS5_POSTMIX_EXPORTED : APS5_POSTMIX_EXPORT_FAILED, memory_order_release);
++    return NULL;
++}
++
++static void aps5_postmix_pretouch(void *memory, size_t bytes)
++{
++    volatile unsigned char *pages = memory;
++    for (size_t i = 0; i < bytes; i += 4096) pages[i] = 0;
++    if (bytes) pages[bytes - 1] = 0;
++}
++
++/* Called once before AudioOutputUnitStart, outside the RT callback. Output
++ * format is observed, not changed. Maximum RAM and capture duration are fixed. */
++static int aps5_postmix_begin(struct aps5_postmix_capture *capture,
++        const char *flag, const char *skip_text, const char *documents,
++        uint32_t rate, uint32_t channels, uint32_t timebase_numer, uint32_t timebase_denom)
++{
++    char directory[2048];
++    uint32_t skip;
++    uint64_t now;
++    pthread_t thread;
++    pthread_attr_t attributes;
++    if (!flag || strcmp(flag, "1")) return 0;
++#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
++    return -1;
++#endif
++    if (rate != APS5_POSTMIX_RATE || channels != APS5_POSTMIX_CHANNELS ||
++        !documents || !*documents || !aps5_postmix_parse_skip(skip_text, &skip))
++        return -1;
++    now = aps5_postmix_monotonic_ns();
++    if (!now || snprintf(directory, sizeof(directory), "%s/anyps5-audio-captures", documents) >= (int)sizeof(directory))
++        return -1;
++    if (mkdir(directory, 0700) && errno != EEXIST) return -1;
++    capture->directory_fd = open(directory, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
++    if (capture->directory_fd < 0) return -1;
++    capture->samples = calloc((size_t)APS5_POSTMIX_FRAMES * APS5_POSTMIX_CHANNELS, sizeof(float));
++    capture->records = calloc(APS5_POSTMIX_RECORDS, sizeof(*capture->records));
++    if (!capture->samples || !capture->records) goto fail;
++    aps5_postmix_pretouch(capture->samples, (size_t)APS5_POSTMIX_FRAMES * APS5_POSTMIX_CHANNELS * sizeof(float));
++    aps5_postmix_pretouch(capture->records, APS5_POSTMIX_RECORDS * sizeof(*capture->records));
++    capture->capacity = APS5_POSTMIX_FRAMES;
++    capture->record_capacity = APS5_POSTMIX_RECORDS;
++    capture->requested_skip = capture->skip_remaining = skip;
++    capture->timebase_numer = timebase_numer;
++    capture->timebase_denom = timebase_denom;
++    capture->deadline_ns = now + ((uint64_t)skip / APS5_POSTMIX_RATE + 45u) * 1000000000ull;
++    snprintf(capture->stem, sizeof(capture->stem), "postmix-%ld-%llu",
++            (long)getpid(), (unsigned long long)now);
++    if (pthread_attr_init(&attributes)) goto fail;
++    if (pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_DETACHED)) {
++        pthread_attr_destroy(&attributes);
++        goto fail;
++    }
++    atomic_store_explicit(&capture->state, APS5_POSTMIX_ARMED, memory_order_release);
++    if (pthread_create(&thread, &attributes, aps5_postmix_worker, capture)) {
++        pthread_attr_destroy(&attributes);
++        goto fail;
++    }
++    pthread_attr_destroy(&attributes);
++    capture->enabled = 1;
++    fprintf(stderr, "[audio-postmix-capture] armed max_frames=480000 skip_frames=%u records=4096\n", skip);
++    return 1;
++fail:
++    atomic_store_explicit(&capture->state, APS5_POSTMIX_OFF, memory_order_release);
++    free(capture->samples); capture->samples = NULL;
++    free(capture->records); capture->records = NULL;
++    close(capture->directory_fd);
++    return -1;
++}
++#endif

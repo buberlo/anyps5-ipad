@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "kind": "bounded_physical_ipad_postmix_audio_period_replay_evidence",
+  "status": "native49_installed_private_postmix_capture_numerically_verified_native48_restored_audio_cause_quality_and_gameplay_pending",
+  "candidate": {
+    "nativeHostBuild": 49,
+    "temporaryInstallation": true,
+    "restoredNativeHostBuild": 48,
+    "anyps5PatchCount": 60,
+    "normalMemoryTracking": true,
+    "nativeChange": "Only native audio_null_ios.o and archive symbol index; original mixer/ring/timing/output remain, with bounded postclamp capture hook.",
+    "sourcePatch": {
+      "path": "patches/madeira/0049-bounded-postmix-audio-capture.patch",
+      "sha256": "ad68ef2c7cfa42d4c5c8409fa6bea4984643f1ee510cc3584b7f7a5051e4637c"
+    },
+    "sourceHashes": {
+      "audio_null_ios.c": "f34e9e8891b7ffce8aebc8982e3eaadd39d8beaf755865a1fa2e1f99a80444d4",
+      "aps5_audio_postmix_capture.h": "ef6480f5b043d93c98476a25852da933e5660287ec106dd618b0705405381979"
+    },
+    "buildEvidence": {
+      "path": "docs/evidence/audio-postmix-capture-host-build-20261009.json",
+      "sha256": "8f41fc118508e8ca9d8966823db1a9cbb2f11f2c60ae8035fcc16f8ba8b43a4a",
+      "historicalBuiltCheckpointPreserved": true
+    },
+    "native49AppMachOSha256": "e45901096c08b7bf00715ac5f007cad4512d5be1ce1cfed1532d9680612d6cd3",
+    "native48AppMachOSha256": "707010f20df7dfe127ab4a240b4a3d3bc99e81aa0f837ff7faef976ef17a8682",
+    "captureGate": "MADEIRA_AUDIO_CAPTURE_POSTMIX=1",
+    "gateDefaultOff": true
+  },
+  "session": {
+    "nominalRunSeconds": 360,
+    "childOperationSeconds": 414.034803208,
+    "inputActions": 0,
+    "menuOnly": true,
+    "reviewedMenuSnapshotSeconds": [
+      60,
+      220,
+      240,
+      360
+    ],
+    "snapshotObservation": "Complete Canfield selection menu, status and touch controls are visible in the reviewed local snapshots; screenshots are not published.",
+    "unbrokenVisualSceneProved": false,
+    "exactAudioWindowMappedToLaunchOrScreenshots": false,
+    "timingBoundary": "Skip is220 seconds of rendered postmix frames after native endpoint arming. Callback metadata proves captured endpoint continuity, but lacks a verified mapping from app-launch wall time to exact capture/screenshot interval."
+  },
+  "capture": {
+    "source": "Existing RemoteIO stereo postmix bus immediately after existing clamp and before callback epoch publication; before hardware route or volume.",
+    "microphoneUsed": false,
+    "hardwareRouteOrVolumeChanged": false,
+    "rateHz": 48000,
+    "channels": 2,
+    "format": "float32le",
+    "wavBytes": 3840058,
+    "pcmBytes": 3840000,
+    "frames": 480000,
+    "renderedSeconds": 10,
+    "result": "complete",
+    "callbackRecords": 470,
+    "skipRenderedFrames": 10560000,
+    "skipRenderedSeconds": 220,
+    "capturedFrameDistribution": {
+      "512": 1,
+      "1024": 468,
+      "256": 1
+    },
+    "requestedAndEffectiveCallbackFrames": 1024,
+    "firstCapturedCallbackSkippedFrames": 512,
+    "finiteSamples": 960000,
+    "nonfiniteSamples": 0,
+    "atOrBeyondUnitSamples": 0,
+    "exactZeroSamples": 0,
+    "channelPeaks": [
+      0.22295379638671875,
+      0.20521773397922516
+    ],
+    "meanAbsoluteSample": 0.08266270217330643
+  },
+  "callbackContinuity": {
+    "comparedTransitions": 469,
+    "nonUnitEpochSteps": 0,
+    "sampleTimeGapMaximumAbsoluteFrames": 0,
+    "allHostTimeAndSampleTimeFlagsValid": true,
+    "hostTimestampJitterMaximumAbsoluteMilliseconds": 0.0001666666666686467,
+    "hostTimestampJitterP99AbsoluteMilliseconds": 0.00012500000000059686,
+    "boundary": "No callback epoch or sample-time gap within this capture. These measurements do not establish correct music, source-buffer advancement or hardware playback."
+  },
+  "periodReplay": {
+    "entireActualPcmByteEqualAtLagFrames": 1024,
+    "periodMilliseconds": 21.333333333333332,
+    "nominalRepeatFrequencyHz": 46.875,
+    "completeCallbackBlocks": 468,
+    "distinctCompleteCallbackByteBlocks": 1,
+    "frameJumpsAbovePoint03": 469,
+    "largeJumpsExactlyAtCapturedCallbackBoundaries": true,
+    "largeJumpMinimum": 0.18690718337893486,
+    "largeJumpMaximum": 0.18690718337893486,
+    "interpretation": "The captured endpoint waveform repeats exactly at one 1024-frame period with the same discontinuity at each recorded callback boundary. This is a real byte-level property of the captured postmix audio; it does not locate the cause or prove every musical source is frozen."
+  },
+  "nativeAndSourceDiagnostics": {
+    "sourceStatsPlacement": "Existing native ReleaseBuffer scratch statistics, before ring write publication; aggregate levels, not PCM hashes.",
+    "loggedSlot0StableMeanAbsolute": 0.0827,
+    "loggedSlot0StablePeak": 0.223,
+    "loggedSlot0StableRows": 23,
+    "loggedSlot1AllSourceStatsZero": true,
+    "sourceSlotIdentityIsNotPostmixIdentity": true,
+    "nativePacing": {
+      "streamsObserved": 2,
+      "pacingRowsPerStream": 35,
+      "reportedShortMillisecondsByAnonymousStream": [
+        0.0,
+        21.3
+      ],
+      "reportedShortCallbacksByAnonymousStream": [
+        0,
+        1
+      ],
+      "reportedNonzeroShortRowsTotal": 1,
+      "reportedClampedSamplesAllRows": 0,
+      "boundary": "One reported startup shortage is separate from the continuous capture; native timing throughput and scratch average/peak do not prove the origin of the repeated period."
+    },
+    "readOnlyRingReview": "Steady-state native release/mix and capture append pointers advance; no per-callback native rewind was found. Actual HLE ingress/native scratch byte hashes are still needed to locate the first stale boundary."
+  },
+  "restoration": {
+    "parentReceiptSuccessful": true,
+    "childReceiptSuccessful": true,
+    "native49InstalledVersionVerified": true,
+    "native48ReinstalledVersionVerified": true,
+    "nativeMachOInputsRehashed": true,
+    "installedRuntimeReadbackFilesVerified": 56,
+    "restoredRuntimeFilesRehashedAgainstBackup": 56,
+    "configLibraryAndManifestByteRestored": true,
+    "parentMetadataAlsoByteVerifiedBefore49After49AndAfter48": true,
+    "priorDiagnosticFilesRehashedAfterRestore": 7,
+    "onlyOwnMainAndHelperProcessesClosedAndAbsent": true,
+    "parentRollbackErrors": 0,
+    "childRollbackErrors": 0,
+    "forcedProcessClosureIsNotCleanGuestExit": true
+  },
+  "evidence": {
+    "privateMediaLogsImagesAndReceiptsKeptLocalOutsideGit": true,
+    "anonymousSha256References": {
+      "privateWav": "6836a793d7af2c2e7410ac49b11c76e1c1f9a9a258d94fb893995c66bed7a787",
+      "privateMetadata": "c4f307173133a2941960a4cd6ceafc5c58ed0dd5637767a26cda0fbaf567b927",
+      "privateClosedLog": "a3d66292a8bfafb6d7ac569fe5677ac653d97d45b0d9f604a4e45a2236c5c349",
+      "privateAuthorNumericReview": "173d25e5c565136894e97d764f95dd191862c6e36599858fb94ebd136081ddad",
+      "parentReceipt": "56b10161159e9394bfc5161650e6a369ba9e2af22b6e18fa91a28f26c5e1dde0",
+      "childReceipt": "7f2ae2b9c2a2d33d521f3b37ea64a3de0d7e2fdf36c5b143b04582b75e344adc",
+      "rollbackReport": "b14baef890a14a99fc7f8d0ad0f4fdf91a739893d041873597810655979f1701",
+      "rootRestoreVerification": "064dfd7135632e526cb9fda8e7b71b7528622e3e8afb8fb8a4357e7048d34f8a",
+      "independentNumericRestoreReview": "8277c8fed33721162531391868c096d5c45896dee0d24a1d525aadb382660879",
+      "originalReadOnlyAnalysis": "0a1299d144bc58b8328b464db918f4c878ef56b8c7d8f7c80f23cc48761d6f5a",
+      "parentInstalled49Verification": "751ffe6869c7899f7e40cf48d52b0fd5e9b6f806fd70544238c378db4efd88cf",
+      "parentRestored48Verification": "00dc7cc8812b97ab9b0b6b4a05a4ababa78694742f5774e3b86a61e043bb69b0"
+    }
+  },
+  "acceptance": {
+    "captureBytesAndMetadataQualified": true,
+    "causeLocated": false,
+    "audibleQualityAccepted": false,
+    "hardwarePlaybackAccepted": false,
+    "gameplayAccepted": false,
+    "fullGameAccepted": false,
+    "performanceAccepted": false,
+    "matchedBeforeAfterRun": false,
+    "captureOverheadMeasured": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "This session sent no controls and remained in menu context; it does not qualify playable Solitaire.",
+    "Ten rendered seconds of valid postmix capture are not ten seconds of correctly advancing music.",
+    "No pre-ring/HLE byte capture exists here; source statistics are aggregates. The stale period may originate earlier than the native endpoint, which is not yet proved.",
+    "The numerical capture does not substitute for listening or verify the hardware audio route.",
+    "Sparse menu snapshots do not prove unbroken foreground output; exact capture-to-launch/screenshot time mapping was not established.",
+    "No matched benchmark, unique displayed-frame measurement, speed improvement, save/load, lifecycle, sustained memory or thermal acceptance is claimed.",
+    "No private PCM, game assets, raw logs, images, process/device identifiers, network addresses, pairing data or private paths are included."
+  ]
+}

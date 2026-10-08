@@ -662,6 +662,48 @@ earlier pre-installation status; the
 [separate device record](evidence/ipad-solitaire-build48-whole-row-telemetry-20261009.json)
 contains the later installation, actions, telemetry and verified runtime rollback.
 
+## Bounded postmix audio capture: Madeira0049, 2026-10-09
+
+Madeira0049 adds an explicitly enabled diagnostic at the existing stereo output,
+after mixing and clamping. It records at most 480,000 float32 frames at 48 kHz
+and their callback timestamps. The default path remains unchanged. Setup
+preallocates and touches its bounded arrays before starting RemoteIO; the render
+callback performs bounded copies and lock-free publication, with no allocation,
+file I/O, logging or blocking wait. A separate worker writes private WAV/JSON
+files, preserving existing files and removing only its own incomplete exports.
+
+Exact `MADEIRA_AUDIO_CAPTURE_POSTMIX=1` enables the one-shot capture.
+`MADEIRA_AUDIO_CAPTURE_SKIP_FRAMES` accepts a strict unsigned decimal from zero
+through 28,800,000; invalid values reject setup. The skip counts rendered audio
+frames, not game frames. The worker deadline includes the skipped audio duration.
+It cannot export or free a buffer while a producer owns it; a permanently stalled
+producer can therefore delay export. The implementation neither changes the
+mixer nor repairs an audio defect.
+
+Synthetic checks compile the production helper and extracted original/current
+render callback. Six gate values, callback byte parity, full capture bounds,
+producer ownership, timestamp metadata, export failures and file collisions
+pass ASan/UBSan. The actual iPhoneOS translation unit compiles; the isolated
+Build49 app links and passes deep/strict signature checks. Only the audio object
+in the native ntdll archive changes; the other 36 members, native48 win32u,
+FEX, PE and MoltenVK inputs are preserved. See the dated
+[source/build checkpoint](evidence/audio-postmix-capture-host-build-20261009.json).
+
+A separate temporary iPad run captures ten continuous seconds of postmix audio
+in a menu-only Solitaire session. Reviewed screenshots at nominal 220 and
+240 seconds show the complete Canfield selection menu. This does not establish
+continuous visual output between captures. The entire captured PCM repeats
+exactly every 1,024 frames, including
+partial edge records; all 468 complete periods are byte-identical. Callback
+epochs and sample timestamps advance continuously, and the recording has no
+nonfinite samples or full-scale clipping. This localizes a concrete repeated
+period at the postmix boundary; it does not establish which earlier component
+causes it or accept audible quality. No game input is sent in this run. Native48,
+the original runtime, configuration, library, manifest and prior diagnostics
+are restored and verified. See the separate
+[device/audio record](evidence/ipad-solitaire-audio-period-replay-20261009.json).
+Captured media and raw diagnostics remain private and outside Git.
+
 ## Native x64 suspension and wait results: 2026-10-08
 
 Madeira `0037-target-published-x64-suspend.patch` and Wine

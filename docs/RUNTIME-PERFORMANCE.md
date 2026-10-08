@@ -27,6 +27,27 @@ changes affect the shared execution and measurement paths, not the launcher.
   defaults this switch to 1 because that title bar is invisible. Set it to 0
   before launch to restore title diagnostics.
 
+## Private bounded audio capture
+
+Madeira0049 provides an optional postmix diagnostic, after the existing stereo
+mix and clamp. Set exact `MADEIRA_AUDIO_CAPTURE_POSTMIX=1` before native runtime
+initialization to capture at most 480,000 float32 stereo frames at 48 kHz.
+`MADEIRA_AUDIO_CAPTURE_SKIP_FRAMES` defaults to zero and accepts strict unsigned
+decimal values through 28,800,000. It skips rendered audio frames; neither the
+skip nor the capture duration is a game-time measurement.
+
+The callback uses preallocated arrays and bounded copies. A non-real-time worker
+exports a private WAV and timestamp/epoch JSON beneath the app's Documents
+directory, without overwriting existing files. Invalid setup, callback contention,
+record limits or a timeout produce explicit incomplete results. No export/free
+occurs while a producer owns the arrays. Keep this switch off during performance
+qualification: callback copy overhead is not measured or accepted.
+
+The separate [iPad recording analysis](evidence/ipad-solitaire-audio-period-replay-20261009.json)
+finds an exact repeating 1,024-frame period with continuous callback timing.
+This is a diagnostic observation, not an audio fix or quality acceptance.
+Captured audio and raw metadata stay local, outside the repository.
+
 ## Three swapchain images
 
 The HLE now requests three images on initial creation and resize. Set

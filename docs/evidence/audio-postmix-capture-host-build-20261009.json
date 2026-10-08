@@ -1,0 +1,201 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "bounded_private_postmix_audio_capture_source_and_native_host_build",
+  "status": "source_focused_checks_and_native_build_sign_passed_not_installed",
+  "patch": "patches/madeira/0049-bounded-postmix-audio-capture.patch",
+  "patchSha256": "ad68ef2c7cfa42d4c5c8409fa6bea4984643f1ee510cc3584b7f7a5051e4637c",
+  "implementation": {
+    "changedSource": "build/ntdll-unix/audio_null_ios.c",
+    "newHelper": "build/ntdll-unix/aps5_audio_postmix_capture.h",
+    "placement": "After existing mixed output clamping and before the existing callback-epoch release increment. No mixer, stream position, format or AudioUnit route changes.",
+    "enableVariable": "MADEIRA_AUDIO_CAPTURE_POSTMIX",
+    "enabledValue": "1",
+    "defaultOff": true,
+    "skipVariable": "MADEIRA_AUDIO_CAPTURE_SKIP_FRAMES",
+    "skipDefault": 0,
+    "skipMaximumRenderedFrames": 28800000,
+    "skipParsing": "Strict unsigned decimal; invalid, overflow or out-of-range rejects capture setup.",
+    "format": {
+      "sampleRate": 48000,
+      "channels": 2,
+      "sampleFormat": "float32le",
+      "capturedFrameMaximum": 480000,
+      "renderedAudioSeconds": 10,
+      "sampleBufferBytes": 3840000,
+      "callbackRecordMaximum": 4096
+    },
+    "deadline": "Monotonic endpoint-creation time plus floor(skip_frames / 48000) + 45 seconds. Deadline closes only an unowned producer admission word.",
+    "realTimePath": "Only bounded copies, scalar metadata and nonblocking lock-free atomics using preallocated, pre-touched arrays. No allocation, clock query, file I/O, logging or blocking lock/wait in the capture callback path.",
+    "producerOwnership": "Packed unsigned CLOSED admission bit plus participant count. Only the sole producer writes arrays; contending callbacks return without copying. Closing while another admitted participant remains marks producer_contention. Worker acquires DONE before export/free.",
+    "workerOutput": "One private Documents/anyps5-audio-captures/postmix-<pid>-<monotonicns>.wav plus matching .json with callback timestamps/epoch, requested/effective/skipped/captured frame counts and host timebase.",
+    "fileSafety": "Worker-only O_EXCL/O_NOFOLLOW files mode0600; reserves both names before writing; rolls back only newly owned files on failure, preserving existing files.",
+    "microphoneUsed": false,
+    "networkUsed": false,
+    "captureContentPubliclyPublished": false,
+    "failureResults": [
+      "timeout",
+      "unsupported_callback",
+      "callback_record_limit",
+      "producer_contention",
+      "export_failed"
+    ]
+  },
+  "sourceProof": {
+    "baselineAudioSourceSha256": "87d58baf633fe7f1ca6b6b14c549d46666b9548cdc704cd4fcd40d7b08f93640",
+    "afterAudioSourceSha256": "f34e9e8891b7ffce8aebc8982e3eaadd39d8beaf755865a1fa2e1f99a80444d4",
+    "helperSha256": "ef6480f5b043d93c98476a25852da933e5660287ec106dd618b0705405381979",
+    "fixture": "tools/checks/audio_postmix_capture.c",
+    "fixtureSha256": "cbaa9d55026dd5cf94e6fc3ba6af4cec810991790e5ceb6f8f2f01a94611a6cb",
+    "checker": "scripts/check-audio-postmix-capture.py",
+    "checkerSha256": "0e88315ba3ac6951e6dc633621382cac2e4855ee2728025c96d72c71db448e47",
+    "candidateManifestSha256": "e0a968394ef16ee6971129625b26ea6fcc2f1aa0e174e028a1c65a07c5ea8b90",
+    "isolatedTwoPathForwardReverseByteExact": true,
+    "roundtripReportSha256": "ca294058c0109515c551658c273ea3d9b4cafda78489f9b20d8456abbb4fe369"
+  },
+  "focusedNativeQualification": {
+    "scope": "Production capture/export/worker code and extracted actual before/after mixer/render callback text, using explicit Core Audio declaration mocks and original synthetic samples.",
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "flags": [
+      null,
+      "0",
+      "yes",
+      "01",
+      "true",
+      "1"
+    ],
+    "checksPerFlag": [
+      11860,
+      11860,
+      11860,
+      11860,
+      11860,
+      12337
+    ],
+    "actualCallbackOutputByteParity": true,
+    "testedOutputByteCapacities": "0 through140 inclusive, including truncated/non-frame-aligned buffers; post-sum clamp independent oracle; ring positions/clamp count/callback epoch unchanged.",
+    "tests": [
+      "All six gate values; inactive setup has no capture allocations or worker.",
+      "Skip across callbacks, prefix capture cap, record overflow, unsupported format/null source, zero/cancelled admission and untouched guards/tail.",
+      "Deterministic delayed-contender and CLOSED-with-active-participant controls; no concurrent stress or ThreadSanitizer qualification.",
+      "Worker full 480000-frame export with 469 callback records and final 768-frame partial callback.",
+      "Float WAV framing and timestamp metadata; nonfinite sample_time becomes null.",
+      "Short writes and EINTR succeed; partial ENOSPC, zero-write, EIO and invalid-directory exports fail with newly created file cleanup.",
+      "Existing WAV/metadata collision is not overwritten or deleted; allocation failure rolls back buffers and closes the directory."
+    ],
+    "matchedOriginalCallbackNegativeControl": true,
+    "baselineControlExitCode": -6,
+    "ownerReportSha256": "ecc7c6f56eccbaa0788e9ffb9b046accfba4f9892f3a991a5b1beb5f80ec264a",
+    "independentReportSha256": "792752c2d97a3209afeffee93e0c8ecd0abcd1cc0ce6754600ada885fbad3bbd",
+    "independentSameSixRunsPassed": true,
+    "fullProductionIosAudioTuSyntaxPassed": true,
+    "syntaxSdk": "iPhoneOS27.0",
+    "syntaxReportSha256": "f872914c61aa0238363a57a460b0c3ad89abf019eada6f70dbd493c65dd44443",
+    "syntaxWarning": "One inherited AUDCLNT_E_NOT_INITIALIZED macro redefinition; no new compile error."
+  },
+  "nativeHostBuild": {
+    "build": 49,
+    "bundleId": "com.buberlo.anyps5ipad",
+    "displayName": "madeira-anyps5",
+    "configuration": "Debug",
+    "swiftOptimization": "-O",
+    "cOptimization": 2,
+    "debugInformation": "dwarf-with-dsym",
+    "appMachOSha256": "e45901096c08b7bf00715ac5f007cad4512d5be1ce1cfed1532d9680612d6cd3",
+    "appMachOBytes": 32281440,
+    "architecture": "arm64",
+    "matchingDsymUuid": true,
+    "actualAudioObjectSha256": "a59f17bc2945a508276715b2246f302de77b024f5e72a81442a2e74112ac2adf",
+    "originalNative48NtdllArchiveSha256": "902955f7d71c8d0c48c4e034da4fa4b7a54c68f34020655203e0add3aee83f21",
+    "native49NtdllArchiveSha256": "64cb8fc7f6461fbfc06552439a5f04ef777b28eb2fbccefe7f881182627c7d39",
+    "ntdllOriginalObjectCount": 37,
+    "ntdllChangedObjects": [
+      "audio_null_ios.o"
+    ],
+    "ntdllUnchangedObjectCount": 36,
+    "archiveSymbolIndexRegenerated": true,
+    "archiveMemberOrderPreserved": true,
+    "correctedNative48Win32uArchiveSha256": "8383c94892774f12b4f46857f963e505298b5d5622235c05a2ac89218027aa02",
+    "entireNative48Win32uArchivePreserved": true,
+    "preservedOtherLocalStaticArchiveCount": 15,
+    "preservedExternalFexArchiveCount": 7,
+    "preservedEmbeddedArm64ecPeFiles": 170,
+    "requiredArm64ecComponents": {
+      "ntdll.dll": {
+        "sha256": "0c595afa3887b3dcebf827811dce303009ea1f21eb43098969290a9a09747184",
+        "bytes": 1572864,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "xtajit64.dll": {
+        "sha256": "1232184daa17913cfdcaca2e4d353b2293368d9195ca077dca533345a2b42d3e",
+        "bytes": 5865472,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "winevulkan.dll": {
+        "sha256": "993b43f4fb1b165fcd9edceaeed99d21773c6369037520305c4729b47913800e",
+        "bytes": 917504,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      },
+      "vulkan-1.dll": {
+        "sha256": "936895102beaa70c16c154745127bceebe62fe4877c1f9490acc39e58ab70b20",
+        "bytes": 655360,
+        "machine": "0x8664",
+        "arm64ec_code_map": true
+      }
+    },
+    "moltenvkSha256": "2a2ef8c70bd7cdf6744daf4f0b5eb3bb425324307ef923cb3f4a0b3222513d84",
+    "originalNative48LayoutFilesRehashedUnchanged": 490,
+    "privateLayoutOnlyChangedArchive": "Madeira/app/Madeira/libntdll_unix.a",
+    "fexRebuilt": false,
+    "peRebuilt": false,
+    "moltenvkRebuilt": false,
+    "hleRebuilt": false,
+    "captureMarkerLinkedInActualApp": true,
+    "codesignDeepStrictVerified": true,
+    "signedEntitlementsAndProfilesMatchNative48": true,
+    "getTaskAllow": true,
+    "increasedMemoryLimit": true,
+    "extendedVirtualAddressing": true,
+    "cachedProfilesUnexpiredAndTargetCovered": true,
+    "sourceAllowJitOmittedByIosSigningSameAsNative48": true,
+    "jitHelperBuild": 49,
+    "jitHelperMachOSha256": "2dc909ae28b8b1712329bb34da346fe6d6340e337de90ca83d9041390fbd1253",
+    "profileSha256": "375105fce11ac00aa8c6ad225d30a111318de03f2881aedd72d4fb0b40be18e0",
+    "provisioningUpdatesAllowed": false,
+    "buildReportSha256": "c7e1ee06db13717a23cefc2dbe33a70718d868229f5d3ce06c27c5b2bc7b7697",
+    "provenanceManifestSha256": "37ea8b75aedaab89812171099cb7d45cda81262313782e1958a0c716326ae149",
+    "appFileManifestSha256": "61a21014fa99dd6491104b3a0eea9256c5806268055a6085376707757587e79c",
+    "actualDependencyManifestSha256": "e23d55f9f0e0a7bdba89a0759f0e7f3791a63e11df518f7819a2e77d819b34f8",
+    "nativeCommandSha256": "ca3716ccae37bb5de87a360e2d64391e16cab251d45da0b182baf87263771dae",
+    "nativeCompileLogSha256": "9cca7e67f40960c954f7f7435fb417cab166c616447748f8b08d54f4ff714945",
+    "appBuildCommandSha256": "5ddd893ed878057d34f6685bf137b2b86af1b1ce0a15bcf8cfd64ad903af029d",
+    "appBuildLogSha256": "559eb51ee1e206b30365f46054ee942f2eea5321a38181376d74d43394f071eb",
+    "independentReadonlyBuildSignProfileReviewPassed": true,
+    "independentReadonlyReviewReportSha256": "31d228d3c8e749900d41e3da7c2ac00c4461cf37e8deac74deaaf1e48aa39a8c"
+  },
+  "boundaries": {
+    "installed": false,
+    "launched": false,
+    "deviceTested": false,
+    "actualAppAudioCaptured": false,
+    "audibleQualityAccepted": false,
+    "callbackOverheadMeasured": false,
+    "gameplayPerformanceAccepted": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "480000 frames represents 10 seconds of rendered 48k audio; callback timestamp/epoch metadata is needed to establish wall-clock continuity.",
+    "Capture format is observed and requires existing 48k stereo output; no resampling or hidden format changes.",
+    "A permanently stalled active producer can delay export indefinitely. Buffers remain bounded and are never exported/freed while actively owned.",
+    "The synthetic fixture mocks Core Audio declarations. Full actual iOS TU compile and app link/sign are additional proof, but no AudioUnit/device capture or audible-quality proof.",
+    "Source/function parity does not qualify the opt-in callback copy cost on hardware.",
+    "Codesign and cached-profile checks do not prove device installation, JIT activation, runtime or sound quality.",
+    "No private captured audio, game assets, raw diagnostics, provisioning identities or absolute private paths are included in this record."
+  ]
+}

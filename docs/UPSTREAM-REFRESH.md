@@ -162,9 +162,10 @@ on the M2 iPad with exit code 0. This covers the full guest memory test, includi
 configured arena bounds, inaccessible middle-page lock rejection and protection
 restoration. It does not qualify Solitaire rendering or audio.
 
-The complete exception test still fails on the device: self-delivery succeeds,
-but its first busy-thread delivery expects a second handler call and sees only
-one. Wine's native context snapshot/cache path does not establish delivery of the
+Before the native signal repair below, the complete exception test failed on
+the device: self-delivery succeeded,
+but its first busy-thread delivery expected a second handler call and saw only
+one. Wine's native context snapshot/cache path did not establish delivery of the
 modified x86 context to the running FEX thread.
 
 A private, default-off native Wine/Madeira prototype tried FEX's existing suspend
@@ -180,6 +181,50 @@ Interpolation guards and private shader replay pass locally. A rendered iPad
 draw with these updated libraries remains unqualified. See the
 [device result record](evidence/ipad-contract-followup-20261008.json), which keeps
 memory success separate from incomplete exception and graphics qualification.
+
+## Target-published x64 suspension: Build 35
+
+The native Wine/Madeira path now offers `APS5_X64_SIGNAL_SUSPEND=1`, set before
+Wine initialization. It is default-off; it is not a blanket replacement for
+Wine's WoW64 or other-process suspension. `APS5_X64_SIGNAL_TRACE=1` enables its
+per-delivery diagnostics separately. No new FEX source modification is used.
+
+Wine's ordinary Mach signal sender cannot address these same-task Wine
+pseudo-processes through its absent process port. The new path resolves the
+initialized AMD64 target's Mach thread to a native pthread and sends SIGUSR1.
+The server creates a pending context; the target itself publishes it through
+`wait_suspend`, so Get/Set/Resume use actual target state rather than a cached
+native snapshot.
+
+For translated code, the existing FEX exception reconstruction produces the
+interrupted x64 state. Native ntdll consumes only an armed private suspend
+exception and passes that state to Wine's suspension handshake. Native ARM64EC
+pool aliases are resolved before checking the EC bitmap: the simulation flag
+alone is insufficient during exception dispatch. A redirected x64 PC enters the
+emulation dispatcher; an unchanged native context remains native. The handoff
+preserves the SysV red zone.
+
+Native waits need an additional correction. Their suspended context contains
+arguments before the syscall result exists. The dispatcher records the actual
+result when the original syscall finishes; NtContinue restores it only to the
+matching original PC/SP. A synthetic success value would break timeouts. The
+extended guest test checks ten actual event timeouts and ten signaled waits,
+as well as all original busy, semaphore, mutex, wait-exit and finished-target
+checks.
+
+Three complete 421-delivery runs pass on the M2 iPad with Build 34. The extended
+441-delivery contract passes on Builds 34 and 35, including preservation of real
+`STATUS_TIMEOUT` (`0x102`) and success results. The full guest-memory test also
+passes on Build 35 with this path enabled. Local repeated host results and source
+hashes are in the [Build 35 record](evidence/ipad-target-published-suspend-20261008.json).
+
+A bounded Solitaire run with the updated HLE libraries, native suspension and
+normal memory tracking reaches the game entry and a Vulkan device, then faults
+in `UnityGfxDeviceWorker` on a read of `0x30`. This does not establish playable
+output, device interpolation correctness or audio quality. The actual pre-test
+runtime hashes, manifest, configuration and library are restored. Build 35 stays
+installed with the new native path default-off. Further game qualification is
+required before enabling it as a general default.
 
 ## Runtime qualification after integration
 

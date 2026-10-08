@@ -17,6 +17,26 @@ Apply with `scripts/apply-patches.sh`. Reverse with
 `scripts/apply-patches.sh --reverse`. The submodules in git stay at the
 upstream commits; the patches are the delta.
 
+## Native x64 suspension and wait results: 2026-10-08
+
+Madeira `0037-target-published-x64-suspend.patch` and Wine
+`0003-target-published-x64-suspend.patch` add an opt-in same-task AMD64
+SIGUSR1 suspension handshake. The target publishes its reconstructed guest
+context; native EC contexts are distinguished from translated code through the
+alias map and EC bitmap. Native syscall completion records preserve actual
+return values when the guest exception handler resumes the original call.
+`APS5_X64_SIGNAL_SUSPEND=1` enables the path before Wine initializes;
+`APS5_X64_SIGNAL_TRACE=1` adds detailed diagnostics. Both default off.
+
+AnyPS5 `0030-native-wait-exception-contracts.patch` extends the real exception
+test to 441 deliveries, including ten native event timeouts and ten signaled
+waits. It retains every original delivery, stack and invalid-target assertion.
+Madeira `0038-target-suspend-build-version.patch` records app Build 35.
+See [source and device qualification](UPSTREAM-REFRESH.md#target-published-x64-suspension-build-35)
+and [result hashes](evidence/ipad-target-published-suspend-20261008.json).
+Solitaire still faults in its graphics worker with normal memory tracking;
+the native change is not promoted to a global default.
+
 ## Current local refresh: 2026-10-07
 
 The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All

@@ -1,0 +1,65 @@
+diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRaiseException.cpp
+--- a/core/libs/tests/GuestRaiseException.cpp
++++ b/core/libs/tests/GuestRaiseException.cpp
+@@ -1,4 +1,5 @@
+ #include "SceTypes.hpp"
++#include <windows.h>
+ #include <atomic>
+ #include <chrono>
+ #include <cstdint>
+@@ -119,6 +120,44 @@
+     Require(calls.load() == before + 1);
+     Require(handlerThread.load() == thread);
+     Require(handlerRsp.load() != 0 && handlerFrame.load() < handlerRsp.load());
++}
++
++struct NativeWaitWorker {
++    Worker worker;
++    HANDLE event = nullptr;
++    DWORD timeout = 0;
++    DWORD result = WAIT_FAILED;
++};
++
++static void* APS5_VABI NativeWaiting(void* arg) {
++    auto& native = *static_cast<NativeWaitWorker*>(arg);
++    native.worker.id = std::this_thread::get_id();
++    native.worker.started.store(true);
++    native.result = WaitForSingleObject(native.event, native.timeout);
++    return nullptr;
++}
++
++static void CheckNativeWait(bool signalEvent) {
++    for (int round = 0; round < 10; ++round) {
++        NativeWaitWorker native;
++        native.event = CreateEventW(nullptr, FALSE, FALSE, nullptr);
++        Require(native.event != nullptr);
++        native.timeout = signalEvent ? 5000 : 80;
++        Pthread target = nullptr;
++        Require(scePthreadCreate(&target, nullptr, NativeWaiting, &native, "native wait") == 0);
++        while (!native.worker.started.load()) std::this_thread::yield();
++        std::this_thread::sleep_for(std::chrono::milliseconds(20));
++        const int before = calls.load();
++        Require(sceKernelRaiseException(target, SIGUSR1) == 0);
++        if (signalEvent) Require(SetEvent(native.event) != FALSE);
++        ExpectDelivery(before, native.worker.id);
++        Require(scePthreadJoin(target, nullptr) == 0);
++        const DWORD expected = signalEvent ? WAIT_OBJECT_0 : WAIT_TIMEOUT;
++        if (native.result != expected) std::fprintf(stderr, "Native wait expected=%lu actual=%lu\n", expected, native.result);
++        Require(native.result == expected);
++        Require(CloseHandle(native.event) != FALSE);
++        std::fprintf(stderr, "Native wait verified mode=%s round=%d result=%lu\n", signalEvent ? "signaled" : "timeout", round, native.result);
++    }
+ }
+ 
+ int main() {
+@@ -205,5 +244,9 @@
+     Require(sceKernelRaiseException(finishedThread, SIGUSR1) == SCE_KERNEL_ERROR_ESRCH);
+     Require(scePthreadJoin(finishedThread, nullptr) == 0);
+ 
++    CheckNativeWait(false);
++    CheckNativeWait(true);
++    Require(calls.load() == 441);
+     Require(sceKernelRemoveExceptionHandler(SIGUSR1) == 0);
+-}
++    std::fprintf(stderr, "All 441 exception deliveries verified.\n");
++}

@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "physical_ipad_target_published_suspension_contracts",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app": {
+    "build": 35,
+    "bundle": "com.buberlo.anyps5ipad",
+    "binary_sha256": "6ca7dc3a3d2f9b754d1d2bc1caa5e4bee04b0389ff5ac8d30d1f3818eba7e655",
+    "native_only_rebuild": true,
+    "arm64ec_components_unchanged_from_build28": true
+  },
+  "switches": {
+    "APS5_X64_SIGNAL_SUSPEND": {
+      "default": false,
+      "test_value": "1"
+    },
+    "APS5_X64_SIGNAL_TRACE": {
+      "default": false,
+      "test_value": "1",
+      "solitaire_build34_predates_trace_switch": true
+    }
+  },
+  "source_sha256": {
+    "Madeira/build/wineserver/mach_ios.c": "02e2c6040d8c65b16c99bdbbc9f5041eb842f7f5e347d0e6262308ded16abf59",
+    "Madeira/build/ntdll-unix/signal_arm64_ios.c": "788c264dd8b2629c46758b1ad33afe3d60ebcbd4882c8df05cca38a1c2b02c57",
+    "Madeira/build/ntdll-unix/server_ios.c": "f77967309db66fa705437c0722c8528e1109e94ec7f4f28aaa599d04b014c47a",
+    "wine/server/thread.c": "8b52e6561e607c9d5be9b74fac409620859c2f679a2fa413dd770e63c99799f3"
+  },
+  "patches_sha256": {
+    "patches/madeira/0037-target-published-x64-suspend.patch": "5d320aa703b61f30464a4598e79321a5b20f7b99cdcbda806ecd3418103be32b",
+    "patches/madeira/0038-target-suspend-build-version.patch": "c597e8975557e2d80f934ac8de499b9d6a4384cf2402f5dbd4547d36cff93bb6",
+    "patches/wine/0003-target-published-x64-suspend.patch": "224fc4b7dce8eb0616fdbaa1a5524e1ed146fa5a8eb7b2cd21b6fa971f0fbf76",
+    "patches/anyps5/0030-native-wait-exception-contracts.patch": "c77b1625dfee5c97e188de1a23775456a52c42425e16bdf6f37d4f3a9173abaa"
+  },
+  "exception": {
+    "status": "complete_original_and_extended_contracts_passed_with_opt_in_path",
+    "device_runs": [
+      {
+        "app_build": 34,
+        "contract": "original_full",
+        "deliveries": 421,
+        "exit_code": 0,
+        "log_sha256": "abf7ffde9144eb38233f62a05f179803575fc98ed2d87ec163ebd4ed1d151ab2",
+        "exe_sha256": "be600707846978099ea9822f11352a883d8931dfd7d1dfeeae0d95e76be90549",
+        "library_and_config_byte_restored": true
+      },
+      {
+        "app_build": 34,
+        "contract": "original_full",
+        "deliveries": 421,
+        "exit_code": 0,
+        "log_sha256": "eaf4352f11e67d15f0b96f4fa61ad51ab2551118338324b1dee4b18c696bb79e",
+        "exe_sha256": "be600707846978099ea9822f11352a883d8931dfd7d1dfeeae0d95e76be90549",
+        "library_and_config_byte_restored": true
+      },
+      {
+        "app_build": 34,
+        "contract": "original_full",
+        "deliveries": 421,
+        "exit_code": 0,
+        "log_sha256": "e420207e6401de5e30ebe34d938f3ea17ad3880d97d80d02ba844504857881db",
+        "exe_sha256": "be600707846978099ea9822f11352a883d8931dfd7d1dfeeae0d95e76be90549",
+        "library_and_config_byte_restored": true
+      },
+      {
+        "app_build": 34,
+        "contract": "extended_native_wait",
+        "deliveries": 441,
+        "exit_code": 0,
+        "native_event_timeouts": 10,
+        "native_event_successes": 10,
+        "observed_actual_timeout_status_restores": 10,
+        "log_sha256": "b0dadef120864512c1b57bbe44701b1a7cff7656b92ecfe05ac7c3e66fd9970a",
+        "exe_sha256": "686118eaa859daba98e24988a3d2214ecb91b224072df048bcaf0ba33d02ea46",
+        "library_and_config_byte_restored": true
+      },
+      {
+        "app_build": 35,
+        "contract": "extended_native_wait",
+        "deliveries": 441,
+        "exit_code": 0,
+        "native_event_timeouts": 10,
+        "native_event_successes": 10,
+        "observed_actual_timeout_status_restores": 10,
+        "log_sha256": "86a680586d53b03cc04bf78e57cbe0720e838fb22118fec6c2fce14c27dc1053",
+        "exe_sha256": "686118eaa859daba98e24988a3d2214ecb91b224072df048bcaf0ba33d02ea46",
+        "library_and_config_byte_restored": true
+      }
+    ],
+    "total_device_deliveries": 2145,
+    "scope_limit": "Contract tests qualify these busy/wait/timeout cases; arbitrary nested native suspension and general game compatibility are not qualified.",
+    "host_repeated_contract": {
+      "runs": [
+        {
+          "run": 1,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 5.333631542,
+          "log_sha256": "5d1218a163cd7d7c3d8bf1b1f54018cfb2473dc87948bd14b19c0823c66d485b"
+        },
+        {
+          "run": 2,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2573276669999993,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 3,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2842598329999992,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 4,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2967513329999996,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 5,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.3011477080000002,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 6,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.312644917,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 7,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2617185420000006,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 8,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.3022148750000007,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 9,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.4166167499999993,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 10,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.318354624999998,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 11,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2851580840000025,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 12,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.265873625000001,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 13,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.371254291999996,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 14,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2926558329999978,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 15,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.398985499999995,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 16,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2617714169999985,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 17,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.279484625000002,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 18,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.3110872080000036,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 19,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.268490415999999,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        },
+        {
+          "run": 20,
+          "exit_code": 0,
+          "passed": true,
+          "seconds": 2.2907677089999936,
+          "log_sha256": "950ad1a31df1930358b6778146da3cb0ef885eebf073a8395cff820bd60ba8c7"
+        }
+      ],
+      "deliveries_per_run": 441,
+      "total_deliveries": 8820
+    }
+  },
+  "memory": {
+    "status": "full_guest_memory_contract_passed",
+    "app_build": 35,
+    "exit_code": 0,
+    "native_signal_path_enabled": true,
+    "log_sha256": "ec35de5256fe1e0942d9e59877d72198dc368478281e10c03dbebde8298e3c6f",
+    "exe_sha256": "e511f95175926d7d791f4fda27d85e3499ff7b23b4f254273c4b079566562139",
+    "library_and_config_byte_restored": true
+  },
+  "interpolation": {
+    "status": "host_guards_and_shader_replay_passed_device_draw_unqualified",
+    "guard_cases": 111,
+    "guard_log_sha256": "e818c81594c2b04aaf7d834729b603a78a76a6d193edeaee929aa2b6ec385313",
+    "prior_full_shader_replay_evidence": "runtime-contract-fixes-20261008.json"
+  },
+  "native_build": {
+    "ntdll_sources_succeeded": 37,
+    "ntdll_sources_failed": 0,
+    "ntdll_build_log_sha256": "fdbbef70562302fc72ed6f63ac16affe3c876369657de0dac5f42d0b79d6926c",
+    "xcode_build_log_sha256": "5277da6240251b5a71d7423b5d05e2fa33109ca1fc0c98cb54826cce76353f70",
+    "patch_stack_check_sha256": "e5380ba8c1c1996a28e29d3a5226d7f995ab8bdb818ffdf5f484e08a999361c7"
+  },
+  "solitaire": {
+    "status": "candidate_failed_graphics_worker_null_read",
+    "app_build": 34,
+    "candidate_hle_archive_sha256": "11c0512ffae514aed1ed4e8b4d6bb6b0d0145a8d81b98660c3314b7f1a795e5e",
+    "normal_memory_tracking": true,
+    "native_signal_path_enabled": true,
+    "fixed_function_interpolation_enabled": true,
+    "game_entry_reached": true,
+    "vulkan_device_created": true,
+    "fault": {
+      "exception": "0xc0000005",
+      "thread": "UnityGfxDeviceWorker",
+      "read_address": "0x30",
+      "game_rva": "0x1461222"
+    },
+    "log_sha256": "e956d23d6c8215acf573ffe0d7f7be4d811681dc74c424afcdaec475843c79e8",
+    "screenshots_sha256": {
+      "screen-15.png": "1a557298527cff09d26d66d2f098377c5461af38b2dd44c07d1be9e8d153507b",
+      "screen-35.png": "ba3c1137a5a9174e6b06013cd4dd8c6f50bcb6561fa0552134c9c4d92b23df34",
+      "screen-60.png": "a30de4d1e04976609515375bfa1bf9e08b00ffd0ab38db95ba19e32e9cfead63"
+    },
+    "actual_prior_runtime_files_hash_restored": 56,
+    "manifest_library_config_byte_restored": true,
+    "last_played_changed_by_launch_then_restored": true,
+    "memory_tracking_disabled": false,
+    "playable_output_qualified": false,
+    "audio_qualified": false,
+    "device_interpolation_qualified": false,
+    "msaa_8_support_qualified": false
+  },
+  "fex_source_changed_for_this_fix": false,
+  "raw_private_diagnostics_published": false,
+  "github_actions_used": false
+}

@@ -1,0 +1,249 @@
+diff --git a/build/wineserver/mach_ios.c b/build/wineserver/mach_ios.c
+--- a/build/wineserver/mach_ios.c
++++ b/build/wineserver/mach_ios.c
+@@ -370,6 +370,32 @@
+ done:
+     mach_port_deallocate( mach_task_self(), port );
+ #endif
++}
++
++#include <pthread.h>
++
++/* Default-off diagnostic: Wine pseudo-processes share this native task. */
++int ios_signal_suspend_x64( struct thread *thread )
++{
++    static int enabled = -1;
++    static unsigned reports;
++    pthread_t target;
++    int result;
++    if (enabled < 0)
++    {
++        const char *e = getenv( "APS5_X64_SIGNAL_SUSPEND" );
++        enabled = e && e[0] == '1';
++    }
++    if (!enabled || thread == current || !thread->teb ||
++        thread->process->machine != IMAGE_FILE_MACHINE_AMD64 ||
++        !is_process_init_done( thread->process ) || thread->unix_pid != getpid() ||
++        thread->unix_tid == (unsigned)-1) return 0;
++    if (!(target = pthread_from_mach_thread_np( thread->unix_tid ))) return 0;
++    result = pthread_kill( target, SIGUSR1 );
++    if (reports++ < 8)
++        fprintf( stderr, "[x64-signal] tid=%04x port=%x signal=%d result=%d\n",
++                 thread->id, thread->unix_tid, SIGUSR1, result );
++    return !result;
+ }
+ 
+ extern int __pthread_kill( mach_port_t, int );
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -13268,6 +13268,81 @@
+  *
+  * Handler for SIGUSR1, used to signal a thread that it got suspended.
+  */
++#ifdef WINE_IOS
++#define IOS_X64_SUSPEND_EXCEPTION 0xe0425355u
++static int ios_x64_signal_is_ec( ULONG_PTR pc )
++{
++    extern uint64_t ios_jit_reverse_translate( uint64_t, uint64_t * );
++    uint64_t pe = ios_jit_reverse_translate( pc, NULL );
++    return is_ec_code( pe ? pe : pc );
++}
++
++int ios_x64_signal_suspend_enabled;
++static int ios_x64_signal_trace;
++static __thread int ios_x64_signal_reconstruct;
++static __thread struct {
++    struct syscall_frame *frame;
++    ULONG_PTR pc, sp;
++    UINT64 status;
++    int ready;
++} ios_x64_signal_wait;
++
++/* A context taken inside a native syscall contains its arguments, before the
++ * syscall has produced its return value. Preserve the actual result when the
++ * original syscall completes, then put it back when the guest handler resumes
++ * that syscall's return instruction. Do not invent a successful wait result. */
++UINT64 ios_x64_signal_status( UINT64 status, struct syscall_frame *frame )
++{
++    if (ios_x64_signal_wait.frame == frame && !ios_x64_signal_wait.ready)
++    {
++        ios_x64_signal_wait.status = status;
++        ios_x64_signal_wait.ready = 1;
++        if (ios_x64_signal_trace) dprintf( 2, "[x64-signal] native syscall completed result=%llx original_pc=%llx\n",
++                 (unsigned long long)status, (unsigned long long)ios_x64_signal_wait.pc );
++    }
++    return status;
++}
++
++void ios_x64_signal_restore_status( CONTEXT *context )
++{
++    if (!ios_x64_signal_suspend_enabled) return;
++    if (ios_x64_signal_wait.ready && context->Pc == ios_x64_signal_wait.pc &&
++        context->Sp == ios_x64_signal_wait.sp)
++    {
++        context->X0 = ios_x64_signal_wait.status;
++        ios_x64_signal_wait.frame = NULL;
++        ios_x64_signal_wait.ready = 0;
++        if (ios_x64_signal_trace) dprintf( 2, "[x64-signal] restored actual syscall result=%llx\n",
++                 (unsigned long long)context->X0 );
++    }
++}
++
++
++/* FEX's existing exception rethrow reconstructs the interrupted guest state
++ * into its ordinary Windows ARM64EC exception frame. Consume only our armed
++ * private exception; never publish the native JIT PC as an x86 RIP. */
++int ios_x64_signal_context( CONTEXT *redirect, CONTEXT *guest )
++{
++    struct { CONTEXT context; UINT64 pad[4]; EXCEPTION_RECORD record; } frame;
++    mach_vm_size_t read = 0;
++    TEB *teb;
++    if (!ios_x64_signal_suspend_enabled || !ios_x64_signal_reconstruct) return 0;
++    if (mach_vm_read_overwrite( mach_task_self(), redirect->Sp, sizeof(frame),
++                              (mach_vm_address_t)&frame, &read ) || read != sizeof(frame) ||
++        frame.record.ExceptionCode != IOS_X64_SUSPEND_EXCEPTION) return 0;
++    ios_x64_signal_reconstruct = 0;
++    teb = NtCurrentTeb();
++    if (!teb || !teb->ChpeV2CpuAreaInfo) return 0;
++    *guest = frame.context;
++    teb->ChpeV2CpuAreaInfo->InSimulation = 0;
++    teb->ChpeV2CpuAreaInfo->InSyscallCallback = 0;
++    if (ios_x64_signal_trace) dprintf( 2, "[x64-signal] reconstructed pc=%llx sp=%llx flags=%x\n",
++             (unsigned long long)guest->Pc, (unsigned long long)guest->Sp,
++             (unsigned)guest->ContextFlags );
++    return 1;
++}
++#endif
++
+ static void usr1_handler( int signal, siginfo_t *siginfo, void *sigcontext )
+ {
+     ucontext_t *ucontext = sigcontext;
+@@ -13282,18 +13357,76 @@
+         return;
+     }
+ #endif
++#ifdef WINE_IOS
++    if (ios_x64_signal_suspend_enabled)
++    {
++        TEB *teb = NtCurrentTeb();
++        CHPE_V2_CPU_AREA_INFO *cpu = teb ? teb->ChpeV2CpuAreaInfo : NULL;
++        if (ios_x64_signal_trace) dprintf( 2, "[x64-signal] handler native_pc=%llx simulation=%u syscall=%u\n",
++                 (unsigned long long)PC_sig(ucontext), cpu ? cpu->InSimulation : 0,
++                 is_inside_syscall( SP_sig(ucontext) ) );
++        if (cpu && cpu->InSimulation && !is_inside_syscall( SP_sig(ucontext) ) &&
++            !ios_x64_signal_is_ec( PC_sig(ucontext) ))
++        {
++            EXCEPTION_RECORD rec = {0};
++            rec.ExceptionCode = IOS_X64_SUSPEND_EXCEPTION;
++            rec.ExceptionAddress = (void *)PC_sig(ucontext);
++            save_context( &context, ucontext );
++            ios_x64_signal_reconstruct = 1;
++            setup_raise_exception( ucontext, &rec, &context );
++            return;
++        }
++    }
++#endif
+     if (is_inside_syscall( SP_sig(ucontext) ))
+     {
+         context.ContextFlags = CONTEXT_FULL | CONTEXT_EXCEPTION_REQUEST;
+         NtGetContextThread( GetCurrentThread(), &context );
++#ifdef WINE_IOS
++        ULONG_PTR original_pc = context.Pc, original_sp = context.Sp;
++#endif
+         wait_suspend( &context );
+-        NtSetContextThread( GetCurrentThread(), &context );
++#ifdef WINE_IOS
++        if (ios_x64_signal_suspend_enabled)
++        {
++            signal_set_full_context( &context );
++            if (context.Pc != original_pc || context.Sp != original_sp)
++            {
++                ios_x64_signal_wait.pc = original_pc;
++                ios_x64_signal_wait.sp = original_sp;
++                ios_x64_signal_wait.frame = get_syscall_frame();
++                ios_x64_signal_wait.ready = 0;
++            }
++        }
++        else
++#endif
++            NtSetContextThread( GetCurrentThread(), &context );
+     }
+     else
+     {
+         save_context( &context, ucontext );
++#ifdef WINE_IOS
++        const ULONG_PTR original_pc = context.Pc, original_sp = context.Sp;
++#endif
+         context.ContextFlags |= CONTEXT_EXCEPTION_REPORTING;
+         wait_suspend( &context );
++#ifdef WINE_IOS
++        if (ios_x64_signal_suspend_enabled &&
++            (context.Pc != original_pc || context.Sp != original_sp) &&
++            !ios_x64_signal_is_ec( context.Pc ))
++        {
++            /* Native EC code can be interrupted while FEX's flag is still set
++             * during exception dispatch. A redirected x64 PC must enter the
++             * emulation dispatcher, never execute x64 bytes as ARM64. */
++            CONTEXT *handoff = (CONTEXT *)((context.Sp - 128 - sizeof(CONTEXT)) & ~15ull);
++            *handoff = context;
++            context.Sp = (ULONG_PTR)handoff;
++            context.Pc = (ULONG_PTR)IOS_PFUNC(KiUserEmulationDispatcher);
++            context.X18 = (ULONG_PTR)NtCurrentTeb();
++            NtCurrentTeb()->ChpeV2CpuAreaInfo->InSimulation = 0;
++            if (ios_x64_signal_trace) dprintf( 2, "[x64-signal] native EC -> x64 handoff\n" );
++        }
++#endif
+         restore_context( &context, ucontext );
+ #ifdef WINE_IOS
+         ios_fixup_x18_for_return( ucontext );
+@@ -13402,6 +13535,14 @@
+  */
+ void signal_init_process(void)
+ {
++#ifdef WINE_IOS
++    {
++        const char *e = getenv( "APS5_X64_SIGNAL_SUSPEND" );
++        ios_x64_signal_suspend_enabled = e && e[0] == '1';
++        e = getenv( "APS5_X64_SIGNAL_TRACE" );
++        ios_x64_signal_trace = e && e[0] == '1';
++    }
++#endif
+     struct sigaction sig_act;
+     struct ntdll_thread_data *thread_data = ntdll_get_thread_data();
+     void *kernel_stack = (char *)thread_data->kernel_stack + kernel_stack_size;
+@@ -13962,6 +14103,12 @@
+                    __ASM_CFI_CFA_IS_AT2(sp, 0x98, 0x02) /* frame->syscall_cfa */
+                    __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_return") ":\n\t"
+ #ifdef WINE_IOS
++                   "adrp x16, " __ASM_NAME("ios_x64_signal_suspend_enabled") "@PAGE\n\t"
++                   "ldr w16, [x16, " __ASM_NAME("ios_x64_signal_suspend_enabled") "@PAGEOFF]\n\t"
++                   "cbz w16, " __ASM_LOCAL_LABEL("ios_x64_signal_status_done") "\n\t"
++                   "mov x1, sp\n\t"
++                   "bl " __ASM_NAME("ios_x64_signal_status") "\n\t"
++                   __ASM_LOCAL_LABEL("ios_x64_signal_status_done") ":\n\t"
+                    /* Trace: capture frame->x[18] and frame->pc before they are loaded */
+                    "ldr x10, [sp, #0x90]\n\t"   /* frame->x[18] - will become x18 */
+                    "adrp x11, " __ASM_NAME("g_wine_return_x18") "@PAGE\n\t"
+diff --git a/build/ntdll-unix/server_ios.c b/build/ntdll-unix/server_ios.c
+--- a/build/ntdll-unix/server_ios.c
++++ b/build/ntdll-unix/server_ios.c
+@@ -2575,6 +2575,18 @@
+     BOOL alertable;
+ #ifdef WINE_IOS
+     { extern void ios_tlswatch_rearm( const char * ); ios_tlswatch_rearm( "NtContinue" ); }
++    {
++        extern int ios_x64_signal_context( CONTEXT *, CONTEXT * );
++        CONTEXT guest;
++        extern void ios_x64_signal_restore_status( CONTEXT * );
++        ios_x64_signal_restore_status( context );
++        if (ios_x64_signal_context( context, &guest ))
++        {
++            wait_suspend( &guest );
++            return signal_set_full_context( &guest );
++        }
++    }
++
+ #endif
+ 
+     if ((UINT_PTR)args > 0xff)

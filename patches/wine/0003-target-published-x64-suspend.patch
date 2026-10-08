@@ -1,0 +1,32 @@
+diff --git a/server/thread.c b/server/thread.c
+--- a/server/thread.c
++++ b/server/thread.c
+@@ -1075,6 +1075,28 @@
+ void stop_thread( struct thread *thread )
+ {
+ #ifdef WINE_IOS
++    {
++        static int enabled = -1;
++        extern int ios_signal_suspend_x64( struct thread * );
++        if (enabled < 0)
++        {
++            const char *e = getenv( "APS5_X64_SIGNAL_SUSPEND" );
++            enabled = e && e[0] == '1';
++        }
++        if (enabled && thread != current && thread->process->machine == IMAGE_FILE_MACHINE_AMD64)
++        {
++            if (thread->context && thread->ios_ctx_seq == 0x41505335u) return;
++            struct context *fresh = create_thread_context( thread );
++            if (fresh && ios_signal_suspend_x64( thread ))
++            {
++                if (thread->context) release_object( thread->context );
++                thread->context = fresh;
++                thread->ios_ctx_seq = 0x41505335u;
++                return;
++            }
++            if (fresh) release_object( fresh );
++        }
++    }
+     if (thread->context)
+     {
+         /* WoW64 processes: a cached Mach snapshot is not a context (see below) */

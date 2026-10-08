@@ -1,0 +1,237 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "physical_ipad_async_integer_flag_repair",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app": {
+    "build": 37,
+    "signed_installed": true,
+    "native_ntdll_unix_rebuilt": true,
+    "packaged_windows_pe_modules_unchanged": true
+  },
+  "patches": {
+    "anyps5/0032-preserve-async-integer-flags.patch": "ffb45d60cd2d182acb92d61e5a032c45bae545794163cdccbb2300327731f691",
+    "madeira/0039-query-reconstructed-guest-flags.patch": "ebb4e0566b7d2eeaf1411b5b4f0ec6edf2c74a0f01fdcfe3dd850e5947f55506",
+    "madeira/0040-async-flags-build-version.patch": "23382b3f64c01d12a1173172f682545400bd4e472f7df1546c618c72565ba255"
+  },
+  "source_sha256": {
+    "Exception.cpp": "20e68ed68322788f397cf5cc0e7cdddb416937239f298672f65113426e1dfea9",
+    "GuestRaiseException.cpp": "df86edbc2b3fee16055ec1754829ef006df93752529c0258d6172e2110e78cea",
+    "signal_arm64_ios.c": "680587c056e87172e2ad2d1a9535fd6c2262a3c82ff5efd5744c20cfbdcccb5b",
+    "thread_ios.c": "079d200b5adf82b937318b507f8f3b3f94b0a21124656ac3cdd73fc5c6bfe3c1",
+    "aps5_async_flags.h": "73c9119d516ab7a86f8e3e61124da7c715d685fa86a615641195bbdef9335d1c"
+  },
+  "switches": {
+    "APS5_X64_SIGNAL_SUSPEND": {
+      "default": false,
+      "test": "1"
+    },
+    "APS5_PRESERVE_ASYNC_FLAGS": {
+      "default": false,
+      "test": "1"
+    },
+    "APS5_PRESERVE_ASYNC_AVX": {
+      "default": false,
+      "test": [
+        "1",
+        "0"
+      ]
+    }
+  },
+  "baseline": {
+    "device_exit_code": 3,
+    "device_log_sha256": "2e53a9d81016c22efc11885abfb28309a9c921c83903884787c47bf690915aa3",
+    "gprs_verified": 15,
+    "flags_expected_masked": "0x8d5",
+    "handler_context_masked": "0x8c1",
+    "restored_flags_masked": "0x8c1",
+    "lost_flags": [
+      "parity",
+      "auxiliary_carry"
+    ],
+    "host_exit_code": 0,
+    "host_deliveries": 442,
+    "host_log_sha256": "c7dbee0c44a1d18da897ac5d034716f82b6e9dac36e9c318b327d978ec1ed667"
+  },
+  "device_runs": [
+    {
+      "stage": "initial",
+      "build": 36,
+      "deliveries": 544,
+      "exit_code": 0,
+      "log_sha256": "9372e0dcf3a7bc6fd1a4269e45a92cffeaa6001a9c724b67cfecfef3c0e20dde",
+      "config_library_byte_restored": true,
+      "own_processes_closed": true
+    },
+    {
+      "stage": "extended",
+      "build": 36,
+      "deliveries": 553,
+      "exit_code": 0,
+      "log_sha256": "8948b60602cfeaf6b92041a02de419f247c8e2ff8be47e06a4751375108ca1f8",
+      "config_library_byte_restored": true,
+      "own_processes_closed": true
+    },
+    {
+      "stage": "final_with_avx",
+      "build": 37,
+      "deliveries": 553,
+      "exit_code": 0,
+      "log_sha256": "ac0d3daf3a5b6ad05a27237f214607e1532f3fa5e729f9f1f018a56d80dded9c",
+      "config_library_byte_restored": true,
+      "own_processes_closed": true
+    },
+    {
+      "stage": "final_without_avx",
+      "build": 37,
+      "deliveries": 451,
+      "exit_code": 0,
+      "log_sha256": "816d6b34dca2b65cea00b36d1a14d70a8132c857fdf7b199345c02bf08b54eec",
+      "config_library_byte_restored": true,
+      "own_processes_closed": true
+    }
+  ],
+  "integer_contracts": {
+    "gprs_per_case": 15,
+    "flag_cases": 10,
+    "flags_checked": [
+      "CF",
+      "PF",
+      "AF",
+      "ZF",
+      "SF",
+      "DF",
+      "OF"
+    ],
+    "both_directions_of_flag_changes": true,
+    "handler_gpr_changes_restored": true,
+    "stack_pointer_preserved": true,
+    "cpp_callback_direction_flag_clear": true,
+    "reserved_context_flag_bits_rejected": true,
+    "handler_instruction_pointer_changes_restored": true
+  },
+  "retained_contracts": [
+    "441_original_and_native_event_deliveries",
+    "native_timeout_result_0x102",
+    "native_signaled_result_0",
+    "sysv_red_zone",
+    "target_thread_identity",
+    "invalid_target_checks",
+    "16_ymm_preservation_and_handler_mutation",
+    "avx_reset_clears_upper_halves"
+  ],
+  "bridge": {
+    "thread_information_class": "0x7fff4150",
+    "version": 1,
+    "payload_bytes": 24,
+    "requires_suspended_same_process_other_thread": true,
+    "requires_matching_guest_rip_rsp": true,
+    "rejects_stale_frame_or_native_ec_context": true,
+    "safe_native_memory_peek": true,
+    "architectural_flags_only": true,
+    "fex_source_changes_in_this_followup": false,
+    "layout_checked_against_actual_pinned_headers": true,
+    "layout_checker": "scripts/check-async-flags-layout.py",
+    "restore": "guest_popfq_stub_preserving_gprs_vectors_and_red_zone"
+  },
+  "host_final": {
+    "exit_code": 0,
+    "deliveries": 451,
+    "log_sha256": "29519d9acce9dc9bf095b31c0ceff1a7fd465c810e98caee0d2dbf79949e787a",
+    "avx_checks": "skipped_cpu_feature_not_advertised",
+    "private_native_bridge_exercised": false
+  },
+  "patch_series": {
+    "schema": 1,
+    "pin": "df16c4c256be3c44e03eb9149a6ce5f8e8a038b2",
+    "patches": 32,
+    "touched_files": 69,
+    "forward_applied": true,
+    "matches_candidate_sources": true,
+    "reverse_restores_pin": true,
+    "hashes": {
+      "0001-guest-arena-lazy.patch": "69fb86c5b9f7bba0de4a7acf0976e83716c7605d92293cb89ff104a8fbe80d35",
+      "0002-vulkan-portability.patch": "eacc53733b9006f26ba68eb8df4fec3d56ad50dc5c91923bc6a1990de04e819d",
+      "0003-mingw11-getthreaddescription.patch": "5c81b691e5f95607cbb19784b7938c84d855fe17087781b44e06894130590f0e",
+      "0004-slim-vulkan-loader.patch": "97c56e33e16b784283b05243c2fe304ebcb833f1eab13549d1dd42b1a9c75370",
+      "0006-invariant-masked-shift.patch": "3a54ab0d3d7ff4a56eb96d763ec0bab70e16fbf99bad3848c2335f0e5a73197f",
+      "0007-validated-fixed-function-interpolation.patch": "d1f7f3ff862a605eeacb56461493c23d42c8a05af33f8dbef69c7c39518a301a",
+      "0008-capture-draw-before-source-validation.patch": "391b7714a0b40d05b7ecbfe6ff0722995b7f54ec5871bbdc82b661d9dd9d00c8",
+      "0009-bundled-unity-modules.patch": "567f560b8066ec3ec95b669caae0e492ce09964800d7022f4622158b1141608e",
+      "0010-optional-frame-timing.patch": "991d78187e0ec7a338dcb33f4d9350b80e6e95f006a140442442cd0b1b044ed9",
+      "0011-local-and-offline-service-apis.patch": "e3ae0f31341843d393f70ae77e517a081f1c2032622558c37105fd9371e528eb",
+      "0012-unsigned-conversion-overflow.patch": "bf3d46551ef6f506c8fcc40dc3ff53b4f90ca5f6fde1efc37bb69de2e696010e",
+      "0013-windows-descriptor-lifetime.patch": "e4e2d9ac4fa9317102e1966830afdc4186cd8246440b2db5e8897d5ba1e84cc6",
+      "0014-three-swapchain-images.patch": "1f3973c170b36ed696c8763f4d21103869d5e9a7ab443fa8c1b2484f5e9f4fdf",
+      "0015-native-thread-stack-guards.patch": "b5f6c0ca6837c3fe6ba232b5f78ce925291c6a619f732a440bc26ad6c2ba9011",
+      "0016-buffer-int64-atomics-diagnostic.patch": "03d112e1799a8ea53409b40255338b295667e2af59ef0d3f82dab0cbfb0d4af1",
+      "0017-pipeline-cache-hit-miss.patch": "42676398b17b4a10c21e0fd3c443f17b74f4a536cd11b1fc9b601ab23d3a8eb0",
+      "0018-flip-rate-frame-counters.patch": "696989d2f0018df8cc6ff8575a1555b531e1eb45d2481ae90f5cbc5dc9b0d2c2",
+      "0019-vblank-hz-60.patch": "d546ba9ad7c4664abe167af159b422ccf3dd417dd11c4062957fd95a395e97c9",
+      "0020-texture-cache-mib.patch": "3b9b50580350a05ad7bb9ed2d4d3a10bb8a58fda276b804cc7fddc3faa1252b0",
+      "0021-log-flip-inflight.patch": "e5e6e3e2a8e6700b4cf690777a8c5d82b7a35b53ba2678006b8e76816a361e31",
+      "0022-dword-aligned-shader-headers.patch": "7df0768e7cb5038ea20c8b6266b538f477e37e5ecca00913f385bba07254792e",
+      "0023-shader-engine-partition-state.patch": "44b9a7b36eba5ecc19e80b0b2176cd4e0d279afc258eabdcaf2b86b048db4300",
+      "0024-equivalent-single-sample-stencil-clear.patch": "3ce732d16411b03b3bb8ebbea151abb9b687357450fe3a07e635015310ace4d6",
+      "0025-independent-texture-sample-interpolation.patch": "4c71b38540db9673d745bbe59e22553c7a2aa2c5212179ebe3b0d6b9c84a62c0",
+      "0026-fixed-function-discard-continuations.patch": "3d10b0225caed41799941b690c9a8d0397ad496723aacebc6c3d62fc410e6130",
+      "0027-equivalent-stencil-z-order.patch": "4e1c6bddaee1ad2985eb61fa005b3daa9570b1369fa9d4a25bac2bea3cbb36d3",
+      "0027-uniform-wave-branches.patch": "c84263a524381ac75c624ca3f0c3c02ceb04b50ad100aa765d8854da54c89ac2",
+      "0028-unobserved-viewport-depth.patch": "85e9042637feb1f7295af55b6147e030ffb045872a3980b2e45367ed61fcdf62",
+      "0029-safe-wait-delivery-and-validation.patch": "9daee9e8a56588c25f6cc5ce5939cfba70afe801f1da6c28b1531ec341607867",
+      "0030-native-wait-exception-contracts.patch": "c77b1625dfee5c97e188de1a23775456a52c42425e16bdf6f37d4f3a9173abaa",
+      "0031-preserve-async-avx-state.patch": "381f17b5095a8ba1ead8ff76b9d290790b4923c05c62996446f78e1c30134a1b",
+      "0032-preserve-async-integer-flags.patch": "ffb45d60cd2d182acb92d61e5a032c45bae545794163cdccbb2300327731f691"
+    }
+  },
+  "related_memory_interpolation_contracts": "ipad-target-published-suspend-20261008.json",
+  "scope_limits": [
+    "opt-in redirected busy guest state only",
+    "TF/debug stepping and arbitrary nested native suspension not qualified",
+    "native EC waits retain existing completion-result route",
+    "no native Windows GPU or physical iPad graphics acceptance from synthetic CPU tests"
+  ],
+  "solitaire_gameplay_qualified": false,
+  "github_actions_used": false,
+  "raw_game_or_shader_data_published": false,
+  "solitaire": {
+    "status": "failed_white_output_and_null_vtable_read",
+    "normal_memory_tracking": true,
+    "diagnostic_watch_bypass": false,
+    "native_signal_suspend_enabled": true,
+    "async_avx_preservation_enabled": true,
+    "async_flags_preservation_enabled": true,
+    "log_sha256": "d0b6dbb906769e795943dddbed10dedc781bc0735d9de324de85ba7d9c2b6510",
+    "package_manifest_sha256": "c74a711e26bc4b4ca21eedec50b8e4e3f400c2565c97f1646ac09e389068dc62",
+    "screenshot_sha256": {
+      "15": "ef16529f88d6e266ead3813c75c68608d89dac2cf6a9341f07f3f80fb8b4865b",
+      "35": "ef16529f88d6e266ead3813c75c68608d89dac2cf6a9341f07f3f80fb8b4865b",
+      "60": "94c20084831bfb704b1fdfdad8c1063010753b2a9781a2d51fb0f1c2cd166767"
+    },
+    "observed_output": "white game area at all three captures",
+    "fatal": {
+      "thread": "UnityGfxDeviceWorker",
+      "exception": "0xc0000005",
+      "access": "read",
+      "address": "0x20",
+      "game_rva": "0x1426827",
+      "null_shader_object_vtable": true
+    },
+    "multisampling_draw_rejection_observed": true,
+    "game_requested_samples": 8,
+    "previous_m2_attachment_sample_counts": [
+      1,
+      2,
+      4
+    ],
+    "restored_runtime_files": 52,
+    "runtime_hash_restored": true,
+    "config_library_manifest_byte_restored": true,
+    "own_processes_closed": true,
+    "audio_qualified": false,
+    "causal_relation_between_flag_repair_and_changed_fatal_address": "not_established"
+  }
+}

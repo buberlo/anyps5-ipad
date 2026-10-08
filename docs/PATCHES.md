@@ -57,6 +57,39 @@ AVX, so its vector cases explicitly skip and do not qualify AVX restoration.
 The combined private Solitaire run still fails; all production files and
 settings are restored. See the [device record](evidence/ipad-async-avx-context-20261008.json).
 
+## Asynchronous integer flags: 2026-10-08
+
+AnyPS5 `0032-preserve-async-integer-flags.patch` and Madeira
+`0039-query-reconstructed-guest-flags.patch` repair an independently reproduced
+loss of parity and auxiliary-carry flags. The original device context and
+resumed code both reported `0x8c1` instead of `0x8d5`, despite all 15 general
+registers being correct. The local x86 Wine comparison retained the flags.
+
+The opt-in `APS5_PRESERVE_ASYNC_FLAGS=1` uses private thread-information class
+`0x7fff4150` to obtain the missing flags from a suspended same-process target.
+A versioned 24-byte response is accepted only when its guest RIP/RSP match the
+normal context and the PC is translated guest code. Native EC waits and stale
+snapshots keep their existing continuation path. The native bridge reads the
+pinned FEX state layout through safe memory peeks; it changes no FEX source.
+`scripts/check-async-flags-layout.py` compiles a project-owned checker against
+the actual dependency headers before the normal Unix-library build. A changed
+layout fails the build rather than silently reading different fields.
+
+The final guest resume stub restores flags with `popfq`, restores RSP with
+`lea`, then jumps to the requested RIP without clobbering general or vector
+registers. Scratch storage is below the SysV red zone and outside saved AVX
+state. The handler's edits survive; DF is cleared before entering C++ and
+restored for interrupted guest code. Both native suspension and this HLE option
+remain default-off. Madeira `0040-async-flags-build-version.patch` records Build 37.
+
+Two final device runs pass 553 deliveries with AVX enabled and 451 without it.
+Ten integer-state cases check all 15 general registers, seven condition/direction
+flags, both directions of handler flag edits, register edits, RIP/RSP and callback
+DF requirements. All original native-wait and exception assertions remain.
+Solitaire still shows white output and faults through a null shader-object
+vtable. Its rejected 8-sample draw and device rendering remain unresolved.
+See the [qualification record](evidence/ipad-async-integer-flags-20261008.json).
+
 ## Current local refresh: 2026-10-07
 
 The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All

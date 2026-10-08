@@ -263,6 +263,40 @@ the changed site does not establish a causal fix or playable rendering. Actual
 pre-test runtime hashes, manifest, configuration and library are restored.
 Audio is not qualified. See the [AVX and game record](evidence/ipad-async-avx-context-20261008.json).
 
+## Asynchronous integer-flag follow-up: Build 37
+
+A separate live-register probe preserved all 15 general registers but lost PF
+and AF in both the delivered context and resumed guest code on Build 35. The
+host comparison preserved them. The new AnyPS5/Madeira bridge reads the target's
+reconstructed pinned CPU-state snapshot only after suspension and exact guest
+PC/SP matching. It reconstructs architectural flags without leaking packed
+NZCV bytes into reserved EFLAGS bits. A small guest continuation uses `popfq`
+to avoid the lossy ARM64EC return conversion. It preserves general/vector state,
+the red zone and the existing real native wait-result handling; C++ receives DF
+clear while interrupted guest code receives the handler-selected DF value.
+
+No new FEX source is generated or changed. A project-owned layout checker reads
+actual FEX headers and is required by the native library build. All 32 AnyPS5
+patches apply from the pin, match the root checkout, and reverse to the pin.
+Madeira/Wine/FEX reverse-series checks also pass. Build 37 is development-signed
+and installed; its packaged ntdll, xtajit64, winevulkan and win32u PE modules are
+unchanged from Build 35. The new native Unix bridge and raw HLE kernel are rebuilt.
+
+The final physical-device runs pass 553 deliveries with AVX and 451 without it,
+including ten full integer-state cases and handler mutations. The host passes
+451 cases with AVX explicitly skipped; it does not exercise the private native
+bridge. CPU correctness evidence does not qualify arbitrary nested native
+interruptions or TF/debug stepping.
+
+A freshly relinked Solitaire package passes the same 47-dependency audit. Its
+bounded 60-second device run, with normal memory tracking and all three opt-in
+CPU paths, remains white at 15, 35 and 60 seconds. The graphics worker dereferences
+a null object vtable and reads `0x20` at game RVA `0x1426827`; the rejected
+8-sample draw remains. A changed fault site does not establish causality or
+playable output. All 52 pre-test runtime-file hashes, manifest, library and
+configuration are restored. The native options remain default-off in the
+installed Build 37. See [source and result hashes](evidence/ipad-async-integer-flags-20261008.json).
+
 ## Runtime qualification after integration
 
 Source integration, local builds and host contracts do not qualify the iPad

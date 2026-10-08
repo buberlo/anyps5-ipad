@@ -1,0 +1,120 @@
+diff --git a/build/ntdll-unix/aps5_async_flags.h b/build/ntdll-unix/aps5_async_flags.h
+new file mode 100644
+--- /dev/null
++++ b/build/ntdll-unix/aps5_async_flags.h
+@@ -0,0 +1,32 @@
++/* Private AnyPS5/Madeira bridge, tied to the pinned FEX CPUState layout.
++ * Compile tools/checks/check_async_flags_layout.cpp against the actual FEX
++ * headers before rebuilding. No FEX source is modified by this bridge. */
++#ifndef APS5_ASYNC_FLAGS_H
++#define APS5_ASYNC_FLAGS_H
++#include <stdint.h>
++#include <stddef.h>
++#ifdef __cplusplus
++#define APS5_ABI_ASSERT static_assert
++#else
++#define APS5_ABI_ASSERT _Static_assert
++#endif
++#define APS5_THREAD_ASYNC_FLAGS 0x7fff4150u
++struct aps5_async_flags_info {
++    uint32_t version, flags;
++    uint64_t rip, rsp;
++};
++struct aps5_fex_flags_prefix {
++    uint64_t inline_jit, deferred;
++    uint32_t pf_raw, af_raw;
++    uint64_t rip, gregs[16], l1, l1_mask, callret_sp, callret_base;
++    uint64_t avx_high[16][2], xmm[16][4];
++    uint16_t segments[6];
++    uint32_t mxcsr, segment_bases[4];
++    uint64_t gs_base, fs_base;
++    uint8_t flags[48];
++};
++APS5_ABI_ASSERT(offsetof(struct aps5_fex_flags_prefix, pf_raw) == 0x10, "FEX flag ABI");
++APS5_ABI_ASSERT(offsetof(struct aps5_fex_flags_prefix, rip) == 0x18, "FEX RIP ABI");
++APS5_ABI_ASSERT(offsetof(struct aps5_fex_flags_prefix, flags) == 0x3f0, "FEX flags ABI");
++#undef APS5_ABI_ASSERT
++#endif
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -13318,6 +13318,63 @@
+ }
+ 
+ 
++#include "aps5_async_flags.h"
++
++/* Read only a suspended same-process target whose reconstructed native context
++ * matches FEX's current guest PC/SP. Native EC waits and stale CPU snapshots
++ * are rejected; callers keep their normal context path in those cases. */
++NTSTATUS ios_x64_signal_query_flags( HANDLE handle, void *data, ULONG length, ULONG *ret_len )
++{
++    THREAD_BASIC_INFORMATION tbi;
++    ULONG count = 0;
++    CONTEXT context = { .ContextFlags = CONTEXT_FULL };
++    CHPE_V2_CPU_AREA_INFO *cpu = NULL;
++    const void *frame = NULL;
++    struct aps5_fex_flags_prefix state;
++    struct aps5_async_flags_info info = { .version = 1 };
++    unsigned i;
++    NTSTATUS status;
++    extern uint64_t ios_jit_reverse_translate( uint64_t, uint64_t * );
++    uint64_t module = 0, rip;
++
++    if (!ios_x64_signal_suspend_enabled) return STATUS_NOT_SUPPORTED;
++    if (length != sizeof(info)) return STATUS_INFO_LENGTH_MISMATCH;
++    if (!data) return STATUS_ACCESS_VIOLATION;
++    if ((status = NtQueryInformationThread( handle, ThreadBasicInformation, &tbi, sizeof(tbi), NULL ))) return status;
++    if (tbi.ClientId.UniqueProcess != NtCurrentTeb()->ClientId.UniqueProcess ||
++        tbi.ClientId.UniqueThread == NtCurrentTeb()->ClientId.UniqueThread) return STATUS_NOT_SUPPORTED;
++    if ((status = NtQueryInformationThread( handle, ThreadSuspendCount, &count, sizeof(count), NULL ))) return status;
++    if (!count) return STATUS_NOT_SUPPORTED;
++    if ((status = NtGetContextThread( handle, &context ))) return status;
++    if (!tbi.TebBaseAddress || !ctx_peek( &cpu, &((const TEB *)tbi.TebBaseAddress)->ChpeV2CpuAreaInfo, sizeof(cpu) ) || !cpu ||
++        !ctx_peek( &frame, &cpu->EmulatorData[0], sizeof(frame) ) || !frame ||
++        !ctx_peek( &state, frame, sizeof(state) )) return STATUS_NOT_SUPPORTED;
++    rip = ios_jit_reverse_translate( state.rip, &module );
++    if (!rip) rip = state.rip;
++    if (!rip || rip != context.Pc || state.gregs[4] != context.Sp) return STATUS_NOT_SUPPORTED;
++
++    // Bits 24..27 contain packed NZCV bytes, not architectural flags.
++    // Exclude reserved flag positions and reconstruct condition flags below.
++    for (i = 0; i < 22; ++i)
++        if (i != 3 && i != 5 && i != 15 && i != 0 && i != 2 && i != 4 && i != 6 && i != 7 && i != 8 && i != 10 && i != 11)
++            info.flags |= (uint32_t)(state.flags[i] & 1) << i;
++    if (context.Cpsr & 0x20000000) info.flags |= 0x001;
++    if (context.Cpsr & 0x40000000) info.flags |= 0x040;
++    if (context.Cpsr & 0x80000000) info.flags |= 0x080;
++    if (context.Cpsr & 0x00200000) info.flags |= 0x100;
++    if (context.Cpsr & 0x10000000) info.flags |= 0x800;
++    if (!__builtin_parity( state.pf_raw & 0xff )) info.flags |= 0x004;
++    if ((state.af_raw ^ state.pf_raw) & 0x10) info.flags |= 0x010;
++    if (state.flags[10] & 0x80) info.flags |= 0x400;
++    info.rip = context.Pc;
++    info.rsp = context.Sp;
++    memcpy( data, &info, sizeof(info) );
++    if (ret_len) *ret_len = sizeof(info);
++    if (ios_x64_signal_trace) dprintf( 2, "[x64-flags] query rip=%llx rsp=%llx flags=%x\n",
++             (unsigned long long)info.rip, (unsigned long long)info.rsp, info.flags );
++    return STATUS_SUCCESS;
++}
++
+ /* FEX's existing exception rethrow reconstructs the interrupted guest state
+  * into its ordinary Windows ARM64EC exception frame. Consume only our armed
+  * private exception; never publish the native JIT PC as an x86 RIP. */
+diff --git a/build/ntdll-unix/thread_ios.c b/build/ntdll-unix/thread_ios.c
+--- a/build/ntdll-unix/thread_ios.c
++++ b/build/ntdll-unix/thread_ios.c
+@@ -2597,6 +2597,12 @@
+ 
+     TRACE("(%p,%d,%p,%x,%p)\n", handle, class, data, length, ret_len);
+ 
++    if ((unsigned)class == 0x7fff4150u)
++    {
++        extern NTSTATUS ios_x64_signal_query_flags( HANDLE, void *, ULONG, ULONG * );
++        return ios_x64_signal_query_flags( handle, data, length, ret_len );
++    }
++
+     switch (class)
+     {
+     case ThreadBasicInformation:

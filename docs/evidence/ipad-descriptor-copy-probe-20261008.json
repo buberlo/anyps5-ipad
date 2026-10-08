@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T14:21:43.878006+00:00",
+  "kind": "ipad_original_descriptor_copy_probe_checkpoint",
+  "qualification": "eight_synthetic_gpu_cases_exact_pass_guest_exit0_post_exit_native_mach_exception_clean_app_lifecycle_unqualified",
+  "build": {
+    "project_commit_at_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "source_sha256": {
+      "tools/gpu-probe/descriptor_copy_probe.cpp": "c8f5b7a00766bedd4870ccdfe11b1815c2a62e48c3139c20f4e93cc407757d31",
+      "tools/gpu-probe/descriptor_copy_probe.vert": "d1c6f665b48817179c5851ae81ded858d6fa45dcd93d4b06d2c62fc0e2a243c3",
+      "tools/gpu-probe/descriptor_copy_probe.frag": "db54a249bc555b958c116a94b5d517a57399f35ce57b18954c4b78dde4d920f5",
+      "scripts/build-descriptor-copy-probe.sh": "c60da015a7007eea566c01b188c30df11e40720fef7d66524a09e88f3c164097"
+    },
+    "artifact_sha256": {
+      "frag.spv": "bd5ec1b59b9f3efb205a12d69a3bcf56271df312d71ba1784d7dec28d11ec234",
+      "libvulkan-1.a": "f295330952a90598463d0ff58111bef1448ba08d6be5d898d36a492343f123cc",
+      "probe.exe": "9bab22901a6bb500e1a800463e02a398079d830e2a93f97ab12b2f24092d2e6f",
+      "vulkan-1.def": "a9c9b7105c46c90a3f57662a200009c0a2d162d9f5167dc657a605206f10d90d",
+      "descriptor_copy_shaders.h": "33baf9a21a81a9631949c84114bc0243b42f6ac6448676d2088e88b9b8cdcd8a",
+      "vert.spv": "e37d0dca1f6fccefef89a4b49735ed6e99e4997d806d7c5e8b4a8f2945d83646"
+    },
+    "all_four_source_hashes_verified": true,
+    "all_six_artifact_hashes_verified": true,
+    "private_manifest_sha256": "90a28eedc6cb41de80dc30fca9a5453502ea65a86cfb2cb6d03204cd4eec3943",
+    "receipt_manifest_matches": true,
+    "device_readback_exe_sha256": "9bab22901a6bb500e1a800463e02a398079d830e2a93f97ab12b2f24092d2e6f",
+    "device_readback_matches_built_exe_bytes": true
+  },
+  "private_run": {
+    "path": "build/pr1-port/descriptor-copy-build47-refreshed-smoke",
+    "receipt_sha256": "bb23e3c75da8b2d8534e7ca83e2cfec6fd5a95ce35ce52e21f5ca87c0d975dd7",
+    "log_sha256": "86fe4623bd306ff8de964b550d751e0ec1aa3d6f325e04fed243fad78cfe3360",
+    "log_lines": 1716,
+    "test_operation_seconds": 37.195854833000006
+  },
+  "gpu_test": {
+    "route": "original x86-64 Windows Vulkan program through Wine/FEX and MoltenVK/Metal on the iPad",
+    "dimensions": [
+      17,
+      19
+    ],
+    "single_sample_RGBA8_UNORM": true,
+    "descriptor_kinds": [
+      "sampled image",
+      "separate sampler",
+      "readonly SSBO"
+    ],
+    "descriptor_binding_indices": [
+      0,
+      6,
+      9
+    ],
+    "cases": [
+      {
+        "case": 1,
+        "layout": "GENERAL",
+        "mode": "original",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_lines": [
+          1396,
+          1397
+        ],
+        "interleaved_native_allocation_output": true
+      },
+      {
+        "case": 2,
+        "layout": "GENERAL",
+        "mode": "all-binding-copy",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1398
+      },
+      {
+        "case": 3,
+        "layout": "GENERAL",
+        "mode": "copy+ssbo-override",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1399
+      },
+      {
+        "case": 4,
+        "layout": "GENERAL",
+        "mode": "explicit-rewrite+ssbo-override",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1400
+      },
+      {
+        "case": 5,
+        "layout": "COLOR_ATTACHMENT_OPTIMAL",
+        "mode": "original",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1401
+      },
+      {
+        "case": 6,
+        "layout": "COLOR_ATTACHMENT_OPTIMAL",
+        "mode": "all-binding-copy",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1402
+      },
+      {
+        "case": 7,
+        "layout": "COLOR_ATTACHMENT_OPTIMAL",
+        "mode": "copy+ssbo-override",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1403
+      },
+      {
+        "case": 8,
+        "layout": "COLOR_ATTACHMENT_OPTIMAL",
+        "mode": "explicit-rewrite+ssbo-override",
+        "channels": 1292,
+        "distinct_output_colors": 323,
+        "guard_bytes": 256,
+        "errors": 0,
+        "log_line": 1404
+      }
+    ],
+    "checked_channels": 10336,
+    "strict_error_unorm_units": 0,
+    "guard_bytes_per_case": 256,
+    "pass_log_line": 1405,
+    "native_vulkan_queue_fence_waits_per_case": true,
+    "AnyPS5_Draw_or_Recorder_exercised": false
+  },
+  "log_interleaving": {
+    "case1_prefix_line": 1396,
+    "case1_completion_line": 1397,
+    "case2_complete_line": 1398,
+    "explanation": "Native allocation diagnostics interleave after the case1 channels= prefix; the next line completes1292 channels/323 colors/256 guard bytes/errors0. Case2 is complete in this refreshed log. This is stdout/stderr interleaving, not a missing test or duplicate case.",
+    "earlier_probe_logs_not_merged": true
+  },
+  "end_state": {
+    "guest_exit_code": 0,
+    "guest_exit_log_line": 1477,
+    "guest_pass_precedes_exit": true,
+    "native_mach_unhandled_exception_events_after_guest_exit": 1,
+    "native_mach_exception_line": 1520,
+    "native_mach_exception_kind": "breakpoint in jit26_detach+0x4 during StikJITHelper.detachDebugger",
+    "native_exception_is_separate_from_synthetic_gpu_test_result": true,
+    "native_jit_dump_logged_after_exception": true,
+    "clean_native_app_exit": false,
+    "clean_native_app_lifecycle_qualified": false,
+    "own_test_processes_closed": true
+  },
+  "rollback": {
+    "configuration_byte_equal": true,
+    "configuration_sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "library_byte_equal": true,
+    "library_sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+  },
+  "limits": [
+    "One nearest/clamp sampler is used and fragments sample texel centers. Correct output does not distinguish this handle from another sampler with identical behavior there; sampler-handle identity and non-center filtering semantics are not separately proved.",
+    "The probe uses ordinary texture2D, a separate sampler and readonly SSBO with immediate fence waits. It does not exercise AnyPS5 Draw/Recorder, PS5 shader recompilation, BDA/fault resources, grouped MSAA, descriptor mutation while queued draws live, or production resource lifetimes.",
+    "The layouts compare GENERAL and COLOR_ATTACHMENT_OPTIMAL for the destination attachment; this is not full production layout/coherency validation.",
+    "Passing all-binding-copy and explicit-rewrite controls does not identify a production descriptor-copy fault or prove a game fix.",
+    "Guest exit0 is followed by a native host exception; clean app lifecycle is not accepted.",
+    "No game rendering, menu, input, audio, gameplay or FPS claim."
+  ],
+  "privacy": "Original synthetic sources are referenced by hashes. No private game shaders, assets, binaries, captures, pairing data or device identifiers are published."
+}

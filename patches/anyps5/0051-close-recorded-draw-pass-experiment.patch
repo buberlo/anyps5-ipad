@@ -1,0 +1,23 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -1437,6 +1437,19 @@
+     recorder->LeaveRenderPassOpen(passKey, drawTiming, !resources.WritesMemory(), std::move(storeProxies));
+     timer.phase(PhaseRecord);
+     keepRecordedDraw(*recorder, record.resources, std::move(record.pipeline), std::move(record.framebuffer), inputs, std::move(record.targets), std::move(scratch), std::move(checkRecords), record.listed, record.completion, outcome);
++    // Diagnostic factor separation: retain GENERAL attachments, draw snapshots
++    // and asynchronous batches, but close the pass before a later draw prepares
++    // its descriptor bindings. Commands ends the pass without submitting/waiting.
++    static const bool closeDrawPass = [] {
++        const auto* value = std::getenv("APS5_CLOSE_DRAW_PASS");
++        return value != nullptr && std::strcmp(value, "1") == 0;
++    }();
++    if (closeDrawPass) {
++        recorder->Commands();
++        static std::atomic<bool> reported{false};
++        if (!reported.exchange(true, std::memory_order_relaxed))
++            std::fprintf(stderr, "[draw-pass] close-after-draw experiment enabled; GENERAL layout, snapshots and asynchronous batches retained\n");
++    }
+     timer.phase(PhaseKeep);
+     if (record.waited) {
+         // The wait the dispatch path makes for such work (source 3, "address-based"): the

@@ -34,6 +34,33 @@ descriptor-kind, image-shape and fixed-array-count checks. Its sanitizer fixture
 suites pass. The latest game device run has no logged skipped draw or AGC error,
 but the reviewed surface remains white; correct game frames are unqualified.
 The earlier 0044/0045/0047 records remain unchanged.
+Two later patch0048 runs compare the pre-existing selected-source GPU capture
+with resident presentation enabled and with the diagnostic guest-memory source.
+Every decoded pixel in all four scaled captures is white in both paths; this
+localizes the white result before final presentation without qualifying full
+source or final swapchain pixels. Patch0049 adds default-off bounded pixel
+statistics. Its native fixtures, 49-patch/138-path source verification,
+50-PRX/three-DLL build and 22 selected host suites pass; no device acceptance
+is established by its source/build record. A separately recorded patch0049
+device run observes a sampled MSAA producer change and identical resolve-source
+statistics. Its selected scaled output stays white; resolve destination pixels
+on that baseline and correct game rendering remain unqualified. Later same-package
+target-copy, synchronous-draw and transition controls change output to blue or an
+early green background. Their perturbing copied-target readback has matching
+resolve/display logical colors, without qualifying a default repair.
+Extending the transition-only control produces the full title/selection menu
+by the later source and physical captures; interaction and gameplay remain
+unqualified, with a matched long baseline still outstanding.
+Patch0050 adds a default-off owned-initial-descriptor-write experiment. Its
+source/full build/host checks pass, but an exercised long device run stays white;
+no default repair is accepted. Its 50-patch series matches 139 paths.
+Patch0051's separate default-off close-draw-pass control also remains white
+after 180 seconds despite verified exercise, build and host checks.
+Patch0052 dispatches color tiling/detiling to literal-size texel copies; native
+and full HLE/host checks pass, and its 52-patch series matches 139 paths. A
+synchronized controlled iPad run visibly responds to Right/A, enters Golf and
+deals the board. Individual card actions, complete gameplay and sustained FPS
+remain unqualified; no default-path repair is accepted.
 See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
@@ -57,6 +84,202 @@ source, build, device and unqualified-path states.
 | 0046 | Qualify exact factory-generated rectangle stages for grouped draws; distinguish host fault completion from guest writes | Three canonical accepts and 90 rejection cases pass under sanitizers; 24 SPIR-V modules validate independently, existing 31 pair cases and production syntax checks pass. Actual-resource and full graphics host suites pass. Connected game output remains unqualified. |
 | 0047 | Restricted GC10 fixed-function RGBA8 color resolve from 2/4/8 stored samples to one sample, preserving actual rectangle coverage | 144 native sanitized cases and 401,712 scalar channel values pass. Isolated iPad production-fragment/rectangle probe passes six cases and guest exit 0, with exact non-tie/preserved bytes and one-unit half-tie tolerance. The game attempts the production path but rejects an unknown SPIR-V type; correct complete rendering remains unqualified. |
 | 0048 | Register opaque image/sampler types and validate separate descriptor roles, image shape and one fixed-array count | Ten accepted and 56 rejected production-inspector cases pass ASan/UBSan; six original and 18 factory SPIR-V modules validate. Full HLE build, 22 selected host suites and resource/full graphics suites pass. Latest iPad game log has no skipped draw/AGC error; reviewed surface remains white and correct game frames are unqualified. |
+| 0049 | Default-off bounded statistics over existing producer/resolve buffers, including every logical sample at selected XY positions | ASan/UBSan statistics fixtures pass with diagnostics unset, zero and enabled. Full 50-PRX/three-DLL build, 22 selected host suites and 49-patch/138-path forward/reverse source verification pass. A separate iPad run observes a sampled producer write and matching resolve-source statistics; the selected scaled output remains white. Resolve destination and correct game frames are unqualified. |
+| 0050 | Default-off replay of owned initial descriptor writes into the fresh DrawBindings set, preserving read-only snapshot overrides | Four sanitizer configurations pass 64 metadata checks each. Full HLE build, 22 host suites, resource/full graphics suites and 50-patch/139-path source verification pass. Device replay is logged; five scaled captures and the nominal 180-second image remain white. Negative experiment, no repair accepted. |
+| 0051 | Default-off close-after-draw control, retaining GENERAL layouts, read-only snapshots and asynchronous batches | Production Windows syntax, 51-patch/139-path series, full HLE and host/graphics checks pass. One device marker proves exercise; five source captures and nominal 180-second physical image stay white. Negative experiment, default remains off. |
+| 0052 | Dispatch once per color Tile/Detile surface to literal-size 1/2/4/8/16-byte texel copies | Independent AMD layout/address oracle, original layout suite, ASan/UBSan and optimized MinGW negative-control checks pass. Full 52-patch/139-path series, 53 binary hashes and 22 host plus two graphics suites pass. Controlled device run visibly responds to Right/A, enters Golf and deals its board; card actions/full gameplay/FPS remain unqualified. |
+
+## White selected-source comparison: patch0048
+
+Two completed runs use the same prepared manifest and HLE archive. The resident
+source trace contains 26 present events, 27 blits and 95 accepted draw rows over
+about 55 seconds; its selected-source dump is at present ordinal 16. Disabling
+resident presentation for the isolated diagnostic selects guest memory instead:
+that trace contains 25 presents, 26 blits and 95 accepted draw rows, with its
+last present at 54.63 seconds. Captures occur at present ordinals 8, 16 and 24.
+These event counts are not completed GPU work or displayed-frame/FPS counters.
+
+All four BMPs decode to 480 × 270, down from the selected 1920 × 1080 source
+with scale divisor four. Every one of each capture's 129,600 BGRA pixels is
+`ffffff00`. The complete BMP hash is
+`634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6`;
+the distinct pixel-payload hash is
+`cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1`.
+Configuration, library and manifest bytes are restored in both runs, and the
+receipts verify runtime rollback.
+
+The captured scaled selected source is already white in both paths. A cause
+confined solely to the resident-present cache, later GDI compositing or final
+Metal presentation does not explain all these observations. Earlier rendering,
+resolve contents and memory coherency remain possible causes. Full-resolution
+source and final swapchain pixels were not exhaustively read back. The diagnostic
+memory-source switch is not a production repair. Only statistics and hashes are
+published; private captures remain local. See the
+[comparison record](evidence/ipad-solitaire-white-source-comparison-20261008.json).
+
+## Bounded pixel diagnostics: patch0049 source/build checkpoint
+
+`APS5_FRAME_PIXEL_DIAGNOSTICS` defaults off when unset, empty or zero. When
+enabled, it selects event ordinals 1, 2, 3, 8, 16, 32, 64 and 128 independently
+for each stage. Each event samples at most 1,024 deterministic XY positions and
+includes every logical sample at those positions. Statistics report RGB
+black/white, alpha state, distinct RGB/RGBA counts and aggregate/per-sample FNV64.
+No raw pixel files are produced.
+
+Producer input uses the existing flushed color transfer after fast-clear handling;
+output uses the existing download after GPU completion and resource fault checks,
+before guest writeback. Resolve source statistics use the existing linear source.
+The returned-Draw marker is not proof of GPU completion and does not read the
+resolve destination. A presentation helper exists but is not integrated into
+presentation by this patch. There are no added GPU readbacks, recorder flushes
+or GPU waits; diagnostics still add bounded CPU work when enabled.
+
+Native sanitizer fixtures pass 487 assertions with the variable unset, 487 with
+zero and 511 when enabled. They cover alpha-independent RGB classification,
+all logical samples, independent byte hashes, corner coverage, invalid spans
+and the event budget. These are subset statistics: a uniform sample does not
+prove a uniform full image, and an intended stencil initializer can render white.
+The full HLE archive verifies all 53 binaries, and its 22 selected host suites
+pass under local Wine. All 49 patches match 138 source paths and apply/reverse
+cleanly. The source/build record establishes no device pixel, gameplay or FPS
+result. See the
+[native statistics qualification](evidence/bounded-frame-pixel-diagnostics-native-20261008.json)
+and [HLE/source build checkpoint](evidence/bounded-frame-pixel-diagnostics-build-20261008.json).
+
+## Bounded pixel diagnostics: patch0049 device checkpoint
+
+A completed run of the freshly prepared patch0049 package reaches built-in JIT,
+the Apple M2 Vulkan device and a three-image 768 × 432 swapchain. Its 25,056-line
+log has no skipped-draw, AGC-error, `bad_alloc` or `FATAL` markers. All 56
+read-back runtime files match the candidate manifest. The earlier source/build
+record remains an independent checkpoint.
+
+At producer event 1, all 8,192 inspected sample texels are initially black with
+zero alpha. After the existing completed GPU transfer, their statistics report
+one non-black, non-white RGB value with zero alpha. Every logical sample has the
+same per-sample FNV64, `1fb732bb8622a325`. Events 2, 3, 8 and 16 have matching
+before/after subset statistics; the resolve source matches the producer output
+at each of the five sampled events. This establishes an observed change and
+matching source values at the inspected positions. It does not establish the
+intended game image, full-image uniformity or completed resolve destination.
+
+The logged requested state uses a three-index rectangle list, all eight logical
+samples, RGBA writes, full-target viewport/scissor, no culling and an
+always/replace-zero stencil initializer. These fields do not prove full rectangle
+coverage or the final masked Vulkan pipeline state. The resolve-return marker
+does not inspect destination pixels or assert GPU completion.
+
+The selected-source trace contains 26 present events, 27 blits and 95 accepted
+draw rows, with its last present at 55.26 seconds. The three fresh scaled BMPs
+at present ordinals 8, 16 and 24 again decode to 480 × 270: every one of each
+capture's 129,600 pixels is white RGB with zero alpha. Their BMP and payload
+hashes match the earlier source-comparison captures. Review of the 60-second
+screenshot confirms a white game surface, black letterboxing and touch controls.
+None of these trace rows is a displayed-frame or FPS measurement.
+
+The baseline resolve destination remains unmeasured. The resolve and its subsequent
+presentation consumer must therefore be checked separately before assigning a
+cause. The early `Wine finished after 23.2s` message is followed by 8,376 runtime
+log lines and is not an explicit guest exit. Runtime backups, configuration,
+library and original manifest restore byte-identically; prior diagnostics are
+also restored. Correct rendering, gameplay, audio, input response, save/load and
+performance remain unqualified. Only sanitized statistics and hashes are public;
+see the [completed device record](evidence/ipad-solitaire-bounded-pixel-diagnostics-20261008.json).
+
+Later controls use the identical package. Copying targets per draw and
+independently forcing synchronous draws produce uniform blue selected-source
+captures. Per-draw transitions briefly expose an opaque green radial background,
+then blue. A separate copied-target run with GPU target dumps checks every pixel
+of the first resolve/display snapshots and finds matching logical colors after
+RGBA/BGRA decoding; that readback perturbs execution and does not qualify the
+white baseline's destination. These controls narrow the recorded runtime path,
+with no default fix, playable menu or performance result. See the
+[separate controlled-path record](evidence/ipad-solitaire-resident-path-controls-20261008.json).
+
+A longer transition-only control observes the full title/selection menu in the
+scaled source at 163.19 seconds and in the physical nominal 180-second screenshot.
+Earlier source captures through 130.25 seconds stay blue. The trace changes target
+and draw patterns after about 131 seconds and continues to 175.61 seconds, without
+a logged skipped draw, AGC error, `bad_alloc` or `FATAL`. The early helper-end
+message is followed by 20,839 runtime log lines; runtime and metadata restore.
+This is a visible menu observation, with no interaction, gameplay or FPS claim.
+A matched long baseline is needed before assigning the progress solely to the
+transition switch. See the new [long menu checkpoint](evidence/ipad-solitaire-transition-menu-20261008.json);
+the previous short-run records remain unchanged.
+
+An independent original descriptor/layout GPU probe passes eight synthetic cases
+and 10,336 exact channels through Wine/FEX/MoltenVK. Original/copy/copy-plus-SSBO-
+override/explicit-rewrite cases cover two destination layouts. This ordinary
+texture2D/separate-nearest-sampler/readonly-SSBO program does not execute AnyPS5
+Draw/Recorder or independently prove sampler-handle identity. It logs guest exit
+0 before a native Mach exception during JIT detach; clean native app exit is
+unqualified. It does not establish a production descriptor fault or repair. See
+the [separate probe record](evidence/ipad-descriptor-copy-probe-20261008.json).
+
+## Explicit initial-descriptor experiment: patch0050
+
+`APS5_EXPLICIT_DRAW_DESCRIPTORS=1` replays owned descriptor-info metadata before
+the existing read-only snapshot overrides. Other values retain the descriptor-copy
+path. Fresh set allocation, resource ownership, layouts and synchronization stay
+unchanged. Metadata sanitizer checks and production syntax pass; the full build
+verifies 50 PRX implementations and three DLLs, passes 22 host suites plus resource
+and full graphics tests, and matches the 50-patch/139-path series.
+
+The long device run proves replay of four bindings and four snapshots occurred.
+All five scaled source captures and the reviewed nominal 180-second screen remain
+white; 619 accepted draws and 86 present events continue to about 175 seconds.
+No production descriptor fault or successful repair is proved. The experiment
+remains default-off. Both this run and the menu-producing transition run contain
+211 native Mach `UNHANDLED` markers, followed by runtime activity. Their presence
+alone is not a fatal game-exit classification, and these runs are not described
+as exception-free. Rollback is verified; no gameplay, input, audio or FPS claim
+is made. See the [source/build/device record](evidence/ipad-solitaire-explicit-descriptor-experiment-20261008.json)
+and the unchanged [original native metadata record](evidence/explicit-draw-descriptor-experiment-native-20261008.json).
+
+## Close-recorded-pass experiment: patch0051
+
+`APS5_CLOSE_DRAW_PASS=1` ends each recorded draw pass while preserving GENERAL
+layouts, descriptor snapshots and asynchronous batches. Other values keep the
+existing path. Production Windows syntax and the complete HLE/host rebuild pass;
+the 51-patch series matches 139 paths. A single device marker confirms the option
+was exercised, but all five scaled source captures and the nominal 180-second
+physical screenshot remain white. Recorded work continues, and runtime/metadata
+rollback verifies. This negative experiment stays default-off and establishes
+neither a repair nor gameplay/FPS. See the
+[source/build/device checkpoint](evidence/ipad-solitaire-close-draw-pass-experiment-20261008.json).
+
+## Literal-size color texel copies: patch0052
+
+ColorTargetLayout dispatches once per Tile/Detile surface for supported texel
+sizes and uses literal-size copies in the logical sample loops. The optimized
+Windows object loses imported variable-size `memcpy` calls in the two hot
+functions; the prior-source negative control detects them. Existing swizzle,
+sample order, padding, validation and GPU/write-tracking behavior remain.
+Independent AMD AddrLib comparison covers 80 layouts, 2,650,990 addresses and 40
+round trips, including unaligned spans and padding, under ASan/UBSan. The
+original layout suite also passes. The complete 52-patch/139-path series applies,
+matches and reverses; all 53 binaries, 22 host suites and two graphics suites
+verify. See the [native record](evidence/fixed-texel-copies-native-20261008.json)
+and [immutable build record](evidence/inline-color-texel-build-20261008.json).
+
+The first controlled device run observes its menu source at 115.08 seconds rather
+than the earlier 163.19-second checkpoint; first 180 trace counters also advance.
+This is diagnostic content progression, not displayed FPS or a repeated matched
+benchmark. Its first UI test overlaps the planned cleanup and fails before input.
+The historical 49 attempt separately reports successful XCTest dispatch but no
+visual response with the intended coordinate mapping unqualified. Neither is
+classified as a game-input implementation failure. See the
+[52 first device record](evidence/ipad-solitaire-inline-color-texel-menu-20261008.json)
+and [historical 49 input record](evidence/ipad-solitaire-transition-menu-input-20261008.json).
+
+The subsequent synchronized 52 run verifies hardware landscape orientation and
+actual control centers, holds Right/A for three seconds, and retains the same
+app/helper processes. Reviewed images show a menu transition after Right, Golf
+dealing after A and a complete dealt board afterward. Runtime and metadata
+restore. These two inputs and game entry are observed; individual card actions,
+full gameplay, audio, saves, background recovery and sustained FPS remain
+unqualified. The controlled transition path does not establish a default repair.
+See the [interactive game-entry record](evidence/ipad-solitaire-inline-color-texel-input-20261008.json).
 
 The exact RGBA8 and S8 device probes run original synthetic fixtures through
 Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases

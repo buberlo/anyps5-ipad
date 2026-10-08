@@ -1,0 +1,176 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+@@ -5,6 +5,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/BdaResources.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Texture.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Sampler.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp"
+ #include "Recompiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Shaders.hpp"
+ #include <array>
+@@ -273,6 +274,10 @@
+         std::vector<std::size_t> allocations;
+         std::vector<std::size_t> imageAllocations;
+     };
++
++    // Optional owned copies of the initial set writes. Resource owners below
++    // retain every referenced buffer/image/sampler; only the infos are copied.
++    std::unique_ptr<InitialDescriptorWrites> initialDescriptorWrites;
+ 
+     // A host-imported buffer region the set reads in place, with its import's identity at build time.
+     struct DirectRegion {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+@@ -1092,6 +1092,7 @@
+                 writes.push_back(write);
+             }
+             context.Resolved(&DeviceFunctions::updateDescriptorSets, "vkUpdateDescriptorSets")(context.device, static_cast<std::uint32_t>(writes.size()), writes.data(), 0, nullptr);
++            initialDescriptorWrites = CaptureInitialDrawDescriptors(writes);
+         }
+         for (const auto& allocation : allocations) {
+             if (allocation.adjustment == 0) continue;
+@@ -2792,18 +2793,29 @@
+     result->cache = context.descriptorCache;
+     result->allocation = result->cache->Allocate(_layout, sizes);
+     Require(result->allocation.set != VK_NULL_HANDLE, "draw snapshot descriptor allocation failed");
+-    std::vector<VkCopyDescriptorSet> copies;
+-    for (const auto& binding : bindings) {
+-        VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+-        copy.srcSet = _set;
+-        copy.srcBinding = binding.layout.binding;
+-        copy.dstSet = result->allocation.set;
+-        copy.dstBinding = binding.layout.binding;
+-        copy.descriptorCount = binding.layout.descriptorCount;
+-        copies.push_back(copy);
+-    }
+     const auto update = context.Resolved(&DeviceFunctions::updateDescriptorSets, "vkUpdateDescriptorSets");
+-    update(context.device, 0, nullptr, static_cast<std::uint32_t>(copies.size()), copies.data());
++    if (ExplicitDrawDescriptorsEnabled()) {
++        Require(initialDescriptorWrites != nullptr && initialDescriptorWrites->Size() == bindings.size(),
++                "explicit draw descriptors lack the complete initial write plan");
++        const auto initialWrites = initialDescriptorWrites->ForSet(result->allocation.set);
++        update(context.device, static_cast<std::uint32_t>(initialWrites.size()), initialWrites.data(), 0, nullptr);
++        static std::atomic<bool> reported{false};
++        if (!reported.exchange(true, std::memory_order_relaxed))
++            std::fprintf(stderr, "[draw-descriptors] explicit initial writes replayed bindings=%zu read_only_snapshots=%zu\n",
++                initialWrites.size(), result->snapshots.size());
++    } else {
++        std::vector<VkCopyDescriptorSet> copies;
++        for (const auto& binding : bindings) {
++            VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
++            copy.srcSet = _set;
++            copy.srcBinding = binding.layout.binding;
++            copy.dstSet = result->allocation.set;
++            copy.dstBinding = binding.layout.binding;
++            copy.descriptorCount = binding.layout.descriptorCount;
++            copies.push_back(copy);
++        }
++        update(context.device, 0, nullptr, static_cast<std::uint32_t>(copies.size()), copies.data());
++    }
+     std::vector<VkDescriptorBufferInfo> infos;
+     infos.reserve(selected.size());
+     for (const auto& snapshot : result->snapshots) infos.push_back({snapshot.buffer->Handle(), 0, snapshot.buffer->Bytes().size()});
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp
+@@ -0,0 +1,97 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_INITIALDESCRIPTORWRITES_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_INITIALDESCRIPTORWRITES_HPP
++
++#include <vulkan/vulkan.h>
++#include <cstdint>
++#include <cstdlib>
++#include <cstring>
++#include <memory>
++#include <span>
++#include <stdexcept>
++#include <utility>
++#include <vector>
++
++namespace AgcDriver::Graphics {
++
++// Diagnostic experiment only. The default path neither saves descriptor infos
++// nor changes how a draw's read-only buffer snapshots are bound.
++inline bool ExplicitDrawDescriptorsEnabled() noexcept {
++    static const bool enabled = [] {
++        const char* value = std::getenv("APS5_EXPLICIT_DRAW_DESCRIPTORS");
++        return value != nullptr && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++class InitialDescriptorWrites {
++public:
++    explicit InitialDescriptorWrites(std::span<const VkWriteDescriptorSet> writes) {
++        entries.reserve(writes.size());
++        for (const auto& write : writes) {
++            if (write.sType != VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET || write.pNext != nullptr ||
++                write.descriptorCount == 0 || write.pTexelBufferView != nullptr)
++                throw std::runtime_error("unsupported initial draw descriptor write");
++            Entry entry{write.dstBinding, write.dstArrayElement, write.descriptorCount, write.descriptorType};
++            switch (write.descriptorType) {
++                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
++                    if (write.pBufferInfo == nullptr || write.pImageInfo != nullptr)
++                        throw std::runtime_error("initial draw buffer descriptor has invalid infos");
++                    entry.buffers.assign(write.pBufferInfo, write.pBufferInfo + write.descriptorCount);
++                    break;
++                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
++                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
++                case VK_DESCRIPTOR_TYPE_SAMPLER:
++                    if (write.pImageInfo == nullptr || write.pBufferInfo != nullptr)
++                        throw std::runtime_error("initial draw image descriptor has invalid infos");
++                    entry.images.assign(write.pImageInfo, write.pImageInfo + write.descriptorCount);
++                    break;
++                default:
++                    throw std::runtime_error("initial draw descriptor type is unsupported");
++            }
++            entries.push_back(std::move(entry));
++        }
++    }
++
++    // Returned pointers refer to this immutable owner, not the returned vector.
++    // Keep the owner alive until vkUpdateDescriptorSets has consumed every write.
++    std::vector<VkWriteDescriptorSet> ForSet(VkDescriptorSet set) const {
++        if (set == VK_NULL_HANDLE) throw std::runtime_error("initial draw descriptors need a destination set");
++        std::vector<VkWriteDescriptorSet> writes;
++        writes.reserve(entries.size());
++        for (const auto& entry : entries) {
++            VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
++            write.dstSet = set;
++            write.dstBinding = entry.binding;
++            write.dstArrayElement = entry.arrayElement;
++            write.descriptorCount = entry.count;
++            write.descriptorType = entry.type;
++            write.pBufferInfo = entry.buffers.empty() ? nullptr : entry.buffers.data();
++            write.pImageInfo = entry.images.empty() ? nullptr : entry.images.data();
++            writes.push_back(write);
++        }
++        return writes;
++    }
++
++    std::size_t Size() const noexcept { return entries.size(); }
++
++private:
++    struct Entry {
++        std::uint32_t binding;
++        std::uint32_t arrayElement;
++        std::uint32_t count;
++        VkDescriptorType type;
++        std::vector<VkDescriptorBufferInfo> buffers;
++        std::vector<VkDescriptorImageInfo> images;
++    };
++    std::vector<Entry> entries;
++};
++
++inline std::unique_ptr<InitialDescriptorWrites> CaptureInitialDrawDescriptors(
++    std::span<const VkWriteDescriptorSet> writes) {
++    if (!ExplicitDrawDescriptorsEnabled()) return {};
++    return std::make_unique<InitialDescriptorWrites>(writes);
++}
++
++}
++
++#endif

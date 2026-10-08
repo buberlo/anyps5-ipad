@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "status": "focused_native_sanitizer_and_optimized_mingw_checks_passed_not_device_benchmarked",
+  "patch": {
+    "path": "patches/anyps5/0052-inline-color-texel-copies.patch",
+    "sha256": "85c9c056090ca7a8faa8adc72bd65dfbd84deffe250e3ba8d750591d3df51644",
+    "baseline": "Current patch51 source snapshot; prior patches remain unchanged",
+    "forwardReverseByteExact": true
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp": {
+      "beforeSha256": "d3a47238325b1863b9b4f0763f73707fb2e1b35bf00ac1f6e0a7e11fcf55d015",
+      "afterSha256": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83"
+    }
+  },
+  "change": {
+    "dispatch": "Once per Tile/Detile surface for 1,2,4,8,16-byte texels",
+    "copy": "Literal-size std::memcpy, preserving existing byte alignment and nonoverlap requirements",
+    "preserved": [
+      "swizzle equations",
+      "logical sample ordering",
+      "surface extent and byte-size checks",
+      "guest padding",
+      "supported formats and sample counts",
+      "GPU synchronization and write tracking"
+    ]
+  },
+  "validation": {
+    "amdAddrLibReference": {
+      "sourceCheckpoint": "PAL c5e800072a32f68b6ccc4422936d96167c6e0728/src/core/imported/addrlib",
+      "nativeLibrarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+      "layouts": 80,
+      "independentAddresses": 2650990,
+      "sampleRoundTrips": 40,
+      "texelBytes": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "samples": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "guardsAndUnalignedSpans": true,
+      "independentRandomByteOracle": true,
+      "untouchedPaddingChecked": true,
+      "sanitizers": [
+        "AddressSanitizer",
+        "UndefinedBehaviorSanitizer"
+      ],
+      "errors": 0,
+      "logSha256": "6a0ee4f75ae8f4da826c2afcdf65420b9521dcbcc3af5bd4be428066e2c33571"
+    },
+    "originalColorTargetLayoutSuite": {
+      "passed": true,
+      "sanitizers": [
+        "AddressSanitizer",
+        "UndefinedBehaviorSanitizer"
+      ],
+      "scope": "Original ColorTargetLayout.cpp tests with explicit native mapped-memory test adapter; no Wine tracking or GPU proof",
+      "logSha256": "69ec8eae77e02df114d9b921a3881a0ccb2177b634936e91401ecdb7c8e9bdb0"
+    },
+    "optimizedMingwProductionTU": {
+      "optimization": "-O3 -DNDEBUG",
+      "sourceSha256": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83",
+      "objectSha256": "9441427c58c036daf1467968a0a7e042601a56d657a9f10297358ae476211e24",
+      "disassemblySha256": "55b2ffe0206e1724df01df9d4a252cee36a3ba7edb1312af7926b97b9a8ff97c",
+      "hotFunctions": 2,
+      "crtMemoryCopyMentionsInHotFunctions": 0,
+      "priorSourceNegativeControlRejected": true,
+      "priorSourceDetectedCopyRelocations": 2,
+      "checkScriptSha256": "f0a088d8d7b2388d9d32e75d34b86d8e71ec234dfe3d0d787232d6ab25a97640"
+    }
+  },
+  "motivation": {
+    "actualPriorUploadedAgcHash": "4696aabed5f333d99568040c64b1b178dd6f3ef4b6b84f86bfe86f79c73f151b",
+    "asBuiltObservation": "Both original Tile and Detile inner logical-sample loops call imported memcpy with a variable byte count",
+    "logicalTexelsPer1920x1080x8Conversion": 16588800
+  },
+  "limits": [
+    "No iPad run or gameplay qualification of patch52 yet",
+    "No measured speed improvement or FPS claim",
+    "Large watched guest write copies still have a separate page-fault cost",
+    "Standalone native mapped-memory adapter does not qualify Wine write watch, aliases, or GPU behavior"
+  ]
+}

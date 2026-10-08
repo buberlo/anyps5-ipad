@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:18:02.480249+00:00",
+  "kind": "transition_control_repeat_menu_and_unqualified_input_checkpoint",
+  "qualification": "menu_observed_through360_seconds_xctest_events_dispatched_no_visual_response_orientation_unqualified",
+  "build": {
+    "app_build": 47,
+    "patch_count": 49,
+    "hle_archive_sha256": "85f8a566ac72e6b8d6e789a0c3cec3b4a6392a52cc5ca191b59431d447e1a4be",
+    "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+    "receipt_manifest_matches": true,
+    "dependency_audit_passed": true,
+    "readback_runtime_file_hashes_verified": 56,
+    "baseline_source_build_record": {
+      "path": "docs/evidence/bounded-frame-pixel-diagnostics-build-20261008.json",
+      "sha256": "b51e274fb253dcff073e1eef315b5432345689d71b2bf7e3ced7b354a671c283"
+    }
+  },
+  "private_run": {
+    "path": "build/pr1-port/solitaire-build47-transition-interactive",
+    "receipt_sha256": "1580fe5e2a7471865870e5edde08422600d0da27966b81db42c6cf0dd1d59697",
+    "log_sha256": "29cfeaff95dee25e5742a611ad652d1689bb6d77d911075be2514f86f77d2ce1",
+    "log_line_count": 40699,
+    "nominal_bounded_capture_seconds": 360,
+    "test_operation_seconds": 376.105328667,
+    "accepted_gameplay_duration_seconds": null
+  },
+  "diagnostic_configuration": {
+    "controlled_switch": "APS5_DRAW_TRANSITIONS=1",
+    "normal_memory_tracking": true,
+    "built_in_jit": true,
+    "APS5_ENABLE_SAMPLE_GROUPS": "1",
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": null,
+    "selected_source_dump_every_present_ordinal": 16,
+    "maximum_selected_source_dump_count": 0,
+    "dump_scale_divisor": 4,
+    "selected_source_dimensions": [
+      1920,
+      1080
+    ],
+    "swapchain_dimensions": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "copied_target_and_sync_switches_present": false,
+    "existing_restored_capture_files_not_fresh_evidence": true
+  },
+  "log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "subfloor_nonzero_unhandled_or_refused_records": 0,
+    "maximum_logged_waiters_parked": 0,
+    "maximum_logged_waiters_over60s": 0,
+    "known_startup_code_buffer_mprotect_warning_count": 2,
+    "last_logged_physical_footprint_mb": 3643,
+    "logged_peak_physical_footprint_mb": 3702,
+    "memory_stability_qualified": false,
+    "native_mach_unhandled_event_markers": 211,
+    "native_mach_marker_interpretation": "The log is not exception-free. Later renderer activity and the menu follow these markers; a marker alone is not a fatal guest-exit classification or proof of successful delivery for every event."
+  },
+  "process_end": {
+    "explicit_guest_exit_logged": false,
+    "wine_finished_message": "[22:23:55.413] [INFO] Wine finished after 23.5s",
+    "message_line": 16657,
+    "later_runtime_log_lines": 24042,
+    "interpretation": "Helper completion is followed by runtime work and is not a game-exit claim.",
+    "own_test_processes_closed": true,
+    "clean_native_game_lifecycle_qualified": false
+  },
+  "rollback": {
+    "receipt_runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "independent_runtime_restored_file_byte_matches": 56,
+    "independent_metadata_byte_matches": [
+      {
+        "kind": "configuration",
+        "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+        "byte_equal": true
+      },
+      {
+        "kind": "library",
+        "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+        "byte_equal": true
+      },
+      {
+        "kind": "original_manifest",
+        "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+        "byte_equal": true
+      }
+    ],
+    "prior_diagnostics_restored": [
+      "capture-trace.log",
+      "frame_000.bmp",
+      "frame_001.bmp",
+      "frame_002.bmp",
+      "frame_003.bmp",
+      "frame_004.bmp"
+    ]
+  },
+  "acceptance": {
+    "visible_title_menu": true,
+    "interactive_menu": false,
+    "gameplay": false,
+    "audio": false,
+    "input_response": false,
+    "save_load": false,
+    "fps": false,
+    "default_path_repair": false
+  },
+  "limits": [
+    "XCTest success proves event dispatch and its assertions, not game input delivery.",
+    "Coordinate orientation must be qualified before classifying the game input path.",
+    "Restored selected-source files are not fresh captures from this dump-disabled run.",
+    "No gameplay, audio, save/load or FPS acceptance."
+  ],
+  "privacy": "Only sanitized statistics and hashes are published. Private captures, shaders, game assets/binaries, guest addresses, packet/register contents, pairing data and device identifiers remain local.",
+  "physical_visual_timeline": {
+    "180": {
+      "sha256": "aa31de1ecd40dcefee6e5c831f865b7cc05efa6ac51253d15e7c15eaab08e86f",
+      "result": "full_title_and_selection_menu_unchanged_selection",
+      "review_method": "view_image"
+    },
+    "240": {
+      "sha256": "f153c05396ba2ac840237073d963cb2ff2cb2c22cac5e52d6553f2524710b0db",
+      "result": "full_title_and_selection_menu_unchanged_selection",
+      "review_method": "root_agent_view_image_review"
+    },
+    "300": {
+      "sha256": "c67c4f5b7930023c57ac408db44d97d74191ac930e1e6c803270d164be4476f8",
+      "result": "full_title_and_selection_menu_unchanged_selection",
+      "review_method": "root_agent_view_image_review"
+    },
+    "360": {
+      "sha256": "735c2b6ae770b555ed7b3fffea922f8c80140a4e91b525282cda33deebe8a138",
+      "result": "full_title_and_selection_menu_unchanged_selection",
+      "review_method": "view_image"
+    }
+  },
+  "input_test": {
+    "private_log_path": "build/pr1-port/solitaire-interaction-20261008/right-then-a-first.log",
+    "log_sha256": "7085b0a460ff56d8e35b1a02c5d65c65f9a7be4dd0fbbc06cb7b53acf90c52d9",
+    "test_source_sha256": "0e59ff03c2ef917e431e8bf4a5e9c8631ae81130c5b0147b61a444b2e7cdf02a",
+    "attachment_manifest_sha256": "16de332244412677c4b4d0540c3d90fe655cef08d0d5f3b605c47c07e159e35c",
+    "xcresult_info_sha256": "b17e42604a619105d0920b2b466a0ee27feaa9ffd638d55c587bcd48508ac078",
+    "xctest_reported_success": true,
+    "test_method": "testRightThenA",
+    "holds_seconds": 0.5,
+    "right_normalized": [
+      0.135,
+      0.257
+    ],
+    "action_normalized": [
+      0.914,
+      0.315
+    ],
+    "asserted_scope": "Existing foreground app, landscape app frame and finite in-bounds coordinates; no game response assertion.",
+    "physical_selection_unchanged": true,
+    "actual_app_and_jit_helper_process_identity_unchanged_before_after": true,
+    "process_inventory_before_sha256": "3b142e323265c10ec231bab4488a76920ad8b3206e27f9a05ecc6c8cbd9a8400",
+    "process_inventory_after_sha256": "cc8a66ca88beedab4208d2c334fc6f982959750bcf3135d5eb91ffa2c893f3fe",
+    "orientation_issue": {
+      "source": "Root independent review of original XCTest event synthesis",
+      "reported_event_orientation": 1,
+      "reported_coordinate_transform": "(1024 - y, x)",
+      "app_frame_guard_does_not_qualify_event_orientation": true,
+      "touch_delivery_to_intended_controls_qualified": false
+    },
+    "revised_runner_result": "Outside this historical49 checkpoint."
+  },
+  "runtime_log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "native_mach_unhandled_logged_marker_rows": 219,
+    "native_mach_marker_interpretation": "Sampled marker rows are not total exceptions. Continued runtime activity follows them; no clean native lifecycle claimed."
+  }
+}

@@ -1,0 +1,313 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T13:31:32.563067+00:00",
+  "kind": "ipad_solitaire_resident_vs_guest_memory_selected_source_capture_comparison",
+  "qualification": "same_candidate_scaled_selected_sources_all_white_in_both_paths_correct_game_pixels_unqualified",
+  "scope": "Two completed private runs of the same patch0048 candidate using the pre-existing selected-source GPU dump. This compares a resident image source with the diagnostic guest-memory presentation source; it is not the later patch0049 statistics run.",
+  "runs": [
+    {
+      "label": "resident_image_source",
+      "app_build": 47,
+      "candidate_patch_count": 48,
+      "relinker_sha256": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "manifest_sha256": "858d1d9415678c9a53ced63ea0fa91aeea14c1c88f3facd20208ea0f933fb559",
+      "hle_archive_sha256": "319e7c263185aac02de76a05758ad9e6abcdb5525fdd5a80b02da3c820fd29c0",
+      "inputs": {
+        "receipt.json": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-source-capture/receipt.json",
+          "sha256": "ad845bbcdbeffae17ae3547c2197eb14a0342cd955e343d59b6d0810bc2c0fd6"
+        },
+        "manifest-readback.json": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-source-capture/manifest-readback.json",
+          "sha256": "858d1d9415678c9a53ced63ea0fa91aeea14c1c88f3facd20208ea0f933fb559"
+        },
+        "app-final.log": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-source-capture/app-final.log",
+          "sha256": "15d9e1a5dddab5248d8d8232cb398801e79add1deb1b8f1ec1f55f4aec6a50bb"
+        },
+        "selected-source/capture-trace.log": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-source-capture/selected-source/capture-trace.log",
+          "sha256": "de886c487bb385bbd283eff054328bf0795a2d15b8be97dc38ba99dc235b9b61"
+        }
+      },
+      "runtime": {
+        "resident_present_selected": true,
+        "no_resident_present_diagnostic": false,
+        "sample_groups_enabled": true,
+        "normal_memory_tracking": true,
+        "native_signal_suspend_enabled": true,
+        "async_avx_preservation_enabled": true,
+        "async_flags_preservation_enabled": true,
+        "veh_context_bridge_enabled": true,
+        "dump_limit": 12,
+        "dump_every": 16,
+        "dump_scale": 4,
+        "selected_source_gpu_dump": true,
+        "not_final_swapchain_pixels": true
+      },
+      "trace": {
+        "rows": 4802,
+        "present_events": 26,
+        "blit_events": 27,
+        "flip_events": 27,
+        "accepted_draw_rows": 95,
+        "draw_trace_verdict": 0,
+        "draw_snapshot_rows": 145,
+        "first_present_seconds": 1.074056,
+        "last_present_seconds": 54.785396,
+        "last_trace_event_seconds": 55.297927,
+        "captured_present_ordinals": [
+          16
+        ],
+        "capture_trace_rows": [
+          3101
+        ],
+        "capture_trace_seconds": [
+          35.244061
+        ],
+        "source_extent": [
+          1920,
+          1080
+        ],
+        "counting_note": "Only exact present/blit/draw event types are counted. A draw verdict or present trace event does not prove GPU completion or a uniquely displayed game frame."
+      },
+      "decoded_capture_results": [
+        {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-source-capture/selected-source/frame_000.bmp",
+          "file_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+          "decoded_width": 480,
+          "decoded_height": 270,
+          "top_down": true,
+          "bits_per_pixel": 32,
+          "pixel_count": 129600,
+          "every_decoded_pixel_bgra_hex": "ffffff00",
+          "distinct_pixel_values": 1,
+          "pixel_payload_bytes": 518400,
+          "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1"
+        }
+      ],
+      "visual_review": {
+        "reviewer": "coordinating_root_agent",
+        "status": "white_game_output",
+        "private_screen_path": "build/pr1-port/solitaire-build47-opaque-source-capture/screen-60.png",
+        "private_screen_sha256": "8cb8df4a33b4d89067e8dbcc71d070cff85122ddb2fb7e6a1500e3f7ce8e7937",
+        "pixels_published": false,
+        "gameplay_qualified": false
+      },
+      "bounded_log": {
+        "total_lines": 25032,
+        "skipped_draw_log_matches": 0,
+        "agc_graphics_error_log_matches": 0,
+        "bad_alloc_log_matches": 0,
+        "fatal_marker_matches": 0,
+        "helper_completion_log_line": 16630,
+        "subsequent_log_lines": 8402,
+        "guest_exit_code_observed": false
+      },
+      "restoration": {
+        "configuration": {
+          "byte_equal": true,
+          "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56"
+        },
+        "library": {
+          "byte_equal": true,
+          "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+        },
+        "manifest": {
+          "byte_equal": true,
+          "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714"
+        },
+        "runtime_hash_restored": true,
+        "receipt_config_and_library_byte_preserved": true,
+        "own_processes_closed": true,
+        "prior_diagnostics_restored": [],
+        "receipt_test_operation_duration_seconds": 75.800600542
+      }
+    },
+    {
+      "label": "guest_memory_source_diagnostic",
+      "app_build": 47,
+      "candidate_patch_count": 48,
+      "relinker_sha256": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "manifest_sha256": "858d1d9415678c9a53ced63ea0fa91aeea14c1c88f3facd20208ea0f933fb559",
+      "hle_archive_sha256": "319e7c263185aac02de76a05758ad9e6abcdb5525fdd5a80b02da3c820fd29c0",
+      "inputs": {
+        "receipt.json": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/receipt.json",
+          "sha256": "8ab95bdc2a37c84686f770120c9490f744da95c3f3d1095a6258757636839986"
+        },
+        "manifest-readback.json": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/manifest-readback.json",
+          "sha256": "858d1d9415678c9a53ced63ea0fa91aeea14c1c88f3facd20208ea0f933fb559"
+        },
+        "app-final.log": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/app-final.log",
+          "sha256": "1939f14c17e9414bd5239dfc2dd223d224d5401575243404d8b05598949ccd0b"
+        },
+        "selected-source/capture-trace.log": {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/selected-source/capture-trace.log",
+          "sha256": "3e7ff994191834db1913c3d9e0fdc5e213b353d57bf651d19a14a115834d646c"
+        }
+      },
+      "runtime": {
+        "resident_present_selected": false,
+        "no_resident_present_diagnostic": true,
+        "sample_groups_enabled": true,
+        "normal_memory_tracking": true,
+        "native_signal_suspend_enabled": true,
+        "async_avx_preservation_enabled": true,
+        "async_flags_preservation_enabled": true,
+        "veh_context_bridge_enabled": true,
+        "dump_limit": 4,
+        "dump_every": 8,
+        "dump_scale": 4,
+        "selected_source_gpu_dump": true,
+        "not_final_swapchain_pixels": true
+      },
+      "trace": {
+        "rows": 4827,
+        "present_events": 25,
+        "blit_events": 26,
+        "flip_events": 26,
+        "accepted_draw_rows": 95,
+        "draw_trace_verdict": 0,
+        "draw_snapshot_rows": 148,
+        "first_present_seconds": 1.224136,
+        "last_present_seconds": 54.633566,
+        "last_trace_event_seconds": 55.151821,
+        "captured_present_ordinals": [
+          8,
+          16,
+          24
+        ],
+        "capture_trace_rows": [
+          1898,
+          3249,
+          4585
+        ],
+        "capture_trace_seconds": [
+          19.694026,
+          36.995175,
+          52.676689
+        ],
+        "source_extent": [
+          1920,
+          1080
+        ],
+        "counting_note": "Only exact present/blit/draw event types are counted. A draw verdict or present trace event does not prove GPU completion or a uniquely displayed game frame."
+      },
+      "decoded_capture_results": [
+        {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/selected-source/frame_000.bmp",
+          "file_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+          "decoded_width": 480,
+          "decoded_height": 270,
+          "top_down": true,
+          "bits_per_pixel": 32,
+          "pixel_count": 129600,
+          "every_decoded_pixel_bgra_hex": "ffffff00",
+          "distinct_pixel_values": 1,
+          "pixel_payload_bytes": 518400,
+          "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1"
+        },
+        {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/selected-source/frame_001.bmp",
+          "file_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+          "decoded_width": 480,
+          "decoded_height": 270,
+          "top_down": true,
+          "bits_per_pixel": 32,
+          "pixel_count": 129600,
+          "every_decoded_pixel_bgra_hex": "ffffff00",
+          "distinct_pixel_values": 1,
+          "pixel_payload_bytes": 518400,
+          "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1"
+        },
+        {
+          "private_local_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/selected-source/frame_002.bmp",
+          "file_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+          "decoded_width": 480,
+          "decoded_height": 270,
+          "top_down": true,
+          "bits_per_pixel": 32,
+          "pixel_count": 129600,
+          "every_decoded_pixel_bgra_hex": "ffffff00",
+          "distinct_pixel_values": 1,
+          "pixel_payload_bytes": 518400,
+          "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1"
+        }
+      ],
+      "visual_review": {
+        "reviewer": "coordinating_root_agent",
+        "status": "white_game_output",
+        "private_screen_path": "build/pr1-port/solitaire-build47-opaque-memory-capture/screen-60.png",
+        "private_screen_sha256": "18ee02555c8c1f3d67614dff1335533c0f483e91017a2f05927e01ccea35bfba",
+        "pixels_published": false,
+        "gameplay_qualified": false
+      },
+      "bounded_log": {
+        "total_lines": 25024,
+        "skipped_draw_log_matches": 0,
+        "agc_graphics_error_log_matches": 0,
+        "bad_alloc_log_matches": 0,
+        "fatal_marker_matches": 0,
+        "helper_completion_log_line": 16685,
+        "subsequent_log_lines": 8339,
+        "guest_exit_code_observed": false
+      },
+      "restoration": {
+        "configuration": {
+          "byte_equal": true,
+          "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56"
+        },
+        "library": {
+          "byte_equal": true,
+          "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+        },
+        "manifest": {
+          "byte_equal": true,
+          "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714"
+        },
+        "runtime_hash_restored": true,
+        "receipt_config_and_library_byte_preserved": true,
+        "own_processes_closed": true,
+        "prior_diagnostics_restored": [
+          "capture-trace.log",
+          "frame_000.bmp"
+        ],
+        "receipt_test_operation_duration_seconds": 74.577995417
+      }
+    }
+  ],
+  "comparison": {
+    "same_prepared_manifest_and_hle_archive": true,
+    "captures_checked": 4,
+    "decoded_pixels_checked_per_capture": 129600,
+    "decoded_pixels_checked_total": 518400,
+    "each_capture_extent": [
+      480,
+      270
+    ],
+    "source_extent": [
+      1920,
+      1080
+    ],
+    "scale_divisor": 4,
+    "all_decoded_capture_pixels_bgra_hex": "ffffff00",
+    "all_complete_bmp_file_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+    "all_pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+    "hash_note": "The first hash covers the entire BMP including its header. The second covers only the decoded 518,400-byte pixel payload of each capture."
+  },
+  "inference": {
+    "supported": "The selected source is already white in the captured scaled GPU readbacks in both resident and guest-memory paths. A fault confined solely to the resident-present cache, later GDI compositing or final Metal presentation cannot explain all these observations.",
+    "remaining": "Earlier rendering/resolve contents, guest/GPU memory coherency and other upstream causes remain possible. This does not identify the producer of the white source."
+  },
+  "limits": [
+    "Every decoded BMP pixel was checked, but the original full-resolution 1920x1080 source and final swapchain were not exhaustively read back.",
+    "Captures use the existing scale-four selected-source dump; they do not establish actual final Metal/display pixels or arbitrary subpixel content.",
+    "Accepted draw rows, blit events and present trace rows are diagnostic events, not completed GPU work or displayed-frame/FPS measurements.",
+    "No playable scene, correct game pixels, audio, touch behavior, saves or performance acceptance.",
+    "The no-resident-present switch is an isolated diagnostic, not a production repair."
+  ],
+  "privacy": "No private game binary, shader code, packet/register contents, guest addresses, image files, captured pixels, pairing data or device identifiers are published; only summarized measurements and hashes."
+}

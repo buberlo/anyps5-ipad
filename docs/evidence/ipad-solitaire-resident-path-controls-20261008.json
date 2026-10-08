@@ -1,0 +1,750 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T14:01:13.199385+00:00",
+  "kind": "ipad_solitaire_same49_package_copied_target_synchronization_and_transition_controls",
+  "qualification": "controlled_paths_change_white_to_blue_or_early_green_correct_game_rendering_and_default_path_fix_unqualified",
+  "source_and_build": {
+    "app_build": 47,
+    "project_commit_at_hle_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "patch_count": 49,
+    "hle_archive_sha256": "85f8a566ac72e6b8d6e789a0c3cec3b4a6392a52cc5ca191b59431d447e1a4be",
+    "source_or_runtime_binaries_changed_between_controls": false,
+    "same_candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+    "source_build_record": {
+      "path": "docs/evidence/bounded-frame-pixel-diagnostics-build-20261008.json",
+      "sha256": "b51e274fb253dcff073e1eef315b5432345689d71b2bf7e3ced7b354a671c283"
+    }
+  },
+  "baseline": {
+    "path": "docs/evidence/ipad-solitaire-bounded-pixel-diagnostics-20261008.json",
+    "sha256": "e0078da23f80b9c39b9b900e7989d05b41b8f0ea257042b2b45221dfd49a30b0",
+    "sampled_producer_and_resolve_source_nonwhite": true,
+    "scaled_selected_source": "white",
+    "resolve_destination_pixels_in_baseline": "not_measured"
+  },
+  "common_diagnostic_state": {
+    "built_in_jit": true,
+    "normal_memory_tracking": true,
+    "APS5_ENABLE_SAMPLE_GROUPS": "1",
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+    "selected_source_dump_every_present_ordinal": 8,
+    "selected_source_dump_scale_divisor": 4,
+    "selected_source_dimensions": [
+      1920,
+      1080
+    ],
+    "swapchain_dimensions": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "not_performance_comparison": true
+  },
+  "controlled_runs": [
+    {
+      "controlled_run": "target-readback-capture",
+      "private_run_directory": "build/pr1-port/solitaire-build47-target-readback-capture",
+      "diagnostic_switches_relative_to_bounded49_baseline": {
+        "APS5_NO_RESIDENT_TARGETS": "1",
+        "APS5_DUMP_TARGETS": "1"
+      },
+      "additional_target_dump_readbacks_enabled": true,
+      "receipt_sha256": "cdacf1894d0ec35b5742c6e4ce8d0e9b23896ee50de97f8ceea46c2f7d3b657a",
+      "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+      "log_sha256": "6d600270a24d847e7b7c7822495443f07458a9993d936e3453e1ce6d420a4909",
+      "log_lines": 25221,
+      "error_marker_counts": {
+        "[gpu] skipped draw": 0,
+        "AGC graphics:": 0,
+        "bad_alloc": 0,
+        "FATAL": 0,
+        "Wine exited": 0
+      },
+      "test_operation_seconds": 77.00245954200001,
+      "readback_runtime_files_verified": 56,
+      "trace": {
+        "sha256": "0ffa5777a94e40dc23fb2fe66d262fd64ae04404b4d525fe84f2dabb929a7fa2",
+        "rows": 4012,
+        "exact_event_kind_counts": {
+          "packet": 3503,
+          "flip": 26,
+          "blit": 26,
+          "copy-input-snapshot": 88,
+          "buffer-read": 31,
+          "buffer-write": 110,
+          "submit": 84,
+          "draw": 89,
+          "present": 25,
+          "sampled-lookup": 30
+        },
+        "first_present_seconds": 1.005228,
+        "last_present_seconds": 54.909992,
+        "resident_present_values": [
+          0
+        ],
+        "all_draw_rows_accepted": true,
+        "not_displayed_frames_or_gpu_completion_counts": true
+      },
+      "scaled_selected_source_captures": [
+        {
+          "private_capture_ordinal": 0,
+          "present_ordinal": 8,
+          "trace_line": 1459,
+          "trace_seconds": 21.183408,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 1,
+          "present_ordinal": 16,
+          "trace_line": 2627,
+          "trace_seconds": 37.21655,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 2,
+          "present_ordinal": 24,
+          "trace_line": 3795,
+          "trace_seconds": 52.944484,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        }
+      ],
+      "process_end": {
+        "explicit_guest_exit_logged": false,
+        "wine_finished_line": 16814,
+        "wine_finished_message": "Wine finished after 23.3s",
+        "later_runtime_log_lines": 8407,
+        "helper_message_does_not_establish_guest_exit": true,
+        "own_test_processes_closed": true
+      },
+      "rollback": {
+        "receipt_runtime_hash_restored": true,
+        "receipt_config_and_library_preserved": true,
+        "independent_runtime_restored_file_byte_matches": 56,
+        "independent_metadata_byte_matches": [
+          {
+            "kind": "configuration",
+            "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+            "byte_equal": true
+          },
+          {
+            "kind": "library",
+            "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+            "byte_equal": true
+          },
+          {
+            "kind": "original_manifest",
+            "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+            "byte_equal": true
+          }
+        ],
+        "prior_diagnostics_restored": [
+          "capture-trace.log",
+          "frame_000.bmp",
+          "frame_001.bmp",
+          "frame_002.bmp"
+        ]
+      },
+      "visual_review": {
+        "review_method": "view_image",
+        "private_screenshot_sha256": "0de3255173e990fce4ff76b930db7f34be2ae08bbb3e70e4d580a69f40247375",
+        "result": "uniform_blue_game_surface_with_controls_and_black_letterbox",
+        "correct_game_scene": false
+      }
+    },
+    {
+      "controlled_run": "copied-targets-only",
+      "private_run_directory": "build/pr1-port/solitaire-build47-copied-targets-only",
+      "diagnostic_switches_relative_to_bounded49_baseline": {
+        "APS5_NO_RESIDENT_TARGETS": "1"
+      },
+      "additional_target_dump_readbacks_enabled": false,
+      "receipt_sha256": "5c2b4050800d93380ed5e1d77c2441fbb9766645be07b9def0766000d25bb486",
+      "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+      "log_sha256": "72ecbd52e06c2035d8c493a149eb5054688249a5135415d654eb90a56026a4db",
+      "log_lines": 25145,
+      "error_marker_counts": {
+        "[gpu] skipped draw": 0,
+        "AGC graphics:": 0,
+        "bad_alloc": 0,
+        "FATAL": 0,
+        "Wine exited": 0
+      },
+      "test_operation_seconds": 75.593500459,
+      "readback_runtime_files_verified": 56,
+      "trace": {
+        "sha256": "63b7655e7fe41064a266b24383e155abdbad644fd20eb5da1df653a4bc80f3bc",
+        "rows": 4011,
+        "exact_event_kind_counts": {
+          "packet": 3503,
+          "flip": 26,
+          "blit": 26,
+          "copy-input-snapshot": 88,
+          "buffer-read": 31,
+          "buffer-write": 110,
+          "submit": 84,
+          "draw": 89,
+          "present": 25,
+          "sampled-lookup": 29
+        },
+        "first_present_seconds": 0.991394,
+        "last_present_seconds": 54.836406,
+        "resident_present_values": [
+          0
+        ],
+        "all_draw_rows_accepted": true,
+        "not_displayed_frames_or_gpu_completion_counts": true
+      },
+      "scaled_selected_source_captures": [
+        {
+          "private_capture_ordinal": 0,
+          "present_ordinal": 8,
+          "trace_line": 1458,
+          "trace_seconds": 21.138165,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 1,
+          "present_ordinal": 16,
+          "trace_line": 2626,
+          "trace_seconds": 37.134176,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 2,
+          "present_ordinal": 24,
+          "trace_line": 3794,
+          "trace_seconds": 52.792339,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        }
+      ],
+      "process_end": {
+        "explicit_guest_exit_logged": false,
+        "wine_finished_line": 16719,
+        "wine_finished_message": "Wine finished after 23.0s",
+        "later_runtime_log_lines": 8426,
+        "helper_message_does_not_establish_guest_exit": true,
+        "own_test_processes_closed": true
+      },
+      "rollback": {
+        "receipt_runtime_hash_restored": true,
+        "receipt_config_and_library_preserved": true,
+        "independent_runtime_restored_file_byte_matches": 56,
+        "independent_metadata_byte_matches": [
+          {
+            "kind": "configuration",
+            "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+            "byte_equal": true
+          },
+          {
+            "kind": "library",
+            "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+            "byte_equal": true
+          },
+          {
+            "kind": "original_manifest",
+            "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+            "byte_equal": true
+          }
+        ],
+        "prior_diagnostics_restored": [
+          "capture-trace.log",
+          "frame_000.bmp",
+          "frame_001.bmp",
+          "frame_002.bmp"
+        ]
+      }
+    },
+    {
+      "controlled_run": "resident-sync-only",
+      "private_run_directory": "build/pr1-port/solitaire-build47-resident-sync-only",
+      "diagnostic_switches_relative_to_bounded49_baseline": {
+        "APS5_SYNC_DRAWS": "1"
+      },
+      "additional_target_dump_readbacks_enabled": false,
+      "receipt_sha256": "c6a545cc60e737b1d90af931834eab91654fcad3f22262b5b41ca6bf4b257223",
+      "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+      "log_sha256": "3572cb4b2d85f8821b0619e40dd66c1ff2bc1cc18d5df5223701c59b715a7edb",
+      "log_lines": 25068,
+      "error_marker_counts": {
+        "[gpu] skipped draw": 0,
+        "AGC graphics:": 0,
+        "bad_alloc": 0,
+        "FATAL": 0,
+        "Wine exited": 0
+      },
+      "test_operation_seconds": 75.291633041,
+      "readback_runtime_files_verified": 56,
+      "trace": {
+        "sha256": "cb625c1622329f1c475242bf0923774267c7bfbc8dbcc297193ac203d78bdec8",
+        "rows": 4233,
+        "exact_event_kind_counts": {
+          "packet": 3631,
+          "flip": 27,
+          "blit": 27,
+          "copy-input-snapshot": 91,
+          "buffer-read": 36,
+          "buffer-write": 114,
+          "upload": 4,
+          "submit": 88,
+          "image-write": 67,
+          "draw": 92,
+          "present": 26,
+          "sampled-lookup": 30
+        },
+        "first_present_seconds": 0.990984,
+        "last_present_seconds": 54.853319,
+        "resident_present_values": [
+          1
+        ],
+        "all_draw_rows_accepted": true,
+        "not_displayed_frames_or_gpu_completion_counts": true
+      },
+      "scaled_selected_source_captures": [
+        {
+          "private_capture_ordinal": 0,
+          "present_ordinal": 8,
+          "trace_line": 1498,
+          "trace_seconds": 19.610452,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 1,
+          "present_ordinal": 16,
+          "trace_line": 2682,
+          "trace_seconds": 35.34367,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 2,
+          "present_ordinal": 24,
+          "trace_line": 3866,
+          "trace_seconds": 50.953062,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        }
+      ],
+      "process_end": {
+        "explicit_guest_exit_logged": false,
+        "wine_finished_line": 21329,
+        "wine_finished_message": "Wine finished after 23.0s",
+        "later_runtime_log_lines": 3739,
+        "helper_message_does_not_establish_guest_exit": true,
+        "own_test_processes_closed": true
+      },
+      "rollback": {
+        "receipt_runtime_hash_restored": true,
+        "receipt_config_and_library_preserved": true,
+        "independent_runtime_restored_file_byte_matches": 56,
+        "independent_metadata_byte_matches": [
+          {
+            "kind": "configuration",
+            "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+            "byte_equal": true
+          },
+          {
+            "kind": "library",
+            "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+            "byte_equal": true
+          },
+          {
+            "kind": "original_manifest",
+            "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+            "byte_equal": true
+          }
+        ],
+        "prior_diagnostics_restored": [
+          "capture-trace.log",
+          "frame_000.bmp",
+          "frame_001.bmp",
+          "frame_002.bmp"
+        ]
+      }
+    },
+    {
+      "controlled_run": "resident-transition-only",
+      "private_run_directory": "build/pr1-port/solitaire-build47-resident-transition-only",
+      "diagnostic_switches_relative_to_bounded49_baseline": {
+        "APS5_DRAW_TRANSITIONS": "1"
+      },
+      "additional_target_dump_readbacks_enabled": false,
+      "receipt_sha256": "66a11d5d67ae60916bdd24d9153b4159194b7b545cbe7e7fdb6a69055fa7643b",
+      "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+      "log_sha256": "8d75e882dd587cfca0a7d45e1318d7bd5b5f3a2e540b84d609de77ebc4b4f8dd",
+      "log_lines": 25136,
+      "error_marker_counts": {
+        "[gpu] skipped draw": 0,
+        "AGC graphics:": 0,
+        "bad_alloc": 0,
+        "FATAL": 0,
+        "Wine exited": 0
+      },
+      "test_operation_seconds": 74.615230375,
+      "readback_runtime_files_verified": 56,
+      "trace": {
+        "sha256": "429b0f566f3ecc1b8dd7fc43facae1af084903a3e8bd89d0312ecc815d0f6439",
+        "rows": 4653,
+        "exact_event_kind_counts": {
+          "packet": 3691,
+          "flip": 27,
+          "blit": 27,
+          "copy-input-snapshot": 92,
+          "buffer-read": 182,
+          "buffer-write": 295,
+          "upload": 4,
+          "image-write": 70,
+          "draw": 95,
+          "submit": 113,
+          "present": 26,
+          "sampled-lookup": 31
+        },
+        "first_present_seconds": 1.117536,
+        "last_present_seconds": 55.23581,
+        "resident_present_values": [
+          1
+        ],
+        "all_draw_rows_accepted": true,
+        "not_displayed_frames_or_gpu_completion_counts": true
+      },
+      "scaled_selected_source_captures": [
+        {
+          "private_capture_ordinal": 0,
+          "present_ordinal": 8,
+          "trace_line": 1721,
+          "trace_seconds": 19.545309,
+          "bmp_sha256": "23b37158cb5844d732d963cae6e36a487a521d3c0e87b796b5a401736a4c9011",
+          "pixel_payload_sha256": "d97d63f526cb29bea159a0c4932d20a9418f01faa3c9a8f4977f90fcd07a39a5",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 617,
+          "alpha_pixel_counts": {
+            "255": 129600
+          },
+          "green_dominant_pixels": 129600,
+          "all_pixels_match_uniform_blue_logical_rgba": false
+        },
+        {
+          "private_capture_ordinal": 1,
+          "present_ordinal": 16,
+          "trace_line": 2994,
+          "trace_seconds": 35.688105,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        },
+        {
+          "private_capture_ordinal": 2,
+          "present_ordinal": 24,
+          "trace_line": 4266,
+          "trace_seconds": 51.326771,
+          "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+          "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+          "dimensions": [
+            480,
+            270
+          ],
+          "decoded_pixels": 129600,
+          "distinct_bgra_values": 1,
+          "alpha_pixel_counts": {
+            "0": 129600
+          },
+          "green_dominant_pixels": 0,
+          "all_pixels_match_uniform_blue_logical_rgba": true
+        }
+      ],
+      "process_end": {
+        "explicit_guest_exit_logged": false,
+        "wine_finished_line": 16773,
+        "wine_finished_message": "Wine finished after 23.5s",
+        "later_runtime_log_lines": 8363,
+        "helper_message_does_not_establish_guest_exit": true,
+        "own_test_processes_closed": true
+      },
+      "rollback": {
+        "receipt_runtime_hash_restored": true,
+        "receipt_config_and_library_preserved": true,
+        "independent_runtime_restored_file_byte_matches": 56,
+        "independent_metadata_byte_matches": [
+          {
+            "kind": "configuration",
+            "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+            "byte_equal": true
+          },
+          {
+            "kind": "library",
+            "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+            "byte_equal": true
+          },
+          {
+            "kind": "original_manifest",
+            "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+            "byte_equal": true
+          }
+        ],
+        "prior_diagnostics_restored": [
+          "capture-trace.log",
+          "frame_000.bmp",
+          "frame_001.bmp",
+          "frame_002.bmp"
+        ]
+      },
+      "early_scaled_capture_visual_review": {
+        "review_method": "view_image",
+        "private_converted_preview_sha256": "79b90bebd0147bd979813ec413d844fec2f039778c8fcb07c8aafad6d64d88c3",
+        "result": "green_radial_background_without_menu_or_gameplay",
+        "correct_game_scene": false
+      }
+    }
+  ],
+  "perturbing_first_target_gpu_readbacks": [
+    {
+      "role": "first_resolve_target_readback",
+      "raw_file_sha256": "e7599c9d850fd07e1d775d25be95e97d356d5f485e1af3fdf9097a4a6d2e3091",
+      "pixel_payload_sha256": "ba0d2e70680392868faeae9df1fce43db95d0de29b0619654d54fbaafa0eba12",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "header_bytes": 12,
+      "pixel_payload_bytes": 8294400,
+      "decoded_pixels": 2073600,
+      "vulkan_format": "R8G8B8A8_UNORM",
+      "distinct_encoded_pixel_values": 1,
+      "uniform_logical_rgba": [
+        49,
+        77,
+        121,
+        0
+      ],
+      "all_pixels_checked": true,
+      "obtained_from_perturbing_copied_target_path": true,
+      "baseline_resident_path_contents_qualified": false
+    },
+    {
+      "role": "first_initial_display_target_readback",
+      "raw_file_sha256": "b354054cefe4f7dc72cc127c66f21ce88e757b80c0675132a099e460830aa886",
+      "pixel_payload_sha256": "788ae0147bdf979a6575938ca2d7d4403788588f7be2010f03776c968fd1ab49",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "header_bytes": 12,
+      "pixel_payload_bytes": 8294400,
+      "decoded_pixels": 2073600,
+      "vulkan_format": "B8G8R8A8_UNORM",
+      "distinct_encoded_pixel_values": 1,
+      "uniform_logical_rgba": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "all_pixels_checked": true,
+      "obtained_from_perturbing_copied_target_path": true,
+      "baseline_resident_path_contents_qualified": false
+    },
+    {
+      "role": "second_display_target_readback",
+      "raw_file_sha256": "020fcc025532487a65f613e47880a64f0e2a48efe743c463479f641ee4dd1037",
+      "pixel_payload_sha256": "4030820ceb10a56f3040e6828102f6c1ccd529039a8e369d7afbdfb936780a09",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "header_bytes": 12,
+      "pixel_payload_bytes": 8294400,
+      "decoded_pixels": 2073600,
+      "vulkan_format": "B8G8R8A8_UNORM",
+      "distinct_encoded_pixel_values": 1,
+      "uniform_logical_rgba": [
+        49,
+        77,
+        121,
+        0
+      ],
+      "all_pixels_checked": true,
+      "obtained_from_perturbing_copied_target_path": true,
+      "baseline_resident_path_contents_qualified": false
+    },
+    {
+      "role": "third_display_target_readback",
+      "raw_file_sha256": "020fcc025532487a65f613e47880a64f0e2a48efe743c463479f641ee4dd1037",
+      "pixel_payload_sha256": "4030820ceb10a56f3040e6828102f6c1ccd529039a8e369d7afbdfb936780a09",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "header_bytes": 12,
+      "pixel_payload_bytes": 8294400,
+      "decoded_pixels": 2073600,
+      "vulkan_format": "B8G8R8A8_UNORM",
+      "distinct_encoded_pixel_values": 1,
+      "uniform_logical_rgba": [
+        49,
+        77,
+        121,
+        0
+      ],
+      "all_pixels_checked": true,
+      "obtained_from_perturbing_copied_target_path": true,
+      "baseline_resident_path_contents_qualified": false
+    }
+  ],
+  "cross_format_check": {
+    "matching_uniform_color_logical_rgba": [
+      49,
+      77,
+      121,
+      0
+    ],
+    "resolve_RGBA_and_later_display_BGRA_all_pixel_values_match_after_channel_order_decode": true,
+    "selected_scaled_blue_capture_logical_color_matches": true,
+    "no_UNORM_versus_UINT_or_fixed_resolve_fault_established": true,
+    "initial_display_target_first_dump_zero": true,
+    "applies_to_copied_target_readback_path_only": true
+  },
+  "interpretation": [
+    "Copying targets per draw and independently forcing synchronous draws each change the selected scaled source from white to uniform blue with the identical package. The sync-only run retains resident presentation.",
+    "Keeping per-draw transitions independently changes the first scaled capture to an opaque green radial background, then the next two captures to the same uniform blue. No menu or playable scene is established.",
+    "In the perturbing target-readback run, the completed resolve target and two display target first readbacks have matching logical colors over all 2,073,600 pixels each, accounting for RGBA/BGRA byte order. The initial display target first readback is zero.",
+    "The comparison points to divergence in the recorded resident/synchronization/layout path; it does not identify an exact failing instruction or establish a default-path repair.",
+    "Different work, synchronization and readbacks make these diagnostic paths unsuitable as a performance result."
+  ],
+  "acceptance": {
+    "correct_game_frames": false,
+    "menu": false,
+    "gameplay": false,
+    "audio": false,
+    "input_response": false,
+    "save_load": false,
+    "fps": false,
+    "default_path_repair": false
+  },
+  "limits": [
+    "Raw full-resolution target checks apply only to the copied-target path with target dumps, which introduces readback and synchronous work. They do not qualify destination contents on the white baseline.",
+    "Scaled selected-source captures are not full final swapchain or Metal-layer readbacks.",
+    "Logged accepted draws and present events do not prove GPU completion or displayed-frame rates.",
+    "All diagnostic switches are controls; none has been adopted as a default production fix.",
+    "These production target snapshots are uniform colors; their agreement does not test averaging different sample values or prove arbitrary resolve correctness."
+  ],
+  "privacy": "Only aggregate pixel statistics, channel-order comparisons and hashes are published. Private raw/BMP/PNG captures, guest target addresses, packets, shaders, assets, binaries, pairing data and device identifiers remain local."
+}

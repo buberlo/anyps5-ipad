@@ -1,0 +1,275 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp
+@@ -0,0 +1,155 @@
++#ifndef ANYPS5_FRAME_PIXEL_DIAGNOSTICS_HPP
++#define ANYPS5_FRAME_PIXEL_DIAGNOSTICS_HPP
++
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <limits>
++#include <optional>
++#include <span>
++#include <stdexcept>
++
++namespace AgcDriver::Graphics {
++
++// Temporary content diagnostics, independent of profiling. The fixed event
++// schedule bounds the work even in long runs; disabled calls inspect no bytes.
++enum class FramePixelDiagnosticStage : std::size_t { Producer, Resolve, Present, Count };
++
++inline bool FramePixelDiagnosticsEnabled() {
++    static const bool enabled = [] {
++        const auto* value = std::getenv("APS5_FRAME_PIXEL_DIAGNOSTICS");
++        return value != nullptr && *value != '\0' && std::strcmp(value, "0") != 0;
++    }();
++    return enabled;
++}
++
++inline bool FramePixelDiagnosticSelected(std::uint64_t ordinal) {
++    switch (ordinal) {
++    case 1: case 2: case 3: case 8: case 16: case 32: case 64: case 128: return true;
++    default: return false;
++    }
++}
++
++inline std::optional<std::uint64_t> FramePixelDiagnosticEvent(FramePixelDiagnosticStage stage) {
++    if (!FramePixelDiagnosticsEnabled()) return std::nullopt;
++    static std::array<std::atomic<std::uint64_t>, static_cast<std::size_t>(FramePixelDiagnosticStage::Count)> counters{};
++    const auto index = static_cast<std::size_t>(stage);
++    if (index >= counters.size()) return std::nullopt;
++    auto& counter = counters[index];
++    if (counter.load(std::memory_order_relaxed) >= 128u) return std::nullopt;
++    const auto ordinal = counter.fetch_add(1, std::memory_order_relaxed) + 1u;
++    return FramePixelDiagnosticSelected(ordinal) ? std::optional{ordinal} : std::nullopt;
++}
++
++inline constexpr std::uint64_t FramePixelFnvOffset = 14695981039346656037ULL;
++inline constexpr std::size_t FramePixelMaxSampledPixels = 1024;
++inline constexpr std::size_t FramePixelMaxLogicalSamples = 8;
++
++struct FramePixelSampleStatistics {
++    std::uint32_t texels = 0;
++    std::uint32_t blackRgb = 0;
++    std::uint32_t whiteRgb = 0;
++    std::uint32_t nonzeroAlpha = 0;
++    std::uint32_t opaqueAlpha = 0;
++    std::uint64_t fingerprint = FramePixelFnvOffset;
++};
++
++struct FramePixelStatistics {
++    std::uint32_t sampledPixels = 0;
++    FramePixelSampleStatistics all;
++    std::uint32_t distinctRgba = 0;
++    std::uint32_t distinctRgb = 0;
++    std::array<FramePixelSampleStatistics, FramePixelMaxLogicalSamples> samples{};
++};
++
++// Input is tightly packed pixel-major RGBA/BGRA8 with logical samples
++// interleaved within each pixel. RGB black/white are channel-order independent.
++// A bounded XY grid includes all four edges. Every selected pixel contributes
++// every sample, avoiding fixed-word-stride aliasing with the sample count.
++inline FramePixelStatistics SampleFramePixels(std::span<const std::byte> bytes,
++    std::uint32_t width, std::uint32_t height, std::uint32_t samples) {
++    if (width == 0u || height == 0u ||
++        (samples != 1u && samples != 2u && samples != 4u && samples != 8u))
++        throw std::invalid_argument("frame pixel diagnostics require nonempty 1/2/4/8-sample images");
++    const auto pixels = static_cast<std::uint64_t>(width) * height;
++    const auto perPixel = static_cast<std::uint64_t>(samples) * 4u;
++    if (pixels > std::numeric_limits<std::size_t>::max() / perPixel || bytes.size() != pixels * perPixel)
++        throw std::invalid_argument("frame pixel diagnostics buffer does not match its dimensions");
++    FramePixelStatistics stats;
++    std::array<std::uint32_t, FramePixelMaxSampledPixels * FramePixelMaxLogicalSamples> colors{};
++    const auto columns = std::min(width, 32u);
++    const auto rows = std::min(height, 32u);
++    const auto note = [](FramePixelSampleStatistics& into, const std::byte* texel) {
++        ++into.texels;
++        into.blackRgb += texel[0] == std::byte{0} && texel[1] == std::byte{0} && texel[2] == std::byte{0};
++        into.whiteRgb += texel[0] == std::byte{255} && texel[1] == std::byte{255} && texel[2] == std::byte{255};
++        into.nonzeroAlpha += texel[3] != std::byte{0};
++        into.opaqueAlpha += texel[3] == std::byte{255};
++        for (std::size_t channel = 0; channel < 4u; ++channel) {
++            into.fingerprint ^= std::to_integer<std::uint8_t>(texel[channel]);
++            into.fingerprint *= 1099511628211ULL;
++        }
++    };
++    for (std::uint32_t row = 0; row < rows; ++row) {
++        const auto y = rows == 1u ? 0u : static_cast<std::uint32_t>(static_cast<std::uint64_t>(row) * (height - 1u) / (rows - 1u));
++        for (std::uint32_t column = 0; column < columns; ++column) {
++            const auto x = columns == 1u ? 0u : static_cast<std::uint32_t>(static_cast<std::uint64_t>(column) * (width - 1u) / (columns - 1u));
++            const auto base = (static_cast<std::size_t>(y) * width + x) * samples * 4u;
++            ++stats.sampledPixels;
++            for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                const auto* texel = bytes.data() + base + sample * 4u;
++                std::uint32_t packed = 0;
++                for (std::size_t channel = 0; channel < 4u; ++channel)
++                    packed |= static_cast<std::uint32_t>(std::to_integer<std::uint8_t>(texel[channel])) << (channel * 8u);
++                colors[stats.all.texels] = packed;
++                note(stats.all, texel);
++                note(stats.samples[sample], texel);
++            }
++        }
++    }
++    const auto end = colors.begin() + stats.all.texels;
++    std::sort(colors.begin(), end);
++    stats.distinctRgba = static_cast<std::uint32_t>(std::unique(colors.begin(), end) - colors.begin());
++    // Only the unique RGBA prefix remains relevant; discard alpha and collapse
++    // it again, so transparent and opaque black share one RGB color.
++    const auto rgbaEnd = colors.begin() + stats.distinctRgba;
++    for (auto it = colors.begin(); it != rgbaEnd; ++it) *it &= 0x00ffffffu;
++    std::sort(colors.begin(), rgbaEnd);
++    stats.distinctRgb = static_cast<std::uint32_t>(std::unique(colors.begin(), rgbaEnd) - colors.begin());
++    return stats;
++}
++
++inline void PrintFramePixelStatistics(const char* stage, std::uint64_t event,
++    std::uint64_t address, std::uint64_t peerAddress, std::uint32_t width,
++    std::uint32_t height, std::uint32_t samples, const FramePixelStatistics& stats) {
++    std::array<char, 1024> detail{};
++    std::size_t used = 0;
++    if (samples > 1u) {
++        // Tuple: sample, texels, black RGB, white RGB, nonzero/opaque alpha,
++        // fingerprint. One bounded line; no individual colors or raw files.
++        for (std::uint32_t sample = 0; sample < samples && sample < stats.samples.size(); ++sample) {
++            const auto& one = stats.samples[sample];
++            const auto written = std::snprintf(detail.data() + used, detail.size() - used,
++                "%s%u:%u,%u,%u,%u,%u,%016llx", sample == 0u ? "" : ";",
++                sample, one.texels, one.blackRgb, one.whiteRgb, one.nonzeroAlpha,
++                one.opaqueAlpha, static_cast<unsigned long long>(one.fingerprint));
++            if (written < 0 || static_cast<std::size_t>(written) >= detail.size() - used) break;
++            used += static_cast<std::size_t>(written);
++        }
++    }
++    std::fprintf(stderr, "[pixel-diag] stage=%s event=%llu address=%llx peer=%llx dimensions=%ux%u logical_samples=%u sampled_pixels=%u sampled_texels=%u rgb_black=%u rgb_white=%u alpha_nonzero=%u alpha_opaque=%u distinct_rgba=%u distinct_rgb=%u fnv64=%016llx per_sample={%s}\n",
++        stage, static_cast<unsigned long long>(event), static_cast<unsigned long long>(address),
++        static_cast<unsigned long long>(peerAddress), width, height, samples, stats.sampledPixels,
++        stats.all.texels, stats.all.blackRgb, stats.all.whiteRgb, stats.all.nonzeroAlpha,
++        stats.all.opaqueAlpha, stats.distinctRgba, stats.distinctRgb,
++        static_cast<unsigned long long>(stats.all.fingerprint), detail.data());
++}
++
++}
++
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+@@ -1,5 +1,6 @@
+ #include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ColorTargetTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
+ #include <algorithm>
+@@ -75,6 +76,21 @@
+                                    pass.source.tileMode, 4u, pass.source.samples);
+     std::vector<std::byte> linear(layout.LinearBytes());
+     ReadColorTarget(pass.source, linear);
++    const auto pixelEvent = FramePixelDiagnosticEvent(FramePixelDiagnosticStage::Resolve);
++    if (pixelEvent) {
++        const auto stats = SampleFramePixels(linear, pass.source.extent.width,
++            pass.source.extent.height, pass.source.samples);
++        PrintFramePixelStatistics("resolve-source", *pixelEvent, pass.source.address,
++            pass.destination.address, pass.source.extent.width, pass.source.extent.height,
++            pass.source.samples, stats);
++        std::fprintf(stderr, "[pixel-diag] stage=resolve-state event=%llu source=%llx destination=%llx rect_list=%d index_count=%u instances=%u viewport=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f scissor=%d,%d,%u,%u cull=%u front_face=%u color_write_mask=%u\n",
++            static_cast<unsigned long long>(*pixelEvent), static_cast<unsigned long long>(pass.source.address),
++            static_cast<unsigned long long>(pass.destination.address), raster.rectList, draw.indexCount,
++            draw.instanceCount, raster.viewport.x, raster.viewport.y, raster.viewport.width, raster.viewport.height,
++            raster.viewport.minDepth, raster.viewport.maxDepth, raster.scissor.offset.x, raster.scissor.offset.y,
++            raster.scissor.extent.width, raster.scissor.extent.height, raster.cullMode,
++            static_cast<unsigned>(raster.frontFace), raster.blends.at(raster.color.exportIndex).colorWriteMask);
++    }
+     const auto alignment = std::align_val_t(65536);
+     auto snapshot = std::shared_ptr<std::byte>(static_cast<std::byte*>(::operator new(pass.source.bytes, alignment)),
+         [alignment](std::byte* memory) { ::operator delete(memory, alignment); });
+@@ -95,6 +111,12 @@
+     // retained descriptors, barriers, fault-buffer completion and alias stamps
+     // still apply. This executes actual geometry, including partial rectangles.
+     Draw(context, raster, draw, shaders, snapshots, nullptr, &target);
++    if (pixelEvent) {
++        // Return from Draw is not a GPU completion proof: a resident target can
++        // remain queued. Never read destination guest RAM or add an early flush.
++        std::fprintf(stderr, "[pixel-diag] stage=resolve-draw-returned event=%llu destination=%llx gpu_completion_not_assumed=1\n",
++            static_cast<unsigned long long>(*pixelEvent), static_cast<unsigned long long>(pass.destination.address));
++    }
+     // Retain the guest-address backing at least through every recorded upload
+     // and read. A synchronous draw already finished; a later batch keeps it
+     // until all earlier work on this queue has completed.
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -3,6 +3,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
+@@ -1583,6 +1584,12 @@
+         std::unique_ptr<ColorSampleTransfer> sampleTransfer;
+         // APS5_DUMP_TARGETS: the rendered linear pixels, read back for target_<address>_<n>.raw.
+         std::unique_ptr<Buffer> dump;
++        // Only bounded sampled statistics survive the transfer's GPU overwrite.
++        struct PixelDiagnosticInput {
++            std::uint64_t event;
++            FramePixelStatistics before;
++        };
++        std::unique_ptr<PixelDiagnosticInput> pixelDiagnostic;
+     };
+     const int dumpLimit = DumpTargetLimit();
+     static std::mutex dumpMutex;
+@@ -1650,6 +1657,12 @@
+                     else ReadColorTarget(color, pixels);
+                 }
+             }
++        }
++        if (groupedSamples && binding.transfer != nullptr) {
++            const auto event = FramePixelDiagnosticEvent(FramePixelDiagnosticStage::Producer);
++            if (event) binding.pixelDiagnostic = std::make_unique<TargetBinding::PixelDiagnosticInput>(
++                TargetBinding::PixelDiagnosticInput{*event, SampleFramePixels(binding.transfer->Bytes(),
++                    color.extent.width, color.extent.height, color.samples)});
+         }
+         timer.phase(PhaseReadTarget);
+         binding.target = std::make_unique<RenderTarget>(context, color, state.blends.at(color.exportIndex).blendEnable != 0);
+@@ -2140,6 +2153,32 @@
+             binding.resident->MarkDirty();
+             continue;
+         }
++        if (binding.pixelDiagnostic) {
++            // SubmitAndWait and resource fault checks already succeeded. These
++            // are the existing linear GPU results; no readback or wait is added.
++            const auto& color = binding.color;
++            const auto after = SampleFramePixels(binding.transfer->Bytes(),
++                color.extent.width, color.extent.height, color.samples);
++            PrintFramePixelStatistics("producer-before", binding.pixelDiagnostic->event, color.address, 0,
++                color.extent.width, color.extent.height, color.samples, binding.pixelDiagnostic->before);
++            PrintFramePixelStatistics("producer-after", binding.pixelDiagnostic->event, color.address, 0,
++                color.extent.width, color.extent.height, color.samples, after);
++            const auto& blend = state.blends.at(color.exportIndex);
++            const auto& front = state.stencilFront;
++            const auto& back = state.stencilBack;
++            std::fprintf(stderr, "[pixel-diag] stage=producer-state event=%llu address=%llx export=%u rect_list=%d topology=%u indices=%u instances=%u indirect=%d sample_mask=%u color_write_mask=%u blend=%u viewport=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f scissor=%d,%d,%u,%u cull=%u front_face=%u depth_test=%d depth_write=%d stencil_test=%d stencil_front=%u,%u,%u,%u,%u,%u,%u stencil_back=%u,%u,%u,%u,%u,%u,%u\n",
++                static_cast<unsigned long long>(binding.pixelDiagnostic->event), static_cast<unsigned long long>(color.address),
++                color.exportIndex, state.rectList, static_cast<unsigned>(state.topology), draw.indexCount,
++                draw.instanceCount, draw.indirect.has_value(), state.samples.mask, blend.colorWriteMask, blend.blendEnable,
++                state.viewport.x, state.viewport.y, state.viewport.width, state.viewport.height,
++                state.viewport.minDepth, state.viewport.maxDepth, state.scissor.offset.x, state.scissor.offset.y,
++                state.scissor.extent.width, state.scissor.extent.height, state.cullMode,
++                static_cast<unsigned>(state.frontFace), state.depthTest, state.depthWrite, state.stencilTest,
++                static_cast<unsigned>(front.compareOp), static_cast<unsigned>(front.failOp),
++                static_cast<unsigned>(front.passOp), static_cast<unsigned>(front.depthFailOp), front.compareMask, front.writeMask, front.reference,
++                static_cast<unsigned>(back.compareOp), static_cast<unsigned>(back.failOp),
++                static_cast<unsigned>(back.passOp), static_cast<unsigned>(back.depthFailOp), back.compareMask, back.writeMask, back.reference);
++        }
+         if (binding.gpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
+         else WriteColorTarget(binding.color, binding.transfer->Bytes());
+         // The stored texels are the whole target now, so later reads must see them rather than a fast clear.

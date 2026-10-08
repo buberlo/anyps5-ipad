@@ -1,0 +1,416 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T13:40:20.052968+00:00",
+  "kind": "ipad_solitaire_bounded_producer_resolve_source_pixel_diagnostics",
+  "qualification": "sampled_msaa_producer_change_and_matching_resolve_source_observed_selected_source_still_white_destination_and_correct_game_frames_unqualified",
+  "build": {
+    "app_build": 47,
+    "project_commit_at_hle_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "patch_count": 49,
+    "hle_archive_sha256": "85f8a566ac72e6b8d6e789a0c3cec3b4a6392a52cc5ca191b59431d447e1a4be",
+    "source_build_record": {
+      "path": "docs/evidence/bounded-frame-pixel-diagnostics-build-20261008.json",
+      "sha256": "b51e274fb253dcff073e1eef315b5432345689d71b2bf7e3ced7b354a671c283"
+    },
+    "device_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+    "manifest_matches_receipt": true,
+    "manifest_matches_prepared_candidate_bytes": true,
+    "device_readback_runtime_file_hashes_verified": 56,
+    "dependency_audit_passed": true
+  },
+  "private_run": {
+    "path": "build/pr1-port/solitaire-build47-frame-pixel-capture",
+    "receipt_sha256": "3fc995ad6a03ea77c63357cbfcbf78f5c4d09fe331d4761c3caf969c07613d29",
+    "log_sha256": "567d90174f187a3b3538a456a6ae0870f3129a9b035232171fa19e93a304dc4f",
+    "log_line_count": 25056,
+    "test_operation_duration_seconds": 75.04917816700001,
+    "accepted_gameplay_duration_seconds": null
+  },
+  "device_startup": {
+    "built_in_jit_enabled": true,
+    "selected_gpu": "Apple M2 GPU",
+    "swapchain_extent": [
+      768,
+      432
+    ],
+    "requested_swapchain_images": 3,
+    "actual_swapchain_images": 3,
+    "sample_groups_enabled": true,
+    "normal_memory_tracking": true,
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    }
+  },
+  "diagnostics": {
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+    "preexisting_selected_source_dump": true,
+    "resident_present_path": true,
+    "selected_source_dimensions": [
+      1920,
+      1080
+    ],
+    "dump_scale_divisor": 4,
+    "stats_event_ordinals_observed": [
+      1,
+      2,
+      3,
+      8,
+      16
+    ],
+    "additional_gpu_readbacks_from_patch0049": 0,
+    "additional_gpu_waits_from_patch0049": 0,
+    "maximum_sampled_xy_positions": 1024,
+    "logical_samples_at_each_selected_xy": 8,
+    "sampled_texels_per_stat_event": 8192,
+    "full_image_uniformity_proved": false
+  },
+  "producer_and_resolve_source": {
+    "first_producer_before": {
+      "dimensions": "1920x1080",
+      "logical_samples": 8,
+      "sampled_pixels": 1024,
+      "sampled_texels": 8192,
+      "rgb_black": 8192,
+      "rgb_white": 0,
+      "alpha_nonzero": 0,
+      "alpha_opaque": 0,
+      "distinct_rgba": 1,
+      "distinct_rgb": 1,
+      "fnv64": "8f6955bf94ec2325",
+      "per_sample": [
+        {
+          "logical_sample": 0,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 1,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 2,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 3,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 4,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 5,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 6,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        },
+        {
+          "logical_sample": 7,
+          "sampled_texels": 1024,
+          "rgb_black": 1024,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "b93a0c83ce3b6325"
+        }
+      ]
+    },
+    "first_producer_after": {
+      "dimensions": "1920x1080",
+      "logical_samples": 8,
+      "sampled_pixels": 1024,
+      "sampled_texels": 8192,
+      "rgb_black": 0,
+      "rgb_white": 0,
+      "alpha_nonzero": 0,
+      "alpha_opaque": 0,
+      "distinct_rgba": 1,
+      "distinct_rgb": 1,
+      "fnv64": "8206848014262325",
+      "per_sample": [
+        {
+          "logical_sample": 0,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 1,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 2,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 3,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 4,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 5,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 6,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        },
+        {
+          "logical_sample": 7,
+          "sampled_texels": 1024,
+          "rgb_black": 0,
+          "rgb_white": 0,
+          "alpha_nonzero": 0,
+          "alpha_opaque": 0,
+          "fnv64": "1fb732bb8622a325"
+        }
+      ]
+    },
+    "later_producer_events": [
+      2,
+      3,
+      8,
+      16
+    ],
+    "later_before_after_subset_statistics_match_first_producer_after": true,
+    "resolve_source_events": [
+      1,
+      2,
+      3,
+      8,
+      16
+    ],
+    "each_resolve_source_subset_statistic_matches_same_event_producer_after": true,
+    "resolve_draw_returned_markers": 5,
+    "resolve_destination_pixel_readback": false,
+    "resolve_draw_returned_marker_proves_gpu_completion": false,
+    "observed_change": "The first sampled producer result changes from black/zero to one non-black, non-white RGB value with zero alpha across all eight logical samples. Later selected events retain matching subset statistics; correctness of the intended game image is not established."
+  },
+  "logged_requested_draw_state": {
+    "scope": "Logged guest/requested state; not proof of final masked Vulkan pipeline state or full rectangle coverage.",
+    "rectangle_list": true,
+    "index_count": 3,
+    "instance_count": 1,
+    "full_target_viewport_and_scissor": true,
+    "requested_color_write_mask": "RGBA",
+    "requested_logical_sample_mask": "all eight",
+    "culling": false,
+    "depth_test": false,
+    "depth_write": false,
+    "stencil_test": true,
+    "stencil_compare": "always",
+    "stencil_operations": "replace",
+    "stencil_reference": 0
+  },
+  "selected_source_trace": {
+    "sha256": "c4e61d80b0c22305fb739752671bcfb2881a53ae42d0fee29ef6d648c05f644c",
+    "row_count": 4800,
+    "exact_event_kind_counts": {
+      "packet": 3691,
+      "flip": 27,
+      "blit": 27,
+      "copy-input-snapshot": 92,
+      "buffer-read": 182,
+      "buffer-write": 295,
+      "upload": 4,
+      "image-write": 70,
+      "draw": 95,
+      "submit": 114,
+      "present": 26,
+      "sampled-lookup": 32,
+      "draw-snapshot": 145
+    },
+    "all_draw_rows_accepted": true,
+    "first_present_seconds": 1.052972,
+    "last_present_seconds": 55.256345,
+    "last_trace_seconds": 55.260939,
+    "presentation_rows_are_not_displayed_frame_or_gpu_completion_counts": true
+  },
+  "fresh_scaled_selected_source_captures": [
+    {
+      "private_file": "build/pr1-port/solitaire-build47-frame-pixel-capture/selected-source/frame_000.bmp",
+      "present_ordinal": 8,
+      "trace_line": 1796,
+      "trace_time_seconds": 19.680261,
+      "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+      "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+      "width": 480,
+      "height": 270,
+      "top_down": true,
+      "decoded_pixel_count": 129600,
+      "distinct_bgra_values": 1,
+      "all_decoded_pixels_white_rgb_zero_alpha": true
+    },
+    {
+      "private_file": "build/pr1-port/solitaire-build47-frame-pixel-capture/selected-source/frame_001.bmp",
+      "present_ordinal": 16,
+      "trace_line": 3101,
+      "trace_time_seconds": 35.562942,
+      "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+      "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+      "width": 480,
+      "height": 270,
+      "top_down": true,
+      "decoded_pixel_count": 129600,
+      "distinct_bgra_values": 1,
+      "all_decoded_pixels_white_rgb_zero_alpha": true
+    },
+    {
+      "private_file": "build/pr1-port/solitaire-build47-frame-pixel-capture/selected-source/frame_002.bmp",
+      "present_ordinal": 24,
+      "trace_line": 4405,
+      "trace_time_seconds": 51.323707,
+      "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+      "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+      "width": 480,
+      "height": 270,
+      "top_down": true,
+      "decoded_pixel_count": 129600,
+      "distinct_bgra_values": 1,
+      "all_decoded_pixels_white_rgb_zero_alpha": true
+    }
+  ],
+  "visual_review": {
+    "private_file": "build/pr1-port/solitaire-build47-frame-pixel-capture/screen-60.png",
+    "sha256": "3471dff1612ccbe306a540409b211d2138a33d33f8f984e383e8110fd6753d4e",
+    "review_method": "view_image",
+    "reviewer": "documentation agent",
+    "result": "white_game_surface",
+    "black_letterbox": true,
+    "touch_controls_present": true,
+    "error_dialog_visible": false,
+    "correct_game_frame": false
+  },
+  "process_end": {
+    "explicit_guest_exit_logged": false,
+    "wine_finished_message": "Wine finished after 23.2s",
+    "message_line": 16680,
+    "later_runtime_log_lines": 8376,
+    "interpretation": "JIT-helper completion does not establish guest exit; runtime activity follows the message.",
+    "own_test_processes_closed": true,
+    "clean_native_game_lifecycle_qualified": false
+  },
+  "rollback": {
+    "receipt_runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "independent_runtime_restored_file_byte_matches": 56,
+    "independent_metadata_byte_matches": [
+      {
+        "kind": "configuration",
+        "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+        "byte_equal": true
+      },
+      {
+        "kind": "library",
+        "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+        "byte_equal": true
+      },
+      {
+        "kind": "original_manifest",
+        "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+        "byte_equal": true
+      }
+    ],
+    "prior_diagnostics_restored": [
+      "capture-trace.log",
+      "frame_000.bmp",
+      "frame_001.bmp",
+      "frame_002.bmp"
+    ]
+  },
+  "conclusion": {
+    "sampled_producer_write_observed": true,
+    "same_subset_values_reach_resolve_source": true,
+    "resolve_destination_contents": "unmeasured",
+    "selected_scaled_source_contents": "white",
+    "production_resolve_correctness": "unqualified",
+    "correct_game_rendering": "unqualified",
+    "gameplay": false,
+    "fps_acceptance": false,
+    "next_diagnostic_boundary": "Read back the completed resolve destination and subsequent presentation consumer without assuming Draw return or trace acceptance proves its pixels."
+  },
+  "limits": [
+    "Only deterministic subsets of producer/resolve-source pixels are sampled. No full-resolution image uniformity or intended frame correctness is established.",
+    "The selected-source BMP is scaled; it is not the actual final swapchain or Metal-layer readback.",
+    "The diagnostic pass observes producer change and matching source hashes; destination contents and the subsequent consumer remain possible failure boundaries.",
+    "No audio, control response, save/load, sustained lifecycle, performance or gameplay acceptance."
+  ],
+  "privacy": "Only sanitized statistics, build identities and hashes are published. Private binaries, game assets, shader code, guest addresses, registers, capture files, pairing data and device identifiers remain local."
+}

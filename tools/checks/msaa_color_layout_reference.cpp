@@ -1,6 +1,7 @@
 // Verify the production color layout against the independently linked AMD AddrLib.
 #include "prx/libSceAgcDriver/Graphics/include/ColorTargetLayout.hpp"
 #include <addrinterface.h>
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdlib>
@@ -86,29 +87,47 @@ int main() {
                         std::abort();
                     }
                     ++addresses;
+                    return static_cast<std::size_t>(expected.addr);
                 };
                 if (width <= 257u) {
-                    std::vector<std::byte> linear(actual.LinearBytes());
-                    std::vector<std::byte> tiled(actual.Bytes(), std::byte{0x5a});
-                    std::vector<std::byte> result(linear.size());
+                    // Deliberately unaligned spans catch fixed-size-copy alignment assumptions.
+                    // Oracle offsets come from the separately linked AddrLib, never production Offset.
+                    constexpr std::size_t guard = 19;
+                    constexpr std::byte sentinel{0xa7};
+                    std::vector<std::byte> linearStorage(actual.LinearBytes() + 2 * guard, sentinel);
+                    std::vector<std::byte> tiledStorage(actual.Bytes() + 2 * guard, sentinel);
+                    std::vector<std::byte> resultStorage(actual.LinearBytes() + 2 * guard, sentinel);
+                    const auto linear = std::span(linearStorage).subspan(guard, actual.LinearBytes());
+                    const auto tiled = std::span(tiledStorage).subspan(guard, actual.Bytes());
+                    const auto result = std::span(resultStorage).subspan(guard, actual.LinearBytes());
+                    std::fill(tiled.begin(), tiled.end(), std::byte{0x5a});
+                    std::vector<std::byte> oracle(actual.Bytes(), std::byte{0x5a});
                     std::vector<bool> visited(tiled.size() / bytes);
+                    std::uint32_t randomBytes = 0x519fd8b3u ^ (bytes << 8u) ^ samples;
                     for (unsigned y = 0; y < height; ++y) {
                         for (unsigned x = 0; x < width; ++x) {
                             for (unsigned sample = 0; sample < samples; ++sample) {
-                                check(x, y, sample);
-                                const auto offset = actual.Offset(x, y, sample);
+                                const auto offset = check(x, y, sample);
                                 assert(offset % bytes == 0 && offset + bytes <= tiled.size() && !visited[offset / bytes]);
                                 visited[offset / bytes] = true;
                                 const auto index = ((static_cast<std::size_t>(y) * width + x) * samples + sample) * bytes;
                                 for (unsigned byte = 0; byte < bytes; ++byte) {
-                                    linear[index + byte] = std::byte((y * 11u + x * 31u + sample * 17u + byte * 7u) & 255u);
+                                    randomBytes = randomBytes * 1664525u + 1013904223u;
+                                    const auto value = std::byte(randomBytes >> 24u);
+                                    linear[index + byte] = value;
+                                    oracle[offset + byte] = value;
                                 }
                             }
                         }
                     }
                     actual.Tile(linear, tiled);
                     actual.Detile(tiled, result);
-                    assert(result == linear);
+                    assert(std::equal(tiled.begin(), tiled.end(), oracle.begin()));
+                    assert(std::equal(result.begin(), result.end(), linear.begin()));
+                    for (const auto* storage : {&linearStorage, &tiledStorage, &resultStorage}) {
+                        assert(std::all_of(storage->begin(), storage->begin() + guard, [&](std::byte v) { return v == sentinel; }));
+                        assert(std::all_of(storage->end() - guard, storage->end(), [&](std::byte v) { return v == sentinel; }));
+                    }
                     for (std::size_t i = 0; i < tiled.size(); ++i) {
                         if (!visited[i / bytes]) assert(tiled[i] == std::byte{0x5a});
                     }

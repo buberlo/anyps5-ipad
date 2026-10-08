@@ -1,0 +1,70 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp
+@@ -194,26 +194,52 @@
+ 
+ void ColorTargetLayout::Detile(std::span<const std::byte> source, std::span<std::byte> destination) const {
+     require(source.size() == Bytes() && destination.size() == LinearBytes(), "AGC graphics: color detile buffer size mismatch");
+-    for (std::uint32_t y = 0; y < height; ++y) {
+-        auto* row = destination.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
+-        for (std::uint32_t x = 0; x < width; ++x) {
+-            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+-                std::memcpy(row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, source.data() + offset(x, y, sample), elementBytes);
++    // Dispatch once per surface: a literal memcpy size becomes an unaligned
++    // inline byte copy, avoiding a CRT/ARM64EC transition for every sample.
++    // memcpy retains the original byte-alignment and aliasing requirements.
++    const auto copy = [&]<std::size_t CopyBytes>() {
++        for (std::uint32_t y = 0; y < height; ++y) {
++            auto* row = destination.data() + static_cast<std::size_t>(y) * width * CopyBytes * samples;
++            for (std::uint32_t x = 0; x < width; ++x) {
++                for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                    std::memcpy(row + (static_cast<std::size_t>(x) * samples + sample) * CopyBytes, source.data() + offset(x, y, sample), CopyBytes);
++                }
+             }
+         }
++    };
++    switch (elementBytes) {
++        case 1u: return copy.template operator()<1u>();
++        case 2u: return copy.template operator()<2u>();
++        case 4u: return copy.template operator()<4u>();
++        case 8u: return copy.template operator()<8u>();
++        case 16u: return copy.template operator()<16u>();
++        default: throw std::runtime_error("AGC graphics: unsupported color element size");
+     }
+ }
+ 
+ void ColorTargetLayout::Tile(std::span<const std::byte> source, std::span<std::byte> destination) const {
+     require(source.size() == LinearBytes() && destination.size() == Bytes(), "AGC graphics: color tile buffer size mismatch");
+-    for (std::uint32_t y = 0; y < height; ++y) {
+-        const auto* row = source.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
+-        for (std::uint32_t x = 0; x < width; ++x) {
+-            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+-                std::memcpy(destination.data() + offset(x, y, sample), row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, elementBytes);
++    // Dispatch once per surface: a literal memcpy size becomes an unaligned
++    // inline byte copy, avoiding a CRT/ARM64EC transition for every sample.
++    // memcpy retains the original byte-alignment and aliasing requirements.
++    const auto copy = [&]<std::size_t CopyBytes>() {
++        for (std::uint32_t y = 0; y < height; ++y) {
++            const auto* row = source.data() + static_cast<std::size_t>(y) * width * CopyBytes * samples;
++            for (std::uint32_t x = 0; x < width; ++x) {
++                for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                    std::memcpy(destination.data() + offset(x, y, sample), row + (static_cast<std::size_t>(x) * samples + sample) * CopyBytes, CopyBytes);
++                }
+             }
+         }
+-    }
+-}
+-
+-}
++    };
++    switch (elementBytes) {
++        case 1u: return copy.template operator()<1u>();
++        case 2u: return copy.template operator()<2u>();
++        case 4u: return copy.template operator()<4u>();
++        case 8u: return copy.template operator()<8u>();
++        case 16u: return copy.template operator()<16u>();
++        default: throw std::runtime_error("AGC graphics: unsupported color element size");
++    }
++}
++
++}

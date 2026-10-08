@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:18:41.463177+00:00",
+  "kind": "fixed_size_color_texel_copies_source_native_and_completed_hle_host_checkpoint",
+  "qualification": "52_patch139_path_series_53_binaries_22_host_plus2_graphics_suites_verified_hardware_gain_unqualified",
+  "source": {
+    "patch_path": "patches/anyps5/0052-inline-color-texel-copies.patch",
+    "patch_sha256": "85c9c056090ca7a8faa8adc72bd65dfbd84deffe250e3ba8d750591d3df51644",
+    "native_record_path": "docs/evidence/fixed-texel-copies-native-20261008.json",
+    "native_record_sha256": "22f51d4e2b93385b8ce755dfe0feceba2898d50257f1ee21cc0e9012202a27aa",
+    "production_files": {
+      "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp": {
+        "beforeSha256": "d3a47238325b1863b9b4f0763f73707fb2e1b35bf00ac1f6e0a7e11fcf55d015",
+        "afterSha256": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83"
+      }
+    },
+    "change": {
+      "dispatch": "Once per Tile/Detile surface for 1,2,4,8,16-byte texels",
+      "copy": "Literal-size std::memcpy, preserving existing byte alignment and nonoverlap requirements",
+      "preserved": [
+        "swizzle equations",
+        "logical sample ordering",
+        "surface extent and byte-size checks",
+        "guest padding",
+        "supported formats and sample counts",
+        "GPU synchronization and write tracking"
+      ]
+    },
+    "independent_native_validation": {
+      "amdAddrLibReference": {
+        "sourceCheckpoint": "PAL c5e800072a32f68b6ccc4422936d96167c6e0728/src/core/imported/addrlib",
+        "nativeLibrarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+        "layouts": 80,
+        "independentAddresses": 2650990,
+        "sampleRoundTrips": 40,
+        "texelBytes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ],
+        "samples": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "guardsAndUnalignedSpans": true,
+        "independentRandomByteOracle": true,
+        "untouchedPaddingChecked": true,
+        "sanitizers": [
+          "AddressSanitizer",
+          "UndefinedBehaviorSanitizer"
+        ],
+        "errors": 0,
+        "logSha256": "6a0ee4f75ae8f4da826c2afcdf65420b9521dcbcc3af5bd4be428066e2c33571"
+      },
+      "originalColorTargetLayoutSuite": {
+        "passed": true,
+        "sanitizers": [
+          "AddressSanitizer",
+          "UndefinedBehaviorSanitizer"
+        ],
+        "scope": "Original ColorTargetLayout.cpp tests with explicit native mapped-memory test adapter; no Wine tracking or GPU proof",
+        "logSha256": "69ec8eae77e02df114d9b921a3881a0ccb2177b634936e91401ecdb7c8e9bdb0"
+      },
+      "optimizedMingwProductionTU": {
+        "optimization": "-O3 -DNDEBUG",
+        "sourceSha256": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83",
+        "objectSha256": "9441427c58c036daf1467968a0a7e042601a56d657a9f10297358ae476211e24",
+        "disassemblySha256": "55b2ffe0206e1724df01df9d4a252cee36a3ba7edb1312af7926b97b9a8ff97c",
+        "hotFunctions": 2,
+        "crtMemoryCopyMentionsInHotFunctions": 0,
+        "priorSourceNegativeControlRejected": true,
+        "priorSourceDetectedCopyRelocations": 2,
+        "checkScriptSha256": "f0a088d8d7b2388d9d32e75d34b86d8e71ec234dfe3d0d787232d6ab25a97640"
+      }
+    },
+    "source_series_sha256": "7c3e83c319eec80b044c2fecb3562600a4ac9054f139d79c1439addd66ece2c4",
+    "patches": 52,
+    "paths_checked": 139,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "all_series_patch_hashes_match_build_provenance": true
+  },
+  "build": {
+    "project_commit_at_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "upstream_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "ebf5d1bcbd2e0c53ed98a8c3f67dd812308cb99f51fb44440dcda1b49621b79b",
+    "hle_archive_sha256": "2f1212059037d4307d158c932bf9092fcc58f130faaf562143d13ad00c74a445",
+    "provenance_sha256": "23a3e013d1c67439145633d683b593d5457fce3f2064a953a26c1f22c9645b4b",
+    "prx_files": 50,
+    "runtime_dll_files": 3,
+    "all_embedded_binary_hashes_verified": 53,
+    "selected_host_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "host_runtime": "local Wine",
+    "additional_resource_and_full_graphics_suites_passed": true,
+    "preserved_24_host_log_sha256": {
+      "test-audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-audio_out2_port_layouts_tests.log": "2aee17dbddda20142f8efe34983cda715fed500774b6a1c4a49e4db30a3b027a",
+      "test-audio_out2_timing_tests.log": "609991e55fddfbb8abaf8aabdb2785d5324f000d71066eee898539057b2f1827",
+      "test-audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out_mix_level_pad_spk_tests.log": "54fc8e2ab6cc6f498fd050e506a99c8218407dd64be6296e882f2ab5905fab07",
+      "test-file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "test-guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_filesystem_tests.log": "d3be0573f330c6676c4fc2a253f2d9cc61f7b8cbb6654faed7b0e4641d3eb15e",
+      "test-guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "test-guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "test-guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_memory_tests.log": "c25259d9ef3cbc3765be63eed2a2f9837dbb704221a05382c86a2342611da856",
+      "test-guest_pthread_attr_tests.log": "bac4165e384fa0796c66b1524decf4b85fc4da053291b9cd2a5c4ac2ff3ef297",
+      "test-guest_raise_exception_tests.log": "38cc7780b1d79e3cc605aff6bf913cb7e224ac4f2e84afcfa1d4bf0afe3798f0",
+      "test-guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-inline-color-texel-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-inline-color-texel-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "test-uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "test-wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "test-windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    "verified_local_package_sha256": "065d0c1a3e9ecaeb6dca8e24437ea5e0978f42b6727d6b31a98498740dbd942b"
+  },
+  "acceptance": {
+    "source_native_checks": true,
+    "full_hle_build": true,
+    "host_tests": true,
+    "hardware_speed_improvement": false,
+    "gameplay": false,
+    "fps": false
+  },
+  "limits": [
+    "This immutable source/build snapshot excludes later device attempts.",
+    "No measured speed, FPS or gameplay gain follows from native sanitizer or host tests.",
+    "Native mapped-memory adapters do not qualify Wine write watch, aliases or GPU behavior."
+  ],
+  "privacy": "Source and aggregate test/build hashes only; private game data and device identifiers excluded."
+}

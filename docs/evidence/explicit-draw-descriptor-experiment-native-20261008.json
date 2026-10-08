@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "status": "native_metadata_tests_and_windows_production_syntax_passed",
+  "scope": "Opt-in experiment50: explicit initial descriptor writes for the fresh DrawBindings set; no GPU execution or game outcome is established here.",
+  "experiment": {
+    "environment": "APS5_EXPLICIT_DRAW_DESCRIPTORS",
+    "enabledValue": "1",
+    "default": "off; no owned descriptor-info copies are allocated and the existing VkCopyDescriptorSet path remains",
+    "preserved": [
+      "selected read-only buffer snapshots and their existing offset-zero overwrites",
+      "fresh set allocation per draw and existing Recorder ownership",
+      "descriptor binding/type/count, image layouts, native handles, buffer offsets and ranges",
+      "all original synchronization and render-pass behavior"
+    ],
+    "enabledLog": "One bounded process-local log proves an explicit replay happened; it reports counts only."
+  },
+  "patch": {
+    "path": "patches/anyps5/0050-explicit-draw-descriptor-experiment.patch",
+    "sha256": "bce0f7ae1d3e4ac12361ee8cb2db21ba6a9c927e1352c8b7cefcd0dd4c400dc7",
+    "baseline": "captured after49, before50; no earlier patch regenerated",
+    "files": [
+      {
+        "path": "core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp",
+        "beforeSha256": "36738c7da0d8566b482142fd1e45dee631869cad092b0bbc7ae103ecabe56945",
+        "afterSha256": "756f3062aa3c9c5e15b2d732f06e8ac6f189e4a9bdac12fefd171385baba68b8"
+      },
+      {
+        "path": "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp",
+        "beforeSha256": "6482cea0e386fb5c11d39db797d13c729afde8d9ec811c6547fef24557729d85",
+        "afterSha256": "6ea2589d99c08ca5da0c61b9c89bc39d2f9372d3fa280b4b59bdea343619199d"
+      },
+      {
+        "path": "core/libs/prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp",
+        "beforeSha256": null,
+        "afterSha256": "080847d5764a9acb343ba054d124f7d858bbf0961ed0aa56f5e5e0969a9fcf17"
+      }
+    ],
+    "forwardByteIdentical": true,
+    "reverseByteIdentical": true
+  },
+  "nativeFixture": {
+    "script": "scripts/check-explicit-draw-descriptors.py",
+    "source": "tools/checks/explicit_draw_descriptors.cpp",
+    "scriptSha256": "cc93f6ef176b8fa72d795cde08f1e10a27dc8108321ade09cec6f9eedafa87f7",
+    "sourceSha256": "1c047f88579754d8f3b2482adf89f8b27c9b8de127421e0c8e9ab2ea3ca5662c",
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "runs": [
+      {
+        "environmentValue": null,
+        "enabled": false,
+        "checks": 64,
+        "exitCode": 0
+      },
+      {
+        "environmentValue": "0",
+        "enabled": false,
+        "checks": 64,
+        "exitCode": 0
+      },
+      {
+        "environmentValue": "true",
+        "enabled": false,
+        "checks": 64,
+        "exitCode": 0
+      },
+      {
+        "environmentValue": "1",
+        "enabled": true,
+        "checks": 64,
+        "exitCode": 0
+      }
+    ],
+    "coverage": [
+      "three storage-buffer array elements, including nonzero offsets and VK_WHOLE_SIZE",
+      "sampled-image, storage-image and sampler arrays; a single sampled image",
+      "sparse nonzero bindings, array start and exact counts/types",
+      "input arrays overwritten after capture; replay pointers remain owned and stable",
+      "one snapshot overwrite preserves every other buffer, image and sampler",
+      "invalid type/info/count/structure/extension/texel fields rejected",
+      "default-off returns before inspecting malformed capture input"
+    ],
+    "mockOnly": true,
+    "logSha256": "a87c4de92b8c2bad06d78acca76d3970cab511a44b6b0813c01dadb9a58dcc8b"
+  },
+  "windowsProductionSyntax": {
+    "translationUnit": "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp",
+    "compiler": "Windows MinGW g++ via local Wine, C++20, fsyntax-only",
+    "exitCode": 0,
+    "logSha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c"
+  },
+  "limits": [
+    "No accepted graphics fix: the experiment remains opt-in.",
+    "No GPU descriptor-copy failure has yet been proven by these metadata tests.",
+    "No full AnyPS5 Draw/Recorder integration, physical iPad color or Solitaire gameplay acceptance is claimed.",
+    "Mock handles validate replay metadata, not native resource liveness."
+  ]
+}

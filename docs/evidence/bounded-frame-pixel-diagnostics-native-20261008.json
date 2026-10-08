@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "status": "native_statistics_fixtures_passed",
+  "scope": "Original CPU statistics sampler and default-off production diagnostic placements; not GPU rendering or gameplay acceptance.",
+  "patch": {
+    "path": "patches/anyps5/0049-bounded-frame-pixel-diagnostics.patch",
+    "sha256": "7cfb13e8373268760626f542d4ed5e38e42dbcf048ed8d6e350d1e2fc17072b9",
+    "threeFileForwardByteIdentical": true,
+    "reverseRestoresCapturedBaseline": true
+  },
+  "sourceBaselines": {
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": "694c973e3ea84c3d1684341edd1df9b300a08cf2eb53611b7643cb70ea0b3307",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": "05ba083a9df48a442903440d7fa231d9666e503ae6b26dd3689b21774bb436b7"
+  },
+  "sourceAfter": {
+    "core/libs/prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp": "d165028e4ebc95cf1a0d3a9ffd176c018fce3a0a351e120f26e5f8813cb1c14c",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": "897113e27a7eb751a7d6f0712f9e4101a2a74c469df86fa655dae982a926e64d",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": "d144a84ccb926d36b667a7e494931dfbc48bcca14af2961165b1638869328a88"
+  },
+  "fixtures": {
+    "source": "tools/checks/frame_pixel_diagnostics.cpp",
+    "sha256": "c8ddab515bebc2a8f8e26186dca9bb1471546e19452002bd5499984227061627",
+    "script": "scripts/check-frame-pixel-diagnostics.py",
+    "scriptSha256": "ac2cad75efcc32777d633f477173f7fc78c94d6d5d6c6863902ee9a567717a12",
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "modes": [
+      {
+        "environment": "unset",
+        "assertionsPassed": 487
+      },
+      {
+        "environment": "0",
+        "assertionsPassed": 487
+      },
+      {
+        "environment": "1",
+        "assertionsPassed": 511
+      }
+    ],
+    "checks": [
+      "opaque black RGB classified independently of alpha",
+      "transparent white RGB classified independently of alpha",
+      "alpha-only differences collapse in RGB distinct count",
+      "all logical samples for 1/2/4/8-sample pixel-interleaved layout",
+      "per-sample and aggregate FNV64 against independent byte traversal",
+      "last logical sample mutation",
+      "at most 1024 sampled XY pixels including boundary corners",
+      "fixed subset explicitly does not detect unsampled pixels",
+      "one-dimensional grid",
+      "invalid zero dimensions, sample counts, truncated spans, mismatched spans and overflow",
+      "eight independent event selections per stage and no selections when disabled"
+    ],
+    "verificationLogSha256": "3e074e1f6f4d4937a865b3e3d85d5f6591e072f414eb3e540be416c7ddf34ba4"
+  },
+  "windowsSyntax": {
+    "compiler": "Windows MinGW g++ through local Wine",
+    "results": [
+      {
+        "file": "ColorResolve.cpp",
+        "exitCode": 0
+      },
+      {
+        "file": "Draw.cpp",
+        "exitCode": 0
+      }
+    ]
+  },
+  "runtimeDiagnostic": {
+    "environmentVariable": "APS5_FRAME_PIXEL_DIAGNOSTICS",
+    "default": "off; unset, empty or zero",
+    "eventOrdinalsPerStage": [
+      1,
+      2,
+      3,
+      8,
+      16,
+      32,
+      64,
+      128
+    ],
+    "stages": [
+      "Producer",
+      "Resolve",
+      "Present (helper available; no presentation integration in this patch)"
+    ],
+    "maximumSampledPixelsPerEvent": 1024,
+    "everyLogicalSampleIncluded": true,
+    "maximumLogicalSamples": 8,
+    "statistics": [
+      "sampled RGB black/white counts",
+      "sampled nonzero/opaque alpha counts",
+      "distinct sampled RGBA and RGB",
+      "aggregate and per-logical-sample FNV64"
+    ],
+    "producerPlacement": "Input statistics retained after existing ReadColorTarget and fast-clear adjustment; output statistics read from existing transfer after SubmitAndWait and shader-resource WriteBack, before WriteColorTarget. Grouped-MSAA path only.",
+    "resolvePlacement": "Source statistics use existing flushed linear ReadColorTarget output. Returned Draw marker does not assert GPU completion and does not read destination RAM.",
+    "rawPixelFilesProduced": false,
+    "additionalGpuReadbacks": 0,
+    "additionalRecorderFlushes": 0,
+    "additionalGpuWaits": 0
+  },
+  "limits": [
+    "Statistics cover a deterministic subset, not every image pixel.",
+    "Uniform sampled colors do not prove missing coverage; stencil initialization can legitimately render flat white.",
+    "No patch49 HLE build or iPad run included in this evidence.",
+    "No resolution, synchronization, stencil, blend or sample behavior changed.",
+    "No performance or playable-Solitaire claim."
+  ]
+}

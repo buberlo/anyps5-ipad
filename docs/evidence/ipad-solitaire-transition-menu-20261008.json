@@ -1,0 +1,302 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T14:21:43.859848+00:00",
+  "kind": "ipad_solitaire_transition_control_long_title_menu_checkpoint",
+  "qualification": "full_title_and_selection_menu_observed_in_selected_source_and_physical_screen_gameplay_input_audio_fps_unqualified",
+  "build": {
+    "app_build": 47,
+    "patch_count": 49,
+    "hle_archive_sha256": "85f8a566ac72e6b8d6e789a0c3cec3b4a6392a52cc5ca191b59431d447e1a4be",
+    "candidate_manifest_sha256": "58612a0b9270206e9b6f63e05a858d247c25cfe3d088295941cbf8b62ad607e0",
+    "receipt_manifest_matches": true,
+    "dependency_audit_passed": true,
+    "readback_runtime_file_hashes_verified": 56,
+    "baseline_source_build_record": {
+      "path": "docs/evidence/bounded-frame-pixel-diagnostics-build-20261008.json",
+      "sha256": "b51e274fb253dcff073e1eef315b5432345689d71b2bf7e3ced7b354a671c283"
+    }
+  },
+  "private_run": {
+    "path": "build/pr1-port/solitaire-build47-resident-transition-long",
+    "receipt_sha256": "e7d148198eefe8dc5728d214054f9feaf9860baac110be9b1affd2a811b9e74f",
+    "log_sha256": "0b8f7ac709b20c8dd149819b933493cb484748537a7c61f5afe725bef285cc2f",
+    "log_line_count": 37487,
+    "nominal_bounded_capture_seconds": 180,
+    "test_operation_seconds": 196.272619167,
+    "accepted_gameplay_duration_seconds": null
+  },
+  "diagnostic_configuration": {
+    "controlled_switch": "APS5_DRAW_TRANSITIONS=1",
+    "normal_memory_tracking": true,
+    "built_in_jit": true,
+    "APS5_ENABLE_SAMPLE_GROUPS": "1",
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+    "selected_source_dump_every_present_ordinal": 16,
+    "maximum_selected_source_dump_count": 6,
+    "dump_scale_divisor": 4,
+    "selected_source_dimensions": [
+      1920,
+      1080
+    ],
+    "swapchain_dimensions": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "copied_target_and_sync_switches_present": false
+  },
+  "visual_timeline": {
+    "screen_120": {
+      "sha256": "2c6b400d02f37ddb879b020768249f83fc1cc60c01ef5fd82aed92c22799bdfd",
+      "review_method": "view_image",
+      "result": "uniform_blue_surface_with_controls_and_black_letterbox"
+    },
+    "selected_source_menu": {
+      "present_ordinal": 80,
+      "trace_seconds": 163.187665,
+      "bmp_sha256": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "review_method": "in-memory format conversion and display",
+      "result": "full_title_and_selection_menu"
+    },
+    "screen_180": {
+      "sha256": "f0e91e210b662be633d7cf6a2e62a84aec9a4cc64f3ba998e003ef895be6d64e",
+      "review_method": "view_image",
+      "result": "full_title_and_selection_menu",
+      "observed_elements": [
+        "15 in 1 Solitaire title",
+        "English selector",
+        "Yukon, Canfield and Golf selection cards",
+        "navigation arrows and page dots",
+        "green background",
+        "touch overlay and black letterbox"
+      ],
+      "menu_frame_observed": true,
+      "interaction_attempted_in_this_run": false
+    }
+  },
+  "fresh_scaled_selected_source_captures": [
+    {
+      "capture_ordinal": 0,
+      "present_ordinal": 16,
+      "trace_line": 2993,
+      "trace_seconds": 35.192792,
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "visual_review": "byte_checked_uniform_blue_zero_alpha",
+      "visual_review_method": null
+    },
+    {
+      "capture_ordinal": 1,
+      "present_ordinal": 32,
+      "trace_line": 5537,
+      "trace_seconds": 66.460002,
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "visual_review": "byte_checked_uniform_blue_zero_alpha",
+      "visual_review_method": null
+    },
+    {
+      "capture_ordinal": 2,
+      "present_ordinal": 48,
+      "trace_line": 8081,
+      "trace_seconds": 97.786723,
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "visual_review": "byte_checked_uniform_blue_zero_alpha",
+      "visual_review_method": null
+    },
+    {
+      "capture_ordinal": 3,
+      "present_ordinal": 64,
+      "trace_line": 10625,
+      "trace_seconds": 130.247925,
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "visual_review": "byte_checked_uniform_blue_zero_alpha",
+      "visual_review_method": null
+    },
+    {
+      "capture_ordinal": 4,
+      "present_ordinal": 80,
+      "trace_line": 15793,
+      "trace_seconds": 163.187665,
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 3700,
+      "alpha_pixel_counts": {
+        "255": 129600
+      },
+      "bmp_sha256": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "pixel_payload_sha256": "7286759a0f47b29630b018d6e57c8e39a48626907bda00126f5412268e5e5b6c",
+      "visual_review": "full_solitaire_title_and_selection_menu",
+      "visual_review_method": "in-memory BGRA-to-RGBA PNG conversion and display; no capture file changed"
+    }
+  ],
+  "trace": {
+    "sha256": "3100e7b75df4939d19f2b9b3e8b23c2126bb4325748add7d966610e349c264e1",
+    "row_count": 18372,
+    "exact_event_kind_counts": {
+      "packet": 13108,
+      "flip": 87,
+      "blit": 87,
+      "copy-input-snapshot": 273,
+      "buffer-read": 2154,
+      "buffer-write": 895,
+      "upload": 36,
+      "image-write": 482,
+      "draw": 619,
+      "submit": 376,
+      "present": 86,
+      "sampled-lookup": 141,
+      "refresh": 28
+    },
+    "all_draw_rows_accepted": true,
+    "first_present_seconds": 1.011468,
+    "last_present_seconds": 175.101067,
+    "last_trace_seconds": 175.606317,
+    "all_presents_use_resident_source": true,
+    "largest_logged_present_gap_after_initial_pair_seconds": 2.9743410000000097,
+    "hard_stop_before_capture_end_observed": false,
+    "first_changed_msaa_target_draw_seconds": 131.685218,
+    "large_ui_draw_expansion_begins_seconds": 146.371046,
+    "not_displayed_frame_or_gpu_completion_counters": true
+  },
+  "sampled_producer_and_resolve": {
+    "event_ordinals": [
+      1,
+      2,
+      3,
+      8,
+      16,
+      32,
+      64
+    ],
+    "all_producer_after_statistics_match_corresponding_resolve_source": true,
+    "sampled_xy_per_event": 1024,
+    "logical_samples": 8,
+    "sampled_texels_per_event": 8192,
+    "first_target_uniform_nonblack_nonwhite_zero_alpha_aggregate_fnv64": "8206848014262325",
+    "later_event64_new_target_aggregate_fnv64": "80c61a6a39e92325",
+    "all_source_statistics_uniform_nonblack_nonwhite_zero_alpha": true,
+    "resolve_destination_readback": false,
+    "full_image_uniformity_or_correctness_qualified": false
+  },
+  "log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "subfloor_nonzero_unhandled_or_refused_records": 0,
+    "maximum_logged_waiters_parked": 0,
+    "maximum_logged_waiters_over60s": 0,
+    "known_startup_code_buffer_mprotect_warning_count": 2,
+    "last_logged_physical_footprint_mb": 3643,
+    "logged_peak_physical_footprint_mb": 3702,
+    "memory_stability_qualified": false,
+    "native_mach_unhandled_event_markers": 211,
+    "native_mach_marker_interpretation": "The log is not exception-free. Later renderer activity and the menu follow these markers; a marker alone is not a fatal guest-exit classification or proof of successful delivery for every event."
+  },
+  "process_end": {
+    "explicit_guest_exit_logged": false,
+    "wine_finished_message": "Wine finished after 23.2s",
+    "message_line": 16648,
+    "later_runtime_log_lines": 20839,
+    "interpretation": "Helper completion is followed by runtime work and is not a game-exit claim.",
+    "own_test_processes_closed": true,
+    "cleanup_after_has_no_own_test_process_ids": true,
+    "termination_already_exited_helper_count": 1,
+    "clean_native_game_lifecycle_qualified": false
+  },
+  "rollback": {
+    "receipt_runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "independent_runtime_restored_file_byte_matches": 56,
+    "independent_metadata_byte_matches": [
+      {
+        "kind": "configuration",
+        "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+        "byte_equal": true
+      },
+      {
+        "kind": "library",
+        "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+        "byte_equal": true
+      },
+      {
+        "kind": "original_manifest",
+        "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+        "byte_equal": true
+      }
+    ],
+    "prior_diagnostics_restored": [
+      "capture-trace.log",
+      "frame_000.bmp",
+      "frame_001.bmp",
+      "frame_002.bmp"
+    ]
+  },
+  "acceptance": {
+    "visible_title_menu": true,
+    "interactive_menu": false,
+    "gameplay": false,
+    "audio": false,
+    "input_response": false,
+    "save_load": false,
+    "fps": false,
+    "default_path_repair": false
+  },
+  "interpretation": [
+    "The long transitions-only control is not stalled at a blue screen: new target/draw patterns appear after about131 seconds, UI drawing expands after about146 seconds, a source menu is visible by163.19 seconds, and the physical screenshot180 shows it.",
+    "Earlier short controls remain valid historical snapshots. Their blue image alone does not prove a broken later consumer; it can represent an incomplete startup phase.",
+    "A matched long baseline without the transition switch is still required to separate duration/content progression from the switch contribution."
+  ],
+  "limits": [
+    "One visible menu observation does not qualify interaction or gameplay.",
+    "The nominal180-second capture and196.27-second test operation are not accepted gameplay or FPS durations.",
+    "Producer statistics remain bounded subsets, and scaled source captures are not exhaustive final swapchain pixels.",
+    "No audio, save/load, sustained performance or stable-memory acceptance."
+  ],
+  "privacy": "Only sanitized statistics and hashes are published. Private captures, shaders, game assets/binaries, guest addresses, packet/register contents, pairing data and device identifiers remain local."
+}

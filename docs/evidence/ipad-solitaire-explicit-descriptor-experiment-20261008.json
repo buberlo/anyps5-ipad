@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T14:27:44.487778+00:00",
+  "kind": "explicit_draw_descriptor_experiment_source_build_and_negative_ipad_checkpoint",
+  "qualification": "native_metadata_full_hle_and_host_suites_pass_explicit_replay_logged_on_device_white_output_unchanged_no_fix_accepted",
+  "experiment": {
+    "environment": "APS5_EXPLICIT_DRAW_DESCRIPTORS",
+    "enabled_value": "1",
+    "default": "off; existing descriptor-copy path retained",
+    "scope": "Replay owned initial descriptor writes into the fresh per-draw set while retaining selected read-only snapshot overrides and existing synchronization.",
+    "synchronization_transition_switch_enabled_in_device_run": false,
+    "accepted_default_change": false
+  },
+  "source": {
+    "patch_path": "patches/anyps5/0050-explicit-draw-descriptor-experiment.patch",
+    "patch_sha256": "bce0f7ae1d3e4ac12361ee8cb2db21ba6a9c927e1352c8b7cefcd0dd4c400dc7",
+    "native_record_path": "docs/evidence/explicit-draw-descriptor-experiment-native-20261008.json",
+    "native_record_sha256": "0db478214a8a2a7ee936539531160e84213936bc6d5e470e9396fd9b891271df",
+    "native_checks_per_environment_run": 64,
+    "native_environment_values": [
+      null,
+      "0",
+      "true",
+      "1"
+    ],
+    "native_sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "native_handles_mocked": true,
+    "production_translation_unit_syntax_passed": true,
+    "source_series_sha256": "fa32ef5126177ec344db2ad49f1e6a200350ff64968a9918cd5588fadf1bcbd0",
+    "patches": 50,
+    "paths_checked": 139,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "all_series_patch_hashes_match_build_provenance": true
+  },
+  "build": {
+    "project_commit_at_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "upstream_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "745ecb818775fb572051827e254752cec57cee67f1abb6a8b6a3aca241e6ac69",
+    "hle_archive_sha256": "db1b140add309d5f7479332337683d88be08003bd63e718b6d90df6694a1a3e5",
+    "provenance_sha256": "7b59fe361296ec21e48ee7cdae32fa3aa89d8909ed323c031d2f1c7fcf52b13c",
+    "prx_files": 50,
+    "runtime_dll_files": 3,
+    "all_embedded_binary_hashes_verified": 53,
+    "selected_host_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "host_runtime": "local Wine",
+    "additional_resource_and_full_graphics_suites_passed": true,
+    "preserved_24_host_log_sha256": {
+      "audio_out2_port_layouts_tests.log": "be5dc32740640cdbe933e799b9770ff212cf30a0252603e95b16284faa32100d",
+      "guest_filesystem_tests.log": "aab776e2122d87634dd1aec5117ee3e4fd546637e63d531c2d30c9f385355d35",
+      "guest_pthread_attr_tests.log": "bac4165e384fa0796c66b1524decf4b85fc4da053291b9cd2a5c4ac2ff3ef297",
+      "audio_out_mix_level_pad_spk_tests.log": "9fcd919ff2f7031d07e67765fac8ef541ae6eb1cca6677b013a8aa223805293b",
+      "audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3",
+      "test-explicit-descriptor-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "guest_raise_exception_tests.log": "38cc7780b1d79e3cc605aff6bf913cb7e224ac4f2e84afcfa1d4bf0afe3798f0",
+      "guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_memory_tests.log": "a9e928dabb37cf28f9e9d07f8ec7b88e307ed29177d4633ada5d43f78d9370ec",
+      "guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "audio_out2_timing_tests.log": "fbfe58e1c9c1c33c5cbdbed1f08179d1307af61a33f9c643e0f5f58fdb944904",
+      "audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-explicit-descriptor-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4"
+    }
+  },
+  "device": {
+    "app_build": 47,
+    "private_run_directory": "build/pr1-port/solitaire-build47-explicit-descriptor-long",
+    "receipt_sha256": "b8c785d7abfbf151ec61f50179550745f3baa7e9b643035ec65546aa2794fc0a",
+    "candidate_manifest_sha256": "72da8de192055b074c5e061e07c8b22cffed4dfe2b250f4e934b760de8618f7a",
+    "receipt_manifest_matches": true,
+    "readback_runtime_files_verified": 56,
+    "hle_archive_matches_device_manifest": true,
+    "nominal_capture_seconds": 180,
+    "test_operation_seconds": 195.828848792,
+    "explicit_replay_log_count": 1,
+    "explicit_replay_bindings": 4,
+    "read_only_snapshots": 4,
+    "explicit_replay_log_line": 13625,
+    "screen_180_sha256": "f086bf733e2c4799190571399734e8129bafd279b6ba53f72c311a246080fd81",
+    "visual_review_method": "view_image",
+    "visual_result": "white_game_surface_with_controls_and_black_letterbox",
+    "menu_observed": false,
+    "fresh_scaled_source_captures": [
+      {
+        "capture_ordinal": 0,
+        "present_ordinal": 16,
+        "trace_seconds": 35.210337,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 1,
+        "present_ordinal": 32,
+        "trace_seconds": 66.816428,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 2,
+        "present_ordinal": 48,
+        "trace_seconds": 98.226774,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 3,
+        "present_ordinal": 64,
+        "trace_seconds": 130.843369,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 4,
+        "present_ordinal": 80,
+        "trace_seconds": 163.627437,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      }
+    ],
+    "log_sha256": "dcf0cb1495959885411daecbcbe7f1f989d50efcfe70ad9c1da1fe2e8afeeb6f",
+    "log_lines": 37516,
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "native_mach_unhandled_event_markers": 211,
+    "native_mach_marker_interpretation": "Markers also occur in the menu-producing transition run. Continued GPU activity follows them; they do not independently establish a fatal game exit, zero exceptions or successful delivery for every event.",
+    "trace": {
+      "sha256": "926d1b981390b7cf322f0ed07fa50c2a939a7dc238e595559d889779559c1d07",
+      "row_count": 20399,
+      "exact_event_kind_counts": {
+        "packet": 13108,
+        "flip": 87,
+        "blit": 87,
+        "copy-input-snapshot": 272,
+        "buffer-read": 2154,
+        "buffer-write": 895,
+        "upload": 36,
+        "image-write": 482,
+        "draw": 619,
+        "submit": 376,
+        "present": 86,
+        "sampled-lookup": 144,
+        "draw-snapshot": 2025,
+        "refresh": 28
+      },
+      "last_present_seconds": 175.461575,
+      "last_trace_seconds": 175.466203,
+      "all_draw_rows_accepted": true,
+      "not_displayed_frames_or_gpu_completion_counters": true
+    },
+    "process_end": {
+      "explicit_guest_exit_logged": false,
+      "wine_finished_message": "Wine finished after 23.0s",
+      "message_line": 16694,
+      "later_runtime_log_lines": 20822,
+      "helper_end_is_not_game_exit": true,
+      "own_test_processes_closed": true,
+      "clean_native_game_lifecycle_qualified": false
+    },
+    "rollback": {
+      "receipt_runtime_hash_restored": true,
+      "receipt_config_and_library_byte_preserved": true,
+      "independent_runtime_restored_file_byte_matches": 56,
+      "independent_metadata_byte_matches": [
+        {
+          "kind": "configuration",
+          "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+          "byte_equal": true
+        },
+        {
+          "kind": "library",
+          "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+          "byte_equal": true
+        },
+        {
+          "kind": "original_manifest",
+          "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+          "byte_equal": true
+        }
+      ],
+      "prior_diagnostics_restored": [
+        "capture-trace.log",
+        "frame_000.bmp",
+        "frame_001.bmp",
+        "frame_002.bmp",
+        "frame_003.bmp",
+        "frame_004.bmp"
+      ]
+    }
+  },
+  "conclusion": {
+    "explicit_replay_exercised": true,
+    "white_output_repaired": false,
+    "production_descriptor_copy_fault_proved": false,
+    "default_changed": false,
+    "gameplay": false,
+    "input_response": false,
+    "audio": false,
+    "save_load": false,
+    "fps": false
+  },
+  "limits": [
+    "Explicit writes are a negative opt-in experiment, not an accepted graphics repair.",
+    "Mock metadata checks and the independent native Vulkan probe do not qualify full production descriptor/resource lifetimes.",
+    "No final swapchain exhaustive readback, game interaction, sustained performance or clean native lifecycle acceptance.",
+    "The separate menu observation uses the transition control; this descriptor-only run must not inherit it."
+  ],
+  "privacy": "Only sanitized diagnostics and hashes are published. Private captures, game binaries/assets/shaders, guest addresses/registers, pairing data and device identifiers remain local."
+}

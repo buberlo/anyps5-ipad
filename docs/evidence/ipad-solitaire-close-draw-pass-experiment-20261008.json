@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:17:20.023329+00:00",
+  "kind": "close_recorded_draw_pass_source_build_and_negative_ipad_checkpoint",
+  "qualification": "source_full_hle_host_suites_pass_close_marker_exercised_white_output_unchanged_no_default_repair",
+  "experiment": {
+    "environment": "APS5_CLOSE_DRAW_PASS",
+    "enabled_value": "1",
+    "default": "off",
+    "scope": "default-off exact env APS5_CLOSE_DRAW_PASS=1; common recorded draw closes pass after keep; GENERAL layout, descriptor snapshots and asynchronous batch retained",
+    "accepted_default_change": false
+  },
+  "source": {
+    "patch_path": "patches/anyps5/0051-close-recorded-draw-pass-experiment.patch",
+    "patch_sha256": "42818eb55dd44aed558ed51ffdf1a8991911396eab8b24f13e5ce00e6e00660b",
+    "forward_reverse_byte_identical": true,
+    "production_translation_unit_syntax_passed": true,
+    "syntax_evidence_sha256": "37b6e252d01aec07c9b436885ee8aec392957698fd4e6c73ba2c7d1de690414a",
+    "syntax_log_sha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c",
+    "source_series_sha256": "2740fc0653e6869b30ce887d8c099bd69fb2ad6d3830fbae470263d6a83a1b13",
+    "patches": 51,
+    "paths_checked": 139,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "all_series_patch_hashes_match_build_provenance": true
+  },
+  "build": {
+    "project_commit_at_build": "d88757c747d712c34e6cfb5729fcad641381553b",
+    "upstream_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "5b42e273c0eb0b59c6593a7d398a584b7ef6b07e1beeb0f1cdab087e0332f2ed",
+    "hle_archive_sha256": "457af437a8081b863b975a4e738d3d80d4fde21de104acc198cd2d9845fa95dc",
+    "provenance_sha256": "fee17d4650d11387a688d029d2d15a0303653bf672767756d6a176b5f951022f",
+    "prx_files": 50,
+    "runtime_dll_files": 3,
+    "all_embedded_binary_hashes_verified": 53,
+    "selected_host_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "host_runtime": "local Wine",
+    "additional_resource_and_full_graphics_suites_passed": true,
+    "preserved_24_host_log_sha256": {
+      "audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "audio_out2_port_layouts_tests.log": "d2a0706117fb6d92777d595d5da8a179e52c9d814c0517270936035427d1bc04",
+      "audio_out2_timing_tests.log": "711a11dad1f18b71d04b007849e143c781177da538ee72ce35ccb6023ee154f5",
+      "audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "audio_out_mix_level_pad_spk_tests.log": "6bba1717e07b5cdeac5e4132befba94e3466d2c90541fe539e4582a3f735c835",
+      "file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_filesystem_tests.log": "edb3cfe68ba938c54890418da55cdb27a09274a255eda0b15c6a442e178946c4",
+      "guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "guest_memory_tests.log": "572cc5ba5b35502361e1e1805326bc294a68e59c3540ce62cf0e66c37c32e069",
+      "guest_pthread_attr_tests.log": "bac4165e384fa0796c66b1524decf4b85fc4da053291b9cd2a5c4ac2ff3ef297",
+      "guest_raise_exception_tests.log": "38cc7780b1d79e3cc605aff6bf913cb7e224ac4f2e84afcfa1d4bf0afe3798f0",
+      "guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-closed-draw-pass-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-closed-draw-pass-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    }
+  },
+  "device": {
+    "app_build": 47,
+    "private_run_directory": "build/pr1-port/solitaire-build47-close-draw-pass-long",
+    "receipt_sha256": "cf3e25332ef1cbd2d5dc875b315f8e2aae4b00979c5794bba6a0c6b329c87236",
+    "candidate_manifest_sha256": "0d1d3c2dbf6d8d263025e562b057b0c6592d02188fc2633d9107c0899d90c997",
+    "receipt_manifest_matches": true,
+    "readback_runtime_files_verified": 56,
+    "hle_archive_matches_device_manifest": true,
+    "nominal_capture_seconds": 180,
+    "test_operation_seconds": 196.57462066699998,
+    "screen_180_sha256": "43bca6d0e6b49dff6cfb1d41807a0ef6d78644049c1026cee08bec78faf9e453",
+    "visual_review_method": "view_image",
+    "visual_result": "white_game_surface_with_controls_and_black_letterbox",
+    "menu_observed": false,
+    "fresh_scaled_source_captures": [
+      {
+        "capture_ordinal": 0,
+        "present_ordinal": 16,
+        "trace_seconds": 35.240433,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 1,
+        "present_ordinal": 32,
+        "trace_seconds": 66.909949,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 2,
+        "present_ordinal": 48,
+        "trace_seconds": 98.383343,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 3,
+        "present_ordinal": 64,
+        "trace_seconds": 130.964684,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      },
+      {
+        "capture_ordinal": 4,
+        "present_ordinal": 80,
+        "trace_seconds": 163.900406,
+        "bmp_sha256": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+        "pixel_payload_sha256": "cf02792e813ffd6ccb16b69df2d4693e2bfc037f3ce07f68797d609d31ad8ec1",
+        "dimensions": [
+          480,
+          270
+        ],
+        "decoded_pixels": 129600,
+        "distinct_bgra_values": 1,
+        "all_pixels_white_rgb_zero_alpha": true
+      }
+    ],
+    "log_sha256": "c480ae1e12e474a6722356e276081319dfff58243164e20b0bfbbf2013bea63e",
+    "log_lines": 37556,
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "native_mach_marker_interpretation": "Logged rows include sampled counter milestones, not a total exception count. Later runtime activity follows; markers alone prove neither fatal game exit nor successful handling for every event.",
+    "trace": {
+      "sha256": "feb341ecd62627cd8a9c9d600b5f7c4ae5365e3a8c0cf51447b96106299717ef",
+      "row_count": 19897,
+      "exact_event_kind_counts": {
+        "packet": 12903,
+        "flip": 86,
+        "blit": 86,
+        "copy-input-snapshot": 270,
+        "buffer-read": 2040,
+        "buffer-write": 885,
+        "upload": 34,
+        "image-write": 461,
+        "draw": 595,
+        "submit": 372,
+        "present": 85,
+        "sampled-lookup": 140,
+        "draw-snapshot": 1914,
+        "refresh": 26
+      },
+      "last_present_seconds": 173.816575,
+      "last_trace_seconds": 175.234517,
+      "all_draw_rows_accepted": true,
+      "not_displayed_frames_or_gpu_completion_counters": true,
+      "draw_verdict_counts": {
+        "0": 595
+      }
+    },
+    "process_end": {
+      "explicit_guest_exit_logged": false,
+      "wine_finished_message": "[22:33:05.511] [INFO] Wine finished after 23.3s",
+      "message_line": 16731,
+      "later_runtime_log_lines": 20825,
+      "helper_end_is_not_game_exit": true,
+      "own_test_processes_closed": true,
+      "clean_native_game_lifecycle_qualified": false
+    },
+    "rollback": {
+      "receipt_runtime_hash_restored": true,
+      "receipt_config_and_library_byte_preserved": true,
+      "independent_runtime_restored_file_byte_matches": 56,
+      "independent_metadata_byte_matches": [
+        {
+          "kind": "configuration",
+          "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+          "byte_equal": true
+        },
+        {
+          "kind": "library",
+          "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+          "byte_equal": true
+        },
+        {
+          "kind": "original_manifest",
+          "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+          "byte_equal": true
+        }
+      ],
+      "prior_diagnostics_restored": [
+        "capture-trace.log",
+        "frame_000.bmp",
+        "frame_001.bmp",
+        "frame_002.bmp",
+        "frame_003.bmp",
+        "frame_004.bmp"
+      ]
+    },
+    "native_mach_unhandled_logged_marker_rows": 211,
+    "close_after_draw_marker_count": 1
+  },
+  "conclusion": {
+    "close_after_draw_exercised": true,
+    "white_output_repaired": false,
+    "default_changed": false,
+    "gameplay": false,
+    "input_response": false,
+    "audio": false,
+    "save_load": false,
+    "fps": false
+  },
+  "limits": [
+    "This default-off negative experiment closes recorded passes while retaining GENERAL layouts, read-only snapshots and asynchronous batches.",
+    "Scaled source captures do not qualify exhaustive final swapchain pixels.",
+    "No input, gameplay, audio, sustained FPS or clean native lifecycle acceptance."
+  ],
+  "privacy": "Only sanitized diagnostics and hashes are published. Private captures, game binaries/assets/shaders, guest addresses/registers, pairing data and device identifiers remain local."
+}

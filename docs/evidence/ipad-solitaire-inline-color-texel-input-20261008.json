@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:25:38.189769+00:00",
+  "kind": "fixed_size_texel_copies_synchronized_ipad_input_and_golf_board_checkpoint",
+  "qualification": "right_and_action_visual_response_golf_entry_and_dealt_board_observed_full_gameplay_and_fps_unqualified",
+  "build": {
+    "app_build": 47,
+    "patch_count": 52,
+    "hle_archive_sha256": "2f1212059037d4307d158c932bf9092fcc58f130faaf562143d13ad00c74a445",
+    "candidate_manifest_sha256": "5ca0c1165ed460b04a55f6a26ee33887fd3c6e2c8f7364da00c2ffcb64fc8ff6",
+    "receipt_manifest_matches": true,
+    "dependency_audit_passed": true,
+    "readback_runtime_file_hashes_verified": 56,
+    "source_build_record": {
+      "path": "docs/evidence/inline-color-texel-build-20261008.json",
+      "sha256": "93f6efc7975e9952c5cd48a56978e6c2123d472d04a3217442fb4f7580093850"
+    }
+  },
+  "private_run": {
+    "path": "build/pr1-port/solitaire-build47-inline-color-texel-ui-sync",
+    "receipt_sha256": "4d76585715cd83dd7fd44bc9b92312e1f5e0a7b6932af09a168c45f51afda85f",
+    "log_sha256": "e025925e4b7e64a1a9eda8ea2c1ad2fa982e73a81b19072f51416df7ba119a70",
+    "log_line_count": 42880,
+    "nominal_bounded_capture_seconds": 360,
+    "test_operation_seconds": 376.88465541700003,
+    "accepted_gameplay_duration_seconds": null
+  },
+  "diagnostic_configuration": {
+    "controlled_switch": "APS5_DRAW_TRANSITIONS=1",
+    "normal_memory_tracking": true,
+    "built_in_jit": true,
+    "APS5_ENABLE_SAMPLE_GROUPS": "1",
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+    "selected_source_dump_every_present_ordinal": 16,
+    "maximum_selected_source_dump_count": 6,
+    "dump_scale_divisor": 4,
+    "selected_source_dimensions": [
+      1920,
+      1080
+    ],
+    "swapchain_dimensions": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "copied_target_and_sync_switches_present": false
+  },
+  "visual_timeline": {
+    "sequence_before": {
+      "sha256": "73797167a961b21560499e1b66eff8ad772922bdb6866f394e32fd5d17eb5998",
+      "review_method": "view_image",
+      "result": "full_title_selection_menu_Canfield_centered"
+    },
+    "sequence_after_right": {
+      "sha256": "61c1302ae3f0f4a96056f452b6f2789ce51642b424b8a8f91349b15329e6e062",
+      "review_method": "view_image",
+      "result": "menu_cards_visibly_transition_toward_Golf"
+    },
+    "screen_after_input": {
+      "sha256": "63fef9a4809a4d53999d77b2fd6b6f51d6e2a4184717dfed80417261eb268471",
+      "review_method": "view_image",
+      "result": "Golf_game_board_dealing_visible_with_one_faceup_card"
+    },
+    "screen_300": {
+      "sha256": "422b5fb8e506e3f62480728fb8dfc27120e2099f8e18623d49f33fd4b44a1797",
+      "review_method": "view_image",
+      "result": "Golf_board_with_seven_columns_five_faceup_cards_each_stock_and_jack_waste_highlighted_six_clubs"
+    }
+  },
+  "trace": {
+    "sha256": "2e8738868ef6a292318b72e46ac3cc6610c09151d3f4f44adb15adfce0933de0",
+    "row_count": 90521,
+    "exact_event_kind_counts": {
+      "packet": 51393,
+      "flip": 260,
+      "blit": 260,
+      "copy-input-snapshot": 795,
+      "buffer-read": 23008,
+      "buffer-write": 2637,
+      "upload": 146,
+      "image-write": 4677,
+      "draw": 5268,
+      "submit": 1241,
+      "present": 259,
+      "sampled-lookup": 439,
+      "refresh": 138
+    },
+    "last_present_seconds": 355.512591,
+    "last_trace_seconds": 355.526229,
+    "all_draw_rows_accepted": true,
+    "not_displayed_frame_or_gpu_completion_counters": true,
+    "draw_verdict_counts": {
+      "0": 5268
+    }
+  },
+  "log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "subfloor_nonzero_unhandled_or_refused_records": 0,
+    "maximum_logged_waiters_parked": 0,
+    "maximum_logged_waiters_over60s": 0,
+    "known_startup_code_buffer_mprotect_warning_count": 2,
+    "last_logged_physical_footprint_mb": 3643,
+    "logged_peak_physical_footprint_mb": 3702,
+    "memory_stability_qualified": false,
+    "native_mach_unhandled_event_markers": 211,
+    "native_mach_marker_interpretation": "The log is not exception-free. Later renderer activity and the menu follow these markers; a marker alone is not a fatal guest-exit classification or proof of successful delivery for every event."
+  },
+  "process_end": {
+    "explicit_guest_exit_logged": false,
+    "wine_finished_message": "[23:12:17.865] [INFO] Wine finished after 23.2s",
+    "message_line": 22393,
+    "later_runtime_log_lines": 20487,
+    "interpretation": "Helper completion is followed by runtime work and is not a game-exit claim.",
+    "own_test_processes_closed": true,
+    "clean_native_game_lifecycle_qualified": false
+  },
+  "rollback": {
+    "receipt_runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "independent_runtime_restored_file_byte_matches": 56,
+    "independent_metadata_byte_matches": [
+      {
+        "kind": "configuration",
+        "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+        "byte_equal": true
+      },
+      {
+        "kind": "library",
+        "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+        "byte_equal": true
+      },
+      {
+        "kind": "original_manifest",
+        "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+        "byte_equal": true
+      }
+    ],
+    "prior_diagnostics_restored": [
+      "capture-trace.log",
+      "frame_000.bmp",
+      "frame_001.bmp",
+      "frame_002.bmp",
+      "frame_003.bmp",
+      "frame_004.bmp",
+      "frame_005.bmp"
+    ]
+  },
+  "acceptance": {
+    "visible_title_menu": true,
+    "interactive_menu_right_and_action": true,
+    "golf_game_entry": true,
+    "visible_dealing_and_dealt_board": true,
+    "individual_card_action": false,
+    "complete_gameplay_session": false,
+    "audio": false,
+    "save_load": false,
+    "background_recovery": false,
+    "sustained_fps": false,
+    "stable_memory": false,
+    "default_path_repair": false
+  },
+  "limits": [
+    "Two observed menu inputs and game entry do not qualify individual card actions, completion or all controls.",
+    "No audio, save/load, background recovery, stable-memory, clean-lifecycle or sustained FPS acceptance.",
+    "The controlled path retains APS5_DRAW_TRANSITIONS=1 and expensive diagnostics; no default-path repair or production-speed claim.",
+    "Hardware device orientation and synthesized-event metadata are different; visual game response is the evidence of these two inputs."
+  ],
+  "privacy": "Only sanitized statistics and hashes are published. Private captures, shaders, game assets/binaries, guest addresses, packet/register contents, pairing data and device identifiers remain local.",
+  "runtime_log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "native_mach_unhandled_logged_marker_rows": 226,
+    "native_mach_marker_interpretation": "Sampled marker rows do not total all exceptions; later runtime activity follows, without a clean lifecycle claim."
+  },
+  "input_test": {
+    "receipt_sha256": "7a70632ac0ab8027e4402a3bc9096e204e12bcf7dd3614eaf5e1537c24f5c8da",
+    "log_sha256": "a6c32fa8b932ebdb91ab6e22d309651dacee28e1595486918f45e8bbaab24d32",
+    "test_source_sha256": "beaf7918c986577b7b10fe503d2bb65bb18e1dbdaf020b79329087b9bd7e1eed",
+    "attachment_manifest_sha256": "340d8341f21c8003a6dfeba9322cce72e80534d35ff4844d0d29e8c379b35112",
+    "xctest_reported_success": true,
+    "xcodebuild_exit": 0,
+    "test_method": "testRightThenA",
+    "hardware_device_orientation": 4,
+    "hardware_orientation_name": "landscapeRight",
+    "synthesized_event_orientation_reported_by_exported_keyed_objects": 1,
+    "holds_seconds": 3.0,
+    "press_marker_count": 2,
+    "coordinates_from_observed_control_frames": true,
+    "actual_app_and_jit_helper_process_identity_unchanged_before_after": true,
+    "process_inventory_before_sha256": "d919ee73b8e9c53b25f90bc3bc4252019efaa6e2284a75845ef73bd33918f0cf",
+    "process_inventory_after_sha256": "1943d3cf56183a05cda4174638ffd98323849eb0e627385a7273764c38c11767",
+    "raw_automation_receipt_input_response_verified": false,
+    "raw_receipt_visual_analysis_done_later": true,
+    "visual_review_input_response_verified": true,
+    "response_scope": "Right changes the menu; A enters the Golf game and starts dealing. No later card action is tested."
+  }
+}

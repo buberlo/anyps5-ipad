@@ -263,3 +263,9 @@ profile is performant, or that the game is playable. Earlier private observers
 can themselves trigger the newly reproduced snapshot defect, so their packet
 observations cannot alone identify an original game writer as the cause.
 See the [bounded game checkpoint](evidence/solitaire-build42-single-instruction-checkpoint.json).
+
+The separate [MSAA experiment](MSAA-EMULATION.md) now proves native programmable
+four-sample subsets against an eight-position coverage reference on the iPad,
+including the captured game pattern and center interpolation. It is not yet an
+AnyPS5 renderer change: eight individual sample preservation, guest layouts,
+depth/stencil, shader side effects and game output still require integration.

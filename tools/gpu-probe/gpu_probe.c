@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 /* Copyright (C) 2026 buberlo */
 #include "gpu_probe.h"
+#ifndef VK_ENABLE_BETA_EXTENSIONS
+#define VK_ENABLE_BETA_EXTENSIONS
+#endif
 #include <vulkan/vulkan.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -130,17 +133,51 @@ static VkResult initialize(Probe *p) {
         result(p, required[i], ok, 0); missing |= !ok;
         enabled[enabled_count++] = required[i];
     }
-    if (extension(exts, count, "VK_KHR_portability_subset")) enabled[enabled_count++] = "VK_KHR_portability_subset";
+    const int portability_subset = extension(exts, count, "VK_KHR_portability_subset");
+    const int sample_locations = extension(exts, count, "VK_EXT_sample_locations");
+    if (portability_subset) enabled[enabled_count++] = "VK_KHR_portability_subset";
     free(exts);
     if (rc != VK_SUCCESS) return rc;
     if (missing) return VK_ERROR_EXTENSION_NOT_PRESENT;
     VkPhysicalDevice8BitStorageFeatures bytes = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES};
+    VkPhysicalDevicePortabilitySubsetFeaturesKHR portability = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR};
+    /* Query the feature chain separately from extension enumeration. Wine may
+     * filter an extension name while forwarding this 64-bit chain to its driver.
+     * A returned feature alone does not make the extension usable by the app. */
+    bytes.pNext = &portability;
     VkPhysicalDeviceBufferDeviceAddressFeatures bda = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES, .pNext = &bytes};
     VkPhysicalDeviceFeatures2 features = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &bda};
     vkGetPhysicalDeviceFeatures2(p->physical, &features);
+    /* Optional facts for an explicit-sample renderer; false is not a probe failure.
+     * No extension capability or successful query qualifies shader execution. */
+    fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"capability\":\"sample_interpolation\","
+            "\"sample_rate_shading\":%u,\"standard_sample_locations\":%u,"
+            "\"sample_locations_extension\":%u,\"portability_subset\":%u,"
+            "\"shader_sample_rate_interpolation_functions\":%u}\n",
+            features.features.sampleRateShading, props.limits.standardSampleLocations,
+            (unsigned)sample_locations, (unsigned)portability_subset,
+            portability.shaderSampleRateInterpolationFunctions);
+    fflush(p->report);
+    /* The execution probe does not enable or use these optional features. */
+    bytes.pNext = NULL;
     VkPhysicalDeviceFloatControlsProperties floats = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES};
+    VkPhysicalDeviceSampleLocationsPropertiesEXT locations = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
+    if (sample_locations) floats.pNext = &locations;
     VkPhysicalDeviceProperties2 props2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, .pNext = &floats};
     vkGetPhysicalDeviceProperties2(p->physical, &props2);
+    if (sample_locations) {
+        fprintf(p->report, "{\"schema\":1,\"stage\":\"native_gpu\",\"capability\":\"sample_locations_properties\","
+                "\"sample_mask\":%u,\"grid_width\":%u,\"grid_height\":%u,"
+                "\"subpixel_bits\":%u,\"coordinate_min\":%.9g,\"coordinate_max\":%.9g,"
+                "\"variable_locations\":%u}\n",
+                locations.sampleLocationSampleCounts, locations.maxSampleLocationGridSize.width,
+                locations.maxSampleLocationGridSize.height, locations.sampleLocationSubPixelBits,
+                locations.sampleLocationCoordinateRange[0], locations.sampleLocationCoordinateRange[1],
+                locations.variableSampleLocations);
+        fflush(p->report);
+    }
 #define REQUIRE_FEATURE(label, field) do { int ok = !!(field); result(p, label, ok, 0); missing |= !ok; } while (0)
     REQUIRE_FEATURE("bufferDeviceAddress", bda.bufferDeviceAddress);
     REQUIRE_FEATURE("storageBuffer8BitAccess", bytes.storageBuffer8BitAccess);

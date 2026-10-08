@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "two_four_sample_subsets_offscreen_device_proof",
+  "source_base_commit": "856aa89",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "route": "x86-64 PE through Wine/FEX, Vulkan, MoltenVK and Metal on the physical iPad",
+  "gpu_capability_records": [
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "sample_count_limits",
+      "color_mask": 7,
+      "depth_mask": 7,
+      "stencil_mask": 7,
+      "no_attachment_mask": 7
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "sample_interpolation",
+      "sample_rate_shading": 1,
+      "standard_sample_locations": 1,
+      "sample_locations_extension": 1,
+      "portability_subset": 0,
+      "shader_sample_rate_interpolation_functions": 1
+    },
+    {
+      "schema": 1,
+      "stage": "native_gpu",
+      "capability": "sample_locations_properties",
+      "sample_mask": 6,
+      "grid_width": 1,
+      "grid_height": 1,
+      "subpixel_bits": 4,
+      "coordinate_min": 0,
+      "coordinate_max": 0.9375,
+      "variable_locations": 1
+    }
+  ],
+  "capability_probe_source_sha256": "d860735fca12b9c0010e7e0bb6730ef5d837d3a4e904216ea1089ad609ee9841",
+  "capability_probe_exe_sha256": "822a8f0b314033e45093caf40c7f9aabef4576c81398cd769b5c26ac0ac8ba57",
+  "capability_private_log_sha256": "d4017283a3eb1684b0d98b6136e4c2b4d4959c4c8b759933c58b566065595a07",
+  "probe": {
+    "source": "tools/gpu-probe/msaa_split_probe.c",
+    "source_sha256": "709ae883c93e79b873c7f3434d06d23b9419d46f86fcc3559de55f2809974cf5",
+    "exe_sha256": "12ac7356109181d5eecfd04801a009ab6f1ad96fce7496ba10b9d9003cb17a97",
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7 via macOS Wine",
+    "shader_sources": {
+      "tools/gpu-probe/msaa_split.vert": "568918e8c80214ca5769d2e0c684990c22a815bfe600a30da12230fd4f0c7286",
+      "tools/gpu-probe/msaa_split.frag": "29d0105c14a753707221c3c7eeb6b6a98a7399d0777627339f567babb5a360ed"
+    },
+    "spirv_hashes": {
+      "msaa_split.frag.spv": "bb1dbe24deacae103e4e4609aca13aab628b041886bfa84611c125e4150d1be1",
+      "msaa_split.vert.spv": "388f4849b3509052cb786b6f454e9facf9fc8c5d02b40fc014379dcf89aef12c"
+    },
+    "render_extent": [
+      16,
+      16
+    ],
+    "format": "R32_SFLOAT",
+    "native_raster_samples_per_pass": 4,
+    "passes_per_reference_image": 2,
+    "shader_modes": [
+      "constant color for coverage counts",
+      "interpolated center gradient"
+    ],
+    "cpu_reference": "Integer edge coverage at all eight 1/16-pixel positions; no sample lies exactly on a fixture edge",
+    "value_tolerance": 1e-05
+  },
+  "runs": {
+    "synthetic_pattern": {
+      "pixels": 256,
+      "combined_value_checks": 512,
+      "individual_group_value_checks": 1024,
+      "partial_coverage_pixels": 33,
+      "combined_errors": 0,
+      "group_errors": 0,
+      "wine_exit_code": 0,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "23a48643b9a884aa9ea959e466068628069976fb9c3d91fb3f13d4cfef63d0e8",
+      "private_receipt_sha256": "d1f9b46a995bb494b53ba9b608e156a5fe5f2ea8c476c197aa896d8a24f2da8e"
+    },
+    "captured_solitaire_pattern": {
+      "pixels": 256,
+      "combined_value_checks": 512,
+      "individual_group_value_checks": 1024,
+      "partial_coverage_pixels": 34,
+      "combined_errors": 0,
+      "group_errors": 0,
+      "wine_exit_code": 0,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "44d3ad7f11bca7ef65132b505effaf78dbbc60ef410b43014abfdd09c82568d2",
+      "private_receipt_sha256": "63dab540769d0fca61b385edf384640495691ea50f94fc67f396436160c245d2"
+    }
+  },
+  "captured_pattern": {
+    "source_private_register_capture_sha256": "bb742a243a3ff418f0d177401ccaa1a97ee69c6e99f37e1ebcda0d4b09d72818",
+    "private_pattern_bytes_sha256": "7a0c161be5df217a42eb1c07c76e098b544f08e77eda4069ae76b33e9d80ba88",
+    "distinct_sample_positions": 8,
+    "identical_pattern_at_all_four_quad_pixels": true,
+    "pattern_contents_published": false
+  },
+  "limits": {
+    "anyps5_renderer_integrated": false,
+    "eight_sample_native_attachment_created": false,
+    "shader_reads_of_eight_individual_samples_tested": false,
+    "depth_stencil_blending_discard_or_shader_side_effects_tested": false,
+    "guest_sample_tiling_or_resolve_tested": false,
+    "gpu_resident_eight_sample_preservation_tested": false,
+    "eight_sample_average_computed_on_cpu_from_two_native_float_resolves": true,
+    "gameplay_or_fps_qualified": false,
+    "interpolate_at_offset_instruction_execution_tested": false
+  },
+  "next_required": [
+    "Preserve both native four-sample targets, and expose eight individual sample values on the GPU",
+    "Decode and transfer guest sample-aware color/depth layouts and resolve reads",
+    "Preserve center interpolation, depth/stencil, masks, blending and discard behavior",
+    "Reject or handle duplicated shader side effects before applying multiple passes",
+    "Integrate with resident-target caching, dirty tracking and frame lifetime",
+    "Repair pending-AVX exception state, then run actual Solitaire gameplay acceptance"
+  ],
+  "primary_references": [
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceSampleLocationsPropertiesEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineSampleLocationsStateCreateInfoEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDevicePortabilitySubsetFeaturesKHR.html"
+  ]
+}

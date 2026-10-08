@@ -31,7 +31,7 @@ app_dir="$madeira/app/Madeira"
 sdk="$(xcrun --sdk "$sdkname" --show-sdk-path)"
 echo "unix libs for $sdkname ($sdk)"
 
-# The optional async flag bridge reads a pinned FEX ABI without modifying FEX.
+# The optional exception flag/AVX bridge reads a pinned FEX ABI without modifying FEX.
 # Refuse a native rebuild when actual dependency headers no longer match it.
 python3 "$root/scripts/check-async-flags-layout.py"
 

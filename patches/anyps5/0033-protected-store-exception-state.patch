@@ -1,0 +1,173 @@
+diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
+--- a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
++++ b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
+@@ -18,6 +18,7 @@
+ #include <utility>
+ #include <mutex>
+ #include "Sse4aEmulation.hpp"
++#include "ExceptionStateBridge.hpp"
+ 
+ namespace {
+ 
+@@ -242,6 +243,12 @@
+     if (g_sse4aTrace) TraceSse4a(rip, instruction, field, count);
+     return true;
+ }
++
++using QueryExceptionState = LONG (WINAPI *)(HANDLE,DWORD,void*,ULONG,ULONG*);
++QueryExceptionState g_queryExceptionState = nullptr;
++bool g_requireExceptionState = false;
++using IsExceptionEcCode = BOOLEAN (WINAPI *)(ULONG_PTR);
++IsExceptionEcCode g_isExceptionEcCode = nullptr;
+ 
+ LONG WINAPI ReportCrash(EXCEPTION_POINTERS* info) {
+     static std::atomic<bool> reported{false};
+@@ -453,6 +460,46 @@
+     std::fflush(stderr);
+ }
+ 
++LONG WINAPI ReportCrashWithState(EXCEPTION_POINTERS* pointers) {
++    aps5_veh_state_info saved{};
++    const auto* fault = pointers->ExceptionRecord;
++    if (g_queryExceptionState && fault->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && fault->NumberParameters >= 2) {
++        saved.version = 1;
++        saved.code = fault->ExceptionCode;
++        saved.direction = fault->ExceptionInformation[0];
++        saved.rip = pointers->ContextRecord->Rip;
++        saved.rsp = pointers->ContextRecord->Rsp;
++        saved.address = fault->ExceptionInformation[1];
++        ULONG bytes = 0;
++        const auto status = g_queryExceptionState(GetCurrentThread(), APS5_THREAD_VEH_STATE, &saved, sizeof(saved), &bytes);
++        if (!status && bytes == sizeof(saved)) pointers->ContextRecord->EFlags = saved.flags;
++        else saved.token = 0;
++    }
++    const auto result = ReportCrash(pointers);
++    if (result == EXCEPTION_CONTINUE_EXECUTION && g_requireExceptionState && !saved.token &&
++        fault->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
++        !(g_isExceptionEcCode && (g_isExceptionEcCode(pointers->ContextRecord->Rip) ||
++                                  g_isExceptionEcCode(reinterpret_cast<ULONG_PTR>(fault->ExceptionAddress))))) {
++        Report("[veh-state] handled access violation has no matching native snapshot; refusing corrupted continuation\n");
++        TerminateProcess(GetCurrentProcess(), 0xc000000d);
++        return EXCEPTION_CONTINUE_SEARCH;
++    }
++    if (result == EXCEPTION_CONTINUE_EXECUTION && saved.token) {
++        saved.operation = 1;
++        saved.resume_rip = pointers->ContextRecord->Rip;
++        saved.resume_rsp = pointers->ContextRecord->Rsp;
++        saved.flags = pointers->ContextRecord->EFlags;
++        ULONG bytes = 0;
++        const auto status = g_queryExceptionState(GetCurrentThread(), APS5_THREAD_VEH_STATE, &saved, sizeof(saved), &bytes);
++        if (status || bytes != sizeof(saved)) {
++            Report("[veh-state] failed to prepare restoration status=%lx; refusing corrupted continuation\n", static_cast<unsigned long>(status));
++            TerminateProcess(GetCurrentProcess(), 0xc000000d);
++            return EXCEPTION_CONTINUE_SEARCH;
++        }
++    }
++    return result;
++}
++
+ void AbortSignalHandler(int) {
+     ReportBacktrace("abort() (SIGABRT)", true);
+ }
+@@ -472,7 +519,17 @@
+ const bool g_crashReportInstalled = [] {
+     g_sse4aEmulation = !IsEnvironmentSet("APS5_NO_SSE4A_EMULATION");
+     g_sse4aTrace = IsEnvironmentSet("APS5_TRACE_SSE4A");
+-    AddVectoredExceptionHandler(1, ReportCrash);
++    if (const auto* flag = std::getenv("APS5_VEH_CONTEXT_BRIDGE"); flag && std::strcmp(flag, "1") == 0) {
++        g_queryExceptionState = reinterpret_cast<QueryExceptionState>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationThread"));
++        g_isExceptionEcCode = reinterpret_cast<IsExceptionEcCode>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlIsEcCode"));
++        // Capability check without a live exception. A native provider checks
++        // this class's exact length before reading data; ordinary Wine lacks it.
++        if (g_queryExceptionState) {
++            const auto status = g_queryExceptionState(GetCurrentThread(), APS5_THREAD_VEH_STATE, nullptr, 0, nullptr);
++            g_requireExceptionState = status == static_cast<LONG>(0xc0000004u);
++        }
++    }
++    AddVectoredExceptionHandler(1, ReportCrashWithState);
+     std::signal(SIGABRT, AbortSignalHandler);
+     _set_invalid_parameter_handler(InvalidParameterHandler);
+     InstallWatch();
+diff --git a/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp b/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp
+@@ -0,0 +1,12 @@
++#ifndef APS5_VEH_STATE_H
++#define APS5_VEH_STATE_H
++#include <stdint.h>
++#define APS5_THREAD_VEH_STATE 0x7fff4151u
++struct aps5_veh_state_info {
++    uint32_t version, operation, code, direction, flags, has_avx;
++    uint64_t rip, rsp, address, resume_rip, resume_rsp, token;
++    uint64_t ymm_upper[32];
++};
++#endif
++
++static_assert(sizeof(aps5_veh_state_info) == 328);
+diff --git a/core/libs/tests/GuestMemory.cpp b/core/libs/tests/GuestMemory.cpp
+--- a/core/libs/tests/GuestMemory.cpp
++++ b/core/libs/tests/GuestMemory.cpp
+@@ -710,6 +710,54 @@
+     Require(sceKernelMunmap(first, page * 3) == 0);
+     Require(sceKernelMunmap(second, page * 3) == 0);
+     Require(sceKernelReleaseDirectMemory(phys, page * 3) == 0);
++#endif
++}
++
++
++static void CheckNativeCrtSharedWriteTracking() {
++#ifdef _WIN32
++    // Exercise a native ARM64EC CRT writer through the actual libc VEH, rather
++    // than an independent probe's handler. Both aliases must report the writes.
++    constexpr std::size_t page = 0x4000, length = page * 4;
++    using Copy = void* (__cdecl *)(void*, const void*, std::size_t);
++    using Fill = void* (__cdecl *)(void*, int, std::size_t);
++    const auto crt = GetModuleHandleW(L"ucrtbase.dll");
++    Require(crt != nullptr);
++    const auto copy = reinterpret_cast<Copy>(GetProcAddress(crt, "memcpy"));
++    const auto fill = reinterpret_cast<Fill>(GetProcAddress(crt, "memset"));
++    Require(copy != nullptr && fill != nullptr);
++    std::array<unsigned char, page * 2> source{};
++    for (std::size_t i = 0; i < source.size(); ++i) source[i] = static_cast<unsigned char>(i * 37 + 11);
++    std::int64_t phys = 0;
++    Require(sceKernelAllocateDirectMemory(0, 0x7fffffffffll, length, 0, 0, &phys) == 0);
++    std::array<void*, 2> aliases{};
++    for (auto& alias : aliases) Require(sceKernelMapDirectMemory(&alias, length, 3, 0, phys, 0) == 0);
++    const auto collect = [&](void* alias, bool clear = true) {
++        std::array<void*, 32> pages{};
++        std::size_t count = pages.size();
++        Require(GuestArena::GuestArenaCollectWrites_nid_postfix(reinterpret_cast<std::uintptr_t>(alias), length, pages.data(), &count, clear));
++        return count;
++    };
++    for (auto alias : aliases) { Require(collect(alias) == 16); Require(collect(alias) == 0); }
++    constexpr std::size_t offset = page - 7;
++    constexpr std::array<std::size_t, 9> sizes{1, 7, 16, 31, 128, 512, 4096, page, page * 2};
++    unsigned checks = 0;
++    for (auto alias : aliases) for (bool useFill : {false, true}) for (auto bytes : sizes) {
++        auto* destination = static_cast<unsigned char*>(alias) + offset;
++        auto* result = useFill ? fill(destination, 0xa5, bytes) : copy(destination, source.data(), bytes);
++        Require(result == destination);
++        for (auto view : aliases) {
++            const auto* data = static_cast<const unsigned char*>(view) + offset;
++            for (std::size_t i = 0; i < bytes; ++i) Require(data[i] == (useFill ? 0xa5 : source[i]));
++        }
++        const auto expected = ((offset + bytes - 1) / page + 1) * 4;
++        for (auto view : aliases) Require(collect(view, false) == expected);
++        for (auto view : aliases) { Require(collect(view) == expected); Require(collect(view) == 0); }
++        ++checks;
++    }
++    for (auto alias : aliases) Require(sceKernelMunmap(alias, length) == 0);
++    Require(sceKernelReleaseDirectMemory(phys, length) == 0);
++    std::fprintf(stderr, "Native CRT shared write tracking: %u checks passed.\n", checks);
+ #endif
+ }
+ 
+@@ -1068,6 +1116,7 @@
+     CheckFixedMappingsReachConfiguredArenaEnd();
+ #endif
+     CheckSharedWriteTracking();
++    CheckNativeCrtSharedWriteTracking();
+     CheckReadsIntoSharedWriteTracking();
+     CheckPinnedSharedPages();
+ #if defined(__linux__)

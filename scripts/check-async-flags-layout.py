@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 import subprocess
+import re
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +13,12 @@ def main():
     parser.add_argument("--fex", type=Path, default=ROOT / "upstreams/FEX")
     parser.add_argument("--madeira", type=Path, default=ROOT / "upstreams/Madeira")
     args = parser.parse_args()
+    # This flag advertises that FEX reconstructed upper YMM state for an AV.
+    # Its value is independent of the CPUState field offsets checked below.
+    header = (args.fex / "Source/Windows/include/winnt.h").read_text()
+    flags = re.findall(r"^#define\s+CONTEXT_ARM64_FEX_YMMSTATE\s+\(CONTEXT_ARM64\s*\|\s*(0x[0-9a-fA-F]+)\)", header, re.MULTILINE)
+    if len(flags) != 1 or int(flags[0], 16) != 0x40:
+        raise RuntimeError("Pinned FEX upper-YMM context flag no longer matches the native bridge")
     with tempfile.TemporaryDirectory(prefix="aps5-flags-layout-") as temporary:
         executable = Path(temporary) / "check-layout"
         subprocess.run([

@@ -1,0 +1,247 @@
+diff --git a/build/ntdll-unix/signal_arm64_ios.c b/build/ntdll-unix/signal_arm64_ios.c
+--- a/build/ntdll-unix/signal_arm64_ios.c
++++ b/build/ntdll-unix/signal_arm64_ios.c
+@@ -13320,6 +13320,173 @@
+ 
+ #include "aps5_async_flags.h"
+ 
++#include "aps5_veh_state.h"
++static int ios_veh_state_enabled, ios_veh_state_trace;
++static __thread unsigned ios_veh_trace_count;
++static __thread uint64_t ios_veh_epoch;
++static __thread struct {
++    struct aps5_veh_state_info info;
++    struct aps5_fex_flags_prefix *state;
++    int prepared;
++} ios_veh_slots[8];
++
++static uint64_t ios_veh_pe( uint64_t pc )
++{
++    extern uint64_t ios_jit_reverse_translate( uint64_t, uint64_t * );
++    uint64_t pe = ios_jit_reverse_translate( pc, NULL );
++    return pe ? pe : pc;
++}
++
++static uint32_t ios_veh_flags( const struct aps5_fex_flags_prefix *state, const CONTEXT *context )
++{
++    uint32_t flags = 0;
++    unsigned i;
++    for (i = 0; i < 22; ++i)
++        if (i != 3 && i != 5 && i != 15 && i != 0 && i != 2 && i != 4 && i != 6 && i != 7 && i != 8 && i != 10 && i != 11)
++            flags |= (uint32_t)(state->flags[i] & 1) << i;
++    if (context->Cpsr & 0x20000000) flags |= 0x001;
++    if (context->Cpsr & 0x40000000) flags |= 0x040;
++    if (context->Cpsr & 0x80000000) flags |= 0x080;
++    if (context->Cpsr & 0x00200000) flags |= 0x100;
++    if (context->Cpsr & 0x10000000) flags |= 0x800;
++    if (!__builtin_parity( state->pf_raw & 0xff )) flags |= 0x004;
++    if ((state->af_raw ^ state->pf_raw) & 0x10) flags |= 0x010;
++    if (state->flags[10] & 0x80) flags |= 0x400;
++    return flags;
++}
++
++void ios_veh_capture_state( CONTEXT *redirect )
++{
++    struct { CONTEXT context; UINT64 pad[4]; EXCEPTION_RECORD record; } args;
++    TEB *teb;
++    void *frame;
++    struct aps5_fex_flags_prefix state;
++    struct aps5_veh_state_info *info;
++    unsigned slot;
++    if (!ios_veh_state_enabled) return;
++    if (ios_veh_pe( redirect->Pc ) != ios_veh_pe( (ULONG_PTR)IOS_PFUNC(KiUserExceptionDispatcher) )) return;
++    if (!ctx_peek( &args, (const void *)redirect->Sp, sizeof(args) ) ||
++        args.record.ExceptionCode != STATUS_ACCESS_VIOLATION || args.record.NumberParameters < 2 ||
++        (args.context.ContextFlags & CONTEXT_FULL) != CONTEXT_FULL ||
++        ios_x64_signal_is_ec( args.context.Pc )) return;
++    teb = NtCurrentTeb();
++    if (!teb || !teb->ChpeV2CpuAreaInfo ||
++        !ctx_peek( &frame, &teb->ChpeV2CpuAreaInfo->EmulatorData[0], sizeof(frame) ) || !frame ||
++        !ctx_peek( &state, frame, sizeof(state) ) ||
++        ios_veh_pe(state.rip) != ios_veh_pe(args.context.Pc) || state.gregs[4] != args.context.Sp) return;
++    /* A prepared outer exception must survive a nested handler fault. Evict
++     * only unprepared snapshots; newest-token matching rejects stale frames. */
++    ++ios_veh_epoch;
++    if (!ios_veh_epoch) ++ios_veh_epoch;
++    for (slot = 0; slot < 8; ++slot)
++        if (!ios_veh_slots[slot].info.token) break;
++    if (slot == 8)
++    {
++        uint64_t oldest = UINT64_MAX;
++        for (unsigned i = 0; i < 8; ++i)
++            if (!ios_veh_slots[i].prepared && ios_veh_slots[i].info.token < oldest)
++            {
++                oldest = ios_veh_slots[i].info.token;
++                slot = i;
++            }
++    }
++    if (slot == 8) return;
++    info = &ios_veh_slots[slot].info;
++    memset( info, 0, sizeof(*info) );
++    info->version = 1;
++    info->token = ios_veh_epoch;
++    info->code = args.record.ExceptionCode;
++    info->direction = args.record.ExceptionInformation[0];
++    info->address = args.record.ExceptionInformation[1];
++    info->rip = ios_veh_pe(args.context.Pc);
++    info->rsp = args.context.Sp;
++    info->flags = ios_veh_flags(&state, &args.context);
++    info->has_avx = !!(args.context.ContextFlags & 0x40);
++    if (info->has_avx) memcpy(info->ymm_upper, state.avx_high, sizeof(info->ymm_upper));
++    ios_veh_slots[slot].state = frame;
++    ios_veh_slots[slot].prepared = 0;
++    /* Leave interrupted flags in the snapshot; C++ receives the required DF=0. */
++    ios_veh_slots[slot].state->flags[10] = 1;
++    if (ios_veh_state_trace && ios_veh_trace_count++ < 64) dprintf(2,"[veh-state] captured token=%llu rip=%llx sp=%llx flags=%x avx=%u\n",
++        (unsigned long long)info->token,(unsigned long long)info->rip,(unsigned long long)info->rsp,info->flags,info->has_avx);
++}
++
++NTSTATUS ios_veh_query_state( HANDLE handle, void *data, ULONG length, ULONG *ret_len )
++{
++    struct aps5_veh_state_info request;
++    unsigned i;
++    if (!ios_veh_state_enabled || handle != NtCurrentThread()) return STATUS_NOT_SUPPORTED;
++    if (length != sizeof(request)) return STATUS_INFO_LENGTH_MISMATCH;
++    if (!data) return STATUS_ACCESS_VIOLATION;
++    memcpy(&request, data, sizeof(request));
++    if (request.version != 1 || request.operation > 1) return STATUS_INVALID_PARAMETER;
++    unsigned selected = 8;
++    uint64_t newest = 0;
++    for (i = 0; i < 8; ++i)
++    {
++        const struct aps5_veh_state_info *info = &ios_veh_slots[i].info;
++        if (info->token <= newest || info->rip != request.rip || info->rsp != request.rsp ||
++            info->code != request.code || info->direction != request.direction || info->address != request.address) continue;
++        newest = info->token;
++        selected = i;
++    }
++    if (selected != 8)
++    {
++        struct aps5_veh_state_info *info = &ios_veh_slots[selected].info;
++        if (!request.operation)
++        {
++            memcpy(data, info, sizeof(*info));
++            if (ret_len) *ret_len = sizeof(*info);
++            return STATUS_SUCCESS;
++        }
++        if (request.token != info->token || !request.resume_rip || !request.resume_rsp ||
++            ios_x64_signal_is_ec(request.resume_rip) || request.has_avx != info->has_avx ||
++            request.flags & ~0x3f7fd7u) return STATUS_INVALID_PARAMETER;
++        *info = request;
++        ios_veh_slots[selected].prepared = 1;
++        if (ret_len) *ret_len = sizeof(*info);
++        return STATUS_SUCCESS;
++    }
++    return STATUS_NOT_SUPPORTED;
++}
++
++NTSTATUS ios_veh_restore_state( CONTEXT *context )
++{
++    unsigned i, selected = 8;
++    uint64_t newest = 0;
++    if (!ios_veh_state_enabled) return STATUS_SUCCESS;
++    for (i = 0; i < 8; ++i)
++    {
++        const struct aps5_veh_state_info *info = &ios_veh_slots[i].info;
++        if (!ios_veh_slots[i].prepared || info->token <= newest ||
++            ios_veh_pe(context->Pc) != ios_veh_pe(info->resume_rip) || context->Sp != info->resume_rsp) continue;
++        selected = i;
++        newest = info->token;
++    }
++    if (selected == 8) return STATUS_SUCCESS;
++    struct aps5_veh_state_info *info = &ios_veh_slots[selected].info;
++    struct aps5_fex_flags_prefix *state = ios_veh_slots[selected].state;
++    TEB *teb = NtCurrentTeb();
++    void *current = NULL;
++    if (!teb || !teb->ChpeV2CpuAreaInfo ||
++        !ctx_peek(&current, &teb->ChpeV2CpuAreaInfo->EmulatorData[0], sizeof(current)) || current != state)
++    {
++        /* Refuse continuation instead of writing through a stale CPU frame. */
++        ios_veh_slots[selected].prepared = 0;
++        info->token = 0;
++        dprintf(2, "[veh-state] current CPU frame changed; continuation rejected\n");
++        return STATUS_INVALID_PARAMETER;
++    }
++    state->pf_raw = (info->flags & 4) ? 0 : 1;
++    state->af_raw = (info->flags & 16) ? 16 : 0;
++    state->flags[10] = (info->flags & 0x400) ? 0xff : 1;
++    if (info->has_avx) memcpy(state->avx_high, info->ymm_upper, sizeof(info->ymm_upper));
++    if (ios_veh_state_trace && ios_veh_trace_count++ < 64) dprintf(2,"[veh-state] restored token=%llu flags=%x avx=%u\n",(unsigned long long)info->token, info->flags, info->has_avx);
++    ios_veh_slots[selected].prepared = 0;
++    info->token = 0;
++    return STATUS_SUCCESS;
++}
++
+ /* Read only a suspended same-process target whose reconstructed native context
+  * matches FEX's current guest PC/SP. Native EC waits and stale CPU snapshots
+  * are rejected; callers keep their normal context path in those cases. */
+@@ -13596,6 +13763,10 @@
+     {
+         const char *e = getenv( "APS5_X64_SIGNAL_SUSPEND" );
+         ios_x64_signal_suspend_enabled = e && e[0] == '1';
++        e = getenv( "APS5_VEH_CONTEXT_BRIDGE" );
++        ios_veh_state_enabled = e && e[0] == '1' && !e[1];
++        e = getenv( "APS5_VEH_CONTEXT_TRACE" );
++        ios_veh_state_trace = e && e[0] == '1' && !e[1];
+         e = getenv( "APS5_X64_SIGNAL_TRACE" );
+         ios_x64_signal_trace = e && e[0] == '1';
+     }
+diff --git a/build/ntdll-unix/server_ios.c b/build/ntdll-unix/server_ios.c
+--- a/build/ntdll-unix/server_ios.c
++++ b/build/ntdll-unix/server_ios.c
+@@ -2577,6 +2577,8 @@
+     { extern void ios_tlswatch_rearm( const char * ); ios_tlswatch_rearm( "NtContinue" ); }
+     {
+         extern int ios_x64_signal_context( CONTEXT *, CONTEXT * );
++        extern void ios_veh_capture_state( CONTEXT * );
++        ios_veh_capture_state( context );
+         CONTEXT guest;
+         extern void ios_x64_signal_restore_status( CONTEXT * );
+         ios_x64_signal_restore_status( context );
+@@ -2599,6 +2601,11 @@
+         status = server_select( NULL, 0, SELECT_INTERRUPTIBLE | SELECT_ALERTABLE, 0, NULL, &apc );
+         if (status == STATUS_USER_APC) return invoke_user_apc( context, &apc, status );
+     }
++
++#ifdef WINE_IOS
++    { extern NTSTATUS ios_veh_restore_state( CONTEXT * );
++      if ((status = ios_veh_restore_state( context ))) return status; }
++#endif
+     return signal_set_full_context( context );
+ }
+ 
+diff --git a/build/ntdll-unix/thread_ios.c b/build/ntdll-unix/thread_ios.c
+--- a/build/ntdll-unix/thread_ios.c
++++ b/build/ntdll-unix/thread_ios.c
+@@ -2597,6 +2597,12 @@
+ 
+     TRACE("(%p,%d,%p,%x,%p)\n", handle, class, data, length, ret_len);
+ 
++    if ((unsigned)class == 0x7fff4151u)
++    {
++        extern NTSTATUS ios_veh_query_state( HANDLE, void *, ULONG, ULONG * );
++        return ios_veh_query_state( handle, data, length, ret_len );
++    }
++
+     if ((unsigned)class == 0x7fff4150u)
+     {
+         extern NTSTATUS ios_x64_signal_query_flags( HANDLE, void *, ULONG, ULONG * );
+diff --git a/build/ntdll-unix/aps5_veh_state.h b/build/ntdll-unix/aps5_veh_state.h
+new file mode 100644
+--- /dev/null
++++ b/build/ntdll-unix/aps5_veh_state.h
+@@ -0,0 +1,14 @@
++/* Versioned private AnyPS5/Madeira access-violation state transport.
++ * operation 0 reads the latest matching current-thread snapshot; operation 1
++ * prepares one continuation. token and exception PC/SP/address must match.
++ * This structure contains no guest pointers to native CPU state. */
++#ifndef APS5_VEH_STATE_H
++#define APS5_VEH_STATE_H
++#include <stdint.h>
++#define APS5_THREAD_VEH_STATE 0x7fff4151u
++struct aps5_veh_state_info {
++    uint32_t version, operation, code, direction, flags, has_avx;
++    uint64_t rip, rsp, address, resume_rip, resume_rsp, token;
++    uint64_t ymm_upper[32];
++};
++#endif

@@ -1,0 +1,185 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "paired_native_libc_protected_store_state_repair",
+  "source_base_commit": "f597729b0839b6176a34c97a7f7a16667f63ce08",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app": {
+    "build": 40,
+    "bundle": "com.buberlo.anyps5ipad",
+    "signed": true,
+    "installed": true,
+    "binary_sha256": "63ff1c611d59ed5e8161e6ac9229104d36b73d954e4aed9d466ba18bb2d12462",
+    "native_only_rebuild": true
+  },
+  "default_switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": false,
+    "APS5_VEH_CONTEXT_TRACE": false
+  },
+  "baseline": {
+    "app_build": 37,
+    "outer_cases": 6,
+    "outer_faults": 6,
+    "errors": 103,
+    "avx": "verified",
+    "nested_faults": 0,
+    "rejected_requests": 0,
+    "query_errors": null,
+    "exit_code": 1,
+    "log_sha256": "731dd05abf40502ef6db74ece58ae56dbcef02a7056b20ddd5247f71f45a935d",
+    "exe_sha256": "ac288c683f69343c7ce95d61a0a8275ed6e25de586893840b8c3387e5e598166",
+    "config_and_library_byte_restored": true
+  },
+  "mutation_probe": {
+    "app_build": 38,
+    "outer_cases": 12,
+    "outer_faults": 12,
+    "errors": 0,
+    "avx": "verified",
+    "nested_faults": 0,
+    "rejected_requests": 0,
+    "query_errors": null,
+    "exit_code": 0,
+    "log_sha256": "608981a8a1f5ccb1928929d2e03febe4b58385c4cc63fa6c17819d7ddb066f04",
+    "exe_sha256": "424be43138e615a61a875a53224b1a0776a2fa96af210f6b45605bdd0a909204",
+    "config_and_library_byte_restored": true
+  },
+  "nested_probes": [
+    {
+      "app_build": 39,
+      "outer_cases": 24,
+      "outer_faults": 24,
+      "errors": 0,
+      "avx": "verified",
+      "nested_faults": 12,
+      "rejected_requests": 108,
+      "query_errors": 0,
+      "exit_code": 0,
+      "log_sha256": "6b9bf900e1183464490e9d14cdd4f6d7e16bfde3f2f50fef20e51cdec33825d4",
+      "exe_sha256": "f89abbf4a5b69ce3b35e5fd6a19bdec8722c351c20ab43b17507adc70e7184d2",
+      "config_and_library_byte_restored": true
+    },
+    {
+      "app_build": 40,
+      "outer_cases": 24,
+      "outer_faults": 24,
+      "errors": 0,
+      "avx": "verified",
+      "nested_faults": 12,
+      "rejected_requests": 108,
+      "query_errors": 0,
+      "exit_code": 0,
+      "log_sha256": "b01bca4646e29785891d9d43cf78d05cf1e9a53e21c68310cd46e7dab066d66a",
+      "exe_sha256": "f89abbf4a5b69ce3b35e5fd6a19bdec8722c351c20ab43b17507adc70e7184d2",
+      "config_and_library_byte_restored": true
+    }
+  ],
+  "cpu_state_contract": {
+    "general_registers": 15,
+    "flags": [
+      "CF",
+      "PF",
+      "AF",
+      "ZF",
+      "SF",
+      "DF",
+      "OF"
+    ],
+    "ymm_registers": 16,
+    "handler_changes_checked": true,
+    "callback_df_zero_checked": true,
+    "retried_store_data_checked": true,
+    "native_cpu_frame_layout_verified_against_actual_pinned_headers": true,
+    "native_ymm_context_flag_checked": true,
+    "native_cpu_frame_pointer_exposed_to_guest": false
+  },
+  "guest_memory": {
+    "app_build": 40,
+    "full_original_suite_exit_code": 0,
+    "native_crt_shared_write_cases": 36,
+    "both_shared_aliases_checked": true,
+    "dirty_collection_rearm_release_checked": true,
+    "native_ec_standard_context_path_checked": true,
+    "log_sha256": "22d5a7a97ff971b7acdb2c97698fd8dd3497d9920bfa4714ab136f6f9617d5ff",
+    "exe_sha256": "a8cc6fc02604f3adf2588eba7e9b5fa7d2cde169aee361bf3fdb2d275fc0c923",
+    "libc_sha256": "8af18bffe0edeec4b670bb266487e8ecb14f63c4f40440f05f4c19d3fc83f3f9",
+    "config_and_library_byte_restored": true
+  },
+  "asynchronous_regression": {
+    "app_build": 40,
+    "deliveries": 553,
+    "avx": "verified",
+    "integer_state": "verified",
+    "original_native_wait_assertions_retained": true,
+    "exit_code": 0,
+    "log_sha256": "ffabad26458894dcba8c23a25b9a0b763205f14f271bd31668a52ce5c60f104f",
+    "exe_sha256": "e4530c99a0ccb527800124571a15d0950096620df424d6fd3d9a0783909529fd",
+    "libc_sha256": "8af18bffe0edeec4b670bb266487e8ecb14f63c4f40440f05f4c19d3fc83f3f9",
+    "config_and_library_byte_restored": true
+  },
+  "graphics_interpolation": {
+    "changed_in_this_checkpoint": false,
+    "host_guard_cases": 111,
+    "host_guards_passed": true,
+    "guard_log_sha256": "e818c81594c2b04aaf7d834729b603a78a76a6d193edeaee929aa2b6ec385313",
+    "prior_complete_private_spirv_replays_passed": 14,
+    "prior_replay_evidence": "runtime-contract-fixes-20261008.json",
+    "device_draw_qualified": false
+  },
+  "source_sha256": {
+    "Madeira/build/ntdll-unix/signal_arm64_ios.c": "62daac478ef597ed17eb90c883e64d5c47d65871da7ff2d2a9b5d58b95cbcc56",
+    "Madeira/build/ntdll-unix/server_ios.c": "c88205169158137b12da10818ce1a4d06c75522692760d7650576388d158d901",
+    "Madeira/build/ntdll-unix/thread_ios.c": "c34e409b580c4bef48ec9c3d5058d7d6bd54476d7f3d3bf2adc521df3c8ee8f0",
+    "Madeira/build/ntdll-unix/aps5_veh_state.h": "e4b526b6057e33b7c95baaf65c4a1d0025ea347d9073e5db11bf37b2fca61219",
+    "AnyPS5/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp": "c23a1007126236f37679502f681a189a8430ed89c852835d05538fc1ed4c3561",
+    "AnyPS5/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp": "13601af2a29d5e10001896f67dd11a20aefbbe414a70e8b09fe662f87316ca5f",
+    "AnyPS5/core/libs/tests/GuestMemory.cpp": "eb670b8620447670a7cd96b29cc61d1aaef26b23a3f7ed449d3842272d673de8"
+  },
+  "patches_sha256": {
+    "patches/anyps5/0033-protected-store-exception-state.patch": "0a5ade90681a4e53dbb3a4ce9d354aac864f6358a5017bde72bbcef22549efc6",
+    "patches/madeira/0041-protected-store-guest-state.patch": "82b767691f5ce904f1427d64c465ce913ce8bd479635f653a47419336000f084",
+    "patches/madeira/0042-protected-store-build-version.patch": "f0b034874401bd179b9d4c695d01b9d9fcf31bb06362666668060c95ded110e1"
+  },
+  "checks": {
+    "patch-stack-qualified.log": "1bf5f043895d684274e54620b86c8a705dc7188590cf9e42392261a87596cfa9",
+    "layout-final.log": "9907d56e05ed96a81bf73fe14de560ae7757b213d580cbff8e6b625dc815d5be",
+    "app-build40-final.log": "5a09a1b1254e7a237c359bf4a75457210f8c628a21e8632495514ef0df96016e",
+    "build-libc-ec-boundary.log": "f69fc18f2be984d95cb94d0531e692d988b3439d316d9b899640c27a22570d9f",
+    "host-memory-ec.log": "d172e84f64c66cc09034814e8c189b4af2d7306772586120640a4b4fb89c1b56"
+  },
+  "solitaire": {
+    "status": "bounded_candidate_failed_requires_further_debugging",
+    "app_build": 40,
+    "log_sha256": "7a770c3763e91924a74ac49cfaeb163433a61bafce594d730dcd0f8a074f78a4",
+    "package_manifest_sha256": "61ecb33dc3eeabe96a1e67c62bd740438f967f0484ea0d79d902bb0052bcac49",
+    "normal_memory_tracking": true,
+    "diagnostic_watch_bypass": false,
+    "own_processes_closed": true,
+    "runtime_hash_restored": true,
+    "config_and_library_byte_restored": true,
+    "screenshot_sha256": {
+      "15": "14182a16f1b874e1f5a299211cbe4e26333a28481b22f15da19bd09110f0cba0",
+      "35": "9d0dbe2af22350e84cbb7135072fa6ea948c98580463bbbb3eea1fa79687a424",
+      "60": "f124eb51e7522db5f6b80bee91df3e30f5567b8c4a4d38ac6b465fcb4725ecf4"
+    },
+    "fatal": {
+      "exception": "0xc0000005",
+      "game_rva": "0x1461222",
+      "read_address": "0x0000000000000030"
+    },
+    "missing_snapshot_abort": false,
+    "visible_gameplay_qualified": false
+  },
+  "limits": [
+    "eight bounded thread-local snapshots; one nested level qualified; arbitrary nesting/concurrency is not qualified",
+    "native ARM64EC exception state follows the existing Windows context path",
+    "ordinary and asynchronous CPU tests do not qualify graphics or audio",
+    "measured M2 attachment support remains 1, 2 and 4 samples; prior game draws requested 8"
+  ],
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false,
+  "raw_game_or_shader_data_published": false
+}

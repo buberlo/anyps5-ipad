@@ -34,6 +34,9 @@ src="$root/tools/runtime-probes"
     "$src/write_watch_probe.c" -o "$out/write-watch-probe.exe"
 "$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -Wno-cast-function-type -O2 -static-libgcc \
     "$src/special_apc_probe.c" -o "$out/special-apc-probe.exe"
+"$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -static-libgcc \
+    -I"$root/upstreams/Madeira/build/ntdll-unix" \
+    "$src/protected_store_state_probe.c" -o "$out/protected-store-state-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'
 printf 'A compiled probe or scalar reference does not establish AVX or memory behavior on iPad.\n'

@@ -2,6 +2,7 @@
 // This file is project-owned; it does not modify or compile FEX source files.
 #include <FEXCore/Core/CoreState.h>
 #include "aps5_async_flags.h"
+#include "aps5_veh_state.h"
 #include <cstdio>
 
 using State = FEXCore::Core::CPUState;
@@ -12,7 +13,11 @@ CHECK_FIELD(af_raw);
 CHECK_FIELD(rip);
 CHECK_FIELD(gregs);
 CHECK_FIELD(flags);
+CHECK_FIELD(avx_high);
 #undef CHECK_FIELD
+static_assert(sizeof(State::avx_high) == sizeof(Prefix::avx_high));
+static_assert(sizeof(aps5_veh_state_info) == 328);
+static_assert(offsetof(aps5_veh_state_info, ymm_upper) == 72);
 static_assert(sizeof(State::flags) == sizeof(Prefix::flags));
 static_assert(sizeof(State::gregs) == sizeof(Prefix::gregs));
 static_assert(sizeof(State) >= sizeof(Prefix));
@@ -21,4 +26,4 @@ static_assert(FEXCore::X86State::REG_RSP == 4);
 static_assert(FEXCore::X86State::RFLAG_DF_RAW_LOC == 10);
 static_assert(FEXCore::X86State::RFLAG_NZCV_LOC == 24);
 static_assert(sizeof(aps5_async_flags_info) == 24);
-int main() { std::puts("Pinned FEX async flag bridge layout verified."); }
+int main() { std::puts("Pinned FEX flag and AVX exception bridge layouts verified."); }

@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T13:07:19.814620+00:00",
+  "kind": "ipad_solitaire_opaque_descriptor_inspector_connected_renderer_checkpoint",
+  "qualification": "startup_and_prior_rejection_clearance_confirmed_white_surface_correct_game_frames_unqualified",
+  "inputs": {
+    "receipt.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-opaque-descriptor-runtime/receipt.json",
+      "sha256": "8ea12aab8586f70c645c5a10e6257e7d2f904f894fa8fec8a5bfe8b86dcf89f6"
+    },
+    "manifest-readback.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-opaque-descriptor-runtime/manifest-readback.json",
+      "sha256": "858d1d9415678c9a53ced63ea0fa91aeea14c1c88f3facd20208ea0f933fb559"
+    },
+    "app-final.log": {
+      "private_local_path": "build/pr1-port/solitaire-build47-opaque-descriptor-runtime/app-final.log",
+      "sha256": "cbe1a5dc20d90933ea8c5baef840b6f36d205381b9f161f2310d0af604da0c5e"
+    }
+  },
+  "build": {
+    "app_build": 47,
+    "project_commit_at_hle_build": "0723bda4b3b210e4954425d52afaa067787c082f",
+    "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "80fd045c80d90b8c2fd395be7b0a918a1b0fd64a1dd107d510d8f3269fbe3c84",
+    "patch_count": 48,
+    "patch0048_sha256": "7a46591c481af0a3cb9aac3e8f929c92d643dc9eb29d6ed7f767369d0ca21b9e",
+    "hle_archive_sha256": "319e7c263185aac02de76a05758ad9e6abcdb5525fdd5a80b02da3c820fd29c0",
+    "private_archive_path": "build/solitaire-investigation/opaque-descriptor-hle-candidate/hle-runtime.zip",
+    "provenance_sha256": "380dc7c673faf574cd9fbe9eb9808f79b186ab54e1eccebcfb8f2e98da4b8fb4",
+    "embedded_manifest_sha256": "fcf2a26513f9dbc9460baa45f5f255460eb4e5962421288009292d3609fb24fc",
+    "prx_files": 50,
+    "runtime_dll_files": 3,
+    "all_embedded_file_hashes_verified": 53,
+    "embedded_provenance_matches_sidecar_except_archive_hash": true,
+    "host_test_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "graphics_host_tests": {
+      "test-opaque-resource.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-opaque-resource.log",
+        "sha256": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+        "success_marker": "Graphics guest-write classification tests passed",
+        "passed": true
+      },
+      "test-opaque-full-graphics.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-opaque-full-graphics.log",
+        "sha256": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+        "success_marker": "Graphics validation tests passed",
+        "passed": true
+      }
+    },
+    "host_graphics_scope": "Production resource/graphics logic with explicit Vulkan adapters/mocks; these host suites do not render a real GPU game frame."
+  },
+  "source_series_validation": {
+    "private_local_path": "build/solitaire-investigation/msaa-series-validation.json",
+    "sha256": "760594a5232e1a9f3327582d2997ccf4b94e21475725363e2d738686dbb7dd40",
+    "patches": 48,
+    "paths_checked": 137,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "hashes_match_hle_provenance": true
+  },
+  "package": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000",
+    "manifest_matches_receipt": true,
+    "dependency_audit_passed": true,
+    "explicit_hle_dependencies": 47,
+    "missing_libraries": 0,
+    "unresolved_guest_imports": 0,
+    "unresolved_guest_nids": 0,
+    "unresolved_native_imports": 0
+  },
+  "runtime": {
+    "builtin_jit_enabled": true,
+    "sample_groups_enabled": true,
+    "normal_memory_tracking": true,
+    "native_signal_suspend_enabled": true,
+    "async_avx_preservation_enabled": true,
+    "async_flags_preservation_enabled": true,
+    "veh_context_bridge_enabled": true
+  },
+  "observations": {
+    "gpu": "Apple M2 GPU",
+    "swapchain_created": true,
+    "swapchain_extent": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "total_log_lines": 25006,
+    "skipped_draw_log_records": 0,
+    "agc_graphics_error_log_matches": 0,
+    "prior_unknown_type_log_matches": 0,
+    "bad_alloc_log_matches": 0,
+    "fatal_log_marker_matches": 0,
+    "scope": "No listed rejection/fatal markers in this bounded closed log. Absence of logged rejection does not establish completed GPU draws, correct guest sample/resolve behavior or correct presented game pixels."
+  },
+  "visual_review": {
+    "reviewer": "coordinating_root_agent",
+    "status": "white_game_surface_with_controls_and_black_letterboxing",
+    "private_capture_path": "build/pr1-port/solitaire-build47-opaque-descriptor-runtime/screen-60.png",
+    "private_capture_sha256": "38ea33801d24367c477e541f4cb2932f3cc6bf97b14661574c1fa90dff2e146a",
+    "pixels_published": false,
+    "correct_game_frame_qualified": false,
+    "gameplay_qualified": false
+  },
+  "helper_completion": {
+    "message": "Wine finished after 23.3s",
+    "log_line": 16644,
+    "subsequent_log_lines": 8362,
+    "videoout_activity_after_message": true,
+    "audio_buffer_activity_after_message": true,
+    "guest_exit_code_observed": false,
+    "clean_guest_teardown_qualified": false,
+    "note": "Early-detach/helper completion is followed by runtime activity; it is not a guest exit or successful gameplay result."
+  },
+  "restoration": {
+    "configuration": {
+      "byte_equal": true,
+      "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56"
+    },
+    "library": {
+      "byte_equal": true,
+      "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+    },
+    "manifest": {
+      "byte_equal": true,
+      "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714"
+    },
+    "runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "own_processes_closed": true,
+    "receipt_test_operation_duration_seconds": 72.172873042,
+    "duration_scope": "Bounded test-operation duration; no accepted gameplay duration or FPS result."
+  },
+  "next_step": "Diagnose production rendered/sample/resolve image contents and image-to-swapchain/presentation routing. No correctness guard is waived merely because the game remains white.",
+  "limits": [
+    "No correct game pixels, playable menu/gameplay, audio correctness, touch behavior, saves, background recovery or displayed FPS qualification.",
+    "The isolated production-fragment resolve GPU probe remains separate from complete game rendering.",
+    "The historical as-built0044, lifecycle45, resolve-probe47 and game47 records remain unchanged and describe their original source/binaries."
+  ],
+  "privacy": "No private game binary, shader code, dumped game assets, captured pixels, pairing data or device identifiers are published."
+}

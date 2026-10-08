@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "qualification": "passed_production_inspector_sanitizer_and_windows_syntax_checks",
+  "scope": "Full production ValidateShaders/Inspect on original synthetic shader inputs, the production ColorResolveFragment factory and canonical rectangle factory. No GPU, Wine game runtime or Solitaire gameplay result is claimed.",
+  "cause": "Inspect did not register OpTypeImage, OpTypeSampler or OpTypeSampledImage. A direct UniformConstant image pointer required its pointee via Module::Type before the descriptor branch, causing the observed unknown-type rejection. The scan collects all type declarations before variable inspection; forward declaration order was not this failure.",
+  "change": [
+    "Register opaque image/sampler/sampled-image types with instruction word-count checks.",
+    "Keep real type lookup and missing-type errors.",
+    "Validate concrete separate sampler/image kind and role against metadata.",
+    "Accept a bare single descriptor or one fixed array with exact metadata count. Nested/runtime arrays remain unsupported.",
+    "Compare declared image dimension/array/multisample form to recompiler imageShape; preserve numerical scalar types and sampled/storage classification.",
+    "Register OpTypeSampledImage for intermediate instructions; bound combined image/sampler globals remain unsupported because the runtime has separate descriptor kinds."
+  ],
+  "patch": {
+    "patch": "patches/anyps5/0048-inspect-opaque-descriptor-types.patch",
+    "patchSha256": "7a46591c481af0a3cb9aac3e8f929c92d643dc9eb29d6ed7f767369d0ca21b9e",
+    "source": "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp",
+    "sourceSha256": "09725196d1ebfa6067f2ddec6d48f4c36929467bbbbd90099f2d47927d21ce0d",
+    "baselineSha256": "cbaaacb7db28cbff4d34b6d578e21b6f4325fceb8c7e6d3741f734d581dc103c",
+    "exactByteRoundtrip": true
+  },
+  "checks": {
+    "sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "oldInspectorExactFailureReproduced": true,
+    "accepted": 10,
+    "rejected": 56,
+    "originalGlslFixtures": 6,
+    "factoryGeneratedSpirvModules": 18,
+    "independentSpirvValidation": "Original fixtures target Vulkan1.1; factory and canonical rectangle modules target Vulkan1.2; all passed spirv-val.",
+    "positiveCases": [
+      "Real production resolve fragment factories2/4/8 at bindings0/6 with actual production-generated canonical TCS/TES.",
+      "Separate image and sampler descriptors, both bare count1 and fixed arrays count1/count2.",
+      "Typed rgba8 storage image."
+    ],
+    "negativeCases": [
+      "Missing image type.",
+      "Missing sampler type.",
+      "Nonarray count and fixed array length/count mismatch.",
+      "Sampler/image/storage-image metadata kind mismatch.",
+      "Declared image dimension/array/multisample mismatch or absent imageShape metadata.",
+      "Missing descriptor metadata.",
+      "Unsupported combined sampled-image UniformConstant global."
+    ],
+    "legacyLogSha256": "b7039529d2946fc1903716165096b7eca953bdae4024279a42d8dabce8fa67e1",
+    "fixedLogSha256": "5c6b0bc36465da4613794e19b007e3cbd766166dc7bdd946e3bf0de5f4cd9456",
+    "windowsSyntaxExitCode": 0,
+    "windowsSyntaxLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "publicTestSources": {
+    "scripts/check-opaque-descriptor-shaders.py": "bfca6b60fff56f20fb23a15a66f21f87c90028426eb11966dcb5ce12f29cd003",
+    "tools/checks/opaque_descriptor_shader_validation.cpp": "fb67c40d3c4cf0c728e339ddd856fdb45aa4eabe786404c0d35fe97023227161"
+  },
+  "limits": [
+    "Does not qualify production Driver\u2192Graphics::Draw runtime or final Solitaire frames.",
+    "No GPU pipeline execution, image pixels, audio or FPS test in this evidence.",
+    "Malformed negative fixtures are tested for rejection; they are not presented as valid SPIR-V.",
+    "Private game shaders and image contents are unnecessary for reproduction and are not included."
+  ],
+  "primaryReference": {
+    "url": "https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#OpTypeImage",
+    "supports": "Opaque image, sampler and sampled-image type declarations and their operands."
+  }
+}

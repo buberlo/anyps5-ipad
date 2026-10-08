@@ -1,0 +1,87 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+@@ -82,6 +82,62 @@
+         }
+         Require(locations.emplace(location | (patch ? 0x10000u : 0u), std::string(patch ? "patch:" : "vertex:") + Signature(typeId)).second, "duplicate shader interface location");
+         return location + 1;
++    }
++
++    void UniformDescriptor(std::uint32_t typeId, const ShaderRecompiler::DescriptorBinding& binding) const {
++        using Kind = ShaderRecompiler::DescriptorKind;
++        using Shape = ShaderRecompiler::DescriptorImageShape;
++        Require(binding.count != 0, "uniform descriptor binding count must be nonzero");
++        const auto& outer = Type(typeId);
++        if ((outer[0] & 0xffffu) == spv::OpTypeArray) {
++            Require(outer.size() == 4, "malformed uniform descriptor array");
++            const auto count = constants.find(outer[3]);
++            Require(count != constants.end() && count->second == binding.count,
++                    "uniform descriptor array length disagrees with recompiler binding count");
++            typeId = outer[2];
++        } else {
++            Require(binding.count == 1, "non-array uniform descriptor must have a binding count of one");
++        }
++        const auto& type = Type(typeId);
++        const auto op = static_cast<spv::Op>(type[0] & 0xffffu);
++        // The runtime binds images and samplers separately. OpTypeSampledImage
++        // is valid for intermediate OpSampledImage results, not a descriptor
++        // requiring VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER.
++        Require(op != spv::OpTypeSampledImage, "combined sampled image descriptors are unsupported");
++        if (binding.kind == Kind::Sampler) {
++            Require(op == spv::OpTypeSampler && type.size() == 2,
++                    "SPIR-V descriptor type disagrees with recompiler binding metadata");
++            Require(binding.role == ShaderRecompiler::DescriptorRole::GuestSamplers && !binding.imageShape,
++                    "sampler descriptor role or image shape disagrees with recompiler metadata");
++            return;
++        }
++        Require((binding.kind == Kind::SampledImage || binding.kind == Kind::StorageImage) &&
++                op == spv::OpTypeImage && (type.size() == 9 || type.size() == 10),
++                "SPIR-V descriptor type disagrees with recompiler binding metadata");
++        Require(binding.role == ShaderRecompiler::DescriptorRole::GuestImages,
++                "image descriptor role disagrees with recompiler metadata");
++        Require(type[4] <= 2 && type[5] <= 1 && type[6] <= 1 &&
++                type[7] == (binding.kind == Kind::SampledImage ? 1u : 2u),
++                "SPIR-V descriptor type disagrees with sampled/storage image metadata");
++        const auto& scalar = Type(type[2]);
++        Require(((scalar[0] & 0xffffu) == spv::OpTypeFloat && scalar.size() == 3) ||
++                ((scalar[0] & 0xffffu) == spv::OpTypeInt && scalar.size() == 4),
++                "image sampled type is not a scalar numerical type");
++        Require(binding.imageShape.has_value(), "image shape is absent from recompiler binding metadata");
++        std::uint32_t dim = spv::Dim2D, arrayed = 0, multisampled = 0;
++        switch (*binding.imageShape) {
++            case Shape::Image1D: dim = spv::Dim1D; break;
++            case Shape::Image2D: break;
++            case Shape::Image2DArray: arrayed = 1; break;
++            case Shape::ImageCube: dim = spv::DimCube; break;
++            case Shape::Image3D: dim = spv::Dim3D; break;
++            case Shape::Image1DArray: dim = spv::Dim1D; arrayed = 1; break;
++            case Shape::Image2DMsaa: multisampled = 1; break;
++            case Shape::Image2DMsaaArray: multisampled = arrayed = 1; break;
++            default: throw std::runtime_error("AGC graphics: unsupported descriptor image shape");
++        }
++        Require(type[3] == dim && type[5] == arrayed && type[6] == multisampled,
++                "SPIR-V image shape disagrees with recompiler binding metadata");
+     }
+ 
+     void Builtin(std::uint32_t value, std::uint32_t type, std::uint32_t storage, ShaderRecompiler::ShaderStage stage, const VkPhysicalDeviceSubgroupProperties& subgroup) {
+@@ -342,6 +398,12 @@
+             case spv::OpTypeRuntimeArray:
+             case spv::OpTypeStruct:
+             case spv::OpTypePointer:
++            case spv::OpTypeImage:
++            case spv::OpTypeSampler:
++            case spv::OpTypeSampledImage:
++                Require(op != spv::OpTypeImage || count == 9 || count == 10, "malformed SPIR-V image type");
++                Require(op != spv::OpTypeSampler || count == 2, "malformed SPIR-V sampler type");
++                Require(op != spv::OpTypeSampledImage || count == 3, "malformed SPIR-V sampled image type");
+                 Require(count >= 2 && module.types.emplace(instruction[1], std::vector<std::uint32_t>(instruction.begin(), instruction.end())).second, "invalid or duplicate SPIR-V type");
+                 break;
+             case spv::OpVariable:
+@@ -456,6 +518,7 @@
+             const auto binding = std::find_if(shader.bindings.begin(), shader.bindings.end(), [&](const auto& item) { return item.descriptorSet == key.first && item.binding == key.second; });
+             Require(binding != shader.bindings.end(), "SPIR-V resource is absent from recompiler binding metadata");
+             Require(binding->kind == ShaderRecompiler::DescriptorKind::Sampler || binding->kind == ShaderRecompiler::DescriptorKind::SampledImage || binding->kind == ShaderRecompiler::DescriptorKind::StorageImage, "SPIR-V descriptor type disagrees with recompiler binding metadata");
++            module.UniformDescriptor(typeId, *binding);
+         } else {
+             Require(variable.storage == spv::StorageClassStorageBuffer && decoration.set && decoration.binding, "unsupported or unbound shader resource");
+             const auto key = std::make_pair(*decoration.set, *decoration.binding);

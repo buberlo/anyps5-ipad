@@ -1,4 +1,4 @@
-# Eight-sample rendering: device startup works, game draws remain blocked
+# Eight-sample rendering: component tests pass, game image remains white
 
 Solitaire's captured state requests eight raster, exposed and color-fragment
 samples. The M2 iPad exposes native attachment sample counts of 1, 2 and 4.
@@ -13,11 +13,11 @@ is built and host-tested; a fresh Solitaire candidate passes its 47-dependency
 HLE audit. Patch0045 fixes retained guest-export initialization and has separate
 device startup evidence. Patch0046's canonical rectangle guard is checked
 statically. Patch0047 adds restricted fixed-function color resolve; its production
-fragment and rectangle stages pass an isolated iPad GPU probe. All 47 patches
-are now in a rebuilt 50-PRX package with 22 selected host test suites passing.
-The actual-resource and full graphics host suites pass. A freshly prepared
-game package runs on the iPad; its prior two guard messages disappear, but one
-unknown-SPIR-V-type rejection remains and the game surface stays white.
+fragment and rectangle stages pass an isolated iPad GPU probe. Patch0048 fixes
+opaque descriptor inspection. All 48 patches are now in a rebuilt 50-PRX package
+with 22 selected host test suites passing; resource/full graphics host suites
+also pass. The latest freshly prepared game run has no logged draw/AGC error,
+but the reviewed game surface stays white. Correct game frames remain unqualified.
 
 Independent x86-64 programs through the installed Wine/FEX/MoltenVK stack pass
 exact production-code RGBA8 and S8 transfer tests on the M2 iPad. These establish
@@ -57,7 +57,7 @@ The receipt records restoration of the runtime hashes and byte preservation of
 configuration and library files. See the
 [fresh lifecycle/startup record](evidence/ipad-solitaire-retained-export-lifecycle-20261008.json).
 
-## Current 0046/0047 game device checkpoint
+## Reviewed 0046/0047 game device checkpoint
 
 The later Build47 game run uses a freshly prepared package with all 47 HLE
 patches and the lifecycle-corrected relinker. Its read-back manifest matches the
@@ -69,7 +69,8 @@ The previous pair-only and `MSAA_ENABLE` rejection messages are absent from
 this bounded log. It contains one skipped-draw record and one rejection reason:
 `SPIR-V refers to an unknown type`. The remaining lead is a conservative type
 validator that omits the resolve fragment's direct `OpTypeImage` declaration;
-a bounded repair and new qualification are in progress. Absence of earlier
+Patch0048 implements the bounded inspector repair and clears that logged error
+in the later bounded device run below. Absence of earlier
 guards does not prove that either complete draw/resolve path has finished.
 
 The separately reviewed 35-second capture remains white with touch controls.
@@ -80,6 +81,54 @@ byte-for-byte. The actual-resource classification and full graphics host suites
 now pass with explicit Vulkan adapters/mocks. These tests and the independent
 resolve GPU probe do not establish playable game output. See the
 [current game device record](evidence/ipad-solitaire-rectlist-resolve-20261008.json).
+
+## Opaque descriptor inspector repair: patch0048
+
+The shader inspector had not registered `OpTypeImage`, `OpTypeSampler` or
+`OpTypeSampledImage`. A direct UniformConstant image pointer therefore requested
+an unknown pointee before descriptor validation. Declaration order was not the
+cause: the scan gathers all declarations before inspecting variables.
+
+Patch0048 registers the opaque types with instruction-size checks and then
+checks separate sampler, sampled image and storage image roles against actual
+binding metadata. It admits a bare descriptor or one fixed array only when the
+declared count matches. Image dimension, array/multisample shape, sampled versus
+storage classification and numerical scalar types remain checked. Missing types,
+nested/runtime arrays, metadata mismatches and combined image/sampler globals
+remain rejected; recognizing their type does not add a combined runtime binding.
+
+The production inspector passes ten accepted and 56 rejected synthetic cases
+under ASan/UBSan. Six original fixtures and 18 factory-generated modules pass
+independent SPIR-V validation. The previous inspector's exact unknown-type failure
+is reproduced by the same resolve factory, and the corrected production inspector
+accepts it. The 48-patch HLE package builds with 50 PRX implementations and three
+runtime DLLs; all 22 selected host suites and resource/full graphics host suites
+pass. The original inspector record makes no GPU/game claim. See
+[opaque descriptor qualification](evidence/opaque-descriptor-shader-validation-20261008.json).
+
+### Latest 0048 game device result
+
+The closed Build47 app run uses a newly prepared package with all 48 HLE
+patches and the lifecycle-corrected relinker. Its read-back manifest matches the
+receipt and identifies the verified new HLE archive; all 47 explicit HLE
+dependencies resolve. Built-in JIT, normal memory tracking and the paired
+exception-context repairs remain active. The Apple M2 GPU creates the same
+768 × 432 three-image swapchain.
+
+Across 25,006 log lines there are zero `[gpu] skipped draw`, `AGC graphics:`,
+unknown-type, `bad_alloc` or `FATAL` matches. The reviewed 60-second capture still
+shows a white game surface, touch controls and black letterboxing. A log with no
+rejection does not establish that GPU draws/resolves completed correctly or
+that the presented image contains correct game pixels. The next investigation
+must inspect the production rendered sample/resolve contents and their route
+to the swapchain and display.
+
+The early-detach/helper message `Wine finished after 23.3s` is followed by
+8,362 log lines, including VideoOut and audio activity; no guest exit code is
+observed. Original/restored configuration, library and manifest bytes match,
+and the receipt records restored runtime hashes. No playable scene, correct
+audio or frame-rate result is accepted. See the
+[latest device and build record](evidence/ipad-solitaire-opaque-descriptor-20261008.json).
 
 ## Independent physical iPad component results
 
@@ -439,7 +488,7 @@ Complete connected game qualification remains pending. The next rejected
 state or shader is evidence for the next implementation step, not a reason to
 remove a correctness guard.
 
-The current 47-patch series applies forward, matches 137 checked source paths
+The earlier 47-patch series applies forward, matches 137 checked source paths
 and reverses to the pin. Its rebuilt archive contains 50 PRX implementations
 and three Windows runtime DLLs; all 53 embedded file hashes verify and its
 22 selected host test suites pass under desktop Wine. The separate resource
@@ -447,7 +496,14 @@ classification and full graphics suites also pass. A fresh game package has
 run on the iPad, but its white surface and type-validation rejection leave
 rendering unresolved. These build, probe and later device facts do not alter
 the earlier as-built 0044 checkpoint. See the
-[current build record](evidence/ipad-fixed-color-resolve-20261008.json).
+[47-patch build record](evidence/ipad-fixed-color-resolve-20261008.json).
+
+The newer 48-patch checkpoint also applies/reverses across 137 paths. All 53
+files of its 50-PRX/three-DLL archive match their embedded hashes, and all 22
+selected host suites plus resource/full graphics suites pass. Its latest game
+run clears the previous logged rejections but remains white, as recorded above.
+That source/build/run evidence is separate from correct game image or sustained
+performance qualification.
 
 Complete guest draw/resolve routing, resource-cache handoffs, alias coherency,
 occlusion/sample counters and production-size transfer behavior remain
@@ -504,6 +560,7 @@ python3 scripts/check-msaa-depth-surfaces.py   # command/scheduling mocks
 python3 scripts/check-split-draw-shaders.py    # glslangValidator + spirv-val
 python3 scripts/check-msaa-rectlist-shaders.py # canonical rectangle guard, no GPU work
 python3 scripts/check-fixed-color-resolve.py  # resolve state/factory/scalar contracts
+python3 scripts/check-opaque-descriptor-shaders.py # actual inspector and descriptor metadata
 python3 scripts/check-msaa-state-pipelines.py  # sample state and pipelines
 python3 scripts/check-color-sample-transfer.py # production color transfer contracts
 python3 scripts/check-stencil-sample-transfer.py # production stencil contracts
@@ -519,7 +576,7 @@ checkpoint, all 44 AnyPS5 patches apply from the pin, match the checked source
 bytes across 125 paths and reverse back to the pin. The full-build record
 contains those hashes; patches0045/0046 have their own later qualification records.
 
-The separate current 47-patch checkpoint checks 137 paths and the rebuilt HLE
+The separate earlier 47-patch checkpoint checks 137 paths and the rebuilt HLE
 archive. Its record is linked above; source-series verification does not qualify
 connected device rendering.
 

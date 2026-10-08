@@ -22,12 +22,18 @@ sanitizer and syntax checks; its actual-resource and full graphics host suites
 subsequently pass.
 Patch0047's restricted fixed-function color-resolve implementation is now built.
 An isolated production-fragment/rectangle GPU probe passes six cases on the iPad;
-this is separate from complete guest renderer qualification. The current 47-patch
+this is separate from complete guest renderer qualification. The earlier 47-patch
 series matches 137 paths and applies/reverses cleanly. Its 50-PRX/three-DLL HLE
 archive is verified, and all 22 selected host suites pass. The fresh prepared
 game package has run on the iPad: the earlier guard messages are absent, but
 one unknown-SPIR-V-type rejection remains and the surface stays white.
 Correct connected rendering remains unqualified.
+Patch0048 repairs the opaque image/sampler type inspector while retaining
+descriptor-kind, image-shape and fixed-array-count checks. Its sanitizer fixtures,
+48-patch/137-path source verification, new 50-PRX/three-DLL HLE build and host
+suites pass. The latest game device run has no logged skipped draw or AGC error,
+but the reviewed surface remains white; correct game frames are unqualified.
+The earlier 0044/0045/0047 records remain unchanged.
 See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
@@ -50,6 +56,7 @@ source, build, device and unqualified-path states.
 | 0045 | Preserve guest init/fini when defined, visible, non-absolute exports remain reachable beside an HLE replacement | 32 host-tool cases, 52 ELF/PE conversions and 25 Wine PE executions pass. A fresh iPad package reaches Vulkan and a three-image swapchain without a logged `bad_alloc`; graphics remain white. |
 | 0046 | Qualify exact factory-generated rectangle stages for grouped draws; distinguish host fault completion from guest writes | Three canonical accepts and 90 rejection cases pass under sanitizers; 24 SPIR-V modules validate independently, existing 31 pair cases and production syntax checks pass. Actual-resource and full graphics host suites pass. Connected game output remains unqualified. |
 | 0047 | Restricted GC10 fixed-function RGBA8 color resolve from 2/4/8 stored samples to one sample, preserving actual rectangle coverage | 144 native sanitized cases and 401,712 scalar channel values pass. Isolated iPad production-fragment/rectangle probe passes six cases and guest exit 0, with exact non-tie/preserved bytes and one-unit half-tie tolerance. The game attempts the production path but rejects an unknown SPIR-V type; correct complete rendering remains unqualified. |
+| 0048 | Register opaque image/sampler types and validate separate descriptor roles, image shape and one fixed-array count | Ten accepted and 56 rejected production-inspector cases pass ASan/UBSan; six original and 18 factory SPIR-V modules validate. Full HLE build, 22 selected host suites and resource/full graphics suites pass. Latest iPad game log has no skipped draw/AGC error; reviewed surface remains white and correct game frames are unqualified. |
 
 The exact RGBA8 and S8 device probes run original synthetic fixtures through
 Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases
@@ -97,10 +104,24 @@ A freshly prepared game package with this archive runs on the iPad and reaches
 the three-image swapchain. Its previous pair-only and `MSAA_ENABLE` messages
 are absent; one skipped draw reports `SPIR-V refers to an unknown type`.
 The reviewed capture stays white with controls. Runtime activity continues after
-helper completion, without a recorded guest exit. A bounded type-validator
-repair is in progress; the isolated GPU probe does not qualify full game rendering.
+helper completion, without a recorded guest exit. The bounded type-validator
+repair is implemented in patch0048 and clears that logged error in the later run;
+the isolated GPU probe does not qualify full game rendering.
 The runtime, configuration and library are restored. See the
 [current game device record](evidence/ipad-solitaire-rectlist-resolve-20261008.json).
+
+The newer 48-patch package matches 137 source paths and applies/reverses cleanly.
+All 50 PRX/three DLL hashes verify, and 22 selected host suites plus the resource
+and full graphics suites pass. Its prepared game manifest passes the dependency
+audit and matches the device receipt. The bounded app Build47 run creates the
+Apple M2 swapchain, with zero skipped-draw, `AGC graphics:`, unknown-type,
+`bad_alloc` or `FATAL` markers across 25,006 log lines. The reviewed capture
+remains white with controls and black letterboxing. An additional 8,362 log
+lines follow early-detach/helper completion, so no guest exit is inferred.
+Configuration, library and manifest are byte-restored, and runtime hashes are
+restored. Correct GPU image contents and their presentation route now require
+diagnosis; no correct game-frame, gameplay or performance claim is made. See the
+[latest 0048 device/build record](evidence/ipad-solitaire-opaque-descriptor-20261008.json).
 The memory suite's first fixed reservation at 8 GiB collided under Wine;
 its rerun passes at the tested 464–468 GiB lazy arena without removing assertions.
 The selected host suites do not contain GPU tests. See the

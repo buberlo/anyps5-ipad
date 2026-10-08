@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "frozen_source_native_gpu_contracts_and_independent_review_passed_full_hle_device_performance_pending",
+  "patch": {
+    "path": "patches/anyps5/0060-zero-stencil-invariant.patch",
+    "sha256": "9cc2cb32167b363344c45ba3b5a60c43bef97b1e4c08c1ab298cc496bf40ddb2",
+    "baselinePatchCount": 59,
+    "sourcePaths": 4,
+    "isolatedForwardReverseByteExact": true,
+    "baselineManifestSha256": "a69f027b3a964f013e73386b4848a2aa9d130424887c01e7472b530cf2ff488d",
+    "sourceManifestSha256": "3e6d7e562bba3424d095e9b9eff23de1fa03e8a26b1186f82596427f357abaaf",
+    "roundtripReportSha256": "21d1d8c7d905f529019792b6bf1819879e49c68c1264f5c13263114a0da04ca4",
+    "candidateRecordSha256": "9ca026513a2e3fd4f6eb8f551ac54103e80e59ca7787f23c982fb1c8093ec852"
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": {
+      "baselineSha256": "556c34f56bd13c56a49c2f69004c80d5c1e17ba849c1ef200eb3fdbbfcac8d3f",
+      "candidateSha256": "b28e6f1fe06f21564bc2da363a29ab3c68e0bba0e33c01d5909c032d26a6402c"
+    },
+    "core/libs/prx/libSceAgcDriver/CMakeLists.txt": {
+      "baselineSha256": "bd01831b51cd1593ac8c7b25f648884489337668cdec79b27d926f4cd8667d73",
+      "candidateSha256": "4c9f0f8789188934bb3fcb5c24be902717ddeb19b99b9ef3e3099bcc74d4ffdd"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp": {
+      "baselineSha256": null,
+      "candidateSha256": "fe7807e7731bafc81eecdccd0161a945046514a037fdcedbb260ec9f0428dfc5"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/StencilZeroInvariant.cpp": {
+      "baselineSha256": null,
+      "candidateSha256": "a2d6dcf9e5fc6535565cd7cc8f66abd86fa09d72ec9e09f80bb4ca401ca37633"
+    }
+  },
+  "change": {
+    "option": "APS5_ZERO_STENCIL_INVARIANT",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off",
+    "admission": "D32S8 only; eight logical samples in two native four-sample layers; validated full original tiled S8 snapshot, including padding, is zero. Both effective faces use ALWAYS, compareMask/writeMask255, reference0 and KEEP/ZERO/REPLACE operations. Depth test/write/bounds/bias/clamp and fragment depth/stencil export are excluded. Writable range admission and ordinary static shader/resource/alias guards remain mandatory.",
+    "snapshotScan": "Unaligned-safe literal eight-byte memcpy loads plus a bounded byte tail; no overread or discarded padding bytes.",
+    "execution": "Clear only the stencil aspect on every qualifying draw, including a cached depth image; preserve its Z aspect, actual geometry/discard/color draws, eight logical sample locations and two groups. GENERAL transitions carry each group's exact sample pattern and transfer-to-early/late stencil dependencies; the helper creates no programs, buffers or descriptor objects.",
+    "commit": "Retain the existing synchronous fence, indirect/fault checks and resource writeback, then call identity GuestMemory::WriteChanged(original,original). Pending writers, writable validation and tracker collection still run; unchanged GPU bytes do not overwrite newer CPU/alias logical or padding data.",
+    "fallback": "The existing general S8 upload/readback/tiling path remains for unqualified state, nonzero full snapshot/padding, read-only admission and D16S8. Normal unmapped-memory and fault errors remain visible. No shader, sample, render quality or timing approximation."
+  },
+  "validation": {
+    "helperContract": {
+      "status": "PASS",
+      "sanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "script": "scripts/check-stencil-zero-invariant.py",
+      "fixture": "tools/checks/stencil_zero_invariant_contract.cpp",
+      "reportSha256": "d01b567a4ac08d2c6389b41e2a5bded6292ba06145368a084a1d02fbb1e5d0c8",
+      "logSha256": "1f8422bf403220ff5e097258411a871c7ae4400f5c0760d2a70a3e446d5976f5",
+      "boundedScanChecks": 534576,
+      "safeFaceOperationTuples": 27,
+      "unsafeStateControls": 28,
+      "shaderExportOrMalformedControls": 17,
+      "metadataOrRecordingRejections": 31,
+      "perGroupBarriers": 6,
+      "stencilOnlyClears": 1,
+      "vulkanObjectsCreated": 0,
+      "exactOptionRuns": [
+        {
+          "option": null,
+          "enabled": false
+        },
+        {
+          "option": "0",
+          "enabled": false
+        },
+        {
+          "option": "1",
+          "enabled": true
+        },
+        {
+          "option": "yes",
+          "enabled": false
+        }
+      ],
+      "boundary": "Actual helper plus original semantic fixtures and counted Vulkan adapter."
+    },
+    "nativeGpu": {
+      "status": "PASS",
+      "exitCode": 0,
+      "device": "Apple M3 Pro",
+      "backend": "Native macOS MoltenVK1.4.2",
+      "vulkanLibrarySha256": "e21bceade8d0638bb2bc041f3166fbd54da19fa0958d8bbaff584afd7958d542",
+      "cpuSanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "script": "scripts/build-stencil-zero-invariant-probe.py",
+      "fixture": "tools/gpu-probe/stencil_zero_invariant_probe.cpp",
+      "manifestSha256": "af578488d45b1d41ed9117426077d0c660cfcacaf7b82909d71fe02b2208a4ea",
+      "freezeSha256": "2e9005605e12aaf11b73fe57499bc60d9136317d71b8b8a3a643d1086476053d",
+      "logSha256": "0308b71dc168f8995b3f6953238613b5c194125c5d3c0ee51d1dde04c01754d0",
+      "extents": [
+        {
+          "width": 17,
+          "height": 19
+        },
+        {
+          "width": 73,
+          "height": 41
+        }
+      ],
+      "qualifiedFormat": "D32S8",
+      "d16S8": "Native capability unavailable; production fastpath excludes it.",
+      "summary": {
+        "comparisonPairs": 48,
+        "missingClearNegativeCases": 48,
+        "qualifiedFormats": 1,
+        "excludedUnqualifiedFormats": 1,
+        "sameImagePoisonIterations": 144,
+        "colorSamplesChecked": 1273344,
+        "depthSamplesChecked": 1910016,
+        "stencilSamplesChecked": 1273344,
+        "negativeNonzeroUncoveredSamples": 476736,
+        "helperVulkanObjectAllocations": 0,
+        "errors": 0,
+        "actualFrontFaceSamples": 79968,
+        "actualBackFaceSamples": 79968,
+        "samplesRemovedByFragmentDiscard": 22848
+      },
+      "controls": "Same depth image reused and poisoned before every legacy/zero/missing-clear iteration. Partial geometry/scissor, both observed face directions and fragment discard; exact color and all logical S8 samples plus independently initialized nonzero per-layer Z. Missing-clear controls retain exact poison outside covered geometry.",
+      "boundary": "Production clear/finish helper versus actual legacy StencilSampleTransfer, using an original synthetic image/pipeline owner; not actual Draw/DepthSurface/GuestMemory/iPad."
+    },
+    "actualWindowsIdentityWriteback": {
+      "status": "PASS",
+      "reportSha256": "37f0475c71b7fb9cf2659e56c2977f01fa061f768a7431b91d363f16c0fccff1",
+      "script": "scripts/check-stencil-zero-writeback.py",
+      "fixture": "tools/checks/stencil_zero_writeback_windows.cpp",
+      "executableSha256": "6a5ef72865f172436cca6f1b348e3c69dfb496e4f18c66f8c88cde69487d02ad",
+      "bulkOptionRuns": [
+        {
+          "option": null,
+          "exitCode": 0,
+          "logSha256": "cb9b64e2638f42847f9ccbec825391f32f7b419f6eb086f8b0868c5fb1fd95a4"
+        },
+        {
+          "option": "0",
+          "exitCode": 0,
+          "logSha256": "cb9b64e2638f42847f9ccbec825391f32f7b419f6eb086f8b0868c5fb1fd95a4"
+        },
+        {
+          "option": "1",
+          "exitCode": 0,
+          "logSha256": "4a76632f56224751e87dfbb9490e5c5e9027b02b9d592a1b0395271cf7b10b91"
+        },
+        {
+          "option": "yes",
+          "exitCode": 0,
+          "logSha256": "cb9b64e2638f42847f9ccbec825391f32f7b419f6eb086f8b0868c5fb1fd95a4"
+        }
+      ],
+      "checks": [
+        "Shared logical and padding CPU-alias bytes survive identity writeback",
+        "Existing CPU write classification remains visible",
+        "No written stamp, host store fault or newly dirty alias page",
+        "Pending GPU writer flush is called once for the exact range",
+        "Read-only and unmapped identity commits reject after their required flush"
+      ],
+      "fixtureCorrection": "The initial global-generation equality assertion was incorrect: each clean walkWrites increments the global collection epoch. storeOwn performs two required walks around its empty {0,0} write range, so +2 collection epochs are expected. The corrected fixture checks actual UnchangedSince, WrittenSince/StoredOver, CPU stamps and alias dirty state; production tracking code was not changed.",
+      "boundary": "Real local Wine Windows GuestMemory/GuestArena shared mappings and tracking; deterministic synthetic CPU/fence interleaving, not a concurrent stress, GPU or iPad qualification."
+    },
+    "legacy59Contract": "Unchanged ASan/UBSan stencil program-cache contract passes; 0059 patch/source/public workflow hashes remain exact.",
+    "legacy59ContractLogSha256": "8b13939c0e096e2dd8dc7526974d76b50df9803d31f77a8990e6d56569903ab4",
+    "drawNativeSyntax": {
+      "status": "PASS",
+      "existingWarnings": 4,
+      "logSha256": "39448785237e95c6901f9e822adb2de5e27a10b49bbed105af377808e522aec1",
+      "boundary": "Native syntax only; full HLE link and Graphics suites are separate."
+    },
+    "independentCriticalReview": {
+      "status": "PASS",
+      "scope": "Source/fallback/alias/fence ordering, per-group stencil-only barriers, native artifact/dependency hashes and an independent ASan/UBSan helper-contract rerun. The corrected Windows epoch interpretation is source-reviewed."
+    }
+  },
+  "publicWorkflowSha256": {
+    "scripts/check-stencil-zero-invariant.py": "b60cbe836c67ce77985272ad4dd560fd1c43749d6e289f88c0d4b5a741f2dc80",
+    "scripts/check-stencil-zero-writeback.py": "883d42ff2de7b088d90161bae1e33ddda1db85abc9999de9d071c47b8d1bcb44",
+    "scripts/build-stencil-zero-invariant-probe.py": "149e845a332d170fbb71dae5e8f2f63e65830a780d63d7de57280b76d47c6d7b",
+    "tools/checks/stencil_zero_invariant_contract.cpp": "e84cbeab99acf211f8fcd1492ba5dc438d915f2ef9d935977d6ed619e7cd6f14",
+    "tools/checks/stencil_zero_writeback_windows.cpp": "95ffa82fe285b05c85348f8e865455b240afd4aefdd05a0fb6d060e5f5755fb9",
+    "tools/gpu-probe/stencil_zero_invariant_probe.cpp": "e9ed57085de15a90ffec00f2f1ee50e1d4b9caa1b8424472aa0ab0c6089c6147",
+    "tools/gpu-probe/stencil_zero_raster.vert": "e3a2b341f53986d0a0b74a6e2d39685bc9af024801159a56a97b31067c0f9b30",
+    "tools/gpu-probe/stencil_zero_raster.frag": "a1b1992e2103fade35418175f0d335faf4f982a8d982c71ac5d2d52c0c9c9bc1",
+    "tools/gpu-probe/stencil_zero_color_depth_readback.comp": "0cf367ecc6e1338a959fbbcd55b96fd025f72454adcc470a2d8d367f14eaccdf"
+  },
+  "pending": [
+    "Complete HLE build and full Graphics/tracking suites",
+    "Physical iPad production Draw/DepthSurface integration",
+    "Matched gameplay/input/audio/save/lifecycle checks",
+    "Measured speed, FPS, peak memory and long-session behavior"
+  ],
+  "limits": [
+    "No measured speedup or 60 FPS conclusion",
+    "No native D16S8 qualification",
+    "No physical device or complete game qualification in this record",
+    "Racing CPU classifications beyond deterministic alias interleaving remain unqualified"
+  ],
+  "privacy": "Only original probe sources, public source paths, aggregate checks and SHA-256 digests are published; private game data, logs, images, shader captures and local host paths are excluded.",
+  "execution": "Local checks only; no GitHub Actions."
+}

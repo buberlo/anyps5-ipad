@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "completed_local60_hle_host_tests_and_private_preparation_independently_verified_device_and_performance_pending",
+  "source": {
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "projectCommitAtBuild": "77e216c23f4a284beb6d0167ae6a9c6400733e06",
+    "asBuiltTrackedDiffSha256": "76588c64788173cf419c3577d07da3997216473e7ece1807239af9b3721de064",
+    "patchCount": 60,
+    "frozenSourceFilesVerified": 152,
+    "frozenSourceBytes": 3075649,
+    "all60PatchDigestsVerified": true,
+    "seriesForwardMatchesFrozenSourceByteExactly": true,
+    "seriesReverseRestoresPinnedBytes": true,
+    "seriesReportSha256": "e994756140d8e36b466248a779b3695d779bc98379cadee62fb83e1961e4eb7e",
+    "frozenSourceSnapshotManifestSha256": "2be1e867d159f867a89cf9df4023bf78ccb8343db38b80015faec630e542a6bc",
+    "candidatePatch": {
+      "path": "patches/anyps5/0060-zero-stencil-invariant.patch",
+      "sha256": "9cc2cb32167b363344c45ba3b5a60c43bef97b1e4c08c1ab298cc496bf40ddb2"
+    },
+    "fourPathSourceManifestSha256": "3e6d7e562bba3424d095e9b9eff23de1fa03e8a26b1186f82596427f357abaaf",
+    "boundary": "All source snapshot bytes and patch digests checked; the complete series was independently applied and reversed against pinned Git blobs in disposable files. Added production files are covered by the snapshot and series, beyond the tracked diff digest. No equivalence to a later mutable checkout is asserted."
+  },
+  "candidate": {
+    "option": "APS5_ZERO_STENCIL_INVARIANT",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off",
+    "scope": "Qualified D32S8/eight-logical-sample original full tiled S8 snapshot, including padding, is zero and both-face operations preserve zero. Per-draw stencil-only clear retains actual geometry/discard/color draws, Z, sample patterns, alias/fault guards, synchronous fence/resource writeback and identity WriteChanged. D16S8 and unqualified inputs retain the general transfer.",
+    "immutableSourceNativeEvidence": {
+      "path": "docs/evidence/zero-stencil-invariant-native-20261009.json",
+      "sha256": "19994d27d8f174f8e3503bdb7a4a2ba27daa07357ad9d4a34cbf77f516f2b1d5",
+      "unchangedAtBuildReview": true
+    }
+  },
+  "build": {
+    "location": "Local Mac, pinned Windows toolchain through Wine",
+    "githubActionsUsed": false,
+    "configuration": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "toolchain": "WinLibs GCC 15.2.0 posix-seh UCRT r7",
+    "selectedPrxTargets": 50,
+    "archiveSha256": "3042d626bd50f9e97551821e2acaa857ad30701a1e65b71dc3e7534033d97120",
+    "archiveBytes": 28383179,
+    "binaryFilesVerified": 53,
+    "prxFiles": 50,
+    "runtimeDllFiles": 3,
+    "embeddedManifestSha256": "c807941c3b981d66d71fdae827592080f0f9d2218c5a888c9f0e586492bcbf5e",
+    "provenanceSidecarSha256": "472ec6eb0e1c4b84d133955513fab049b0dd68ae402508a04096124df447b596",
+    "embeddedProvenanceMatchesSidecarExceptArchiveSelfHash": true,
+    "verificationReportSha256": "93e00aa8e193671b81b7de331ffebaefbfd5e6228e95238380288ab9bde72a8e",
+    "independentVerificationSha256": "80cce657a6c998691f420f271a98132ba40583c93da91c1d40b240b4163afe2c",
+    "dependencyArchiveSha256": {
+      "compiler": "a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b3",
+      "ffmpeg": "e4be9938b321da5f53e248d8ae947c984390e09d0f59fb6855644a972126e26b",
+      "python": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"
+    },
+    "comparisonTo59": {
+      "changedUnpatchedBinaryCount": 3,
+      "changedBinarySha256": {
+        "unpatched/libSceAgc.prx": "01a7a07bbb464748a5bfc9c99ae5e6236d68860663b74ab786c4f185493cdf44",
+        "unpatched/libSceAgcDriver.prx": "15249b608f65e475c1fa02021372bc76153239a068ea51464ef38b7546b95f6b",
+        "unpatched/libSceVideoOut.prx": "1a9b984c10bbf66fe4b937f968b5736f77a0cca0f9058516e7f20ecc5dd1c903"
+      },
+      "remaining50BinaryHashesUnchanged": true
+    }
+  },
+  "localHostTests": {
+    "runtime": "Local desktop Wine",
+    "cpuApiTestCount": 22,
+    "cpuApiTestsPassed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "frozenOriginal22LogMapSha256": "05a8db09e9027b8388a339eabe767149bd73dcfff207ea5bf3e4d11a0efc8675",
+    "frozenOriginal22LogsVerified": true,
+    "allCompletedTestLogsVerified": 25,
+    "allTestLogSha256": {
+      "test-audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-audio_out2_port_layouts_tests.log": "d7ef068ebf01a17b16d4f7295c889e255c3eb39d48980589cbe777e6609b9aad",
+      "test-audio_out2_timing_tests.log": "45e2c5b981a9c4e0feaca0dc00f62cbded3f6a324e33b0381c17b1bda2013bd8",
+      "test-audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out_mix_level_pad_spk_tests.log": "88f1a813c4bbb20eb4a80033b4517a8c8fd36d3bad8a2ea1fbcd1af2422cc4da",
+      "test-file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "test-guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_filesystem_tests.log": "7c6fa3bb421010ab1d05eccc5b4f6b9bf18e53eee7a17f689cb970308832aff5",
+      "test-guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "test-guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "test-guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_memory_tests.log": "d62415d737abc1cce90b6c818f65f1d6672d930f8b54283bf1bb7c0ff2fee1f1",
+      "test-guest_pthread_attr_tests.log": "d73227147dd243fa23e8deb3728d16ddccfe875c4ae13d2b5d20060984f312db",
+      "test-guest_raise_exception_tests.log": "c99b6267959feed192f4bb1fa3aecdcc2ebf5ff999bf23944395d7a46b811aa4",
+      "test-guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "test-wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "test-windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3",
+      "test-zero-stencil-invariant-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-zero-stencil-invariant-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "test-zero-stencil-invariant-tracking.log": "f0c22bb34595f876689ef7c2846655f22ee5f232d9681438d4011eb86a2c38ea"
+    },
+    "buildAndThreeAdditionalQualifierCommands": [
+      {
+        "name": "build-graphics-and-tracking",
+        "exitCode": 0,
+        "logSha256": "73f2889b07b78093b4f2b0720279d6cbfe4d282c8134960f1eb5dd5f67972101",
+        "commandSha256": "497624485e43262712286ef90cd47ea114c016e5b245b2e746b482ffc2afa502"
+      },
+      {
+        "name": "test-zero-stencil-invariant-tracking",
+        "exitCode": 0,
+        "logSha256": "f0c22bb34595f876689ef7c2846655f22ee5f232d9681438d4011eb86a2c38ea",
+        "commandSha256": "107de9fb88ff5d1a0fe0ba1439bdff7b2dadc7566bce3928331af131be35335a"
+      },
+      {
+        "name": "test-zero-stencil-invariant-resource",
+        "exitCode": 0,
+        "logSha256": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+        "commandSha256": "d8fa14a255a80b7d27e4f1a294e464965f13fa4ae9c4ea572ed818c87a045454"
+      },
+      {
+        "name": "test-zero-stencil-invariant-full-graphics",
+        "exitCode": 0,
+        "logSha256": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+        "commandSha256": "73ad2416796326fa7d3971e1bf043783ea0859d9799c35594e8561e77cebcaaa"
+      }
+    ],
+    "runtimeOptions": {
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_CACHE_STENCIL_TRANSFER_PIPELINES": "1",
+      "APS5_ZERO_STENCIL_INVARIANT": "1"
+    },
+    "actualTrackingRegression": "Ordinary CMake agc_write_tracking_tests executes actual Windows shared mappings and CheckGpuSampleChangedWriteback; both regression and ordinary pass markers are present. GPU-result bytes are simulated.",
+    "additionalRuntimeSuites": [
+      "Actual Windows AGC write tracking",
+      "Graphics guest-write classification",
+      "Full Graphics validation"
+    ],
+    "boundary": "All original22 and completed25 test logs plus four command/log digest pairs are independently checked. These host suites and the separate native GPU probe do not establish production iPad Draw execution, gameplay, concurrent CPU races or performance."
+  },
+  "privatePreparation": {
+    "status": "prepared_and_independently_hash_verified_not_playability_accepted",
+    "installationManifestSha256": "c7028139a12ca8a9a2150d4a97853a935942ad8d8b21bdb4f21b1c55bf298e0c",
+    "filesVerified": 137,
+    "loadedHleLibraries": 47,
+    "packagedLibrariesScanned": 51,
+    "guestElfDependencySets": 6,
+    "actualNativeImportAndForwarderClosureVerified": true,
+    "actualGuestNidProviderSetVerified": true,
+    "guestNidsChecked": 3225,
+    "missingLibraries": 0,
+    "unresolvedGuestImports": 0,
+    "unresolvedGuestNids": 0,
+    "unresolvedNativeImports": 0,
+    "archiveSha256MatchesBuild": true,
+    "embeddedHleManifestMatchesArchive": true,
+    "matchedLifecycleToolSha256": {
+      "relinker": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "nidPatcher": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee"
+    },
+    "preparerSha256": "fa8864fb80a55399a40f8c7f141c962aca66e9f5b6223400e6cb637607d09476",
+    "actualToolAndPreparerHashesVerified": true,
+    "comparisonTo59": {
+      "sameFileSet": true,
+      "changedFileCount": 5,
+      "changedRuntimeBinaries": [
+        "libSceAgc.prx",
+        "libSceAgcDriver.prx",
+        "libSceVideoOut.prx"
+      ],
+      "changedPreparationLogs": 2,
+      "gameExecutableAndFiveGuestModulesUnchanged": true,
+      "remainingFilesUnchanged": 132,
+      "sameMatchedLifecycleTools": true
+    },
+    "boundary": "Private file bytes, actual native PE imports/forwarders, explicit HLE providers and 3225 guest NIDs are independently checked. No game contents, private module hashes, dumps, logs, images, assets, local paths, pairing or save files are published."
+  },
+  "qualification": {
+    "fullHleBuildPassed": true,
+    "localHostTestsPassed": true,
+    "privatePreparationVerified": true,
+    "immutableFocusedEvidencePreserved": true,
+    "actualIpadZeroStencilPathQualified": false,
+    "deviceResultIncluded": false,
+    "measuredSpeedup": null,
+    "displayedFps": null,
+    "constant60FpsAccepted": false,
+    "gameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "longSessionAndPeakMemoryAccepted": false
+  },
+  "pending": [
+    "Controlled physical iPad run with the matched host and game bytes",
+    "Production Draw/DepthSurface zero-clear correctness and observed activation",
+    "Gameplay, audio, save/load, lifecycle, peak memory and matched performance acceptance"
+  ]
+}

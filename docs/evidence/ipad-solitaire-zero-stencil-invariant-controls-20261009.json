@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "bounded_ipad60_zero_stencil_actual_path_and_seven_visible_actions_verified_performance_audio_full_gameplay_pending",
+  "candidate": {
+    "hostBuild": 48,
+    "anyps5Patches": 60,
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "option": "APS5_ZERO_STENCIL_INVARIANT=1",
+    "optionDefault": "Off",
+    "buildEvidence": {
+      "path": "docs/evidence/zero-stencil-invariant-build-20261009.json",
+      "sha256": "f4bcbc76451d216f37aec5ff90467264f00ff3d4611bc9b43ce1f19c96366998"
+    },
+    "hostEvidence": {
+      "path": "docs/evidence/display-telemetry-whole-row-20261009.json",
+      "sha256": "dbf1315e79175840447ac94008ac47352d88111e4c2555bf0cb58a9238a8e730"
+    },
+    "privateInstallationManifestSha256": "c7028139a12ca8a9a2150d4a97853a935942ad8d8b21bdb4f21b1c55bf298e0c",
+    "installedReadbackFilesChecked": 56,
+    "native49AudioCaptureInstalled": false
+  },
+  "run": {
+    "nominalRuntimeSeconds": 720,
+    "operationDurationSeconds": 789.278703333,
+    "normalMemoryTracking": true,
+    "sameBuild48HostAs59": true,
+    "diagnosticsActive": true,
+    "changedOptionVersus59": "APS5_ZERO_STENCIL_INVARIANT=1",
+    "comparisonMatched": false,
+    "comparisonBoundary": "Different random deal, route, dwell durations and input; diagnostic timing cannot attribute a speed gain. The historical first60 automation-blocked run is separate."
+  },
+  "device": {
+    "model": "iPad Air 13-inch M2",
+    "hardware": "iPad14,10",
+    "os": "iPadOS 27.0.1",
+    "osBuild": "24A446",
+    "hostShape": [
+      1280,
+      720
+    ],
+    "guestColorTarget": [
+      1920,
+      1080
+    ],
+    "swapchain": [
+      768,
+      432
+    ],
+    "swapchainImages": 3,
+    "logicalSamples": 8,
+    "nativeSampleGroups": [
+      4,
+      4
+    ],
+    "resolutionOrInterpolationReduced": false
+  },
+  "rawEvidence": {
+    "keptLocalOutsideGit": true,
+    "sha256ByName": {
+      "receipt.json": "49c1b64a97b2d7631d560468c4ad4f741e5205f3fd4031192aa1c6a955ff945f",
+      "app-final.log": "b93ed71406b1ea22729a481d73f5164616470bd6b1d2040b3f3ce87e52804be2",
+      "launch.json": "d5be19e4c4a568ad025746dbb972f989cf03d6b62d61580510c4ad436b8dfd5a",
+      "capture-schedule.json": "9904dfad0e989b72372e1e935e8d74261f1b99413e8764152a2f80dd40201e3a",
+      "action-summary.json": "ae06e35de82c7d52bc03dfe3933a806f2c49ea34359ff7c3eafb6ae918a31fe0",
+      "root-visible-input-review.json": "db13bdf57381f1de5336fdf5c1398df1c98f4d7cb0e73602a908442ea111f26a",
+      "root-strict-display-report.json": "79ad9f73e085a42ae172ce4deec2751da5c4a05ed8b757c9266a59aa2fb7c661",
+      "root-restore-verification.json": "2001a870c71fb7c016cc78de6a10e4ac253b5c58dbd284ee41c42f74167ea19a",
+      "rollback-report.json": "83645e131184a01b119e44bdaf280493b0173c9428c59dc49fa0a6677cc0c2c7",
+      "cleanup-before.json": "f05eb151856c197a010c0c83f0d9a617e5e72eeac41a957cd78e483ea03171ad",
+      "cleanup-after.json": "3a9e1ba3f7c18220cadac9faf4b20707f88b7585b2e68398a70254036943d794",
+      "action-right01-after.png": "36b44317ac998f3bede64cc230fa523e1c694d9e132c27dbc1c3a77ff4ad7513",
+      "action-right01-receipt.json": "a2892533ecb6726e4393b6d06089ec8be12fbcbce63cdbe79a3f3b4b30276563",
+      "action-startgolf01-after.png": "d05dd454159c15c2db70734634a267bd71b2b962762ac5322680ee2c6b6e2f58",
+      "action-startgolf01-receipt.json": "729882ef99a6ee20010e69a16c095929f07c5e42ee1a1229c27c553c9920047b",
+      "action-stock01-after.png": "5437ea0cc20a8ee79fc5273e094af98eaf248cdfee65e3c7fa3a7fb199a3215c",
+      "action-stock01-receipt.json": "75278d48de7d760ca9c0f18de93c7c15120bae287c3ba5b9b754b97306bc2a3d",
+      "action-stock02-after.png": "83321a78d37de8d6af7285a4623c17a9fa96f8b5730393d038ac679f17e80019",
+      "action-stock02-receipt.json": "9e5bb9c40f9b6e25b28848dcae48c3edab4fc10d62a6d124c3ed7e31b8a9a1a1",
+      "action-selecttwo01-after.png": "2c7e7eeaa40f5e946a4aeefdc3c8cc8fefedd0f7e476eecce8777fd0955ddc27",
+      "action-selecttwo01-receipt.json": "b6c81d70f489fd4325198caef77c77f388113e43d8b974fad8d5f4045c5b8f79",
+      "action-movetwo01-after.png": "83679b4da1e21efe69f932f1cb421127e0fb0610bae7f22b3835550bf75db170",
+      "action-movetwo01-receipt.json": "4ed988041aa15484d9958fa51deefaa50d91f4a822cf444425e8e9dc23208064",
+      "action-back01-after.png": "45875d888be8252360ab7a94e2b8eddd7aac5f9120f694bc0af64e222b027484",
+      "action-back01-receipt.json": "976f73264332e27946f1c2cb00c090deaf2bca2d22b2c31659a73522b519d3ad",
+      "screen-60.png": "825c5d8e719296353e2607d8943ea8eedd56a70bc0ed1c234d0bda0d69f07167",
+      "screen-360.png": "2439de41dc8d6d05dd214bf82d31356c277eeae6d8ff00e40f11221a6d58f119",
+      "screen-660.png": "7e2ade77431c43bfc14c247915ebb1e2fc629bffc1ba9d6b57f33684f8d40ecf",
+      "screen-720.png": "77b04072a05ef627ff08c63a772225994873989b4213f9ed41ef2bf02c389938",
+      "independent-second60-closed-run-audit.json": "f28294426ef32b1b175df59a51f4e332c0ef768260b1154dd5ca5125a09bd2ec"
+    }
+  },
+  "visualsAndInput": {
+    "mainPid": 8305,
+    "mainProcessContinuousAcrossAllSevenActions": true,
+    "systemAuthorizationOverlayObservedDuringReviewedActions": false,
+    "actions": [
+      {
+        "actionKey": "right01",
+        "visibleObservation": "Right selects Golf in the complete game-selection menu.",
+        "screenshotSha256": "36b44317ac998f3bede64cc230fa523e1c694d9e132c27dbc1c3a77ff4ad7513",
+        "receiptSha256": "a2892533ecb6726e4393b6d06089ec8be12fbcbce63cdbe79a3f3b4b30276563",
+        "elapsedAfterLaunch": 151.895993416,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "startgolf01",
+        "visibleObservation": "A starts Golf: seven five-card columns, waste K-diamonds, selected first-column 5-diamonds.",
+        "screenshotSha256": "d05dd454159c15c2db70734634a267bd71b2b962762ac5322680ee2c6b6e2f58",
+        "receiptSha256": "729882ef99a6ee20010e69a16c095929f07c5e42ee1a1229c27c553c9920047b",
+        "elapsedAfterLaunch": 387.458492875,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "stock01",
+        "visibleObservation": "Y changes waste K-diamonds to 9-hearts; unchanged tableau.",
+        "screenshotSha256": "5437ea0cc20a8ee79fc5273e094af98eaf248cdfee65e3c7fa3a7fb199a3215c",
+        "receiptSha256": "75278d48de7d760ca9c0f18de93c7c15120bae287c3ba5b9b754b97306bc2a3d",
+        "elapsedAfterLaunch": 443.415324833,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "stock02",
+        "visibleObservation": "Y changes waste 9-hearts to A-hearts; unchanged tableau.",
+        "screenshotSha256": "83321a78d37de8d6af7285a4623c17a9fa96f8b5730393d038ac679f17e80019",
+        "receiptSha256": "9e5bb9c40f9b6e25b28848dcae48c3edab4fc10d62a6d124c3ed7e31b8a9a1a1",
+        "elapsedAfterLaunch": 484.7338325,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "selecttwo01",
+        "visibleObservation": "Right selects exposed second-column 2-clubs; waste remains A-hearts.",
+        "screenshotSha256": "2c7e7eeaa40f5e946a4aeefdc3c8cc8fefedd0f7e476eecce8777fd0955ddc27",
+        "receiptSha256": "b6c81d70f489fd4325198caef77c77f388113e43d8b974fad8d5f4045c5b8f79",
+        "elapsedAfterLaunch": 521.561798458,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "movetwo01",
+        "visibleObservation": "A moves selected 2-clubs onto A-hearts; 9-clubs is exposed in the second column.",
+        "screenshotSha256": "83679b4da1e21efe69f932f1cb421127e0fb0610bae7f22b3835550bf75db170",
+        "receiptSha256": "4ed988041aa15484d9958fa51deefaa50d91f4a822cf444425e8e9dc23208064",
+        "elapsedAfterLaunch": 554.953408333,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      },
+      {
+        "actionKey": "back01",
+        "visibleObservation": "B undoes the move: waste returns to A-hearts, 2-clubs restored over 9-clubs. B did not return to menu.",
+        "screenshotSha256": "45875d888be8252360ab7a94e2b8eddd7aac5f9120f694bc0af64e222b027484",
+        "receiptSha256": "976f73264332e27946f1c2cb00c090deaf2bca2d22b2c31659a73522b519d3ad",
+        "elapsedAfterLaunch": 591.6237408329999,
+        "mainPid": 8305,
+        "screenVisuallyReviewedByRoot": true,
+        "noSystemAuthorizationOverlayObserved": true
+      }
+    ],
+    "note": "B is undo in this scene, not return-to-menu. The helper exit between Y actions does not terminate the game main process. XCTest dispatch success is supported by separately reviewed visible game changes. The final720 screenshot retains the full undo-restored board with timer04:49; root and an independent reviewer inspected it.",
+    "final720Timer": "04:49",
+    "final720FullBoardAndUndoStateVisuallyReviewed": true
+  },
+  "displayCompletionTelemetry": {
+    "wholeClosedLogUnchangedStrictParserPass": true,
+    "rows": 678,
+    "report": {
+      "schema": 1,
+      "source": "VK_GOOGLE_display_timing",
+      "status": "measured",
+      "warmup_seconds_per_epoch": 10,
+      "minimum_seconds": 60,
+      "segments": [
+        {
+          "epoch": 2,
+          "swapchain_id": 1,
+          "resolution": [
+            768,
+            432
+          ],
+          "seconds": 700.226860958,
+          "displayed_intervals": 7858,
+          "displayed_fps": 11.222077355400577,
+          "p50": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p95": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "p99": {
+            "upper_ms": null,
+            "over_ms": 25.6
+          },
+          "missed_vblanks": 34159,
+          "refresh_hz": 60.0000024000001,
+          "minimum_duration_met": true
+        }
+      ],
+      "limits": [
+        "Display-completion timing requires separate visible foreground verification.",
+        "No claim about guest simulation speed, visual correctness, touch, thermal stability or device acceptance.",
+        "Percentiles are conservative 0.1 ms histogram upper bounds; overflow is explicitly unbounded."
+      ]
+    },
+    "uniqueDisplayedGameFramesMeasured": false,
+    "speedImprovementAccepted": false,
+    "stable60FpsAccepted": false,
+    "boundary": "678 strictly parsed rows cover mixed menu, dealing, seven inputs and undo. These are completion intervals; the pinned MoltenVK can supply a completion clock. Histogram overflow gives only an unbounded >25.6ms result."
+  },
+  "memory": {
+    "nativeRows": 678,
+    "lastFootprintMiB": 3883,
+    "peakFootprintMiB": 3916,
+    "lastAvailableMiB": 4308,
+    "longSessionResourceTrendAccepted": false
+  },
+  "audio": {
+    "pacingRows": 142,
+    "nonzeroShortRows": 0,
+    "maximumShortMs": 0.0,
+    "nonzeroClampRows": 4,
+    "maximumReportedClampedSamples": 3328,
+    "overlappingCountersSummed": false,
+    "postmixCaptureOrListeningProof": false,
+    "audioQualityAccepted": false,
+    "boundary": "No short callback is reported, but four overlapping rows report output clamping; this does not establish audible quality."
+  },
+  "renderAndFaultLogs": {
+    "actualZeroStencilMarkerLines": [
+      13098
+    ],
+    "searchedMarkerCounts": {
+      "Skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0
+    },
+    "exceptionFreeRunAsserted": false
+  },
+  "lifecycleAndRollback": {
+    "56ActualOriginalRuntimeFilesIndependentlyHashVerified": true,
+    "configurationLibraryManifestByteEqual": true,
+    "priorDiagnosticHashesVerified": 7,
+    "ownMainAndHelperAbsentAfterCleanup": true,
+    "commandLeaseReleased": true,
+    "permanentCandidateAdopted": false,
+    "boundary": "Original package/configuration restored. No background/foreground, save/load or repeated-session acceptance."
+  },
+  "qualification": {
+    "realZeroStencilPathExecuted": true,
+    "completeGolfBoardObserved": true,
+    "stockAndLegalMoveAndUndoObserved": true,
+    "completeGameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "thermalOr60FpsAccepted": false,
+    "next": "Address color transfer and CPU memory work; capture real postmix audio separately."
+  },
+  "privacy": {
+    "publicContent": "Sanitized technical metadata and hashes only. No game assets, shaders, recordings, screenshots, pairing or raw private logs."
+  }
+}

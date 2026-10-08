@@ -1,0 +1,18 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0) uniform texture2DMSArray colorSamples;
+layout(set = 0, binding = 1) uniform texture2DMSArray depthSamples;
+layout(set = 0, binding = 2, std430) writeonly buffer Results { uint values[]; } destination;
+layout(push_constant) uniform Parameters { uint width; uint height; uint logicalSamples; uint nativeSamples; } parameters;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    if (index >= parameters.width * parameters.height * parameters.logicalSamples) return;
+    uint sampleIndex = index % parameters.logicalSamples;
+    uint pixelIndex = index / parameters.logicalSamples;
+    ivec3 coordinate = ivec3(pixelIndex % parameters.width, pixelIndex / parameters.width,
+                            sampleIndex / parameters.nativeSamples);
+    int sampleNumber = int(sampleIndex % parameters.nativeSamples);
+    destination.values[index * 2u] = packUnorm4x8(texelFetch(colorSamples, coordinate, sampleNumber));
+    destination.values[index * 2u + 1u] = floatBitsToUint(texelFetch(depthSamples, coordinate, sampleNumber).r);
+}

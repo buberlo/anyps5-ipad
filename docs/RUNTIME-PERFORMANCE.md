@@ -444,3 +444,77 @@ and both processes are absent afterward. The native Build 48 host remains.
 Cache hit rate, measured speed, legal gameplay, audio, save/load, background
 recovery, stable memory and 60 FPS remain unqualified by this run. See the
 [separate 59 device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json).
+
+## First bounded iPad run of candidate 0060
+
+The first 720-second run retains native Build 48 and temporarily loads the
+60-patch HLE. Its launch environment matches 59 with the addition of exact
+`APS5_ZERO_STENCIL_INVARIANT=1`. The actual production path reports admission
+of the zero stencil snapshot and a stencil-only clear with the draw retained.
+Normal memory tracking, all eight logical samples, the 1920 × 1080 source,
+fixed-function interpolation and the three-image 768 × 432 swapchain remain.
+This marker establishes that the path was entered, without counting every
+admission or qualifying all subsequent rendering.
+
+The complete Canfield menu and touch controls are visible at 60 seconds. The
+requested Right250 action fails while XCTest initializes UI automation, with
+exit 65 and a timeout enabling automation mode. Its captured screen, and the
+120- and 175-second captures, show the system's Touch ID authorization dialog.
+No actual Right input or visible game response is accepted. The dialog is gone
+by 180 seconds, and the 720-second screen still shows Canfield selected. This
+run does not start Golf or verify a legal card move, stock input or undo.
+
+All 604 display rows in the closed, unchanged log pass the strict parser.
+Keeping its active epochs separate, the 60-second warmup leaves 285 completion
+intervals over 24.9838 seconds in epoch 2 and 5544 over 483.9886 seconds in
+epoch 4. These correspond to 11.4074 and 11.4548 native display completions per
+second; the first segment fails the 30-second duration threshold. Their
+missed-vblank deltas are 1214 and 23495, and all histogram percentiles exceed
+25.6 ms. At the last native report, cumulative counters contain 50520 submits,
+7221 presents, 7222 acquires and 7217 swapchain completion records. These are
+API diagnostics, not unique correct physical game images or accepted gameplay
+FPS. The system interruption, idle menu and unmatched scene prevent a speed
+comparison or constant-60-FPS claim.
+
+Native physical-footprint reports span 1241–4000 logged MB; the separate
+footprint peak reaches 4080 MB. All 142 audio pacing reports contain zero logged
+device shortage and output-clamp delta, with sampled source peaks up to 0.275.
+There is no recording or listening acceptance. No skipped-draw, AGC graphics
+rejection, `bad_alloc`, `FATAL` or `VK_ERROR` marker appears; 207 throttled native
+`UNHANDLED` diagnostics are not treated as terminal failures. These observations
+do not qualify stable memory or audio quality.
+
+Main process 8218 and helper 8220 remain present around the failed action and
+cleanup-before. After explicit termination, both are absent. Independent
+readbacks verify all 56 installed candidate files against its manifest, then
+verify that all 56 restored runtime files, configuration, library and manifest
+match the backups. The seven prior diagnostic files also match independent
+restored hashes. The native Build 48 host remains installed. This first run is
+preserved separately from subsequent authorized-control tests, with no gameplay,
+audio, save/load, background recovery, stable-memory or performance acceptance.
+See the [separate first 60 device record](evidence/ipad-solitaire-zero-stencil-invariant-first-run-20261009.json).
+
+## Authorized controls with candidate0060: 2026-10-09
+
+After the user confirmed iPadOS UI Automation with Touch ID, a new bounded
+720-second run kept the same native Build48 and source60 HLE. The actual
+zero-stencil clear is logged. Seven separately captured actions select Golf,
+start its complete board, draw K♦ → 9♥ → A♥, select 2♣, move it onto A♥
+exposing 9♣, then undo with B. The main process stays alive; the helper exits
+during the second stock action. The final capture retains the full undo-restored
+board with timer04:49. B is undo here, not a return to the library.
+
+All 678 complete display rows pass the unchanged strict reader. After per-epoch
+warmup, 7,858 completion intervals over 700.226861 seconds yield 11.222077
+completion intervals/s, with 34,159 missed-vblank reports. p50/p95/p99 lie in
+the unbounded >25.6-ms histogram bin. This mixed menu/deal/input/undo route and
+different deal do not establish a matched speed gain or unique displayed game
+FPS. Native footprint peaks at 3,916 MiB; this short run does not qualify a
+long-session resource trend. Audio pacing reports no short callbacks, but four
+overlapping rows report clamping. Neither counters nor these captures establish
+audible quality, save/load, background recovery, complete gameplay or 60 FPS.
+
+All 56 actual original runtime files, configuration/library/manifest bytes and
+seven prior diagnostic hashes restore; the own app processes are absent and the
+lease is released. The candidate remains temporary. See the [separate source60
+controls/device record](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json).

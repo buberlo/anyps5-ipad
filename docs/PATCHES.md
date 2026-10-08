@@ -112,6 +112,7 @@ source, build, device and unqualified-path states.
 | 0057 | Opt-in GPU detile/retile for exact uncompressed RGBA8 R64KB_X 2/4/8-sample targets, retaining the synchronous draw and changed-byte guest commit | Native contract checks and 99 compute plus three production image-transfer chains pass on the Mac GPU against independent AMD bytes/padding. Windows shared-alias commit checks pass with four bulk-option settings. The 57-patch/146-path series and full HLE build pass, including 22 CPU/API and three additional runtime suites. Device/FPS qualification remains separate. [Native evidence](evidence/gpu-color-sample-tiling-native-20261009.json), [build evidence](evidence/gpu-color-sample-tiling-build-20261009.json). |
 | 0058 | Opt-in GPU detile/retile for qualified S8 SW_64KB_Z_X eight-sample planes, preserving the original tiled seed and changed-byte commit | Eight-path round trip, 28 contract controls, 42 native compute and six D32S8 image chains pass. The 58-patch/150-path series, full HLE build with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; private preparation verifies all 137 files. Actual Draw/DepthSurface, iPad and performance qualification remain separate. [Native evidence](evidence/gpu-stencil-sample-tiling-native-20261009.json), [build evidence](evidence/gpu-stencil-sample-tiling-build-20261009.json). |
 | 0059 | Opt-in per-device immutable stencil transfer program cache, keyed by format/counts and full ordered bit-exact sample positions | Four-path source comparison, cache/legacy contracts and six native D32S8 chains pass. The full 59-patch HLE, 22 CPU/API and three additional runtime suites pass; 137 private preparation files are verified. A bounded iPad run logs real program reuse and renders the full Golf board; cache hit rate, speed and gameplay/FPS remain unqualified. [Source/native evidence](evidence/stencil-transfer-program-cache-native-20261009.json), [build checkpoint](evidence/stencil-transfer-program-cache-build-20261009.json), [device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json). |
+| 0060 | Opt-in zero-invariant D32S8 path: per-draw stencil-only clear replaces transfers when the entire eight-sample S8 snapshot remains provably zero | Source/native contracts and independent review pass. The complete 60-patch/152-path series, full HLE with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; 137 private preparation files and dependency closure are independently verified. A bounded iPad run exercises the real clear and visibly verifies a legal Golf move and undo. Speed, audio and complete gameplay remain unqualified. [Source/native evidence](evidence/zero-stencil-invariant-native-20261009.json), [build checkpoint](evidence/zero-stencil-invariant-build-20261009.json), [device controls](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json). |
 
 ## White selected-source comparison: patch0048
 
@@ -1265,6 +1266,52 @@ One additional capture is incomplete and is not counted as a successful replay.
 The driver builds and its prepared private overlay passes import/NID checks;
 the iPad candidate has not been installed or tested. See the
 [qualification record](evidence/solitaire-uniform-vertex-branch.json).
+
+## Zero-invariant stencil transfer: patch0060
+
+Exact `APS5_ZERO_STENCIL_INVARIANT=1` enables this default-off experiment.
+It admits only D32S8 with eight logical samples in two native four-sample
+groups, a zero full original S8 snapshot including tiled padding, and both
+faces set to ALWAYS, compare/write masks 255, reference 0 and KEEP/ZERO/REPLACE
+operations. Depth consumers and fragment depth/stencil exports are excluded.
+Writable admission and the existing shader, resource and alias guards remain.
+D16S8 and other unqualified states retain the general stencil transfer.
+
+Every admitted draw clears only S8, including on a reused depth image, with
+the exact per-group sample-location barriers. Z, actual geometry, discard,
+color draws and all eight logical samples stay intact. The helper creates no
+programs, buffers or descriptors. The existing fence, fault checks and resource
+writeback still precede identity `WriteChanged(original, original)`, preserving
+pending-writer ordering, writable validation, tracking and newer CPU/alias bytes.
+
+Native MoltenVK comparisons pass 48 pairs and 48 missing-clear controls on
+repeatedly poisoned 17×19 and 73×41 images, with exact color/S8 and independently
+initialized nonzero Z checks. Both face directions and discard are observed.
+The actual Windows fixture passes with bulk unset/0/1/yes. Its initial global
+generation equality assumption was corrected: two clean collection walks
+advance collection epochs without adding written stamps. No production tracker
+change was needed. The unchanged 0059 contract and independent critical review
+pass. These checks use a synthetic GPU image/pipeline owner and deterministic
+CPU interleaving; their publication-time limits remain in the immutable
+[source/native record](evidence/zero-stencil-invariant-native-20261009.json).
+
+The separate [completed build checkpoint](evidence/zero-stencil-invariant-build-20261009.json)
+independently reapplies and reverses all 60 patches against 152 frozen source
+paths and verifies 53 HLE/runtime binaries, 22 CPU/API logs, three additional
+tracking/resource/Graphics suites and their build command. Private preparation
+verifies 137 files, six guest dependency sets, 47 explicit HLE providers and
+actual native import/forwarder and guest NID closure. Only three HLE binaries
+and two preparation logs differ from 0059; the game and five guest modules
+retain identical bytes and matched lifecycle tools. A later 720-second iPad run
+logs the actual clear and visibly verifies stock draws, a legal 2♣ onto A♥ move
+exposing 9♣, and B undo. Its unchanged strict parser accepts all 678 rows and
+reports 11.222 completion intervals/s over 700.2 seconds, with missed vblanks and
+unbounded percentile overflow above 25.6 ms. Different deals/routes prevent a
+matched speed comparison. Audio, save/load, lifecycle, full gameplay and 60 FPS
+remain unqualified. Runtime and metadata restore. See the [separate controls
+record](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json); the
+[earlier OS-automation-blocked attempt](evidence/ipad-solitaire-zero-stencil-invariant-first-run-20261009.json)
+remains a separate historical run. No speed gain is inferred.
 
 ## Unobserved stencil-draw viewport depth: 2026-10-08
 

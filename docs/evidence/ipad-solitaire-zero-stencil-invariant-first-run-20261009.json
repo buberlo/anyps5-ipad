@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "first_bounded_ipad60_menu_visible_zero_stencil_marker_observed_automation_blocked_no_gameplay_or_performance_acceptance",
+  "candidate": {
+    "hostBuild": 48,
+    "nativeHostReinstalledForThisRun": false,
+    "anyps5Patches": 60,
+    "option": "APS5_ZERO_STENCIL_INVARIANT=1",
+    "optionDefault": "Off",
+    "buildEvidence": {
+      "path": "docs/evidence/zero-stencil-invariant-build-20261009.json",
+      "sha256": "f4bcbc76451d216f37aec5ff90467264f00ff3d4611bc9b43ce1f19c96366998"
+    },
+    "candidatePatchSha256": "9cc2cb32167b363344c45ba3b5a60c43bef97b1e4c08c1ab298cc496bf40ddb2",
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "frozenSourceSnapshotManifestSha256": "2be1e867d159f867a89cf9df4023bf78ccb8343db38b80015faec630e542a6bc",
+    "hleArchiveSha256": "3042d626bd50f9e97551821e2acaa857ad30701a1e65b71dc3e7534033d97120",
+    "hleProvenanceSha256": "472ec6eb0e1c4b84d133955513fab049b0dd68ae402508a04096124df447b596",
+    "installationManifestSha256": "c7028139a12ca8a9a2150d4a97853a935942ad8d8b21bdb4f21b1c55bf298e0c",
+    "installedReadbackFilesVerifiedAgainstManifest": 56,
+    "unpatchedAgcDriverSha256": "15249b608f65e475c1fa02021372bc76153239a068ea51464ef38b7546b95f6b",
+    "nidPatchedInstalledAgcDriverSha256": "8331a4c15262f2e244bf2e03f298934f745def88e36711eca6cb6c2cf4dccbed",
+    "currentMutableCheckoutEquivalenceAsserted": false
+  },
+  "run": {
+    "nominalRuntimeSeconds": 720,
+    "operationDurationSeconds": 801.0099976250001,
+    "exactLaunchEnvironment": {
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_CACHE_STENCIL_TRANSFER_PIPELINES": "1",
+      "APS5_CAPTURE_TRACE": "1",
+      "APS5_CRASH_RAW_CONTEXT": "0",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_DUMP_FRAMES": "6",
+      "APS5_DUMP_FRAMES_EVERY": "16",
+      "APS5_DUMP_SCALE": "4",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_FIXED_FUNCTION_INTERPOLATION": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_PERF_REPORT": "1",
+      "APS5_PRESERVE_ASYNC_AVX": "1",
+      "APS5_PRESERVE_ASYNC_FLAGS": "1",
+      "APS5_PROFILE_DRAW": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_SAFE_SELF_READ": "1",
+      "APS5_VEH_CONTEXT_BRIDGE": "1",
+      "APS5_X64_SIGNAL_SUSPEND": "1",
+      "APS5_ZERO_STENCIL_INVARIANT": "1",
+      "FEX_MAXINST": "5000",
+      "FEX_MULTIBLOCK": "1",
+      "FEX_SILENTLOG": "0",
+      "MADEIRA_NO_DFE": "0",
+      "MADEIRA_ONBOARDING": "0",
+      "MADEIRA_TRACE_FEX_CONFIG": "1",
+      "TERM": "dumb"
+    },
+    "sameLaunchEnvironmentAs59ExceptExactZeroStencilOption": true,
+    "normalMemoryTracking": true,
+    "logicalSamples": 8,
+    "frameGeneration": false,
+    "fixedFunctionInterpolationRetained": true,
+    "requestedAndCreatedSwapchainImages": 3,
+    "guestExitCode": null,
+    "productionZeroStencilMarkerLine": 13114,
+    "productionZeroStencilMarkerOccurrences": 1,
+    "markerMeaning": "The production path reports an admitted zero stencil snapshot and per-draw stencil-only clear with the actual draw retained. A one-time marker does not count all admissions or prove every subsequent draw correct.",
+    "jitEnabledAndDebuggerAttachedLogLines": [
+      22,
+      23
+    ],
+    "earlyDebuggerDetachLogLine": 64,
+    "captureCount": 16,
+    "separateLaterRunIncluded": false,
+    "comparisonBoundary": "The single requested control failed before UI automation initialization. This run remains in the menu and contains a system authorization interruption, active telemetry epochs and extensive diagnostic work. It is not a matched gameplay or single-factor performance comparison."
+  },
+  "device": {
+    "model": "iPad14,10",
+    "os": "iPadOS 27.0.1 (Build 24A446)",
+    "loggedRamMb": 7623,
+    "cores": 8,
+    "initialThermalState": "nominal",
+    "initialLowPowerMode": false,
+    "maximumDisplayRefreshHz": 60,
+    "sourceTargetResolution": [
+      1920,
+      1080
+    ],
+    "swapchainResolution": [
+      768,
+      432
+    ],
+    "screenshotResolution": [
+      2732,
+      2048
+    ],
+    "hostDisplayShapeConfiguration": [
+      1280,
+      720
+    ],
+    "resolutionBoundary": "These are separately logged source, swapchain, captured screen and configured host dimensions; no resolution or interpolation reduction is accepted."
+  },
+  "rawEvidence": {
+    "closedLogSha256": "e051b7ac1b54c2eab655228ab4924dc1e1fbb6759125254330ebd44315335500",
+    "closedLogBytes": 6042720,
+    "closedLogLines": 54775,
+    "receiptSha256": "61c31cc28217d3820589fae2d217f76f0b46b91fdc6ea7c3ac5db4b91f268366",
+    "launchReceiptSha256": "7e5f5bd0b3103217b80f2a12f8a9d762271cfc6b10ea511d4587ccfe8a31fa71",
+    "temporaryConfigurationSha256": "3a97f091dcd03c5a4e234e3d44a3bfe710dbb06daa603e32965b2b2cd20c15ef",
+    "independentRollbackAuditSha256": "d09deba9b52fec604de031a245631ec9e5764bc11bad158f2060cd7bf47fcd3e",
+    "strictDisplaySummarySha256": "be9941f0092b65cf8ed531ac751bc108d26f55f9014249b6794d55b566dda731",
+    "screenshotSha256": {
+      "screen-60.png": "0ada29368cde4198e06758755c8b93fe5b56451b9b52b40b167c7ca301b9f141",
+      "action-right01-after.png": "ac04625361557ed97081de7f377a14b0db4984c716919781b726dcdc23f7d72c",
+      "screen-120.png": "58d0011f4b9a2342907231f5a2e58825f315514badb4812a4dd1b68ba20f1521",
+      "screen-175.png": "a1dc37b8a7142b10f3875a79405728b27e5218dd1bc2fffdd5b4328d774228ab",
+      "screen-180.png": "5d1c3a5045bbfbe28123b7cd89d268752ccf6c805f1d5724bd2660d564bb338a",
+      "screen-720.png": "551b202044beff9d578ce90fd1689945b23d47d191ea99faddaf96f55e54ce40"
+    },
+    "actionLogSha256": "789bc3105e89575cfea08dd644c720fda5464eca83182d6b4395de8fbcf549c4",
+    "actionReceiptSha256": "6977cf55482573b4f84a925bd875de6956b1bff23b1ab1028c96d5645ec05cbf",
+    "rollbackReportSha256": "83645e131184a01b119e44bdaf280493b0173c9428c59dc49fa0a6677cc0c2c7",
+    "captureScheduleSha256": "c1caeb4168a970b90ee883c3aa0877cd05aadc080ad767e39589006ad5a83bf3"
+  },
+  "visualsAndInput": {
+    "reviewedRepresentativeCaptures": [
+      "screen-60.png",
+      "action-right01-after.png",
+      "screen-120.png",
+      "screen-175.png",
+      "screen-180.png",
+      "screen-720.png"
+    ],
+    "observedMenuAt60And180And720": "Full 15 in 1 menu with Canfield selected and touch controls visible.",
+    "observedAutomationModal": "Enable UI Automation requests Touch ID to continue XCTest in the failed-action,120 and175 captures. The modal is absent by180.",
+    "attemptedAction": {
+      "button": "Right",
+      "holdMs": 250,
+      "xctestExitCode": 65,
+      "receiptElapsedAfterLaunchSeconds": 160.76193770799998,
+      "mainProcessContinuity": true,
+      "uiTestInitialized": false,
+      "actualControlSentVerified": false,
+      "visibleControlResponseVerified": false,
+      "failure": "Timed out while enabling automation mode; UI testing failed to initialize."
+    },
+    "requestedActionIsNotAcceptedInput": true,
+    "menuSelectionChanged": false,
+    "golfBoardVisible": false,
+    "legalTableauMoveVerified": false,
+    "stockResponseVerified": false,
+    "undoResponseVerified": false,
+    "rawImagesPublished": false
+  },
+  "displayCompletionTelemetry": {
+    "source": "VK_GOOGLE_display_timing",
+    "fullClosedLogStrictParserAccepted": true,
+    "parsedDisplayRows": 604,
+    "parsedNativeRows": 604,
+    "malformedRowsRepaired": 0,
+    "rangesSpliced": false,
+    "warmupSecondsPerEpoch": 60,
+    "minimumSegmentSeconds": 30,
+    "segments": [
+      {
+        "epoch": 2,
+        "swapchain_id": 1,
+        "resolution": [
+          768,
+          432
+        ],
+        "seconds": 24.983813709,
+        "p50": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "p95": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "p99": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "missed_vblanks": 1214,
+        "refresh_hz": 60.0000024000001,
+        "minimum_duration_met": false,
+        "nativeCompletionIntervals": 285,
+        "nativeCompletionsPerSecond": 11.407385730599389
+      },
+      {
+        "epoch": 4,
+        "swapchain_id": 1,
+        "resolution": [
+          768,
+          432
+        ],
+        "seconds": 483.988592875,
+        "p50": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "p95": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "p99": {
+          "upper_ms": null,
+          "over_ms": 25.6
+        },
+        "missed_vblanks": 23495,
+        "refresh_hz": 60.0000024000001,
+        "minimum_duration_met": true,
+        "nativeCompletionIntervals": 5544,
+        "nativeCompletionsPerSecond": 11.454815426676497
+      }
+    ],
+    "lastCumulativeCounters": {
+      "epoch": 4,
+      "swapchain_id": 1,
+      "swapchain_displayed_total": 7217,
+      "submit_calls": 50520,
+      "submit_ns": 6867792000,
+      "submit_max_ns": 25628000,
+      "present_calls": 7221,
+      "present_ns": 123668000,
+      "present_max_ns": 637000,
+      "acquire_calls": 7222,
+      "acquire_ns": 31836000,
+      "acquire_max_ns": 12000,
+      "idle_calls": 0,
+      "idle_ns": 0,
+      "idle_max_ns": 0
+    },
+    "boundary": "Parser acceptance establishes valid completion telemetry rows, not uninterrupted game foreground, unique correct physical game images or simulation cadence. The OS modal and absent gameplay invalidate gameplay timing and matched speed acceptance. Segments are kept separate; the shorter epoch fails the duration threshold."
+  },
+  "diagnosticObservations": {
+    "drawProfileMarkerOccurrences": 64,
+    "drawProfileSpeedAccepted": false,
+    "nativeFootprintReportsMb": [
+      1241,
+      4000
+    ],
+    "separateFootprintPeakMb": 4080,
+    "stableMemoryAccepted": false,
+    "audioPacingReports": 142,
+    "audioPacingReportsWithNonzeroLoggedShortage": 0,
+    "audioPacingReportsWithNonzeroLoggedOutputClamp": 0,
+    "sampledSourcePeakMaximum": 0.275,
+    "audioOutputRecordingOrListeningAccepted": false,
+    "nativeUnhandledDiagnosticOccurrences": 207,
+    "skippedDrawMarkers": 0,
+    "agcGraphicsRejectionMarkers": 0,
+    "badAllocMarkers": 0,
+    "fatalMarkers": 0,
+    "vkErrorMarkers": 0,
+    "boundary": "Diagnostics stay enabled. Footprint and throttled handled fault observations are not stability proofs; no recorded output or listening review accepts audio quality."
+  },
+  "lifecycleAndRollback": {
+    "independentlyVerified": true,
+    "observedOwnPids": {
+      "action-right01-before-processes.json": [
+        8218,
+        8220
+      ],
+      "action-right01-after-processes.json": [
+        8218,
+        8220
+      ],
+      "cleanup-before.json": [
+        8218,
+        8220
+      ],
+      "cleanup-after.json": []
+    },
+    "ownProcessesAbsentAfterCleanup": true,
+    "endMethod": "Main8218 explicitly SIGKILLed. The helper8220 termination reports NoSuchProcess afterwards; both are absent in the cleanup readback. No clean guest-exit code is reported.",
+    "runtimeFileSetAndBytesRestored": true,
+    "restoredRuntimeFiles": 56,
+    "restoredConfigurationSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "restoredLibrarySha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "restoredInstallationManifestSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "priorDiagnosticFilesIndependentlyHashReadBack": 7,
+    "priorDiagnosticRestoredSha256": {
+      "capture-trace.log": "de886c487bb385bbd283eff054328bf0795a2d15b8be97dc38ba99dc235b9b61",
+      "frame_004.bmp": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "frame_005.bmp": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "frame_002.bmp": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+      "frame_003.bmp": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "frame_001.bmp": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6",
+      "frame_000.bmp": "634b8d6d1a934faeda4027c2f69f5708d40a49ff00d8d315249b6741a79112d6"
+    },
+    "rollbackErrors": [],
+    "installedNativeHostAfterRuntimeRollback": 48,
+    "boundary": "Restored files match the original backups. This temporary candidate run did not permanently adopt its HLE or reinstall the native host. Restoration does not establish game save/load or background recovery."
+  },
+  "qualification": {
+    "physicalIpadLaunched": true,
+    "actualZeroStencilProductionMarkerObserved": true,
+    "menuVisible": true,
+    "strictWholeLogDisplayParserAccepted": true,
+    "golfSelectionAndStartAccepted": false,
+    "legalTableauMoveAccepted": false,
+    "stockResponseAccepted": false,
+    "undoResponseAccepted": false,
+    "fullGameplayAccepted": false,
+    "audioAccepted": false,
+    "saveLoadAccepted": false,
+    "backgroundRecoveryAccepted": false,
+    "singleFactorPerformanceAccepted": false,
+    "constant60FpsAccepted": false
+  },
+  "privacy": {
+    "rawPrivateLogPublished": false,
+    "screenshotsOrGamePixelsPublished": false,
+    "gameAssetsShaderCodePairingOrSecretsPublished": false,
+    "githubActionsUsed": false
+  }
+}

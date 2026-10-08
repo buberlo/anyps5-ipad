@@ -1,0 +1,346 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -5,6 +5,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuStencilSampleTiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/FramePixelDiagnostics.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp"
+@@ -1707,6 +1708,7 @@
+     std::vector<std::byte> stencilOriginal;
+     std::unique_ptr<Buffer> stencilBuffer;
+     std::unique_ptr<StencilSampleTransfer> stencilTransfer;
++    std::unique_ptr<StencilZeroTransfer> stencilZero;
+     std::unique_ptr<Buffer> stencilTiled;
+     std::unique_ptr<GpuStencilSampleTiler::Transfer> stencilTiling;
+     if (groupedSamples && state.depth) {
+@@ -1721,18 +1723,25 @@
+         GuestMemory::Read(depth.stencilAddress, stencilOriginal, stencilLayout->Alignment());
+         const auto positions = std::span<const VkSampleLocationEXT>(state.samples.positions).first(state.samples.count);
+         const auto surface = DepthSurfaceSampleImage(context, depth, positions);
+-        stencilTransfer = std::make_unique<StencilSampleTransfer>(context, surface.image, depth.format,
+-            std::span<const VkImageView>(surface.attachments).first(surface.groups), depth.extent, depth.samples, positions);
+-        stencilBuffer = std::make_unique<Buffer>(context, stencilTransfer->PackedBytes(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+-        std::fill(stencilBuffer->Bytes().begin(), stencilBuffer->Bytes().end(), std::byte{0});
+-        const DepthLayoutParameters stencilParameters{.samples=depth.samples, .fragments=depth.samples};
+-        if (context.stencilSampleTiler != nullptr && GpuStencilSampleTiler::Supports(context, depth, stencilParameters)) {
+-            stencilTiled = std::make_unique<Buffer>(context, stencilOriginal.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+-            std::memcpy(stencilTiled->Bytes().data(), stencilOriginal.data(), stencilOriginal.size());
+-            stencilTiling = std::make_unique<GpuStencilSampleTiler::Transfer>(*context.stencilSampleTiler, depth, stencilParameters);
+-            static std::once_flag note;
+-            std::call_once(note, [] { std::fprintf(stderr, "[stencil-sample-tiling] GPU S8 eight-sample tiled/linear transfer enabled; original samples and padding retained\n"); });
+-        } else stencilLayout->Detile(stencilOriginal, stencilBuffer->Bytes().first(stencilLayout->LinearBytes()));
++        if (ZeroStencilInvariantEnabled() &&
++            GuestMemory::Accessible(reinterpret_cast<const void*>(depth.stencilAddress), stencilOriginal.size(), true) &&
++            PreservesZeroStencil(state, shaders, stencilOriginal, stencilLayout->Bytes())) {
++            stencilZero = std::make_unique<StencilZeroTransfer>(context, surface.image, depth.format,
++                std::span<const VkImageView>(surface.attachments).first(surface.groups), depth.extent, depth.samples, positions);
++        } else {
++            stencilTransfer = std::make_unique<StencilSampleTransfer>(context, surface.image, depth.format,
++                std::span<const VkImageView>(surface.attachments).first(surface.groups), depth.extent, depth.samples, positions);
++            stencilBuffer = std::make_unique<Buffer>(context, stencilTransfer->PackedBytes(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++            std::fill(stencilBuffer->Bytes().begin(), stencilBuffer->Bytes().end(), std::byte{0});
++            const DepthLayoutParameters stencilParameters{.samples=depth.samples, .fragments=depth.samples};
++            if (context.stencilSampleTiler != nullptr && GpuStencilSampleTiler::Supports(context, depth, stencilParameters)) {
++                stencilTiled = std::make_unique<Buffer>(context, stencilOriginal.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++                std::memcpy(stencilTiled->Bytes().data(), stencilOriginal.data(), stencilOriginal.size());
++                stencilTiling = std::make_unique<GpuStencilSampleTiler::Transfer>(*context.stencilSampleTiler, depth, stencilParameters);
++                static std::once_flag note;
++                std::call_once(note, [] { std::fprintf(stderr, "[stencil-sample-tiling] GPU S8 eight-sample tiled/linear transfer enabled; original samples and padding retained\n"); });
++            } else stencilLayout->Detile(stencilOriginal, stencilBuffer->Bytes().first(stencilLayout->LinearBytes()));
++        }
+     }
+     timer.phase(PhasePrepare);
+     const bool recordDraws = RecordDraws();
+@@ -2060,6 +2069,7 @@
+         context.Resolved(&DeviceFunctions::cmdCopyBufferToImage, "vkCmdCopyBufferToImage")(commands, linear, binding.target->Image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+         imageBarrier(context, commands, binding.target->Image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     }
++    if (stencilZero) stencilZero->RecordClear(commands);
+     if (stencilTransfer) {
+         if (stencilTiling) stencilTiling->Record(commands, false,
+             {context.device, stencilTiled->Handle(), 0, stencilTiled->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
+@@ -2146,6 +2156,7 @@
+             CopyBuffer(context, commands, binding.tiledDevice->Handle(), 0, binding.tiled->Handle(), 0, binding.original.size());
+         }
+     }
++    if (stencilZero) stencilZero->RecordFinish(commands);
+     if (stencilTransfer) {
+         stencilTransfer->RecordReadback(commands,
+             {stencilBuffer->Handle(), 0, stencilBuffer->Bytes().size(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
+@@ -2250,6 +2261,11 @@
+         else WriteColorTarget(binding.color, binding.transfer->Bytes());
+         // The stored texels are the whole target now, so later reads must see them rather than a fast clear.
+         MarkDccUncompressed(binding.color.dccAddress, ColorTargetLayout(binding.color.extent.width, binding.color.extent.height, binding.color.tileMode, binding.color.elementBytes, binding.color.fragments).Bytes());
++    }
++    if (stencilZero && !skipTargetWrite) {
++        // This known unchanged result still orders pending writes, validates
++        // writable memory and collects tracking. Newer CPU/alias bytes survive.
++        GuestMemory::WriteChanged(state.depth->stencilAddress, stencilOriginal, stencilOriginal);
+     }
+     if (stencilTransfer && !skipTargetWrite) {
+         // The same fault-checked fence and resource writeback have completed.
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -145,6 +145,7 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/GpuColorSampleTiler.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/GpuStencilSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
++    Graphics/src/StencilZeroInvariant.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Recorder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderInputState.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderResources.cpp
+@@ -467,6 +468,7 @@
+         Graphics/src/GpuColorSampleTiler.cpp
+         Graphics/src/GpuStencilSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
++    Graphics/src/StencilZeroInvariant.cpp
+         Graphics/src/ShaderResources.cpp
+         Graphics/src/ShaderAddressResources.cpp
+         Graphics/src/GuestBufferMemory.cpp
+@@ -524,6 +526,7 @@
+         Graphics/src/GpuStencilSampleTiler.cpp
+         Graphics/src/DepthTargetLayout.cpp
+     Graphics/src/StencilSampleTransfer.cpp
++    Graphics/src/StencilZeroInvariant.cpp
+         Graphics/src/BufferAddress.cpp
+ )
+ 
+@@ -637,6 +640,7 @@
+         Graphics/src/GpuColorSampleTiler.cpp
+         Graphics/src/GpuStencilSampleTiler.cpp
+     Graphics/src/StencilSampleTransfer.cpp
++    Graphics/src/StencilZeroInvariant.cpp
+             Graphics/src/ShaderResources.cpp
+             Graphics/src/ShaderAddressResources.cpp
+             Graphics/src/GuestBufferMemory.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp
+@@ -0,0 +1,37 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_STENCILZEROINVARIANT_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_STENCILZEROINVARIANT_HPP
++
++#include "prx/libSceAgcDriver/Graphics/include/State.hpp"
++#include <span>
++
++namespace AgcDriver::Graphics {
++struct CompiledShader;
++bool ZeroStencilInvariantEnabled();
++// Reads only this owned snapshot span, including its tiled padding.
++bool AllStencilBytesZero(std::span<const std::byte> bytes) noexcept;
++// Necessary semantic proof only: ordinary split/shader/resource/alias validation
++// still runs in Draw. expectedBytes must be the validated full S8 layout size.
++bool PreservesZeroStencil(const State& state, std::span<const CompiledShader> shaders,
++                          std::span<const std::byte> original, std::size_t expectedBytes);
++
++// No programs, buffers or descriptors are owned. The caller keeps this device,
++// borrowed depth image/views and its sample identity through the existing fence.
++// Metadata admission intentionally retains the old general transfer's checks.
++class StencilZeroTransfer {
++public:
++    StencilZeroTransfer(const Context& context, VkImage image, VkFormat format,
++        std::span<const VkImageView> groupAttachments, VkExtent2D extent,
++        std::uint32_t logicalSamples, std::span<const VkSampleLocationEXT> guestPositions);
++    void RecordClear(VkCommandBuffer commands) const;
++    void RecordFinish(VkCommandBuffer commands) const;
++private:
++    void barrier(PFN_vkCmdPipelineBarrier operation, VkCommandBuffer commands,
++                 VkPipelineStageFlags sourceStage, VkAccessFlags sourceAccess,
++                 VkPipelineStageFlags destinationStage, VkAccessFlags destinationAccess) const;
++    Context context;
++    VkImage image;
++    std::uint32_t samples, nativeSamples, groups;
++    std::array<VkSampleLocationEXT, 8> positions{};
++};
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/StencilZeroInvariant.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/StencilZeroInvariant.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/StencilZeroInvariant.cpp
+@@ -0,0 +1,179 @@
++#include "prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/Shaders.hpp"
++#include <spirv/unified1/spirv.hpp>
++#include <algorithm>
++#include <bit>
++#include <cmath>
++#include <cstdlib>
++#include <cstring>
++#include <limits>
++#include <cstdio>
++#include <mutex>
++
++namespace AgcDriver::Graphics {
++bool ZeroStencilInvariantEnabled() {
++    static const bool enabled = [] { const auto* value = std::getenv("APS5_ZERO_STENCIL_INVARIANT");
++        return value != nullptr && std::strcmp(value, "1") == 0; }();
++    return enabled;
++}
++bool AllStencilBytesZero(std::span<const std::byte> bytes) noexcept {
++    std::size_t at = 0;
++    for (; bytes.size() - at >= sizeof(std::uint64_t); at += sizeof(std::uint64_t)) {
++        std::uint64_t word;
++        std::memcpy(&word, bytes.data() + at, sizeof(word)); // unaligned and alias-safe literal copy
++        if (word != 0) return false;
++    }
++    for (; at < bytes.size(); ++at) if (bytes[at] != std::byte{0}) return false;
++    return true;
++}
++namespace {
++bool zeroFace(const VkStencilOpState& face) {
++    const auto operation = [](VkStencilOp op) {
++        return op == VK_STENCIL_OP_KEEP || op == VK_STENCIL_OP_ZERO || op == VK_STENCIL_OP_REPLACE;
++    };
++    return face.compareOp == VK_COMPARE_OP_ALWAYS && face.compareMask == 255u && face.writeMask == 255u && face.reference == 0u &&
++           operation(face.failOp) && operation(face.passOp) && operation(face.depthFailOp);
++}
++bool noDepthOrStencilExport(std::span<const CompiledShader> shaders) {
++    unsigned fragments = 0;
++    for (const auto& shader : shaders) {
++        if (shader.program == nullptr) return false;
++        if (shader.stage != ShaderRecompiler::ShaderStage::Fragment) continue;
++        if (++fragments != 1u) return false;
++        const auto& words = shader.program->spirv.Words();
++        if (words.size() < 5u || words[0] != 0x07230203u) return false;
++        unsigned entries = 0;
++        for (std::size_t at = 5u; at < words.size();) {
++            const auto count = words[at] >> 16u;
++            const auto op = static_cast<spv::Op>(words[at] & 0xffffu);
++            if (count == 0u || count > words.size() - at) return false;
++            if (op == spv::OpEntryPoint && (++entries != 1u || count < 4u || words[at + 1u] != spv::ExecutionModelFragment)) return false;
++            const auto exported = [](std::uint32_t builtin) {
++                return builtin == spv::BuiltInFragDepth || builtin == spv::BuiltInFragStencilRefEXT;
++            };
++            if (op == spv::OpDecorate) {
++                if (count < 3u) return false;
++                if (words[at + 2u] == spv::DecorationBuiltIn && (count != 4u || exported(words[at + 3u]))) return false;
++            }
++            if (op == spv::OpMemberDecorate) {
++                if (count < 4u) return false;
++                if (words[at + 3u] == spv::DecorationBuiltIn && (count != 5u || exported(words[at + 4u]))) return false;
++            }
++            if (op == spv::OpDecorateId || op == spv::OpExecutionModeId) return false;
++            if (op == spv::OpExecutionMode) {
++                if (count < 3u) return false;
++                if (words[at + 2u] == spv::ExecutionModeDepthReplacing ||
++                    words[at + 2u] == spv::ExecutionModeStencilRefReplacingEXT) return false;
++            }
++            at += count;
++        }
++        if (entries != 1u) return false;
++    }
++    return fragments == 1u;
++}
++}
++bool PreservesZeroStencil(const State& state, std::span<const CompiledShader> shaders,
++                          std::span<const std::byte> original, std::size_t expectedBytes) {
++    if (!state.depth || !state.stencilTest || state.depthTest || state.depthWrite || state.depthBoundsTest ||
++        state.depthBias || state.depthClamp || state.depth->clearStencil != 0u || state.depth->stencilAddress == 0u ||
++        state.samples.count != 8u || state.samples.nativeCount != 4u || state.samples.groups != 2u ||
++        state.samples.mask != 255u || state.depth->samples != 8u ||
++        state.depth->format != VK_FORMAT_D32_SFLOAT_S8_UINT ||
++        expectedBytes == 0u || original.size() != expectedBytes ||
++        !zeroFace(state.stencilFront) || !zeroFace(state.stencilBack) || !noDepthOrStencilExport(shaders)) return false;
++    return AllStencilBytesZero(original);
++}
++StencilZeroTransfer::StencilZeroTransfer(const Context& context, VkImage image, VkFormat format,
++    std::span<const VkImageView> groupAttachments, VkExtent2D extent, std::uint32_t logicalSamples,
++    std::span<const VkSampleLocationEXT> guestPositions)
++    : context(context), image(image), samples(logicalSamples), nativeSamples(std::min(logicalSamples, 4u)), groups(0) {
++    Require(samples == 8u, "zero stencil transfer requires eight logical samples");
++    VkDeviceSize logicalBytes = 0, packedBytes = 0;
++    Require(format == VK_FORMAT_D32_SFLOAT_S8_UINT,
++            "zero stencil transfer requires the qualified D32S8 image format");
++    Require(image != VK_NULL_HANDLE && std::has_single_bit(samples) && samples >= 2 && samples <= 8,
++            "stencil sample transfer requires a valid 2/4/8 sample image");
++    groups = samples / nativeSamples;
++    Require(groupAttachments.size() == groups && std::all_of(groupAttachments.begin(), groupAttachments.end(),
++            [](auto view) { return view != VK_NULL_HANDLE; }), "stencil sample transfer attachment groups are unavailable");
++    Require(groups == 1u || context.multisampleArrayImage, "stencil sample transfer array feature is unavailable");
++    const auto& properties = context.sampleLocationProperties;
++    Require(context.sampleLocations && guestPositions.size() == samples &&
++            (properties.sampleLocationSampleCounts & nativeSamples) != 0 &&
++            properties.maxSampleLocationGridSize.width >= 1u && properties.maxSampleLocationGridSize.height >= 1u &&
++            properties.sampleLocationSubPixelBits >= 4u, "stencil sample transfer guest sample locations are unsupported");
++    for (std::uint32_t i = 0; i < samples; ++i) {
++        const auto position = guestPositions[i];
++        Require(std::isfinite(position.x) && std::isfinite(position.y) &&
++                position.x >= properties.sampleLocationCoordinateRange[0] && position.x <= properties.sampleLocationCoordinateRange[1] &&
++                position.y >= properties.sampleLocationCoordinateRange[0] && position.y <= properties.sampleLocationCoordinateRange[1],
++                "stencil sample position outside device coordinate range");
++        positions[i] = position;
++    }
++    Require(extent.width && extent.height && extent.width <= context.limits.maxFramebufferWidth &&
++            extent.height <= context.limits.maxFramebufferHeight && extent.width <= context.limits.maxViewportDimensions[0] &&
++            extent.height <= context.limits.maxViewportDimensions[1], "stencil sample transfer extent is unsupported");
++    logicalBytes = std::uint64_t(extent.width) * extent.height * samples;
++    Require(logicalBytes <= std::numeric_limits<std::uint32_t>::max() - 3u, "stencil sample transfer indexing overflows");
++    packedBytes = (logicalBytes + 3u) & ~VkDeviceSize(3u);
++    Require(packedBytes <= context.limits.maxStorageBufferRange, "stencil sample transfer exceeds storage buffer range");
++    Require(context.limits.maxPushConstantsSize >= 20 && context.limits.maxPerStageDescriptorStorageBuffers >= 1 &&
++            context.limits.maxPerStageDescriptorSampledImages >= 1 && context.limits.maxDescriptorSetStorageBuffers >= 1 &&
++            context.limits.maxDescriptorSetSampledImages >= 1, "stencil sample transfer descriptor/push limits are unsupported");
++    Require(context.limits.maxComputeWorkGroupSize[0] >= 64 && context.limits.maxComputeWorkGroupInvocations >= 64 &&
++            (packedBytes / 4u + 63u) / 64u <= context.limits.maxComputeWorkGroupCount[0], "stencil sample transfer compute limits are unsupported");
++    Require(context.formatProperties && context.imageFormatProperties, "stencil sample transfer format queries are unavailable");
++    VkFormatProperties formatSupport{};
++    context.formatProperties(context.physical, format, &formatSupport);
++    constexpr VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
++    Require((formatSupport.optimalTilingFeatures & features) == features, "stencil sample transfer image format features are unavailable");
++    VkImageFormatProperties imageSupport{};
++    Check(context.imageFormatProperties(context.physical, format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
++        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
++        VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT, &imageSupport), "stencil sample transfer image format query");
++    Require((imageSupport.sampleCounts & nativeSamples) != 0 && imageSupport.maxArrayLayers >= groups &&
++            imageSupport.maxExtent.width >= extent.width && imageSupport.maxExtent.height >= extent.height,
++            "stencil sample transfer image format limits are unsupported");
++}
++void StencilZeroTransfer::barrier(PFN_vkCmdPipelineBarrier operation, VkCommandBuffer commands,
++    VkPipelineStageFlags sourceStage, VkAccessFlags sourceAccess,
++    VkPipelineStageFlags destinationStage, VkAccessFlags destinationAccess) const {
++    for (std::uint32_t group = 0; group < groups; ++group) {
++        const VkSampleLocationsInfoEXT pattern{VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT, nullptr,
++            static_cast<VkSampleCountFlagBits>(nativeSamples), {1, 1}, nativeSamples, positions.data() + group * nativeSamples};
++        VkImageMemoryBarrier value{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
++        value.pNext = &pattern;
++        value.srcAccessMask = sourceAccess; value.dstAccessMask = destinationAccess;
++        value.oldLayout = value.newLayout = VK_IMAGE_LAYOUT_GENERAL;
++        value.srcQueueFamilyIndex = value.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
++        value.image = image;
++        value.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, group, 1};
++        operation(commands, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &value);
++    }
++}
++void StencilZeroTransfer::RecordClear(VkCommandBuffer commands) const {
++    Require(commands != VK_NULL_HANDLE, "zero stencil transfer command buffer is unavailable");
++    // Both lookups may fail: resolve them before recording the first command.
++    const auto transition = context.Resolved(&DeviceFunctions::cmdPipelineBarrier, "vkCmdPipelineBarrier");
++    const auto clear = context.Function<PFN_vkCmdClearDepthStencilImage>("vkCmdClearDepthStencilImage");
++    constexpr auto tests = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
++    constexpr auto attachment = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
++    barrier(transition, commands, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
++        VK_ACCESS_TRANSFER_WRITE_BIT | attachment | VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
++    const VkClearDepthStencilValue value{0.0f, 0u};
++    const VkImageSubresourceRange range{VK_IMAGE_ASPECT_STENCIL_BIT, 0, 1, 0, groups};
++    clear(commands, image, VK_IMAGE_LAYOUT_GENERAL, &value, 1, &range);
++    barrier(transition, commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, tests, attachment);
++    static std::once_flag note;
++    std::call_once(note, [] { std::fprintf(stderr, "[zero-stencil] zero snapshot and invariant state used stencil-only clear; actual draw retained\n"); });
++}
++void StencilZeroTransfer::RecordFinish(VkCommandBuffer commands) const {
++    Require(commands != VK_NULL_HANDLE, "zero stencil transfer command buffer is unavailable");
++    const auto transition = context.Resolved(&DeviceFunctions::cmdPipelineBarrier, "vkCmdPipelineBarrier");
++    // The removed readback no longer publishes an attachment->compute dependency.
++    // Keep the borrowed image's GENERAL endpoint visible to its later operations.
++    constexpr auto attachment = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
++    barrier(transition, commands, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
++        attachment, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, attachment | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
++}
++}

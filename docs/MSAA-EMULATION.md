@@ -1,4 +1,4 @@
-# Eight-sample rendering: interactive game entry observed, full gameplay unqualified
+# Eight-sample rendering: stock action observed, full gameplay unqualified
 
 Solitaire's captured state requests eight raster, exposed and color-fragment
 samples. The M2 iPad exposes native attachment sample counts of 1, 2 and 4.
@@ -18,7 +18,7 @@ device startup evidence. Patch0046's canonical rectangle guard is checked
 statically. Patch0047 adds restricted fixed-function color resolve; its production
 fragment and rectangle stages pass an isolated iPad GPU probe. Patch0048 fixes
 opaque descriptor inspection. Patch0049 adds bounded, default-off pixel statistics.
-All 52 patches are in a rebuilt 50-PRX package with 22 selected host suites passing;
+All 53 patches are in a rebuilt 50-PRX package with 22 selected host suites passing;
 resource/full graphics host suites also pass. Freshly
 prepared baseline and control runs have no logged draw/AGC error. Their differing
 output narrows the recorded resident/synchronization path. The longer run has
@@ -29,6 +29,11 @@ Patch0052 replaces inner-loop variable-size color texel copies with literal-size
 copies. Source/native/full-build checks pass; its controlled device runs progress
 to the menu and visibly respond to Right/A with Golf game entry. Sustained
 performance and a default-path repair are not established.
+Patch0053's scoped full-copy optimization is built and host-tested. Its separate
+device run exercises a scope and shows a stock action changing Golf's waste card;
+bulk-specific speed improvement and full gameplay remain unqualified. The bulk
+option stays default-off. Its HostWrite failure/identity repairs also apply to
+existing callers when that option is off.
 
 Independent x86-64 programs through the installed Wine/FEX/MoltenVK stack pass
 exact production-code RGBA8 and S8 transfer tests on the M2 iPad. These establish
@@ -282,6 +287,63 @@ restore. This proves these two menu inputs and game entry on the controlled path
 with individual card actions, full gameplay, audio, saves, background recovery,
 stable memory and sustained FPS still unqualified. No default-path repair follows.
 [Synchronized interactive checkpoint](evidence/ipad-solitaire-inline-color-texel-input-20261008.json).
+
+### Scoped full driver copies: patch0053 source/build checkpoint
+
+Exact `APS5_BULK_DRIVER_WRITES=1` opts into full `StoreOwnBytes` operations of at
+least 16 KiB with contiguous registered readable/writable destination coverage.
+The registered mapping lease is acquired before the tracker mutex and retained
+through the post-copy collect and lock release. Small, uncovered, sparse or no-op
+writes keep their prior path. The driver still collects/stamps writes and aliases;
+this does not disable write tracking.
+
+The existing HostWrite API also receives transactional protection/counter
+rollback and captured page/Section/offset identity records. These repairs apply
+to all existing HostWrite callers independently of the bulk switch. Preflight and
+record allocation precede changes; partial opening failures unwind counters and
+restore protection where possible. A failed restoration remains dirty/unarmed
+for a later collect. Ending an old scope does not decrement a newly mapped view's
+counter. The exported ABI is unchanged.
+
+Focused fixtures use actual Windows shared mappings, the production tracker,
+native CRT copies and real exception recovery under local Wine. A 32,799-byte
+unaligned copy crosses four logical shared pages and preserves both aliases and
+guards. Four handled copy faults with unset/`0`/`yes` become zero with `1`. Tests
+cover prior/subsequent CPU stamps, exact driver byte overlap, a no-op changed
+write, callback cleanup, retained mapping mutation, incomplete-coverage fallback,
+nested scopes, read-only preflight, opening/rollback failures, reset/remap and
+overflow. Seven scope controls pass for each option and at a higher native arena
+base. Test-only syscall failure injection and the fixture's exception handler
+are not an iPad/GPU test.
+
+The complete 53-patch/141-path series, 53 binary hashes and 22 selected host suites
+verify; resource/full graphics suites also pass with the opt-in environment.
+The focused marker/classification fixture is separate from those full suites.
+The post-store dirty walk classifies new pages as Driver: precise attribution of
+a concurrent foreign guest CPU write inside the callback remains unqualified,
+as in the legacy path. No hardware speed/FPS improvement or new gameplay
+acceptance is established by this source/build snapshot. See the
+[separate immutable record](evidence/scoped-bulk-driver-writes-build-20261008.json).
+
+The completed 420-second controlled iPad run logs exactly one first-execution
+marker, for a 66,846,720-byte copy with one registered mapping. It observes the
+same menu source at present 80 / 87.16 seconds, compared with the prior 52 checkpoint's
+115.08 seconds. Its first 180 trace contains 172 present events and 2,755 accepted
+draw rows, versus 128/1,655 previously. These remain recorded-work counters, not
+GPU completion or displayed FPS; the API repairs also change source independently
+of the option. A matched 53 bulk-off run is needed for attribution.
+
+Actual synchronized Right/A input enters Golf and deals the board. A subsequent
+three-second Y press changes the waste from K♥ to 10♣, while the seven-column
+tableau remains visible. At nominal 420 seconds the 10♣ persists and the slow
+game timer reads 00:10. Actual app/helper identities persist across both sequences.
+The raw automation response flags precede visual review; observed game pixels,
+rather than XCTest success alone, qualify this one stock response. All 56 runtime
+files and metadata restore. The helper-end message is followed by 14,227 log lines;
+137 sampled Mach `UNHANDLED` marker rows do not prove a fatal game exit or total
+exception count. No tableau move, completed game, audio, save/load, background
+recovery, stable memory, clean lifecycle or sustained performance acceptance.
+See the [separate physical stock-action record](evidence/ipad-solitaire-scoped-bulk-driver-writes-20261008.json).
 
 ### Independent descriptor-copy/layout control
 
@@ -691,9 +753,9 @@ Complete guest draw/resolve routing, resource-cache handoffs, alias coherency,
 occlusion/sample counters and production-size transfer behavior remain
 unqualified. Sampled shader fixtures have not executed on the iPad GPU through
 the connected renderer. Visible menu, two menu inputs and Golf entry have separate
-controlled device evidence above. Individual card actions, full gameplay, all
-controls, audio, saves, background recovery and sustained frame rate still require
-device acceptance.
+controlled device evidence above; the later 53 run also observes one stock draw.
+Tableau moves, full gameplay, all controls, audio, saves, background recovery and
+sustained frame rate still require device acceptance.
 
 The proposed split preserves eight coverage positions; it must not silently
 replace them with four samples or enable a draw whose other semantics remain

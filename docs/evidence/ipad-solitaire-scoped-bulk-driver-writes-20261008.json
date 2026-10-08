@@ -1,0 +1,352 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:57:30.688942+00:00",
+  "kind": "scoped_bulk_driver_writes_ipad_menu_game_entry_and_stock_action_checkpoint",
+  "qualification": "bulk_scope_exercised_Golf_entry_and_stock_Y_card_change_observed_full_gameplay_and_FPS_unqualified",
+  "build": {
+    "app_build": 47,
+    "patch_count": 53,
+    "hle_archive_sha256": "053da53d38e4dd4cec9131d97e8e9150657dbe6533ad1897ab0b901d226f0d21",
+    "source_build_record": {
+      "path": "docs/evidence/scoped-bulk-driver-writes-build-20261008.json",
+      "sha256": "fe461a7003fad1fdfac1bde8cbef650968d49adc0f8ff6264ca3f9e7536c51a0"
+    },
+    "candidate_manifest_sha256": "4e336b84b0a33d84a506f818de6eaa9b289734761946b54c4d10bb4a971723f5",
+    "receipt_manifest_matches": true,
+    "readback_runtime_file_hashes_verified": 56
+  },
+  "private_run": {
+    "path": "build/pr1-port/solitaire-build47-scoped-bulk-driver-writes-ui-sync",
+    "receipt_sha256": "3cc543d656955af7c2b0d056aa54fb3040f86280f40f78dd5af57cea1e9c4abf",
+    "log_sha256": "aa123a3374d986f2caea41c60455c3314e01c66393c40f64478a77cb303a28d9",
+    "log_line_count": 37282,
+    "nominal_bounded_seconds": 420,
+    "test_operation_seconds": 436.971848584,
+    "accepted_gameplay_duration_seconds": null
+  },
+  "diagnostic_configuration": {
+    "APS5_BULK_DRIVER_WRITES": "1",
+    "APS5_DRAW_TRANSITIONS": "1",
+    "APS5_ENABLE_SAMPLE_GROUPS": "1",
+    "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+    "selected_source_dump_count_limit": 6,
+    "dump_every_present_ordinal": 16,
+    "dump_scale_divisor": 4,
+    "normal_memory_tracking": true,
+    "temporary_configuration_sha256": "e2bdb68bd4775c5d2f2344a7a3e1be2f3cde81723d8657302586c3fb5a89437e",
+    "host_and_quality_matched_to_prior52_control": true,
+    "runtime_switch_default_changed": false
+  },
+  "bulk_execution": {
+    "marker_count": 1,
+    "marker_line": 13084,
+    "scoped_copy_bytes": 66846720,
+    "registered_mapping_count": 1,
+    "marker_is_not_copy_count_or_timing": true
+  },
+  "visual_timeline": {
+    "180": {
+      "sha256": "8cfd7ef35f13f50302b538ab8e445d74981396dbcc719aa5162c455c62be9235",
+      "review_method": "view_image",
+      "result": "full_title_menu_Canfield_centered"
+    },
+    "after_menu_input": {
+      "sha256": "b428009f160a8188dee9946d4e46571173323a086a130312a2ec71663d7ed287",
+      "review_method": "view_image",
+      "result": "Golf_game_dealing_after_Right_A_sequence"
+    },
+    "300": {
+      "sha256": "504bc7724dd6b73c3a0beab150c6891a77c83db9392cf7f2bbc3a341492e8657",
+      "review_method": "view_image",
+      "result": "dealt_Golf_board_king_hearts_waste_35_tableau_cards"
+    },
+    "after_stock_y": {
+      "sha256": "69370cb3f5e4ffc9ec713e6329778474f7f42ce5ce3321767811b5e025913e3c",
+      "review_method": "view_image",
+      "result": "same_board_ten_clubs_waste_after_Y"
+    },
+    "420": {
+      "sha256": "ea8cc8fed5fd8001278d138aef355ebdcee91deaa4762453f2b721af1a7b38b6",
+      "review_method": "view_image",
+      "result": "ten_clubs_waste_persists_game_timer_00_10"
+    }
+  },
+  "input_tests": {
+    "menu_sequence": {
+      "receipt_sha256": "d08884a46fda665352c7ef7ec11a4674d3844682e9eb22296003bd96a44e2944",
+      "log_sha256": "7fb9754da1dd73f52c0e9d2307d2ee2bfb8639a5278a7b6ec532c951889d110c",
+      "xcodebuild_exit": 0,
+      "elapsed_after_launch_seconds": 219.124569834,
+      "hardware_device_orientation": 4,
+      "observed_control_centers": true,
+      "hold_seconds": 3.0,
+      "press_markers": 2,
+      "actual_app_and_helper_process_identity_unchanged": true,
+      "before_inventory_sha256": "6037ac49b2cfe2b9e018b9e64d28de494d3c4c66dc0bd431018c338dd52016f4",
+      "after_inventory_sha256": "e66389e5f684ba99e74dfd143f082b2aeee21aebb01c7654319507679b42ee54",
+      "raw_automation_response_verified": false,
+      "visual_review_occurred_after_automation_receipt": true
+    },
+    "stock_y": {
+      "receipt_sha256": "357697cbc522d37146931df0bf5c823a2a9512ea54d0333f67545f15e4333900",
+      "log_sha256": "6c91a08d84f48cd9eb5ccd432bf434350c7cc9a05affe6e860aa59192f80eab4",
+      "xcodebuild_exit": 0,
+      "elapsed_after_launch_seconds": 316.661354125,
+      "hardware_device_orientation": 4,
+      "observed_control_centers": true,
+      "hold_seconds": 3.0,
+      "press_markers": 1,
+      "actual_app_and_helper_process_identity_unchanged": true,
+      "before_inventory_sha256": "2bad988009b3a16cca2561a1487db50dc3bc213ce1a481a9f0aeca12321fde1c",
+      "after_inventory_sha256": "820d500d8564c7581cba2166577e33064cc50a7efdb16e4323ec0f685d441948",
+      "raw_automation_response_verified": false,
+      "visual_review_occurred_after_automation_receipt": true
+    }
+  },
+  "visual_input_response": {
+    "menu_sequence_reaches_Golf": true,
+    "stock_Y_changes_waste_card": true,
+    "waste_before": "king_of_hearts",
+    "waste_after": "ten_of_clubs",
+    "same_tableau_visible": true,
+    "timer_later_advances_to_00_10": true,
+    "full_game_or_tableau_card_move_qualified": false
+  },
+  "fresh_scaled_selected_source_captures": [
+    {
+      "capture_ordinal": 0,
+      "present_ordinal": 16,
+      "trace_seconds": 21.026404,
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "result": "uniform_blue_zero_alpha"
+    },
+    {
+      "capture_ordinal": 1,
+      "present_ordinal": 32,
+      "trace_seconds": 36.929788,
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "result": "uniform_blue_zero_alpha"
+    },
+    {
+      "capture_ordinal": 2,
+      "present_ordinal": 48,
+      "trace_seconds": 52.853295,
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "result": "uniform_blue_zero_alpha"
+    },
+    {
+      "capture_ordinal": 3,
+      "present_ordinal": 64,
+      "trace_seconds": 70.049584,
+      "bmp_sha256": "bbe82576ba9a64652d5b4903bfce3587774388bea00737d73fed3dad55daed1b",
+      "pixel_payload_sha256": "d13dd9f2f3548b319fe22d9ef2dd50b698d878faa7967aff2d5ce22a69a5ab29",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 1,
+      "alpha_pixel_counts": {
+        "0": 129600
+      },
+      "result": "uniform_blue_zero_alpha"
+    },
+    {
+      "capture_ordinal": 4,
+      "present_ordinal": 80,
+      "trace_seconds": 87.16098,
+      "bmp_sha256": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "pixel_payload_sha256": "7286759a0f47b29630b018d6e57c8e39a48626907bda00126f5412268e5e5b6c",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 3700,
+      "alpha_pixel_counts": {
+        "255": 129600
+      },
+      "result": "byte_identical_to_previously_reviewed_menu"
+    },
+    {
+      "capture_ordinal": 5,
+      "present_ordinal": 96,
+      "trace_seconds": 103.173775,
+      "bmp_sha256": "8374fb02c26bb36155587f00b0896805826b8ce3ecd6594e0790b4ddc206ec7c",
+      "pixel_payload_sha256": "7286759a0f47b29630b018d6e57c8e39a48626907bda00126f5412268e5e5b6c",
+      "dimensions": [
+        480,
+        270
+      ],
+      "decoded_pixels": 129600,
+      "distinct_bgra_values": 3700,
+      "alpha_pixel_counts": {
+        "255": 129600
+      },
+      "result": "byte_identical_to_previously_reviewed_menu"
+    }
+  ],
+  "trace": {
+    "sha256": "df88b4614af031007ab5af83b12c76cb4a6f4a370c2893bd1c01b33f6d00956b",
+    "row_count": 155875,
+    "exact_event_kind_counts": {
+      "packet": 85128,
+      "flip": 407,
+      "blit": 407,
+      "copy-input-snapshot": 1236,
+      "buffer-read": 42755,
+      "buffer-write": 4107,
+      "upload": 252,
+      "image-write": 8637,
+      "draw": 9618,
+      "submit": 1976,
+      "present": 406,
+      "sampled-lookup": 702,
+      "refresh": 244
+    },
+    "last_present_seconds": 414.906276,
+    "last_trace_seconds": 414.921802,
+    "draw_verdict_counts": {
+      "0": 9618
+    },
+    "all_draw_rows_accepted": true,
+    "first_180_seconds": {
+      "exact_event_kind_counts": {
+        "packet": 32924,
+        "flip": 173,
+        "blit": 173,
+        "copy-input-snapshot": 534,
+        "buffer-read": 11870,
+        "buffer-write": 1767,
+        "upload": 206,
+        "image-write": 2276,
+        "draw": 2755,
+        "submit": 809,
+        "present": 172,
+        "sampled-lookup": 399,
+        "refresh": 198
+      },
+      "last_trace_seconds": 179.684043
+    },
+    "not_displayed_frame_or_gpu_completion_counters": true,
+    "historical52_comparison": {
+      "record_path": "docs/evidence/ipad-solitaire-inline-color-texel-menu-20261008.json",
+      "record_sha256": "5439fcda10ca858a7afa9816d58b1bec693e03bd96f53cd962a2d944a2b80730",
+      "menu_source_seconds": 115.084645,
+      "first_180_present_events": 128,
+      "first_180_draw_rows": 1655,
+      "current_menu_source_seconds": 87.16098,
+      "same_diagnostic_configuration_except_bulk_option": true,
+      "matched_temperature_repeated_route_or_display_timing": false,
+      "not_fps_or_speed_acceptance": true,
+      "unconditional_host_write_api_repairs_also_change_source": true,
+      "matched53_bulk0_control_completed": false
+    }
+  },
+  "runtime_log": {
+    "error_marker_counts": {
+      "[gpu] skipped draw": 0,
+      "AGC graphics:": 0,
+      "bad_alloc": 0,
+      "FATAL": 0,
+      "Wine exited": 0
+    },
+    "native_mach_unhandled_logged_marker_rows": 137,
+    "native_mach_marker_interpretation": "Rows include sampled counter milestones, not total exceptions. Continued game/render activity follows; no clean lifecycle or exception-free claim."
+  },
+  "process_end": {
+    "wine_finished_message": "[23:46:14.421] [INFO] Wine finished after 23.5s",
+    "message_line": 23055,
+    "later_runtime_log_lines": 14227,
+    "explicit_guest_exit_logged": false,
+    "helper_end_is_not_game_exit": true,
+    "own_test_processes_closed": true,
+    "clean_native_lifecycle_qualified": false
+  },
+  "rollback": {
+    "receipt_runtime_hash_restored": true,
+    "receipt_config_and_library_byte_preserved": true,
+    "independent_runtime_restored_file_byte_matches": 56,
+    "independent_metadata_byte_matches": [
+      {
+        "kind": "configuration",
+        "sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+        "byte_equal": true
+      },
+      {
+        "kind": "library",
+        "sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+        "byte_equal": true
+      },
+      {
+        "kind": "original_manifest",
+        "sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+        "byte_equal": true
+      }
+    ],
+    "prior_diagnostics_restored": [
+      "capture-trace.log",
+      "frame_000.bmp",
+      "frame_001.bmp",
+      "frame_002.bmp",
+      "frame_003.bmp",
+      "frame_004.bmp",
+      "frame_005.bmp"
+    ]
+  },
+  "acceptance": {
+    "visible_menu": true,
+    "menu_sequence_and_game_entry": true,
+    "visible_dealt_Golf_board": true,
+    "one_stock_action_visual_response": true,
+    "tableau_card_move": false,
+    "complete_gameplay_session": false,
+    "all_controls": false,
+    "audio": false,
+    "save_load": false,
+    "background_recovery": false,
+    "stable_memory": false,
+    "sustained_fps": false,
+    "concurrent_foreign_CPU_write_attribution": false,
+    "default_path_repair": false
+  },
+  "limits": [
+    "One stock-action response does not qualify legal tableau moves, all controls or a completed game.",
+    "The controlled bulk/transition path retains expensive diagnostics and per-draw fences; no matched repeated FPS/speed or production-default acceptance.",
+    "Patch53 includes unconditional HostWrite API repairs as well as the option. A matched53 bulk0 control is required to attribute any difference specifically to scoped bulk copies.",
+    "The post-store Driver classification does not precisely attribute a concurrent foreign CPU write inside the callback; inherited limitation remains.",
+    "Scaled source captures are not exhaustive final swapchain pixels.",
+    "No audio, saves, background recovery, stable-memory or clean-lifecycle acceptance."
+  ],
+  "privacy": "Only sanitized aggregate diagnostics, semantic game-area observations and hashes published; screenshots including incidental notifications, game binaries/assets/shaders, raw packets/addresses, process IDs/paths, pairing and device identifiers remain local."
+}

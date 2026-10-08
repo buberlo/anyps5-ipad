@@ -61,6 +61,12 @@ and full HLE/host checks pass, and its 52-patch series matches 139 paths. A
 synchronized controlled iPad run visibly responds to Right/A, enters Golf and
 deals the board. Individual card actions, complete gameplay and sustained FPS
 remain unqualified; no default-path repair is accepted.
+Patch0053 adds default-off scoped bulk driver copies and unconditional repairs
+to existing HostWrite failure/identity handling. Its focused Windows fixtures,
+53-patch/141-path series, full HLE build and host/graphics suites pass. A separate
+controlled iPad run exercises a bulk scope and shows Golf's waste changing after
+Y. Bulk-specific speed improvement, full gameplay and concurrent foreign CPU-write
+attribution remain unqualified.
 See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
@@ -88,6 +94,7 @@ source, build, device and unqualified-path states.
 | 0050 | Default-off replay of owned initial descriptor writes into the fresh DrawBindings set, preserving read-only snapshot overrides | Four sanitizer configurations pass 64 metadata checks each. Full HLE build, 22 host suites, resource/full graphics suites and 50-patch/139-path source verification pass. Device replay is logged; five scaled captures and the nominal 180-second image remain white. Negative experiment, no repair accepted. |
 | 0051 | Default-off close-after-draw control, retaining GENERAL layouts, read-only snapshots and asynchronous batches | Production Windows syntax, 51-patch/139-path series, full HLE and host/graphics checks pass. One device marker proves exercise; five source captures and nominal 180-second physical image stay white. Negative experiment, default remains off. |
 | 0052 | Dispatch once per color Tile/Detile surface to literal-size 1/2/4/8/16-byte texel copies | Independent AMD layout/address oracle, original layout suite, ASan/UBSan and optimized MinGW negative-control checks pass. Full 52-patch/139-path series, 53 binary hashes and 22 host plus two graphics suites pass. Controlled device run visibly responds to Right/A, enters Golf and deals its board; card actions/full gameplay/FPS remain unqualified. |
+| 0053 | Opt-in full-copy HostWrite scopes retained by registered RW mapping leases; unconditional transactional HostWrite failure and identity repairs | Real shared mappings/tracker/native-copy fixture passes four exact-option runs and seven scope controls each; eligible copy faults fall from four to zero. Full 53-patch/141-path series, 53 binary hashes, 22 host plus two graphics suites pass. Device marker confirms exercise; Golf's waste changes after Y. Bulk remains default-off; bulk-specific speed, full gameplay and concurrent foreign CPU attribution unqualified. |
 
 ## White selected-source comparison: patch0048
 
@@ -280,6 +287,46 @@ restore. These two inputs and game entry are observed; individual card actions,
 full gameplay, audio, saves, background recovery and sustained FPS remain
 unqualified. The controlled transition path does not establish a default repair.
 See the [interactive game-entry record](evidence/ipad-solitaire-inline-color-texel-input-20261008.json).
+
+## Scoped bulk driver writes and HostWrite repairs: patch0053
+
+Exact `APS5_BULK_DRIVER_WRITES=1` enables full `StoreOwnBytes` copies of at least
+16 KiB only with contiguous registered readable/writable destination coverage
+and valid tracking. A retained lease precedes the tracker lock and outlives the
+final collect. Sparse/no-op `WriteChanged` and incomplete coverage retain their
+legacy behavior. This opt-in avoids repeated shared-page write faults without
+dropping alias invalidation, driver byte stamps or protection tracking.
+
+The HostWrite API repairs are unconditional: identity records, preflight before
+mutation, rollback of opened protection/counters, conservative dirty state after
+rollback failure, and safe ending after reset/remap also serve existing callers
+with the bulk option off. No exported ABI changes.
+
+Actual local Windows shared mappings, the production tracker, native CRT and
+exception recovery pass byte/guard/alias checks and prior/subsequent CPU/driver
+classification. The unaligned full copy's handled faults drop from four to zero;
+unset, `0` and `yes` retain four. Seven scope controls pass for every option,
+including nested scopes, read-only refusal, partial opening/rollback failure and
+raw remap. A higher native arena-base control also passes. The complete HLE build
+verifies 53 binaries; 22 host suites plus opt-in resource/full graphics tests pass,
+and the 53-patch/141-path series applies, matches and reverses.
+
+These tests do not qualify a foreign CPU write racing inside the own-store
+callback: the inherited postwalk labels new dirty pages as Driver. Hardware
+improvement, production-speed measurement and new gameplay evidence remain
+separate. The bulk optimization stays default-off. See the
+[source/native/build record](evidence/scoped-bulk-driver-writes-build-20261008.json).
+
+The separate controlled device record verifies one scoped-copy execution, a Golf
+board after the menu sequence, and a waste-card change K♥→10♣ after Y. The board
+and new waste persist through nominal 420 seconds, with the slow timer at 00:10.
+Both UI sequences retain the same actual app/helper identities, and all runtime
+and metadata bytes restore. One stock action is observed; tableau moves, a
+complete game, audio, save/load and sustained FPS remain unqualified. Earlier
+menu arrival/trace progress does not establish a speed gain, particularly because
+the unconditional API repairs also differ from 52. A matched 53 bulk-off control
+is needed for bulk-specific attribution. See the
+[physical stock-action checkpoint](evidence/ipad-solitaire-scoped-bulk-driver-writes-20261008.json).
 
 The exact RGBA8 and S8 device probes run original synthetic fixtures through
 Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases

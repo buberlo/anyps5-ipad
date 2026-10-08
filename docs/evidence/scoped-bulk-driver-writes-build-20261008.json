@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T15:50:39.312877+00:00",
+  "kind": "scoped_bulk_driver_writes_source_native_and_completed_hle_host_checkpoint",
+  "qualification": "53_patch141_path_series_53_binaries_22_host_plus2_graphics_suites_verified_bulk_default_off_device_gain_unqualified",
+  "source": {
+    "patch_path": "patches/anyps5/0053-scoped-bulk-driver-writes.patch",
+    "patch_sha256": "bbdcada9f2b7df811837d4d6f1f221d8488d4c0ce3649f4d6a291c0ec0458ea6",
+    "source_series_sha256": "88186b4ae45654d14910232302d527ddfb2a6ca03adb4be6078469a38deead40",
+    "patches": 53,
+    "paths_checked": 141,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "all_series_patch_hashes_match_build_provenance": true,
+    "focused_local_windows_validation": {
+      "optimizationSwitch": "APS5_BULK_DRIVER_WRITES=1",
+      "activation": "Exact string 1, full StoreOwnBytes only, >=16KiB, contiguous registered readable+writable coverage, valid pre-collect; sparse/no-op WriteChanged unchanged. One marker after first successful scoped copy.",
+      "mappingBehavior": "Acquire registered lease before tracker mutex; keep through final collect and tracker unlock. HostWrite Begin preflights logical protections and allocates identity records before modifications. Failure rolls counters/protection back where possible; failed restoration is dirty/unarmed for next rearm. End checks mapping page/owned Section/offset identity before decrement and invalidates captured old aliases.",
+      "defaultScope": "Only the bulk optimization is default-off. Transactional HostWrite/identity changes also apply to existing host write callers without the option.",
+      "tests": {
+        "actualSharedMappings": true,
+        "productionTracker": true,
+        "nativeCrtCopy": true,
+        "realVehRecovery": true,
+        "faultsDuringFullCopy": {
+          "unset": 4,
+          "0": 4,
+          "1": 0,
+          "yes": 4
+        },
+        "exactUnalignedBytes": 32799,
+        "logicalSharedPageBytes": 16384,
+        "crossedSharedPages": 4,
+        "checks": [
+          "two shared aliases and full untouched prefix/suffix guards",
+          "exact driver-byte overlap vs adjacent bytes using actual tracker",
+          "prior and subsequent CPU stores",
+          "no-op WriteChanged does not dirty aliases",
+          "callback exception cleanup",
+          "registered protect mutation waits and resumes after lease cleanup",
+          "incomplete registered coverage preserves legacy faults",
+          "nested scopes and reset collections",
+          "logical read-only preflight changes no protection",
+          "later VirtualProtect opening failure rolls prior openings back",
+          "opening plus rollback protection failure remains dirty, unpinned and rearmable",
+          "raw reset/remap leaves new counter intact and old alias final generation visible",
+          "overflow refusal"
+        ],
+        "hostScopeChecksPerOption": 7,
+        "allOptionExitCodes": 0
+      },
+      "proof": {
+        "status": "current52_delta_forward_and_reverse_bytes_exact",
+        "method": "git apply checked and applied in a fresh temporary directory outside the outer Git repository; compared exact bytes after forward/reverse",
+        "patch": "0053-scoped-bulk-driver-writes.patch",
+        "patchSha256": "bbdcada9f2b7df811837d4d6f1f221d8488d4c0ce3649f4d6a291c0ec0458ea6",
+        "files": [
+          {
+            "path": "core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp",
+            "baseline52Sha256": "1feca85699e3e3cf7b048f1e22c6fdbd45a42e03564266ec4ea53585fcf45d85",
+            "candidate53Sha256": "1f1d6d60614ef5eff1d693b63b333ba27f114995ac439f869087292406f9f65c"
+          },
+          {
+            "path": "core/libs/prx/libc/include/WindowsMappings.hpp",
+            "baseline52Sha256": "828bd55e9a3f38b91e85efd40ee4fc02463a07fb71d57a6e0dac7dcba29bb270",
+            "candidate53Sha256": "43ff03ef98d364134795ac658f185aeeab9098f3832c92f337041df54254530c"
+          },
+          {
+            "path": "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp",
+            "baseline52Sha256": "fdb20cd3b6baaaa35f57db4fe52fae8dc09704fda8e9be03beb56a439092e68b",
+            "candidate53Sha256": "5f165de2a2a7854eee7b3f4912075f2935c265b09b9b658e8b913095be31307b"
+          }
+        ]
+      },
+      "record_sha256": "d483f31a03206b5d95605543b792017db205a7d2a6b4d162c5ae334b856988e3",
+      "windows_report_sha256": "e0239257f945cd7472095b6dd9e5d4a52e377f63ebf5ab0b35bddc65cc86188b",
+      "production_source_sha256": {
+        "core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp": "1f1d6d60614ef5eff1d693b63b333ba27f114995ac439f869087292406f9f65c",
+        "core/libs/prx/libc/src/GuestArena.cpp": "a314ff66e9ccf838029a115e9fcafb7a672e3a31bd9471859c78a670e889cbde",
+        "core/libs/prx/libc/src/GuestAllocations.cpp": "8eacb4048a87e5c20f4a3152bf6d116f38ff0615dc07b570a85fe899407adaea",
+        "core/libs/prx/libc/include/WindowsMappings.hpp": "43ff03ef98d364134795ac658f185aeeab9098f3832c92f337041df54254530c",
+        "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp": "5f165de2a2a7854eee7b3f4912075f2935c265b09b9b658e8b913095be31307b"
+      },
+      "fixture_sha256": {
+        "tools/checks/bulk_driver_write_windows.cpp": "6b773646a410e663b6ab846f5f887a70b135f383468f2d005e2771909aee4785",
+        "tools/checks/bulk_driver_write_protection.hpp": "126953b6a08cd72217c92264543c84688980bdeadf01f09f3a579b92c25f9ffd",
+        "scripts/check-bulk-driver-writes.py": "151db7d0dd1109c6989dfcfe623a40f3c49cdb677dc00aeb2fb23bb035c8f961"
+      },
+      "test_executable_sha256": "f136b818c42c04b381cf77dc715fafbb781a687736738e6e59720f7383c3354e",
+      "option_runs": [
+        {
+          "option": null,
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "8903041bc7feb166ade0fc964a8c8614aa77ddfc38678c7af31e141da02b37f6"
+        },
+        {
+          "option": "0",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "8903041bc7feb166ade0fc964a8c8614aa77ddfc38678c7af31e141da02b37f6"
+        },
+        {
+          "option": "1",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": true,
+          "logSha256": "489c73c80e2b94ede3b5bac23aa493ba343adf8bde27d2f7be6bb89a3e10bdbe"
+        },
+        {
+          "option": "yes",
+          "exitCode": 0,
+          "scopedBulkWriteExecuted": false,
+          "logSha256": "8903041bc7feb166ade0fc964a8c8614aa77ddfc38678c7af31e141da02b37f6"
+        }
+      ],
+      "higher_native_arena_base_existing_scope_control": {
+        "log_sha256": "f1c2dafbbc0a9d59663fd853dc131f8593bfee0fbd6a1e563ce6b3d2683629a7",
+        "scope_checks": 7,
+        "errors": 0,
+        "bulk_option_enabled": false
+      }
+    }
+  },
+  "defaults": {
+    "bulk_optimization": "Off; only exact APS5_BULK_DRIVER_WRITES=1 enables eligible full stores.",
+    "existing_host_write_api_repairs": "Always applied to existing callers; not gated by the bulk option.",
+    "sparse_or_noop_write_changed": "Existing path retained; never eagerly scoped as a full store."
+  },
+  "build": {
+    "project_commit_at_build": "9e7a9f6f6e98bed3e909884b6dc8667d57f354c2",
+    "upstream_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "87eaa5f7491226893b29617f4abc7dbcf9d9f76bfbaf1e5a1b1874f6ac871f05",
+    "hle_archive_sha256": "053da53d38e4dd4cec9131d97e8e9150657dbe6533ad1897ab0b901d226f0d21",
+    "provenance_sha256": "d207dacb9bd6d863c25ab62573d5f009749c4632512323242b1fc4ac45cc685e",
+    "flags": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "prx_files": 50,
+    "runtime_dll_files": 3,
+    "all_embedded_binary_hashes_verified": 53,
+    "selected_host_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "host_runtime": "local Wine",
+    "additional_resource_and_full_graphics_suites_passed": true,
+    "resource_and_graphics_option": "APS5_BULK_DRIVER_WRITES=1 per root execution record; these suites are distinct from the focused marker/classification fixture.",
+    "preserved_24_host_log_sha256": {
+      "test-audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-audio_out2_port_layouts_tests.log": "d96f9ab24ee4cd187d5697d5c1977a878d2b4077021e544b74ce3cc585d3b640",
+      "test-audio_out2_timing_tests.log": "5600ccaa50b014cf6e634dd5edf53830a868ae9c1a803181470b17dcc06c04ca",
+      "test-audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out_mix_level_pad_spk_tests.log": "7087b212e2df86a107f5b9b0c48867c0656f3ac5c9b4e90132da18736a871fb3",
+      "test-file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "test-guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_filesystem_tests.log": "9b739e9554e5c3bd814fbef73a8b71be4859eab49f655c21e76fe00f24149956",
+      "test-guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "test-guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "test-guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_memory_tests.log": "8dc73adbeb2d52a251233d15bd776d8f944327792571d001f7a7b31b5addfc94",
+      "test-guest_pthread_attr_tests.log": "bac4165e384fa0796c66b1524decf4b85fc4da053291b9cd2a5c4ac2ff3ef297",
+      "test-guest_raise_exception_tests.log": "38cc7780b1d79e3cc605aff6bf913cb7e224ac4f2e84afcfa1d4bf0afe3798f0",
+      "test-guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-scoped-bulk-driver-writes-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-scoped-bulk-driver-writes-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "test-uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "test-wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "test-windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    "verified_local_package_sha256": "3fd284ae749c878285b05cc522cb753548ee6b0ac278e9ca3a8a85bc25128c95"
+  },
+  "acceptance": {
+    "source_focused_windows_checks": true,
+    "full_hle_build": true,
+    "host_tests": true,
+    "hardware_speed_improvement": false,
+    "new_gameplay_qualification": false,
+    "sustained_fps": false,
+    "concurrent_foreign_cpu_store_attribution": false
+  },
+  "limits": [
+    "This immutable source/build snapshot excludes subsequent device attempts.",
+    "The post-store dirty walk classifies new dirty pages as Driver; a concurrent foreign CPU store inside an own-store callback is not attributed precisely by these checks. This classification window also exists in the legacy path.",
+    "Prior/subsequent CPU stamps, alias generations, byte guards and callback cleanup are tested; these are distinct from concurrent foreign CPU writes.",
+    "Existing non-AGC HostWrite collection behavior is not generalized; AGC bulk copies hold the tracker mutex.",
+    "No ARM64EC/iPad/GPU, matched speed or FPS gain follows from local x86-64 Wine and host-suite checks."
+  ],
+  "privacy": "Sanitized source/test/build hashes and aggregate results only; private game data, captured pixels/shaders, guest addresses, device identifiers and pairing remain local."
+}

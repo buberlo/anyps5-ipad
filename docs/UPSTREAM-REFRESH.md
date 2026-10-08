@@ -155,6 +155,32 @@ The Git Bash HLE test route now includes the full graphics suite and repeats the
 complete exception test 20 times, failing on an error or timeout. Native Windows
 quota behavior and physical iPad execution remain separate qualification steps.
 
+## Physical iPad contract follow-up
+
+The current `guest_memory_tests.exe`, with the repaired HLE libraries, completes
+on the M2 iPad with exit code 0. This covers the full guest memory test, including
+configured arena bounds, inaccessible middle-page lock rejection and protection
+restoration. It does not qualify Solitaire rendering or audio.
+
+The complete exception test still fails on the device: self-delivery succeeds,
+but its first busy-thread delivery expects a second handler call and sees only
+one. Wine's native context snapshot/cache path does not establish delivery of the
+modified x86 context to the running FEX thread.
+
+A private, default-off native Wine/Madeira prototype tried FEX's existing suspend
+doorbell and target-side context publication. Three bounded runs did not complete
+the pending context. The diagnostic run verifies the doorbell write succeeds;
+no suspend trap is observed. Disabling multiblock compilation for one diagnostic
+run does not resolve this. The precise reason for the missing trap remains open.
+FEX source was not changed, and the failed prototype was not promoted into the
+public patch stack. Build 28, native source inputs and staged archives were
+restored; the device library and configuration remain byte-identical.
+
+Interpolation guards and private shader replay pass locally. A rendered iPad
+draw with these updated libraries remains unqualified. See the
+[device result record](evidence/ipad-contract-followup-20261008.json), which keeps
+memory success separate from incomplete exception and graphics qualification.
+
 ## Runtime qualification after integration
 
 Source integration, local builds and host contracts do not qualify the iPad

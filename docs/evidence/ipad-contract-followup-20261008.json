@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "physical_ipad_contract_followup",
+  "repair_commit": "6a5ad0c1aaf6ba95f8bfce6af6b8eee44f45c28b",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "memory": {
+    "status": "passed",
+    "app_build": 29,
+    "exit_code": 0,
+    "native_suspend_prototype_enabled": false,
+    "test_exe_sha256": "e511f95175926d7d791f4fda27d85e3499ff7b23b4f254273c4b079566562139",
+    "log_sha256": "d4af5d26f5a2f436f54a349bc38e42f0e4b524372e926637f5b518524fa07aef",
+    "library_and_config_restored": true
+  },
+  "exception": {
+    "status": "not_qualified",
+    "runs": [
+      {
+        "app_build": 28,
+        "mode": "default",
+        "status": "failed_first_busy_delivery",
+        "log_sha256": "e57c3f9f63c3a0e684ccd76c93c7f55bc70a759b51db00ac2b94a8b1e2dbda4b",
+        "library_and_config_restored": true
+      },
+      {
+        "app_build": 29,
+        "mode": "cooperative",
+        "status": "pending_context_did_not_complete",
+        "log_sha256": "ca07dc388b371385fa8678b59e3d712fd5bc79840f026bddd4d8d1cecf50c537",
+        "library_and_config_restored": true
+      },
+      {
+        "app_build": 29,
+        "mode": "cooperative-singleblock",
+        "status": "pending_context_did_not_complete",
+        "log_sha256": "c93b628495a8efb6d932032c6fca7ef1bbf6951a42670ba04f55b49ec8481b4c",
+        "library_and_config_restored": true
+      },
+      {
+        "app_build": 30,
+        "mode": "cooperative",
+        "status": "doorbell_written_pending_context_did_not_complete",
+        "log_sha256": "82421ba257396e6aea5779534ce777f721007e3fe6c9c6b33283686888100f52",
+        "library_and_config_restored": true
+      }
+    ],
+    "interpretation": "The existing context cache does not deliver the first busy-thread exception. A private opt-in native suspend prototype writes the existing FEX doorbell successfully but gets no complete target context within the bounded run. The missing trap is observed; its cause is not yet proven.",
+    "fex_source_changed": false,
+    "prototype_promoted": false,
+    "prototype_retained_only_privately": true
+  },
+  "graphics_interpolation": {
+    "status": "host_guard_and_shader_replay_passed_device_draw_not_qualified",
+    "host_evidence": "runtime-contract-fixes-20261008.json"
+  },
+  "restoration": {
+    "installed_app_build": 28,
+    "library_and_config_byte_preserved": true,
+    "prototype_sources_and_staged_archives_restored": true
+  },
+  "solitaire_gameplay_qualified": false
+}

@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "kind": "bounded_physical_ipad_native_release_source_fingerprint_and_postmix_evidence",
+  "status": "native50_private_capture_and_controls_verified_native48_restored_audio_cause_quality_and_performance_pending",
+  "candidate": {
+    "nativeHostBuild": 50,
+    "temporaryInstallation": true,
+    "restoredNativeHostBuild": 48,
+    "anyps5PatchCount": 60,
+    "source61StagingCopyEnabled": false,
+    "normalMemoryTracking": true,
+    "nativeChange": "Only audio_null_ios.o and native archive index changed from frozen native49; real-time mixer/render callback unchanged. Optional ReleaseBuffer fingerprints are recorded after existing silent zero/clamp and before scratch-to-ring copy.",
+    "sourcePatch": {
+      "path": "patches/madeira/0050-bounded-audio-release-trace.patch",
+      "sha256": "fe1cc12431cdbd00cab8b34999e820ba5cba2f49b6c2db716fdd98bec9fb94bb"
+    },
+    "sourceHashes": {
+      "audio_null_ios.c": "ec0a95775c898a3b7238dd484e2eadae72e42358b92ebc94da14d5abd0526739",
+      "aps5_audio_release_trace.h": "c3305edee1fd1c42d2ea5a3b0022f1cda98d1db417238b006f5a125aa9fd852f",
+      "aps5_audio_postmix_capture.h": "ef6480f5b043d93c98476a25852da933e5660287ec106dd618b0705405381979"
+    },
+    "hostBuildEvidence": {
+      "path": "docs/evidence/audio-release-trace-host-build-20261009.json",
+      "sha256": "bff87eb56ac07ce2d916f5b5b992c99b0319d5eba818bfe7dcab0816497d4c76",
+      "historicalBuiltCheckpointPreserved": true
+    },
+    "native50AppMachOSha256": "70f628b396ac7cb8b8cc72b27a352da1d6f58bf78d1321e0ab7c762794e69751",
+    "native48AppMachOSha256": "707010f20df7dfe127ab4a240b4a3d3bc99e81aa0f837ff7faef976ef17a8682",
+    "releaseGate": "MADEIRA_AUDIO_TRACE_RELEASE=1",
+    "postmixGate": "MADEIRA_AUDIO_CAPTURE_POSTMIX=1",
+    "bothGatesDefaultOff": true,
+    "bothSkipFrames": 10560000,
+    "apiDiagnosticsEnabled": [
+      "APS5_TRACE_AUDIOOUT",
+      "APS5_TRACE_AUDIOOUT2"
+    ],
+    "captureAndProfilingOverheadMeasured": false
+  },
+  "session": {
+    "nominalRunSeconds": 720,
+    "childOperationSeconds": 786.342669916,
+    "inputActions": 9,
+    "uniqueBoundedXCTestResultSets": 9,
+    "allTestExitCodesZero": true,
+    "mainProcessContinuousBeforeAndAfterAllActions": true,
+    "inputAdmissionWindowSeconds": [
+      60,
+      580
+    ],
+    "menuAndGameplayMixedRoute": true,
+    "initialMenuObserved": true,
+    "visibleActionReview": [
+      {
+        "ordinal": 1,
+        "button": "Right",
+        "holdMs": 250,
+        "observed": "Selects Golf from Canfield menu."
+      },
+      {
+        "ordinal": 2,
+        "button": "A",
+        "holdMs": 500,
+        "observed": "Starts a complete seven-column Golf board; waste 3-heart, first-column 8-club selected."
+      },
+      {
+        "ordinal": 3,
+        "button": "Y",
+        "holdMs": 250,
+        "observed": "Waste changes from 3-heart to 10-spade."
+      },
+      {
+        "ordinal": 4,
+        "button": "Right",
+        "holdMs": 250,
+        "observed": "Selects second-column 7-spade."
+      },
+      {
+        "ordinal": 5,
+        "button": "Right",
+        "holdMs": 250,
+        "observed": "Selects third-column 5-club."
+      },
+      {
+        "ordinal": 6,
+        "button": "Right",
+        "holdMs": 250,
+        "observed": "Selects fourth-column 5-heart."
+      },
+      {
+        "ordinal": 7,
+        "button": "Right",
+        "holdMs": 250,
+        "observed": "Selects fifth-column 9-spade."
+      },
+      {
+        "ordinal": 8,
+        "button": "A",
+        "holdMs": 500,
+        "observed": "Moves 9-spade onto 10-spade waste and exposes 4-club in the fifth column."
+      },
+      {
+        "ordinal": 9,
+        "button": "B",
+        "holdMs": 250,
+        "observed": "Undo restores 9-spade over 4-club and 10-spade waste."
+      }
+    ],
+    "legalMoveAndUndoObserved": true,
+    "finalSnapshot": {
+      "nominalSeconds": 720,
+      "fullBoardVisible": true,
+      "timer": "09:09",
+      "undoStateRetained": true
+    },
+    "osAuthorizationOverlaySeenInReviewedSnapshots": false,
+    "unbrokenForegroundProvedBySnapshots": false,
+    "audioCaptureExactlyMappedToInputOrVisualScene": false
+  },
+  "postmixCapture": {
+    "source": "Existing RemoteIO stereo postmix immediately after existing clamp and before callback epoch publication; before hardware route or volume.",
+    "microphoneUsed": false,
+    "hardwareRouteOrVolumeChanged": false,
+    "rateHz": 48000,
+    "channels": 2,
+    "format": "float32le",
+    "frames": 480000,
+    "renderedSeconds": 10,
+    "pcmBytes": 3840000,
+    "wavBytes": 3840058,
+    "result": "complete",
+    "callbackRecords": 470,
+    "capturedFrameDistribution": {
+      "512": 1,
+      "1024": 468,
+      "256": 1
+    },
+    "requestedAndEffectiveCallbackFrames": 1024,
+    "finiteSamples": 960000,
+    "nonfiniteSamples": 0,
+    "atOrBeyondUnitSamples": 0,
+    "exactZeroSamples": 249942,
+    "channelPeaks": [
+      0.003237459110096097,
+      0.0021116449497640133
+    ],
+    "meanAbsoluteSample": 0.00031854719383161886,
+    "callbackContinuity": {
+      "transitions": 469,
+      "epochStep": 1,
+      "sampleTimeGapsFrames": 0,
+      "allHostTimeAndSampleTimeFlagsValid": true,
+      "hostTicksMonotonic": true,
+      "maximumHostIntervalJitterMilliseconds": 0.00012500000000059686,
+      "boundary": "No captured callback epoch/sample-time gaps. These records do not establish advancing music, correct source audio or hardware playback."
+    },
+    "actualPcmPeriod": {
+      "byteEqualAcrossEntireCaptureAtLagFrames": 1024,
+      "periodMilliseconds": 21.333333333333332,
+      "full1024FrameCallbackBlocks": 468,
+      "distinctFullCallbackByteBlocks": 1,
+      "callbackBoundaries": 469,
+      "boundaryJumpMinimumAndMaximum": 0.001161303254775703,
+      "largestAdjacentFrameChannelJump": 0.0019290231284685433,
+      "adjacentFrameJumpsAbovePoint03": 0,
+      "byteIdentityScope": "Actual captured postmix PCM only; source JSON has no raw PCM."
+    }
+  },
+  "nativeReleaseSources": {
+    "placement": "After existing silent-buffer zeroing and frame clamp; before native scratch-to-ring copy and ring write publication.",
+    "streams": [
+      {
+        "anonymousNativeStream": 0,
+        "nativeMixerSlot": 0,
+        "rateHz": 48000,
+        "channels": 2,
+        "format": "float32le",
+        "frameBytes": 8,
+        "result": "complete",
+        "sourceFramesCaptured": 480000,
+        "submissions": 470,
+        "canonicalBlocks": 470,
+        "full1024FrameBlocks": 468,
+        "distinctFullBlockFingerprints": 1,
+        "firstAndLastPartialFrames": [
+          512,
+          256
+        ],
+        "sourceFrameAndByteOffsetsValid": true,
+        "sourceSubmissionOrdinalsAdvanceByOne": true,
+        "rawWritePositionsAdvanceBy1024Frames": true,
+        "rawWriteMinusPlayFramesForAllSubmissions": 1024,
+        "completedPostmixEpochsAdvanceByOne": true,
+        "sourceMonotonicSpanSeconds": 10.00024,
+        "capturedPostmixCurrentEpochMinusSourceCompletedEpochForAll470": 2,
+        "sameShapedExploratoryPostmixFingerprintMatches": 470,
+        "equallySizedZeroByteFingerprintMatches": 0,
+        "rawSourcePcmCaptured": false,
+        "sourceExactByteIdentityProved": false
+      },
+      {
+        "anonymousNativeStream": 1,
+        "nativeMixerSlot": 1,
+        "rateHz": 48000,
+        "channels": 2,
+        "format": "float32le",
+        "frameBytes": 8,
+        "result": "complete",
+        "sourceFramesCaptured": 480000,
+        "submissions": 470,
+        "canonicalBlocks": 470,
+        "full1024FrameBlocks": 468,
+        "distinctFullBlockFingerprints": 1,
+        "firstAndLastPartialFrames": [
+          512,
+          256
+        ],
+        "sourceFrameAndByteOffsetsValid": true,
+        "sourceSubmissionOrdinalsAdvanceByOne": true,
+        "rawWritePositionsAdvanceBy1024Frames": true,
+        "rawWriteMinusPlayFramesForAllSubmissions": 1024,
+        "completedPostmixEpochsAdvanceByOne": true,
+        "sourceMonotonicSpanSeconds": 10.000295,
+        "capturedPostmixCurrentEpochMinusSourceCompletedEpochForAll470": 2,
+        "sameShapedExploratoryPostmixFingerprintMatches": 0,
+        "equallySizedZeroByteFingerprintMatches": 470,
+        "rawSourcePcmCaptured": false,
+        "sourceExactByteIdentityProved": false
+      }
+    ],
+    "fingerprintsOnly": true,
+    "rawFingerprintsPublished": false,
+    "streamsAreNotGuestPortIdentities": true,
+    "interpretation": "Both native source streams advance ordinals, ring positions and completed-callback epochs while each has one constant fingerprint across 468 full 1024-frame blocks. Stream A matches all 470 same-shaped postmix block fingerprints; stream B matches equally sized zero-byte fingerprints. This establishes repeated fingerprints before the native ring copy, not exact source byte equality or the defect origin."
+  },
+  "activeHleApiObservation": {
+    "legacySceAudioOutOpenObserved": true,
+    "openType": 1,
+    "requestedFrames": 256,
+    "rateHz": 48000,
+    "loggedInternalFormatCode": 5,
+    "internalFormatMeaning": "F32Stereo",
+    "rawGuestFormatParameterIsDifferentEnumeration": true,
+    "actualOutputBufferIngressTraced": false,
+    "audioOut2EventLinesObserved": 0,
+    "onlyLegacyApiProved": false,
+    "guestPortToNativeStreamMappingQualified": false,
+    "boundary": "The actual open event proves invocation of legacy sceAudioOutOpen. No AudioOut2 event was seen; absence of those lines does not establish that no AudioOut2 calls or other audio APIs occurred."
+  },
+  "alignmentLimits": {
+    "sourceStampEpochMeaning": "Last completed postmix callback epoch, sampled before native ring copy.",
+    "postmixStampEpochMeaning": "Current callback epoch, recorded before completion publication.",
+    "separatelySampledSourceEpochAndPlayCursor": true,
+    "sourceCursorMayObserveInFlightCallbackBeforeEpochPublication": true,
+    "sourceClock": "CLOCK_MONOTONIC nanoseconds",
+    "postmixClock": "CoreAudio host ticks and endpoint sample_time",
+    "crossClockCalibrationQualified": false,
+    "equalSkipCountsHaveSharedOriginQualified": false,
+    "exactCapturedSourceToPostmixSamplePhaseQualified": false,
+    "sameIndexHashMatchIsExploratory": true,
+    "hashEqualityProvesSourceByteIdentity": false,
+    "mixingCanChangeSourceBytes": [
+      "per-channel gains",
+      "channel folding",
+      "other active clients",
+      "summing",
+      "clamping",
+      "underruns"
+    ],
+    "fnvCollisionPossible": true
+  },
+  "presentationCompletionDiagnostics": {
+    "parser": {
+      "path": "tools/perf/summarize_display.py",
+      "sha256": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+      "strictClosedLogParsing": true
+    },
+    "displayRows": 675,
+    "nativeRows": 675,
+    "source": "VK_GOOGLE_display_timing",
+    "swapchainSize": [
+      768,
+      432
+    ],
+    "completionIntervals": 7869,
+    "completionSpanSeconds": 708.334508667,
+    "meanCompletionsPerSecond": 11.109158037222423,
+    "missedVblanks": 34632,
+    "p50p95p99": "All in unbounded histogram overflow above 25.6 ms.",
+    "lastNativeFootprintMiB": 3904,
+    "sampledNativePeakMiB": 3968,
+    "boundary": "Completion telemetry over a mixed menu/gameplay route with source, capture and renderer profiling enabled. It is neither unique displayed guest FPS nor a matched before/after benchmark; no speed gain or sustained resource behavior is accepted."
+  },
+  "restoration": {
+    "closedParentAndChildReceiptsSuccessful": true,
+    "nativeHostVersionsVerified": [
+      48,
+      50,
+      48
+    ],
+    "runtimeCandidateReadbackFilesRehashed": 56,
+    "originalRuntimeBackupAndRestoredFilesRehashed": 56,
+    "childConfigLibraryAndManifestByteRestored": true,
+    "actualParentExtensionlessMetadataByteVerifiedBeforeAfter50AndAfter48": true,
+    "priorDiagnosticFilesRehashedAfterRestore": 7,
+    "priorAudioFilesBytePreserved": 2,
+    "fourFinalWorkerExportsByteEqualToFinishedPreview": true,
+    "onlyOwnMainAndHelperAbsentAfterClose": true,
+    "childAndParentRollbackErrors": 0,
+    "leaseOwnerNoneObservedFromCoordinationFile": true,
+    "forcedProcessClosureIsNotCleanGuestExit": true,
+    "interimLogCopy": "One attempted in-run log transfer failed with a socket error; final closed log transfer succeeded and is separately hashed. Audio preview and final export digests match."
+  },
+  "evidence": {
+    "privateMediaLogsImagesReceiptsAndSourceFingerprintValuesRemainLocalOutsideGit": true,
+    "anonymousSha256References": {
+      "childReceipt": "9c3c3b8f775a4ccbc1cca66d56e4814a5886f6aef34695a2a1ffc2b6b3079e81",
+      "parentReceipt": "e4893d6dd82c90a655a434b458f81285909b501fd5a292c4b1bcdf995c44b4f3",
+      "rollbackReport": "b14baef890a14a99fc7f8d0ad0f4fdf91a739893d041873597810655979f1701",
+      "rootRestore": "ecca79fddebc7439062f01ed840563a4cea2223416e4ff30bb5cce5703a5bd44",
+      "rootClosed": "3b27f13c42d380cfd86c4505d62c65e4b92e2b478e4689eb6c8ca567719f5909",
+      "closedLog": "139d64b8dee7091e69dd5527881fb843725fd8b0ec9dcb1b084d41e0b764a934",
+      "numericPreview": "eabad87b9b4c7ed87927de35419b185675f3a54d7af88f781c0237d4442f0a5d",
+      "parser": "bdda1e2cc8572f8b98b0adc7a703d1d2f13cd3bf0123821ea3b733fa9401b263",
+      "failedInterimLogCopy": "1fa57bc73d706e555bc1c80af86f973df737e8f42a78f762aca32fb579f99e22",
+      "action01receipt": "df8a3034ad3dfa84609d36401240be360905c477ffe00e706fc3620ddab9ba3c",
+      "action01screen": "6dd33b8aeae709e320fac4be3f90abf444301ebfb5fab00005f538395387d16d",
+      "action01testlog": "b397fb310c374d6a596fd2cb7fb7a3edb8c796ec66de0f1d00c4d8aec8854fa3",
+      "action01testplan": "af072a1f40bb4d1ab84dd9421d92a4093ac7235fea5d6e44521a288cc219d8de",
+      "action02receipt": "3a19a3b25ce9638e13f41d768dfd7626e5e861d88f7e18f1799eda10becd36bb",
+      "action02screen": "b63481a46a7f3f77c71c84ea7bebbead8cef04ed95ec6e6b8ee7934491c1d3df",
+      "action02testlog": "10ca502ad03fcede898658041b2ae4b3e18b4370b1e3342af3eb8716bd9ac404",
+      "action02testplan": "817c927322340116e2b972752ee3b27e6dbd45ca6a5d10ef0563e1e4eebb1135",
+      "action03receipt": "e01426e015ec3d6c9e357e549a45e6a5eb23c345984d553c01e5c8ea502f52b8",
+      "action03screen": "d9210471cb848b6031d4695584797601eb1f152d278199fe2692f480f96b80d0",
+      "action03testlog": "2f7faf14e6fbdc0d263469c03f7f349ce3573a05e0e2551dd359a1cb63abf44d",
+      "action03testplan": "67c6066d1c271c6f65dd35e684b45bc2b5a21d86f792a799143c9d4f3e49f725",
+      "action04receipt": "060b3919b66da2b5d3a98a2b8a636cead05503789492c40c1c790df32be9f986",
+      "action04screen": "9fc1aa449c0fdb6b78dffef685849bca46d892ead45d82ab2fad0cd250fa658e",
+      "action04testlog": "9c462dc416be49c8dc975bcc6d4c7895dfdc6477dc6dae3c2968a0df99e4088d",
+      "action04testplan": "af072a1f40bb4d1ab84dd9421d92a4093ac7235fea5d6e44521a288cc219d8de",
+      "action05receipt": "8a24e91c5b347968ed4b3e236e2884461d7d1d4dfcededc0b6b7fb192cb68567",
+      "action05screen": "da7d288fed5fb2ef503f220fb8b950bc422bd52979cadde2205f8a22d96e57bc",
+      "action05testlog": "812a341500582cdf918dbf688d44ac293e3bec6d158712228c45a0c8cc576e7f",
+      "action05testplan": "af072a1f40bb4d1ab84dd9421d92a4093ac7235fea5d6e44521a288cc219d8de",
+      "action06receipt": "14ee85dc438d555cc6a60fe075bb885faa12e4109ada8308d7ebdaa5f8f23882",
+      "action06screen": "767a0c01c9e7d62ac6827a6de69e28283236d02f41a9f43f78ef9dd1dad20d8d",
+      "action06testlog": "6f1811b331e45d2d520407b1175185d836b15fd4dfe2475daaf14b5739f002eb",
+      "action06testplan": "af072a1f40bb4d1ab84dd9421d92a4093ac7235fea5d6e44521a288cc219d8de",
+      "action07receipt": "a96aade88bea7c84fd49bf64fbda948fd36a638130e89b3425a32ef4c1480d7c",
+      "action07screen": "6168e854dc58f006a53f61dd2caa716c0f7b660051aee45ea9187a3e119c99d8",
+      "action07testlog": "d5c248732b3fbba910523ad5117e2facab8b5dfb6cc36774e30a75c49a92f87b",
+      "action07testplan": "af072a1f40bb4d1ab84dd9421d92a4093ac7235fea5d6e44521a288cc219d8de",
+      "action08receipt": "f5e74373bb2d345ad1344ce4923c9e7e70b491bc84667877933f014caf958fc6",
+      "action08screen": "ec61864c6bf8afec469993276512477d860a19c567926c584b3808fbcd4a3ce8",
+      "action08testlog": "3e6affea7312be420c9dc95e7eee1c3cf2cff4a33894481ff474092ed3db1fff",
+      "action08testplan": "817c927322340116e2b972752ee3b27e6dbd45ca6a5d10ef0563e1e4eebb1135",
+      "action09receipt": "b73544c70d294834b573cd1765583c66937e76389c0f1579599c2c09e0f0719d",
+      "action09screen": "74a3a64f331b901e130e4540f8d824089ee8be0675a0340f2d29fd0038f597ca",
+      "action09testlog": "7593b752885105b12e6c553870ffb95756bc6e955d9ce163ce0d741388002b88",
+      "action09testplan": "311584e55465c235fea402ee96edf20d7118ea31e206a88686e6e4a092275f3b",
+      "initialMenuSnapshot": "f29dd7a0c9f6a0beb1cda4117559f56107a0d6642062eb2434c52cbb41de8d91",
+      "finalBoardSnapshot": "296908a2bc6c0726a3aee78593d33ab5ea9324f33d73b54df8b841480eff3d78",
+      "privatePostmixWav": "6d69258d7a827da51334d139533e8b19a86e1326f11bc4cf8e43c0204b8b1418",
+      "privatePostmixMetadata": "40b6366478f6d8580a9058538b4e298009c61b6cbc98c39e8b48ef81fe725361",
+      "privateReleaseSourceA": "e1c1d153c7e940b4bd50be56818e4b38aefd4e534ef275889d8922f40fc85be3",
+      "privateReleaseSourceB": "a7240d32bea652627ea80ce2751e249768a2db1d176743114c8f570157d3b65d",
+      "independentClosedAudit": "dacdf593db021769e18347bb05f14e479ca32724f4b44f4f488f12b818346894"
+    }
+  },
+  "acceptance": {
+    "nativeReleaseMetadataAndActualPostmixBytesQualified": true,
+    "visibleSelectedInputResponsesAndLegalMoveUndoQualified": true,
+    "audioCauseLocated": false,
+    "sourceExactByteIdentityProved": false,
+    "audibleQualityAccepted": false,
+    "hardwarePlaybackAccepted": false,
+    "fullGameAccepted": false,
+    "saveLoadAccepted": false,
+    "lifecycleAccepted": false,
+    "performanceAccepted": false,
+    "matchedBeforeAfterRun": false,
+    "captureOverheadMeasured": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "The postmix capture repeats exactly at 1024 frames; advancing callback times do not prove correctly advancing music.",
+    "Release source JSON contains hashes and metadata only. Equal FNV values do not prove exact byte identity, a particular guest producer or where repetition begins.",
+    "Sample offsets, ordinals and epoch differences are validated within each stream; clocks, skip origins and source/postmix phase are not independently aligned.",
+    "Sparse reviewed snapshots prove selected menu, selection, legal move and undo responses, not unbroken foreground output or complete gameplay compatibility.",
+    "No listening, hardware audio, sustained 60 FPS, thermal, save/load, lifecycle or memory-growth acceptance is claimed.",
+    "No private PCM, fingerprint values, game assets, raw logs, images, network addresses, pairing data, process/device identifiers or private paths are included."
+  ]
+}

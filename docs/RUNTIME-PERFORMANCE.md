@@ -65,6 +65,13 @@ postmix skip values do not align windows, because their ordinals and callback
 epochs describe different events. See the separate
 [source and signed-host checkpoint](evidence/audio-release-trace-host-build-20261009.json).
 
+A [separate iPad source/audio run](evidence/ipad-solitaire-audio-release-source-20261009.json)
+finds the same exact 1,024-frame postmix period and constant fingerprints before
+the native ring copy. Source ordinals and ring cursors still advance. The run
+also verifies a legal Golf move and undo; it does not identify the audio defect,
+accept sound quality or qualify performance. Original runtime bytes and Native48
+are restored after the temporary test.
+
 ## Three swapchain images
 
 The HLE now requests three images on initial creation and resize. Set

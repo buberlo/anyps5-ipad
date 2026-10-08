@@ -736,6 +736,27 @@ FEX, PE, MoltenVK, profiles and native48 win32u inputs remain preserved. See the
 This build record excludes later device outcomes, audible quality, diagnostic
 cost and performance acceptance.
 
+A separate 720-second iPad run captures 480,000 postmix frames and two complete
+native source windows. The actual postmix PCM repeats byte-for-byte at a
+1,024-frame lag; each source has one constant fingerprint across 468 full blocks
+while submission ordinals, ring positions and callback epochs advance. One
+source's same-shaped fingerprints match the postmix; the other matches zero-byte
+fingerprints. These are source fingerprints, not proof of exact source-byte
+identity, aligned windows or defect origin. A legacy `sceAudioOutOpen` event
+requests 256 frames at 48 kHz in internal F32Stereo format; no AudioOut2 event
+is observed, which does not prove exclusive API usage or a source/port mapping.
+
+Nine individually reviewed actions select Golf, start the full board, draw
+from the stock, select columns, move 9♠ onto 10♠ exposing 4♣, and undo that move.
+The final board remains visible at nominal 720 seconds. The strict reader
+accepts 675 display rows: 7,869 completion intervals over 708.335 seconds and
+34,632 missed vblanks. Profiling and capture remain enabled; this mixed route is
+not an accepted FPS benchmark. Native48, all 56 original runtime files,
+configuration/library/manifest, seven prior diagnostics and prior audio exports
+are restored and independently verified. See the
+[separate source/audio device record](evidence/ipad-solitaire-audio-release-source-20261009.json).
+Audible quality, audio cause, speed and complete gameplay remain open.
+
 ## Native x64 suspension and wait results: 2026-10-08
 
 Madeira `0037-target-published-x64-suspend.patch` and Wine

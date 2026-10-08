@@ -1,5 +1,5 @@
 diff --git a/core/shader/recompiler/Optimization/src/ConstantFolder.cpp b/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
-index a05a6c7a86de12cb1628dd28fd875299e0f70b9f..69618bd941860700789ee1600c8ca0940dce1f75 100644
+index a05a6c7a..69618bd9 100644
 --- a/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
 +++ b/core/shader/recompiler/Optimization/src/ConstantFolder.cpp
 @@ -97,6 +97,38 @@ bool replaceBinaryIdentity(IrValue& inst, IrType type, std::uint64_t identity) {

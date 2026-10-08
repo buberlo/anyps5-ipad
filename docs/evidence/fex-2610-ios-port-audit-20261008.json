@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "fex_2610_mainline_vs_current_ios_port_source_audit",
+  "mainline_release": {
+    "tag": "FEX-2610",
+    "commit": "14c92681f4d62cf84d901460e0358de09c8847a7",
+    "published_at": "2026-10-07T19:19:40Z",
+    "url": "https://github.com/FEX-Emu/FEX/releases/tag/FEX-2610"
+  },
+  "ios_port": {
+    "branch": "ios-port-2607",
+    "commit": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+    "live_branch_still_matches_pin": true
+  },
+  "comparison": {
+    "status": "diverged",
+    "common_base": "1cc4b93e7a71c883ec021b71359f136394dc1f3c",
+    "ios_port_commits_beyond_common_base": 98,
+    "mainline_commits_beyond_common_base": 756,
+    "merge_conflict_count": 21,
+    "conflicts": [
+      "Merge conflict in External/rpmalloc",
+      "Merge conflict in FEXCore/Scripts/config_generator.py",
+      "Merge conflict in FEXCore/Source/Interface/Context/Context.h",
+      "Merge conflict in FEXCore/Source/Interface/Core/CPUBackend.cpp",
+      "Merge conflict in FEXCore/Source/Interface/Core/CPUBackend.h",
+      "Merge conflict in FEXCore/Source/Interface/Core/Core.cpp",
+      "Merge conflict in FEXCore/Source/Interface/Core/Frontend.cpp",
+      "Merge conflict in FEXCore/Source/Interface/Core/JIT/BranchOps.cpp",
+      "Merge conflict in FEXCore/Source/Interface/Core/JIT/JIT.cpp",
+      "Merge conflict in FEXCore/Source/Interface/IR/PassManager.cpp",
+      "Merge conflict in FEXCore/Source/Interface/IR/Passes/RedundantFlagCalculationElimination.cpp",
+      "Merge conflict in FEXCore/Source/Utils/Allocator.cpp",
+      "Merge conflict in FEXCore/include/FEXCore/Utils/PrctlUtils.h",
+      "Merge conflict in FEXHeaderUtils/FEXHeaderUtils/Syscalls.h",
+      "Merge conflict in Source/Windows/ARM64EC/Module.S",
+      "Merge conflict in Source/Windows/ARM64EC/Module.cpp",
+      "Merge conflict in Source/Windows/Common/CPUFeatures.cpp",
+      "Merge conflict in Source/Windows/Common/FEXUnixLib.cpp",
+      "Merge conflict in Source/Windows/Common/Priv.h",
+      "Merge conflict in Source/Windows/Common/WinAPI/IO.cpp",
+      "Merge conflict in Source/Windows/WOW64/Module.cpp"
+    ],
+    "merge_analysis_sha256": "9040d8373c0fe57a888055fe4c808867f9df2c161816fd3e42089746b48b42f7"
+  },
+  "pending_avx_inspection": {
+    "source": "FEXCore/Source/Interface/Core/OpcodeDispatcher.h",
+    "release_source_sha256": "8369a8430027e6a88b031c0f6ba9384c09972f078fed18000b3bab123ee06f63",
+    "sra_only_mask_contains_upper_avx": false,
+    "conclusion": "The failing per-instruction flush still excludes AVXHigh in this release. Source inspection is not execution of the pending-AVX probe on FEX-2610."
+  },
+  "runtime_changed": false,
+  "fex_source_files_changed": false,
+  "fex_2610_ios_build_or_device_qualified": false,
+  "github_actions_used": false
+}

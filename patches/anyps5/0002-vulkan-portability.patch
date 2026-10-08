@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index e6ce5908f715cedbfda4090bb3a5a96cb56c09ec..da17734c27f4676aa1a7a9c8534654f5503cfdb6 100644
+index 755ba869..a27390c1 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 @@ -25,6 +25,14 @@
@@ -121,7 +121,7 @@ index e6ce5908f715cedbfda4090bb3a5a96cb56c09ec..da17734c27f4676aa1a7a9c8534654f5
      VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT imageAtomicInt64Features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT};
      if (hasExtension(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME)) {
          VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &imageAtomicInt64Features};
-@@ -900,7 +954,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -901,7 +955,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      enabled.tessellationShader = available.tessellationShader;
      state->tessellationShader = enabled.tessellationShader == VK_TRUE;
      if (state->tessellationShader) state->capabilities.push_back(3);
@@ -130,7 +130,7 @@ index e6ce5908f715cedbfda4090bb3a5a96cb56c09ec..da17734c27f4676aa1a7a9c8534654f5
      require(available.samplerAnisotropy && available.textureCompressionBC, "device lacks sampler anisotropy or BC texture compression support required for texture sampling");
      enabled.samplerAnisotropy = VK_TRUE;
      enabled.textureCompressionBC = VK_TRUE;
-@@ -1065,6 +1119,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1066,6 +1120,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      }
      bdaFeatures.pNext = &byteFeatures;
      deviceInfo.pNext = &bdaFeatures;

@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libc/src/Strings.cpp b/core/libs/prx/libc/src/Strings.cpp
-index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab724493e492 100644
+index 62c41a92..ba91ca94 100644
 --- a/core/libs/prx/libc/src/Strings.cpp
 +++ b/core/libs/prx/libc/src/Strings.cpp
 @@ -6,9 +6,21 @@
@@ -21,10 +21,10 @@ index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab72
 +    return error == ERANGE ? std::numeric_limits<unsigned long long>::max() : value;
 +}
 +
- extern "C" {
+ namespace {
  
- void* APS5_VABI memset_nid_postfix(void* s, int c, size_t n) {
-@@ -87,7 +99,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
+ int CompareUnits(char16_t left, char16_t right) {
+@@ -108,7 +120,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
  }
  
  std::uint64_t APS5_VABI strtoul_nid_postfix(const char* str, char** endptr, int base) {
@@ -33,7 +33,7 @@ index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab72
  }
  
  long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base) {
-@@ -95,7 +107,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
+@@ -116,7 +128,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
  }
  
  unsigned long long APS5_VABI strtoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -42,7 +42,7 @@ index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab72
  }
  
  double APS5_VABI strtod_nid_postfix(const char* str, char** endptr) {
-@@ -271,7 +283,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
+@@ -300,7 +312,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
  }
  
  unsigned long long APS5_VABI _Stoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -50,12 +50,12 @@ index 8cba0d618b2cc9fc2a855d9ef9a9782338958647..fa21ad85d58dfd529e8c6552515eab72
 +    return GuestUnsignedConversion(str, endptr, base);
  }
  
- size_t APS5_VABI wcslen_nid_postfix(const wchar_t* s) {
+ size_t APS5_VABI wcslen_nid_postfix(const char16_t* s) {
 diff --git a/core/libs/tests/GuestMath.cpp b/core/libs/tests/GuestMath.cpp
-index 259aeb3d6bf8cab1450f6d660d0d2052b8814ea2..aeefbecb91608a9bbc41d0b05167ce668c2cb662 100644
+index ffdc06df..23e821ae 100644
 --- a/core/libs/tests/GuestMath.cpp
 +++ b/core/libs/tests/GuestMath.cpp
-@@ -13,6 +13,9 @@ long double APS5_VABI strtold_nid_postfix(const char*, char**);
+@@ -15,6 +15,9 @@ long double APS5_VABI strtold_nid_postfix(const char*, char**);
  std::int64_t APS5_VABI strtol_nid_postfix(const char*, char**, int);
  std::uint64_t APS5_VABI strtoul_nid_postfix(const char*, char**, int);
  std::intmax_t APS5_VABI strtoimax_nid_postfix(const char*, char**, int);
@@ -65,7 +65,7 @@ index 259aeb3d6bf8cab1450f6d660d0d2052b8814ea2..aeefbecb91608a9bbc41d0b05167ce66
  int* APS5_VABI __error_nid_postfix();
  struct LibcFloatConstant { std::uint32_t bits[4]; };
  extern LibcFloatConstant _FInf_nid_postfix;
-@@ -120,19 +123,28 @@ static void CheckIntegerConversions() {
+@@ -124,19 +127,28 @@ static void CheckIntegerConversions() {
          {"123!", 10, 123, 3, 0}
      };
      for (const auto& test : unsignedCases) {

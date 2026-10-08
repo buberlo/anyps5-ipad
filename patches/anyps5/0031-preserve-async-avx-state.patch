@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libkernel/System/src/Exception.cpp b/core/libs/prx/libkernel/System/src/Exception.cpp
-index ba3d9b1..78f895c 100644
+index ba3d9b11..78f895cc 100644
 --- a/core/libs/prx/libkernel/System/src/Exception.cpp
 +++ b/core/libs/prx/libkernel/System/src/Exception.cpp
 @@ -6,6 +6,8 @@
@@ -168,7 +168,7 @@ index ba3d9b1..78f895c 100644
  
  extern "C" {
 diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRaiseException.cpp
-index 830d8fd..9c2f965 100644
+index a2173d1d..38811ce2 100644
 --- a/core/libs/tests/GuestRaiseException.cpp
 +++ b/core/libs/tests/GuestRaiseException.cpp
 @@ -38,6 +38,10 @@ static std::atomic<std::thread::id> handlerThread;
@@ -301,7 +301,7 @@ index 830d8fd..9c2f965 100644
  int main() {
      Require(sceKernelRaiseException(scePthreadSelf(), 11) == SCE_KERNEL_ERROR_EINVAL);
      bool rejected = false;
-@@ -247,6 +356,15 @@ int main() {
+@@ -245,6 +354,15 @@ int main() {
      CheckNativeWait(false);
      CheckNativeWait(true);
      Require(calls.load() == 441);

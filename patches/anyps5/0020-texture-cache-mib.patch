@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
-index 012c5d0b3d587d9cc77784e9fa74d23faab735ab..d066ce43ef2f0003974e6f4f981f2058e1ae493e 100644
+index 012c5d0b..d066ce43 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/include/TextureCache.hpp
 @@ -23,6 +23,7 @@ private:
@@ -11,7 +11,7 @@ index 012c5d0b3d587d9cc77784e9fa74d23faab735ab..d066ce43ef2f0003974e6f4f981f2058
      std::list<Entry> entries;
      std::uint64_t retainedBytes = 0;
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
-index 2e31ea6c759af38ef16d9450c69f75a088de398e..cf7677c4bad2fae7e6a8a60a113f7b0fe71567ac 100644
+index 2e31ea6c..cf7677c4 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
 @@ -2,6 +2,8 @@

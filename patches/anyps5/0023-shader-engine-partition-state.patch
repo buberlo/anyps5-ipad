@@ -1,9 +1,9 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-index 53288a665d912e09dd2f8a61ad2580e211ad4cef..de7815014c783088cceb28a84aa19d46699274d8 100644
+index 959031d3..cc1052bc 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-@@ -67,6 +67,10 @@ constexpr std::uint32_t DepthControlMask = ~0x007007f0u;
- constexpr std::uint32_t ShaderControlMask = ~(0x0000f870u | 0x00020600u);
+@@ -68,6 +68,10 @@ constexpr std::uint32_t ShaderControlMask = ~(0x0000f870u | 0x00020600u);
+ constexpr std::uint32_t PixelStageRunsMask = 0x00020747u;
  constexpr std::uint32_t AlphaToCoverageMask = ~0x0001ff00u;
  constexpr std::uint32_t ScanModeMask = ~2u;
 +// MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE (bit 17) partitions work among
@@ -14,11 +14,11 @@ index 53288a665d912e09dd2f8a61ad2580e211ad4cef..de7815014c783088cceb28a84aa19d46
  constexpr std::uint32_t ScreenOffsetMask = ~0x01ff01ffu;
  // Bits 26/27 (ZCLIP_NEAR/FAR_DISABLE) become depth clamping; bit 19 selects the [0, 1] clip space.
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index e6e2faefe7c42ea266714fdbde7835d7c69680cb..498a9e259f4863fe83a86c557981827366989628 100644
+index 29e3ea5c..f7acd760 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -221,6 +221,21 @@ void stateTests() {
-     for (const auto mode : unset.targetOutputMode) Require(mode == 0, "an unset SPI_SHADER_COL_FORMAT exported a color");
+@@ -287,6 +287,21 @@ void srgb8TargetTests() {
+     setProxyVariable("");
  }
  
 +void shaderEnginePartitionTests() {
@@ -39,7 +39,7 @@ index e6e2faefe7c42ea266714fdbde7835d7c69680cb..498a9e259f4863fe83a86c5579818273
  void hardwareScreenOffsetTests() {
      auto queue = makeState();
      queue.context[0x90] = 0x80010003;
-@@ -2100,7 +2115,7 @@ void vertexCopyTests() {
+@@ -2251,7 +2266,7 @@ void vertexCopyTests() {
      }
  }
  
@@ -48,12 +48,13 @@ index e6e2faefe7c42ea266714fdbde7835d7c69680cb..498a9e259f4863fe83a86c5579818273
  #ifdef _WIN32
      _putenv_s("APS5_PIN_WAIT_MS", "200");
  #else
-@@ -2138,7 +2153,12 @@ int main() {
+@@ -2289,8 +2304,13 @@ int main() {
              AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
          }
          stateTests();
 +        shaderEnginePartitionTests();
          hardwareScreenOffsetTests();
+         srgb8TargetTests();
 +        if (argc == 2 && std::string_view(argv[1]) == "--state-only") {
 +            std::cout << "Graphics state validation tests passed\n";
 +            return 0;

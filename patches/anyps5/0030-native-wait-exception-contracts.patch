@@ -1,4 +1,5 @@
 diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRaiseException.cpp
+index fac6a37d..a2173d1d 100644
 --- a/core/libs/tests/GuestRaiseException.cpp
 +++ b/core/libs/tests/GuestRaiseException.cpp
 @@ -1,4 +1,5 @@
@@ -7,12 +8,10 @@ diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRais
  #include <atomic>
  #include <chrono>
  #include <cstdint>
-@@ -119,6 +120,44 @@
-     Require(calls.load() == before + 1);
-     Require(handlerThread.load() == thread);
+@@ -121,6 +122,44 @@ static void ExpectDelivery(int before, std::thread::id thread) {
      Require(handlerRsp.load() != 0 && handlerFrame.load() < handlerRsp.load());
-+}
-+
+ }
+ 
 +struct NativeWaitWorker {
 +    Worker worker;
 +    HANDLE event = nullptr;
@@ -49,10 +48,12 @@ diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRais
 +        Require(CloseHandle(native.event) != FALSE);
 +        std::fprintf(stderr, "Native wait verified mode=%s round=%d result=%lu\n", signalEvent ? "signaled" : "timeout", round, native.result);
 +    }
- }
- 
++}
++
  int main() {
-@@ -205,5 +244,9 @@
+     Require(sceKernelRaiseException(scePthreadSelf(), 11) == SCE_KERNEL_ERROR_EINVAL);
+     bool rejected = false;
+@@ -203,5 +242,9 @@ int main() {
      Require(sceKernelRaiseException(finishedThread, SIGUSR1) == SCE_KERNEL_ERROR_ESRCH);
      Require(scePthreadJoin(finishedThread, nullptr) == 0);
  
@@ -60,6 +61,5 @@ diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRais
 +    CheckNativeWait(true);
 +    Require(calls.load() == 441);
      Require(sceKernelRemoveExceptionHandler(SIGUSR1) == 0);
--}
 +    std::fprintf(stderr, "All 441 exception deliveries verified.\n");
-+}
+ }

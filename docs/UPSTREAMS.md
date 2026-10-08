@@ -6,7 +6,7 @@ upstream movement.
 
 | Path | Remote | Commit | Branch |
 | --- | --- | --- | --- |
-| `upstreams/AnyPS5` | https://github.com/boykopovar/AnyPS5.git | `df16c4c256be3c44e03eb9149a6ce5f8e8a038b2` | `main` |
+| `upstreams/AnyPS5` | https://github.com/boykopovar/AnyPS5.git | `8388121a4f2e2c85fc94191003a37b20c9f076fa` | `main` |
 | `upstreams/Madeira` | https://github.com/willfaust/Madeira.git | `48f976429c189f8396e23d251d8a82f43c705922` | `main` |
 | `upstreams/FEX` | https://github.com/willfaust/FEX.git | `3bec2ac498bf78156ab47c0c194b0e8cb2849756` | `ios-port-2607` |
 | `upstreams/wine` | https://github.com/willfaust/wine.git | `257f271cfffed9f22f7987cac53bc00095d092fe` | `madeira-lgpl` |
@@ -58,3 +58,19 @@ reversal, rebuild and run the affected local tests, then update the reviewed
 pin. Preserve historical device evidence and qualify newly built packages
 separately. Do not use floating branches as build inputs. No GitHub Actions are
 used; this command does not schedule automatic runs.
+
+The same-day [follow-up snapshot](evidence/anyps5-followup-20261008.json)
+adds all 200 subsequently merged AnyPS5 commits at `8388121a`. All 33 local
+patches were reconciled, including the newer HTTP2 completion routing, NP
+callback registration errors, UTF16 helpers, graphics fixtures and host-blocked
+exception synchronization. The ARM64 host tools pass 30 tests, the production
+interpolation guard passes 111 cases, and four sanitizer contract groups pass.
+The new Windows HLE snapshot and actual game still require rebuilding and
+qualification.
+
+Use `python3 scripts/check-upstream-heads.py --fex-release` to additionally
+compare the canonical monthly FEX release with the iOS fork. A current fork
+branch alone does not imply that a newer mainline release is integrated.
+The [FEX-2610 audit](evidence/fex-2610-ios-port-audit-20261008.json) records the
+initial divergence and merge conflicts; it is source analysis, not a device
+runtime result.

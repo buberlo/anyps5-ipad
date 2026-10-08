@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
-index b3f1de78cb52c1cc69efd30d4f68e94e1868a99e..10aedfaf5d973fbf97812f33599363f18e249b39 100644
+index b3f1de78..10aedfaf 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/PipelineCache.cpp
 @@ -32,7 +32,10 @@ bool profiling() {

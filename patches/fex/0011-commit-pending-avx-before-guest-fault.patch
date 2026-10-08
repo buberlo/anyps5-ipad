@@ -1,0 +1,20 @@
+diff --git a/FEXCore/Source/Interface/Core/OpcodeDispatcher.h b/FEXCore/Source/Interface/Core/OpcodeDispatcher.h
+index c66345474..5628528ad 100644
+--- a/FEXCore/Source/Interface/Core/OpcodeDispatcher.h
++++ b/FEXCore/Source/Interface/Core/OpcodeDispatcher.h
+@@ -1190,6 +1190,15 @@ public:
+       const uint64_t FPRMask = ((1ull << (FPR15Index - FPR0Index + 1)) - 1) << FPR0Index;
+ 
+       Mask &= (GPRMask | FPRMask);
++#ifdef FEX_IOS_HOST
++      // On NEON hosts the upper halves of YMM registers live in CPUState,
++      // outside the static register allocation reconstructed at an exception.
++      // Commit pending writes before the next guest instruction can fault.
++      // This includes VEX.128 zeroing as well as full-width AVX writes.
++      if (CTX->HostFeatures.SupportsAVX && !CTX->HostFeatures.SupportsSVE256) {
++        Mask |= (~0ULL << AVXHigh0Index);
++      }
++#endif
+       Bits &= Mask;
+     }
+ 

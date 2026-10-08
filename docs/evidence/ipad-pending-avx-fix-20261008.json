@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "pending_avx_before_fault_fix_device_comparison",
+  "fex_base": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+  "fex_release_2610_tested": false,
+  "patch": "patches/fex/0011-commit-pending-avx-before-guest-fault.patch",
+  "patch_sha256": "959d8282e5a053da2f11b4d272f60747d2bbe17c6a1fc94a8da284739abdd040",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 43,
+  "app_binary_sha256": "8d74af908cfeaf1097a3caa695ca4bbd29559d933bec96624be8787d6e53a777",
+  "xtajit64_sha256": "b0adc60626f5ccdb5accf0d8522b3fee2e4b54034920434c676175a360491d14",
+  "previous_xtajit64_sha256": "f839ca7f7f7a51c93733bd1236dbef51c43a163d7468e471039e022f37256d73",
+  "same_probe_exe_sha256": "f1241d06d3463102a6ce9e8355b7e0ca284f18b6bb14839249e537d592285565",
+  "multiblock": true,
+  "maxinst": 5000,
+  "switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_SAFE_SELF_READ": true
+  },
+  "runs": {
+    "pending_upper": {
+      "result": "passed",
+      "summary": "[pending-avx] cases=6 faults=6 errors=0 snapshot_errors=0 query_errors=0 invalid_faults=0",
+      "wine_exit_code": 0,
+      "private_log_sha256": "bc7197a4938782cd135fd8f9e4873f63caafd86d2f06ac9b056293c75b1e8b06",
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    },
+    "nested": {
+      "result": "passed",
+      "summary": "[fault-state] cases=24 faults=24 errors=0 AVX=verified",
+      "wine_exit_code": 0,
+      "private_log_sha256": "22d393aeb634abfa694e32611560057d07642e703239335cf610d9d2e6935128",
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    },
+    "cross_page": {
+      "result": "passed",
+      "summary": "[fault-state] cases=153 faults=153 errors=0 AVX=verified",
+      "wine_exit_code": 0,
+      "private_log_sha256": "75d9b2d8fcb97faa5784f234e2a941ea1de9738e415148edafef343463fd7701",
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    },
+    "self_read": {
+      "result": "passed",
+      "summary": "[self-read] cases=13 failures=0 exceptions=0",
+      "wine_exit_code": 0,
+      "private_log_sha256": "34feb2f703f548584706daeb604ac81095585e299eea9b3770961c112cc8d9b6",
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    }
+  },
+  "mechanism": "Commit pending NEON upper-YMM writes at guest instruction boundaries so the native exception bridge reads current architectural state. SVE256 and non-iOS behavior unchanged.",
+  "limits": [
+    "Full FEX-2610 integration is a separate candidate, not Build43.",
+    "No game performance claim.",
+    "No Solitaire gameplay or eight-sample renderer integration proven."
+  ]
+}

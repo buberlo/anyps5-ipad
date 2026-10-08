@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
-index 6ce0b2d544f9ec8fa59f58859eebbfcc0c2ef407..0e90ee383d08a84889b5e99df936cb36ad2fe830 100644
+index 6ce0b2d5..0e90ee38 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTimer.hpp
 @@ -6,6 +6,8 @@
@@ -95,7 +95,7 @@ index 6ce0b2d544f9ec8fa59f58859eebbfcc0c2ef407..0e90ee383d08a84889b5e99df936cb36
      }
  
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
-index af33613089397fe63835239ad709fabb25906451..6bec8891a530f96d21df242090208a0e70a4937c 100644
+index 4bb00617..de827f81 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Packets/PacketExecution.cpp
 @@ -17,13 +17,16 @@ namespace AgcDriver::DriverDetail {
@@ -118,7 +118,7 @@ index af33613089397fe63835239ad709fabb25906451..6bec8891a530f96d21df242090208a0e
          AgcDriver::ProfilePrint_nid_no_patch( "[gpu] worker at %.0f s: dispatch %.1f s, draw %.1f s, wait %.1f s\n", std::chrono::duration<double>(end - profile.start).count(), profile.dispatchMs / 1000, profile.drawMs / 1000, profile.waitMs / 1000);
      }
 diff --git a/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp b/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
-index 1b60c53ec59281c5dc4ebed1803f6afbb6caba41..449660f9deb5971111c0b9cb1b3dae628a3fabcf 100644
+index 1b60c53e..449660f9 100644
 --- a/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/DisplayWindow.cpp
 @@ -5,6 +5,8 @@

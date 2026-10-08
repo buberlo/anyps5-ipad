@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index d4dbedf2f21c9093147cbb650f416d1c765f138f..d3537a555c81fdb414d79f9dfe1e0e32d3899b9d 100644
+index 517d92d5..a01149a9 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-@@ -2370,6 +2370,8 @@ std::size_t VulkanDevice::FlipInFlight() {
+@@ -2371,6 +2371,8 @@ std::size_t VulkanDevice::FlipInFlight() {
          std::fprintf(stderr, "[present] APS5_FLIP_INFLIGHT=%s refused (0, 1 or 2 presentations may trail on the GPU); using 1\n", value);
          return std::size_t{1};
      }();

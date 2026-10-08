@@ -1,7 +1,8 @@
 diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
+index 558f21d3..c03112ca 100644
 --- a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
 +++ b/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp
-@@ -18,6 +18,7 @@
+@@ -18,6 +18,7 @@ extern "C" HRESULT WINAPI GetThreadDescription(HANDLE thread, PWSTR* description
  #include <utility>
  #include <mutex>
  #include "Sse4aEmulation.hpp"
@@ -9,20 +10,20 @@ diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/lib
  
  namespace {
  
-@@ -242,6 +243,12 @@
-     if (g_sse4aTrace) TraceSse4a(rip, instruction, field, count);
+@@ -243,6 +244,12 @@ bool HandleSse4a(EXCEPTION_POINTERS* info) {
      return true;
  }
-+
+ 
 +using QueryExceptionState = LONG (WINAPI *)(HANDLE,DWORD,void*,ULONG,ULONG*);
 +QueryExceptionState g_queryExceptionState = nullptr;
 +bool g_requireExceptionState = false;
 +using IsExceptionEcCode = BOOLEAN (WINAPI *)(ULONG_PTR);
 +IsExceptionEcCode g_isExceptionEcCode = nullptr;
- 
++
  LONG WINAPI ReportCrash(EXCEPTION_POINTERS* info) {
      static std::atomic<bool> reported{false};
-@@ -453,6 +460,46 @@
+     const auto* fault = info->ExceptionRecord;
+@@ -453,6 +460,46 @@ void ReportBacktrace(const char* what, bool reportThreads) {
      std::fflush(stderr);
  }
  
@@ -69,7 +70,7 @@ diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/lib
  void AbortSignalHandler(int) {
      ReportBacktrace("abort() (SIGABRT)", true);
  }
-@@ -472,7 +519,17 @@
+@@ -472,7 +519,17 @@ struct ExitReporter {
  const bool g_crashReportInstalled = [] {
      g_sse4aEmulation = !IsEnvironmentSet("APS5_NO_SSE4A_EMULATION");
      g_sse4aTrace = IsEnvironmentSet("APS5_TRACE_SSE4A");
@@ -90,6 +91,7 @@ diff --git a/core/libs/prx/libc/src/specifics/windows/CrashReport.cpp b/core/lib
      InstallWatch();
 diff --git a/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp b/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp
 new file mode 100644
+index 00000000..3afa5e2e
 --- /dev/null
 +++ b/core/libs/prx/libc/src/specifics/windows/ExceptionStateBridge.hpp
 @@ -0,0 +1,12 @@
@@ -106,15 +108,13 @@ new file mode 100644
 +
 +static_assert(sizeof(aps5_veh_state_info) == 328);
 diff --git a/core/libs/tests/GuestMemory.cpp b/core/libs/tests/GuestMemory.cpp
+index 7f32fa7b..20b43874 100644
 --- a/core/libs/tests/GuestMemory.cpp
 +++ b/core/libs/tests/GuestMemory.cpp
-@@ -710,6 +710,54 @@
-     Require(sceKernelMunmap(first, page * 3) == 0);
-     Require(sceKernelMunmap(second, page * 3) == 0);
-     Require(sceKernelReleaseDirectMemory(phys, page * 3) == 0);
-+#endif
-+}
-+
+@@ -720,6 +720,54 @@ static void CheckSharedWriteTracking() {
+ #endif
+ }
+ 
 +
 +static void CheckNativeCrtSharedWriteTracking() {
 +#ifdef _WIN32
@@ -160,10 +160,13 @@ diff --git a/core/libs/tests/GuestMemory.cpp b/core/libs/tests/GuestMemory.cpp
 +    for (auto alias : aliases) Require(sceKernelMunmap(alias, length) == 0);
 +    Require(sceKernelReleaseDirectMemory(phys, length) == 0);
 +    std::fprintf(stderr, "Native CRT shared write tracking: %u checks passed.\n", checks);
- #endif
- }
- 
-@@ -1068,6 +1116,7 @@
++#endif
++}
++
+ static void CheckPinnedSharedPages() {
+ #ifdef _WIN32
+     constexpr std::size_t page = 0x4000;
+@@ -1075,6 +1123,7 @@ int main() {
      CheckFixedMappingsReachConfiguredArenaEnd();
  #endif
      CheckSharedWriteTracking();

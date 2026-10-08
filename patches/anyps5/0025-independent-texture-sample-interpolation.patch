@@ -1,5 +1,5 @@
 diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
-index 4d5c8ad993860ff1e80403188eb32384120c01eb..d4bdd068f9bcd9435a1a48b407b2e3e3cabc901d 100644
+index 4d5c8ad9..d4bdd068 100644
 --- a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
 +++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
 @@ -82,23 +82,37 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,

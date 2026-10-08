@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-index de7815014c783088cceb28a84aa19d46699274d8..96ec29c7dc8fa397b8109ea52b632bbcc1def879 100644
+index cc1052bc..5cbc379c 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
-@@ -158,8 +158,32 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
+@@ -159,8 +159,32 @@ VkStencilOpState stencilFace(std::uint32_t compare, std::uint32_t ops, std::uint
      return face;
  }
  
@@ -37,10 +37,10 @@ index de7815014c783088cceb28a84aa19d46699274d8..96ec29c7dc8fa397b8109ea52b632bbc
      zero(cx, 0x002, 0x3c000000u, "depth mips (DB_DEPTH_VIEW MIP_LEVEL)");
      zero(cx, 0x010, 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index 498a9e259f4863fe83a86c557981827366989628..8ba8c9bc8ec52c389a59f3e4e6917e80fa5eb557 100644
+index f7acd760..4aa15799 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -522,6 +522,72 @@ void CompactedExportTests() {
+@@ -588,6 +588,72 @@ void CompactedExportTests() {
      Require(state.blends[1].colorWriteMask == 0 && !state.blends[1].blendEnable && state.blends[2].blendEnable, "the write-masked export 1 was not left unused");
  }
  
@@ -113,12 +113,13 @@ index 498a9e259f4863fe83a86c557981827366989628..8ba8c9bc8ec52c389a59f3e4e6917e80
  void DepthStencilTests() {
      auto queue = makeState();
      queue.context[0x000] = 0;
-@@ -2154,11 +2220,18 @@ int main(int argc, char** argv) {
+@@ -2305,12 +2371,19 @@ int main(int argc, char** argv) {
          }
          stateTests();
          shaderEnginePartitionTests();
 +        equivalentStencilClearTests();
          hardwareScreenOffsetTests();
+         srgb8TargetTests();
          if (argc == 2 && std::string_view(argv[1]) == "--state-only") {
              std::cout << "Graphics state validation tests passed\n";
              return 0;

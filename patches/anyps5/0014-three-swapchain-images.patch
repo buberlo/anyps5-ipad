@@ -1,6 +1,6 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..98032928c7be1c03f48451c5d931e76c3632f4f7
+index 00000000..98032928
 --- /dev/null
 +++ b/core/libs/prx/libSceAgcDriver/Execution/include/SwapchainImages.hpp
 @@ -0,0 +1,20 @@
@@ -25,7 +25,7 @@ index 0000000000000000000000000000000000000000..98032928c7be1c03f48451c5d931e76c
 +}
 +}
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index da17734c27f4676aa1a7a9c8534654f5503cfdb6..d4dbedf2f21c9093147cbb650f416d1c765f138f 100644
+index a27390c1..517d92d5 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 @@ -4,6 +4,7 @@
@@ -36,7 +36,7 @@ index da17734c27f4676aa1a7a9c8534654f5503cfdb6..d4dbedf2f21c9093147cbb650f416d1c
  #include "prx/libSceAgcDriver/Execution/include/BdaFeatures.hpp"
  #include "prx/libSceAgcDriver/Execution/include/PresentationScaler.hpp"
  #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
-@@ -1183,7 +1184,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1184,7 +1185,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          require(std::any_of(formats.begin(), formats.end(), [](const auto& format) { return format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; }), "BGRA8 sRGB-nonlinear surface format is unavailable");
          VkSwapchainCreateInfoKHR swapchain{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
          swapchain.surface = state->surface;
@@ -45,7 +45,7 @@ index da17734c27f4676aa1a7a9c8534654f5503cfdb6..d4dbedf2f21c9093147cbb650f416d1c
          swapchain.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
          swapchain.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
          swapchain.imageExtent = state->extent;
-@@ -1200,7 +1201,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1201,7 +1202,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          check(getImages(state->device, state->swapchain, &imageCount, nullptr), "vkGetSwapchainImagesKHR");
          state->images.resize(imageCount);
          check(getImages(state->device, state->swapchain, &imageCount, state->images.data()), "vkGetSwapchainImagesKHR");
@@ -54,7 +54,7 @@ index da17734c27f4676aa1a7a9c8534654f5503cfdb6..d4dbedf2f21c9093147cbb650f416d1c
          VkFenceCreateInfo fence{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
          const auto createFence = state->DeviceFunction<PFN_vkCreateFence>("vkCreateFence");
          check(createFence(state->device, &fence, nullptr, &state->acquireFence), "vkCreateFence");
-@@ -1841,7 +1842,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+@@ -1842,7 +1843,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
      require((surface.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0 && (surface.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) != 0 && (surface.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0, "resized surface capabilities are unsupported");
      VkSwapchainCreateInfoKHR create{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
      create.surface = state->surface;
@@ -63,7 +63,7 @@ index da17734c27f4676aa1a7a9c8534654f5503cfdb6..d4dbedf2f21c9093147cbb650f416d1c
      create.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
      create.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
      create.imageExtent = {width, height};
-@@ -1865,7 +1866,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
+@@ -1866,7 +1867,7 @@ void VulkanDevice::Resize(std::uint32_t width, std::uint32_t height) {
      check(getImages(state->device, replacement, &count, state->images.data()), "vkGetSwapchainImagesKHR resize");
      state->images.resize(count);
      state->rendered.assign(count, VK_NULL_HANDLE);

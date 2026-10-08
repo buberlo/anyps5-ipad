@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "anyps5_followup_source_reconciliation",
+  "previous_pin": "df16c4c256be3c44e03eb9149a6ce5f8e8a038b2",
+  "pin": "8388121a4f2e2c85fc94191003a37b20c9f076fa",
+  "merged_additional_commits_including_merges": 200,
+  "patches": 33,
+  "matched_files": 70,
+  "pristine_forward_source_match_and_reverse": "passed",
+  "host_tools_native_arm64_tests": {
+    "passed": 30,
+    "failed": 0
+  },
+  "interpolation_production_guard_cases": {
+    "passed": 111,
+    "failed": 0
+  },
+  "asan_ubsan_production_contract_groups": {
+    "passed": 4,
+    "failed": 0
+  },
+  "windows_hle_rebuilt": false,
+  "installed_game_rebuilt": false,
+  "ipad_runtime_qualified": false
+}

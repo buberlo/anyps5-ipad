@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceVideoOut/src/Output.cpp b/core/libs/prx/libSceVideoOut/src/Output.cpp
-index 5ff897c935d882b0a1934aaf3ebbfc1541324618..3df0580e22d7eaca609f45af36627c29ea39ef76 100644
+index 5ff897c9..3df0580e 100644
 --- a/core/libs/prx/libSceVideoOut/src/Output.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/Output.cpp
 @@ -2,6 +2,7 @@
@@ -20,7 +20,7 @@ index 5ff897c935d882b0a1934aaf3ebbfc1541324618..3df0580e22d7eaca609f45af36627c29
  } catch (const ProcessShutdown&) {
      LibcAwaitExit_nid_postfix();
 diff --git a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
-index b61d35d41fb18eede368acaaa11e6f6b463fe761..ff2bb8bca2f07d607b9dd358e5c98da9b2b2c20c 100644
+index b61d35d4..ff2bb8bc 100644
 --- a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
 @@ -2,6 +2,8 @@

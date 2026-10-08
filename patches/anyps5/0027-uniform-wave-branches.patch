@@ -1,8 +1,8 @@
 diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
-index 599e30ce7326c0922861a9638a0008003228fe55..e88408b7995996633767840f02cabe7401abd820 100644
+index 96f680b4..72d202dc 100644
 --- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
 +++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
-@@ -724,6 +724,14 @@ if(BUILD_TESTING)
+@@ -744,6 +744,14 @@ if(BUILD_TESTING)
          set_tests_properties(ray_tracing_miss PROPERTIES ENVIRONMENT_MODIFICATION
              "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
      endif()
@@ -19,7 +19,7 @@ index 599e30ce7326c0922861a9638a0008003228fe55..e88408b7995996633767840f02cabe74
      configure_windows_unwind(wave32_wide_subgroup_tests)
 diff --git a/core/libs/tests/UniformWaveBranch.cpp b/core/libs/tests/UniformWaveBranch.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..0e7edcfebf2508ec1638c44ac2d68c17a2d9c2e1
+index 00000000..0e7edcfe
 --- /dev/null
 +++ b/core/libs/tests/UniformWaveBranch.cpp
 @@ -0,0 +1,150 @@
@@ -174,7 +174,7 @@ index 0000000000000000000000000000000000000000..0e7edcfebf2508ec1638c44ac2d68c17
 +    }
 +}
 diff --git a/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp b/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
-index f032957af562222cdfdb76f380843c4f9820b3ce..3d833e04e381ce6c9eb7a4a1d3696d9da138f245 100644
+index f032957a..3d833e04 100644
 --- a/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
 +++ b/core/shader/recompiler/SpirvBackend/include/SpirvBackend/SpirvAnalysis.hpp
 @@ -37,6 +37,7 @@ inline constexpr std::uint32_t FunctionLdsDwordLimit = 8192u;
@@ -186,7 +186,7 @@ index f032957af562222cdfdb76f380843c4f9820b3ce..3d833e04e381ce6c9eb7a4a1d3696d9d
  }
  
 diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
-index 9ea921ea82dc778e81b1eafe43cc67636e3bf922..ea6b50af388d9e03f5ffc84ace8cf77de2a84d7d 100644
+index 9ea921ea..ea6b50af 100644
 --- a/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
 +++ b/core/shader/recompiler/SpirvBackend/src/SpirvAnalysis.cpp
 @@ -433,7 +433,7 @@ SpirvRequirements AnalyzeProgramRequirements(const IrProgram& program) {
@@ -264,7 +264,7 @@ index 9ea921ea82dc778e81b1eafe43cc67636e3bf922..ea6b50af388d9e03f5ffc84ace8cf77d
      std::unordered_map<const IrValue*, bool> varying;
      const auto isVarying = [&](const IrValue* value) {
 diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
-index 496f4658ddda08bf0ddadb9ef879e5aa5b198143..f99cc52ac20d253f24e059527f942359408c5516 100644
+index 496f4658..f99cc52a 100644
 --- a/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
 +++ b/core/shader/recompiler/SpirvBackend/src/SpirvFlowEmitter.cpp
 @@ -154,6 +154,11 @@ std::uint32_t EmitWaveMaskBranchCondition(SpirvValueEmitContext& ctx, const Bloc

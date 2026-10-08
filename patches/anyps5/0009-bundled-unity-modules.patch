@@ -1,5 +1,5 @@
 diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-index 99368fb493ba7c50a164112cc24d9a800a375475..cec6b1cf158ebdb1ca9d2ddb9a6c2d047967297d 100644
+index f82baec8..b0842e15 100644
 --- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 +++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 @@ -21,10 +21,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
@@ -18,7 +18,7 @@ index 99368fb493ba7c50a164112cc24d9a800a375475..cec6b1cf158ebdb1ca9d2ddb9a6c2d04
      std::vector<std::filesystem::path> paths;
      std::set<std::string> unmatchedExclusions = excludedModules;
      const auto isElf = [](const std::filesystem::path& path) {
-@@ -224,12 +228,8 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -236,12 +240,8 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
      };
      for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().lexically_relative(root).generic_string() + "/" + images[index].OutputName);
      for (const auto& name : hostLibraries) addNeeded(name);
@@ -33,7 +33,7 @@ index 99368fb493ba7c50a164112cc24d9a800a375475..cec6b1cf158ebdb1ca9d2ddb9a6c2d04
      std::vector<GuestArtifact> artifacts;
      for (const auto index : order) {
          const auto& image = images[index];
-@@ -246,6 +246,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -258,6 +258,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
          std::vector<std::uint8_t> output;
          if (windows) output = Elfpatcher::GuestModuleWriter().WriteWindows(image, runtime);
          else {
@@ -46,7 +46,7 @@ index 99368fb493ba7c50a164112cc24d9a800a375475..cec6b1cf158ebdb1ca9d2ddb9a6c2d04
              for (const auto dependency : dependencies[index]) {
                  const auto dependencyPath = images[dependency].SourcePath.parent_path() / images[dependency].OutputName;
 diff --git a/core/relinker/relinker/tests/test_guest_module_directories.py b/core/relinker/relinker/tests/test_guest_module_directories.py
-index e01b5dce08713e5e58cdd282de45e3f8722ef70d..6f3e20a9d80afd6225caebdeaf884bee24166c97 100644
+index e01b5dce..6f3e20a9 100644
 --- a/core/relinker/relinker/tests/test_guest_module_directories.py
 +++ b/core/relinker/relinker/tests/test_guest_module_directories.py
 @@ -23,7 +23,7 @@ def module_with_symbol(exported):
@@ -117,7 +117,7 @@ index e01b5dce08713e5e58cdd282de45e3f8722ef70d..6f3e20a9d80afd6225caebdeaf884bee
              case = work / f"{windows}-exclude"
              for name in ("sce_module", "prx"):
 diff --git a/core/relinker/relinker/tests/test_linux_load_alignment.py b/core/relinker/relinker/tests/test_linux_load_alignment.py
-index 5f9d3613d6fbc7dfb11c913e35d692fbbb3e38a0..a19bb0f92a6a501cda6212720979e30a76ef7432 100644
+index 5f9d3613..a19bb0f9 100644
 --- a/core/relinker/relinker/tests/test_linux_load_alignment.py
 +++ b/core/relinker/relinker/tests/test_linux_load_alignment.py
 @@ -43,7 +43,7 @@ def main():

@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
-index ff2bb8bca2f07d607b9dd358e5c98da9b2b2c20c..4a5e3b2fe0a85d49ef081cbf75cfcf79147dc9b8 100644
+index ff2bb8bc..4a5e3b2f 100644
 --- a/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
 +++ b/core/libs/prx/libSceVideoOut/src/VideoOutDriver.cpp
 @@ -585,6 +585,41 @@ void VideoOutDriver::presentLoop(std::stop_token token) {

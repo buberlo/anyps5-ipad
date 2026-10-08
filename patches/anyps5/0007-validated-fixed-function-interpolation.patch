@@ -1,6 +1,6 @@
 diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..4d5c8ad993860ff1e80403188eb32384120c01eb
+index 00000000..4d5c8ad9
 --- /dev/null
 +++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
 @@ -0,0 +1,127 @@
@@ -132,7 +132,7 @@ index 0000000000000000000000000000000000000000..4d5c8ad993860ff1e80403188eb32384
 +}
 +}
 diff --git a/core/shader/recompiler/Translation/src/InstructionTranslator.cpp b/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
-index b3b6c383d180005bab678b88c1aa15573472bc9f..ba327acf7435887255ddd8dcd4f25a7dfa613165 100644
+index b3b6c383..ba327acf 100644
 --- a/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
 +++ b/core/shader/recompiler/Translation/src/InstructionTranslator.cpp
 @@ -1,4 +1,5 @@

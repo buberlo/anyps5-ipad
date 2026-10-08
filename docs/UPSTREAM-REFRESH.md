@@ -315,3 +315,30 @@ route report only 1, 2 and 4 samples. Solitaire's captured draw state requests
 8 samples. The candidate upstream still rejects multisampling; this hardware
 and renderer gap remains open even if its CPU/signal changes fix another blocker.
 See [device capability evidence](evidence/solitaire-ipad-msaa-capabilities.json).
+
+## Same-day source and AVX follow-up
+
+AnyPS5 main advanced by another 200 commits to `8388121a`. All 33 patches
+were reconciled against that snapshot without losing newer HTTP2/NP, UTF16,
+graphics tests or exception synchronization. Pristine application, 70-file
+source equality and reversal pass. The fresh native host tools pass 30 tests,
+111 production interpolation cases pass, and four sanitizer contract groups
+pass. This source snapshot is not the installed HLE runtime; see the
+[follow-up evidence](evidence/anyps5-followup-20261008.json).
+
+Build43 contains a local FEX correction for stale upper YMM state at a
+protected store. Per-instruction partial flushes previously omitted the upper
+halves on NEON hosts. Pending VEX.128 zeroing or full AVX replacement could
+therefore be invisible to the exception snapshot. The iOS-only mask now
+commits those writes before another guest instruction can fault.
+
+The unchanged six-case reproducer, which failed on Build42 with normal
+multiblock/MAXINST5000 settings, passes on Build43 with those same settings:
+six faults, no resumed-state, snapshot, query or data errors. The 24-case
+nested regression passes with 12 nested faults and 108 correctly rejected
+requests; the 153-case cross-page regression also passes. The same-process
+read probe passes 13 cases without any callback. All four exit Wine with code0.
+Configuration and library bytes are restored and own processes are verified
+closed. See the [matched device evidence](evidence/ipad-pending-avx-fix-20261008.json).
+This does not qualify FEX-2610, game frame rate, or the still-missing eight-sample
+renderer path.

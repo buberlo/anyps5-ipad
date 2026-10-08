@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libc/src/GuestArena.cpp b/core/libs/prx/libc/src/GuestArena.cpp
-index ff7a0b4f06eba3c52a625ae80296ab2dbc439cf0..82d2b81662ca3bab54d7c656efffd6f7d0fe2ff0 100644
+index ff7a0b4f..82d2b816 100644
 --- a/core/libs/prx/libc/src/GuestArena.cpp
 +++ b/core/libs/prx/libc/src/GuestArena.cpp
 @@ -2,11 +2,16 @@

@@ -5,10 +5,30 @@ The current FEX stack is consolidated into two release-based patches:
 FEX-2610. Historical patch numbers/results below describe their original builds.
 Madeira0046 adapts the native bridge to FEX's new API; Madeira0047 preserves the
 native process-name lifetime after an embedded Wine session. The latest AnyPS5
-pin retains all 33 reconciled local patches, followed by patches0034–0039 for
-multisample layouts, transfers, resource allocation and shader eligibility.
-All 39 patches apply from the pin, match the checked source and reverse cleanly.
-Multisampled game draws remain rejected. See the
+pin retains all 33 reconciled local patches. Patches0034–0039 add multisample
+layouts, transfers, resource allocation and shader eligibility.
+Patches0040–0044 connect an experimental grouped-sample renderer in source.
+It is default-off (`APS5_ENABLE_SAMPLE_GROUPS=1` opts in). The full 50-PRX HLE
+package is built and its 22 selected Windows host test suites pass under desktop
+Wine; the fresh Solitaire candidate resolves all 47 explicit HLE dependencies.
+At the separately recorded as-built 0044 checkpoint, all 44 patches apply from
+the pin, match 125 checked source paths and reverse cleanly; their hashes match
+the build provenance. That record does not include later patches.
+Patch0045 repairs retained guest-export lifecycle ownership; its freshly prepared
+device package now starts through built-in JIT and reaches the Vulkan swapchain.
+That earlier game surface stays white with two distinct graphics rejections.
+Patch0046 adds canonical internal rectangle-stage validation and has static,
+sanitizer and syntax checks; its actual-resource and full graphics host suites
+subsequently pass.
+Patch0047's restricted fixed-function color-resolve implementation is now built.
+An isolated production-fragment/rectangle GPU probe passes six cases on the iPad;
+this is separate from complete guest renderer qualification. The current 47-patch
+series matches 137 paths and applies/reverses cleanly. Its 50-PRX/three-DLL HLE
+archive is verified, and all 22 selected host suites pass. The fresh prepared
+game package has run on the iPad: the earlier guard messages are absent, but
+one unknown-SPIR-V-type rejection remains and the surface stays white.
+Correct connected rendering remains unqualified.
+See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
 
@@ -18,15 +38,75 @@ source, build, device and unqualified-path states.
 |---|---|---|
 | 0034 | Stored color sample coordinates and full-coordinate pipe XOR | Independent AMD layout comparison under sanitizers. |
 | 0035 | Color sample/fragment decoding and CPU transfers | Sanitizer tests with mapped-memory adapter; focused real GuestMemory PE under desktop Wine. |
-| 0036 | Raw D16/D32/S8 sample memory layouts | Independent AMD comparison: 60 layouts and 34,817,526 addresses; depth decoder/transfer connection pending. |
-| 0037 | Production color image owner with grouped sample layers/views; device feature selection | Actual owner passes both synthetic/captured position patterns on iPad. Probe pipelines/descriptors are synthetic; new device initialization is syntax-checked source only. |
-| 0038 | Conservative static eligibility prerequisite for repeated VS/PS draws | 31 sanitizer cases, including independently validated shaders; dynamic alias safety and draw-path integration pending. |
-| 0039 | Grouped depth/stencil allocation, clear, cache identity and rollback | Production command tests with explicit Vulkan/scheduling mocks; device depth/stencil execution pending. |
+| 0036 | Raw D16/D32/S8 sample memory layouts | Independent AMD comparison: 60 layouts and 34,817,526 addresses. Patch0043 connects S8 transfers; guest Z import/export remains unsupported. |
+| 0037 | Production color image owner with grouped sample layers/views; device feature selection | Actual owner passes both synthetic/captured position patterns on iPad. Independent probe pipelines/descriptors; correct connected game rendering remains unqualified. |
+| 0038 | Conservative static eligibility prerequisite for repeated VS/PS draws | 31 sanitizer cases with validated synthetic shaders. Patch0043 requires this check and rejects dynamic attachment/input and output/output aliases. |
+| 0039 | Grouped depth/stencil allocation, clear, cache identity and rollback | Production command tests with explicit Vulkan/scheduling mocks. Guest depth consumption remains blocked; the later independent S8 probe preserves synthetic depth. |
+| 0040 | Logical/native sample state, guest positions, per-group pipelines and cache identity | 46 sanitizer state/pipeline cases, including five portability-feature rejection cases added in patch0043. Multisample depth/stencil admission remains restricted to the proven always-pass stencil initializer. |
+| 0041 | Exact RGBA8 sample upload and compute readback | Three layout contracts and 89 rejection/unwind cases under sanitizers; independent iPad production-transfer probe passes 9,044 sample words. |
+| 0042 | Guest MSAA texture decoding, logical/native shader routing and cache keys | 28 production SPIR-V fixtures independently validated; emitted arithmetic checks 84 distinct sample addresses. Connected shader fixtures have not executed on the iPad GPU. |
+| 0043 | Synchronous grouped draws, fresh color/S8 snapshots, shader resources, guest writeback and portability guards | Full 50-PRX local HLE build and 22 selected Wine host test suites pass. Fresh Solitaire candidate passes its 47-dependency HLE audit; device rendering and performance remain unqualified. |
+| 0044 | Exact S8 bitplane upload and packed compute readback, preserving combined depth | Six layout contracts and 234 rejection/unwind cases under sanitizers; independent iPad probe passes 9,044 S8 bytes and 9,044 constant-depth checks within 0.000001 of 0.625. |
+| 0045 | Preserve guest init/fini when defined, visible, non-absolute exports remain reachable beside an HLE replacement | 32 host-tool cases, 52 ELF/PE conversions and 25 Wine PE executions pass. A fresh iPad package reaches Vulkan and a three-image swapchain without a logged `bad_alloc`; graphics remain white. |
+| 0046 | Qualify exact factory-generated rectangle stages for grouped draws; distinguish host fault completion from guest writes | Three canonical accepts and 90 rejection cases pass under sanitizers; 24 SPIR-V modules validate independently, existing 31 pair cases and production syntax checks pass. Actual-resource and full graphics host suites pass. Connected game output remains unqualified. |
+| 0047 | Restricted GC10 fixed-function RGBA8 color resolve from 2/4/8 stored samples to one sample, preserving actual rectangle coverage | 144 native sanitized cases and 401,712 scalar channel values pass. Isolated iPad production-fragment/rectangle probe passes six cases and guest exit 0, with exact non-tie/preserved bytes and one-unit half-tie tolerance. The game attempts the production path but rejects an unknown SPIR-V type; correct complete rendering remains unqualified. |
 
-The latest resource-source changes are not a rebuilt/deployed game HLE package.
-Solitaire's last bounded game run still shows white output. See
+The exact RGBA8 and S8 device probes run original synthetic fixtures through
+Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases
+erase the upload source before readback; S8 checks also retain final-word padding
+and constant D32 depth within the stated tolerance; bitwise depth identity and
+arbitrary depth values are not tested. Both guests exit 0, but a native JIT-detach breakpoint
+after completion leaves clean native app lifecycle unqualified. See the
+[color device record](evidence/ipad-exact-color-sample-transfer-20261008.json) and
+[stencil device record](evidence/ipad-exact-stencil-sample-transfer-20261008.json).
+
+These tests do not qualify the complete draw/resolve/cache path or performance.
+The experimental path currently synchronizes each draw and transfers every
+color/S8 sample through CPU-visible buffers. Z use, consumed HTILE, compressed
+stencil, sampled depth, EQAA and unsupported shader effects remain blocked.
+Solitaire's fresh lifecycle-corrected package now has bounded device startup
+evidence. The read-back manifest matches its receipt; the log selects the Apple
+M2 GPU and creates a 768 × 432 swapchain with three images. There are no
+`bad_alloc` or `FATAL` markers in that log, and the reviewed game surface remains
+white. Two distinct rejection reasons each occur for two targets: the split path
+requires a vertex/fragment pair, and a multisample raster state lacks
+`MSAA_ENABLE`. The receipt's 72.52 seconds are test-operation duration, not an
+accepted gameplay run. The early-detach `Wine finished after 23.5s` message is
+followed by 2,686 runtime log lines and does not establish guest exit.
+Configuration, library and runtime hashes are restored. See the
+[fresh device startup record](evidence/ipad-solitaire-retained-export-lifecycle-20261008.json),
+[lifecycle implementation checks](evidence/retained-guest-export-lifecycle-20261008.json)
+and [canonical rectangle checks](evidence/grouped-msaa-canonical-rectlist-20261008.json).
+
+That game device run uses the as-built 0044 HLE set and the lifecycle-corrected
+relinker; patches0046/0047 have not been qualified by it. A separate later probe
+uses production resolve fragment and rectangle stages in an isolated pipeline:
+six 17 × 19 cases pass 7,752 channels, including 2,580 untouched destination
+channels. Four cases additionally compare 5,168 channels to native Vulkan
+resolves. Non-ties and untouched pixels match exactly; half-rounding ties permit
+one UNORM unit. The guest exits 0 before a native `jit26_detach` breakpoint;
+configuration and library are byte-restored, but clean native lifecycle is not
+qualified. See the
+[resolve GPU and current build record](evidence/ipad-fixed-color-resolve-20261008.json)
+and [native resolve checks](evidence/gc10-fixed-color-resolve-native-20261008.json).
+
+The new connected HLE archive includes all 47 patches, matches their source-series
+hashes and verifies all 53 packaged files: 50 PRX plus three runtime DLLs.
+All 22 selected host suites and resource/full graphics host suites pass.
+A freshly prepared game package with this archive runs on the iPad and reaches
+the three-image swapchain. Its previous pair-only and `MSAA_ENABLE` messages
+are absent; one skipped draw reports `SPIR-V refers to an unknown type`.
+The reviewed capture stays white with controls. Runtime activity continues after
+helper completion, without a recorded guest exit. A bounded type-validator
+repair is in progress; the isolated GPU probe does not qualify full game rendering.
+The runtime, configuration and library are restored. See the
+[current game device record](evidence/ipad-solitaire-rectlist-resolve-20261008.json).
+The memory suite's first fixed reservation at 8 GiB collided under Wine;
+its rerun passes at the tested 464–468 GiB lazy arena without removing assertions.
+The selected host suites do not contain GPU tests. See the
+[full-build and source record](evidence/solitaire-msaa-draw-source-20261008.json),
 [implementation and remaining work](MSAA-EMULATION.md) and
-[checkpoint evidence](evidence/solitaire-msaa-renderer-integration-20261008.json).
+[earlier component checkpoint](evidence/solitaire-msaa-renderer-integration-20261008.json).
 
 
 The implementation follow-ups are documented in

@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "scope": "production full-image RGBA8_UNORM multisample import/readback, pending renderer/game integration",
+  "layout": {
+    "samples": [
+      2,
+      4,
+      8
+    ],
+    "native_samples_max": 4,
+    "logical_layer": "i/nativeSamples",
+    "native_sample": "i%nativeSamples",
+    "packing": "((y*width+x)*samples+i), little-endian RGBA8 word"
+  },
+  "upload": "fullscreen fragment SSBO reads; one native sample-mask pipeline per selected sample; color attachment LOAD/STORE; no sampleRateShading",
+  "readback": "compute samplerless texture2DMSArray fetch; packUnorm4x8 to SSBO; no resolve/averaging",
+  "synchronization": "explicit input/output/image access states, all-layer transitions, distinct descriptors retained until caller fence",
+  "native_contract": {
+    "production_sources": [
+      "ColorRenderTarget.cpp",
+      "ColorSampleTransfer.cpp"
+    ],
+    "instrumentation": [
+      "ASan",
+      "UBSan"
+    ],
+    "layouts": 3,
+    "rejections_and_failure_unwinds": 89,
+    "errors": 0,
+    "scope": "deterministic Vulkan API adapter; not real GPU"
+  },
+  "shaders": {
+    "original": true,
+    "count": 3,
+    "independent_validation": "GLSL glslangValidator -V --target-env vulkan1.1 and spirv-val; regenerated output matches embedded header"
+  },
+  "windows_probe": {
+    "built": true,
+    "cases": 6,
+    "extent": [
+      17,
+      19
+    ],
+    "sample_words": 9044,
+    "includes": [
+      "separate buffers",
+      "alias with post-upload source erasure",
+      "prefix/suffix guards"
+    ],
+    "executed_here": false
+  },
+  "limitations": [
+    "not connected to production guest renderer by this patch",
+    "single-sample targets retain existing copy path",
+    "only matching RGBA8_UNORM is supported",
+    "caller owns buffer/image/transfer lifetime through GPU completion",
+    "resource cache, guest shader descriptors, resolves, and depth import/export remain separate work"
+  ],
+  "patch": {
+    "path": "patches/anyps5/0041-color-sample-gpu-transfer.patch",
+    "sha256": "25a7dcefdfe194af8d7ba9b02211c3d7bb7b76efcee0500dbeaf175c93a51581"
+  },
+  "sources": {
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleTransfer.cpp": "9c66aaf1bec0fda477a47dcba7be2badbd29aceeb5f26c18c97bb2fbe8f9b129",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.frag": "8a62aea574c9d61bcad56e1eb6647c2664526b0f9159d0046f9b9e861f4604b6",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleReadback.comp": "2e0bed3040ab29e6c2eb6868b7ba446e0f6bbe57619a9fbc3c09ac1973f5212e",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTransfer_spv.h": "a9bce2ff9f216f0423bf76dd7ec736f7d77422c6542a0e0d7cfac585a48fea41"
+  }
+}

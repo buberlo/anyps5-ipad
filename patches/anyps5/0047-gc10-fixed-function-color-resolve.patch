@@ -1,0 +1,638 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+@@ -121,6 +121,15 @@
+ ColorTarget DecodeColorBuffer(const Registers& context, std::uint32_t slot);
+ std::size_t CmaskBytes(std::uint32_t width, std::uint32_t height);
+ 
++struct ColorResolvePass {
++    ColorTarget source;
++    ColorTarget destination;
++};
++std::optional<ColorResolvePass> DecodeColorResolvePass(const QueueState& queue);
++// Normal single-sample raster state for the resolve rectangle, preserving
++// original geometry, viewport, scissor and culling. MRT1 becomes attachment 0.
++QueueState ColorResolveRasterQueue(const QueueState& queue, const ColorResolvePass& pass);
++
+ struct ColorMetadataPass {
+     enum class Mode { EliminateFastClear, DccDecompress };
+     Mode mode;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -1,6 +1,7 @@
+ #include <cstdio>
+ #include "prx/libSceAgcDriver/Graphics/include/State.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureTiling.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DccMetadata.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
+@@ -841,6 +842,58 @@
+     return color;
+ }
+ 
++std::optional<ColorResolvePass> DecodeColorResolvePass(const QueueState& queue) {
++    const auto& cx = queue.context;
++    const auto control = find(cx, 0x202);
++    if (control == cx.end() || ((control->second >> 4u) & 7u) != 3u) return std::nullopt;
++    Require(control->second == 0xcc0030u, "CB resolve requires the standard ROP and no degamma");
++    Require(read(queue.userConfig, 0x242, RegisterBank::UserConfig) == 7u,
++            "CB resolve requires rect-list geometry");
++    Require((read(cx, 0x200) & 0xfu) == 0 && (read(cx, 0x0) & 0xfu) == 0,
++            "CB resolve with depth or stencil work is unsupported");
++    Require(read(cx, 0x8e) == 0xfu && read(cx, 0x8f) == 0xfu,
++            "CB resolve requires all four MRT0 components and no other shader outputs");
++    zero(cx, 0x292, ~3u, "CB resolve raster flags");
++    const auto source = DecodeColorBuffer(cx, 0);
++    const auto destination = DecodeColorBuffer(cx, 1);
++    const auto samples = DecodeSampleConfiguration(cx, true);
++    Require(samples.count == source.samples, "CB resolve raster/storage coverage sample counts disagree");
++    // Truncating destination conversion is distinct from the normal UNORM
++    // attachment conversion. Do not silently turn it into round-by-half.
++    Require((read(cx, 0x32b) & 0x40000u) == 0,
++            "CB resolve truncating destination rounding is unsupported");
++    ColorResolvePass pass{source, destination};
++    ValidateColorResolve(pass);
++    return pass;
++}
++
++QueueState ColorResolveRasterQueue(const QueueState& queue, const ColorResolvePass& pass) {
++    ValidateColorResolve(pass);
++    auto raster = queue;
++    // The source is a read-only image, not a raster attachment. Copy the
++    // complete destination slot (including view and extended address).
++    for (std::uint32_t i = 0; i < 15u; ++i) {
++        const auto word = find(queue.context, 0x327 + i);
++        // DecodeColorResolvePass already checked every required field. Pitch,
++        // metadata and clear words may be absent for uncompressed GC10 views;
++        // erase the previous source's optional value rather than retain it.
++        if (word == queue.context.end()) raster.context.erase(0x318 + i);
++        else raster.context[0x318 + i] = word->second;
++    }
++    raster.context[0x390] = read(queue.context, 0x391);
++    const auto dccHigh = find(queue.context, 0x3a9);
++    if (dccHigh == queue.context.end()) raster.context.erase(0x3a8);
++    else raster.context[0x3a8] = dccHigh->second;
++    raster.context[0x3b0] = read(queue.context, 0x3b1);
++    raster.context[0x3b8] = read(queue.context, 0x3b9);
++    raster.context[0x202] = 0xcc0010u;
++    raster.context[0x2f8] = 0;
++    raster.context[0x201] = 0;
++    raster.context[0x292] &= 2u;
++    raster.context[0x1e0] = 0; // CB fixed-function resolve bypasses normal blending.
++    return raster;
++}
++
+ std::optional<ColorMetadataPass> DecodeColorMetadataPass(const QueueState& queue) {
+     const auto& cx = queue.context;
+     const auto control = find(cx, 0x202);
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
+@@ -2,7 +2,9 @@
+ #include "prx/libSceAgcDriver/Execution/include/Driver/Diagnostics.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/Pm4.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
+ #include <cstdlib>
++#include <limits>
+ 
+ namespace AgcDriver::DriverDetail {
+ 
+@@ -13,6 +15,61 @@
+ 
+ std::optional<DrawVerdict> Driver::precheckDraw(const QueueState& queue, const Submission& submission, std::span<const std::uint32_t> packet, const Pm4::DrawParameters& drawParameters, std::string& rejected, bool& traceIndirect) {
+     if (!drawParameters.indirect && !drawParameters.indexed && (drawParameters.indexCount == 0 || drawParameters.instanceCount == 0)) return DrawVerdict::Nothing;
++    if (const auto pass = Graphics::DecodeColorResolvePass(queue)) {
++        require(!drawParameters.indirect && !drawParameters.indexed && drawParameters.indexCount == 3u &&
++                drawParameters.instanceCount == 1u, "CB resolve requires one direct three-vertex rectangle");
++        // Resolve is its own GC10 operation, before the normal MSAA/raster
++        // precheck. Preserve the original vertex program and its resources.
++        const auto rasterQueue = Graphics::ColorResolveRasterQueue(queue, *pass);
++        GuestMemory::TagGpuLockSite(GuestMemory::GpuLockSite::Draw);
++        std::lock_guard gpuLock(GuestMemory::GpuMutex());
++        if (device == nullptr) device = std::make_shared<VulkanDevice>();
++        const std::shared_ptr<VulkanDevice> localDevice = device;
++        recordLabelsForPacket(localDevice.get(), submission.queue);
++        const auto decode = decodeDraw(rasterQueue, submission);
++        require(decode->state.rectList && decode->programs.size() == 2u &&
++                decode->programs.front().binary.stage == ShaderRecompiler::ShaderStage::Vertex,
++                "CB resolve requires an ordinary guest vertex program");
++        const auto& programs = decode->programs;
++        std::vector<ShaderRecompiler::MemoryRegion> memory;
++        std::vector<ShaderRecompiler::LinkedProgram> linked;
++        for (std::size_t i = 0; i < programs.size(); ++i) {
++            const auto& program = programs[i];
++            memory.insert(memory.end(), program.memory.begin(), program.memory.end());
++            linked.push_back({decode->roles[i], program.binary, program.userDataBase, program.firstUserSgpr, program.userData});
++        }
++        std::vector<Graphics::DecodeRead> vertexReads;
++        std::vector<std::optional<ShaderRecompiler::ShaderVertexStageInfo>> vertexInfos(programs.size());
++        const auto& main = programs.front();
++        vertexInfos[0] = Graphics::DecodeVertexStageInfo(main.binary.header, main.binary.headerAddress, main.userData, &vertexReads);
++        ShaderMemory shaderMemory(memory, &queryPendingWrite, &observePendingWrite, hookWaitCounter());
++        std::vector<StageCapture> stageCaptures(programs.size());
++        std::vector<bool> recompiled(programs.size(), false);
++        std::vector<std::shared_ptr<DispatchVariant>> matched(programs.size());
++        std::vector<std::vector<ShaderRecompiler::MemoryRegion>> matchedRegions(programs.size());
++        std::array<double, DrawDriverPhaseCount> phaseMs{};
++        auto phaseLap = std::chrono::steady_clock::time_point{};
++        DrawPhaseTiming phases{false, phaseMs, phaseLap};
++        std::uint64_t captures = 0;
++        auto vertex = compileDrawStage(0, 0, rasterQueue, submission, programs, decode->state, decode->pixel,
++            vertexInfos, memory, linked, drawParameters, localDevice, shaderMemory, stageCaptures, recompiled,
++            false, matched, matchedRegions, false, 0, 0, captures, phases, phaseMs, rejected);
++        if (!rejected.empty()) return DrawVerdict::Rejected;
++        for (const auto& read : vertexReads) memory.push_back({read.address, std::as_bytes(std::span(read.bytes))});
++        require(captureStable(memory), "CB resolve guest vertex resources changed during capture");
++        auto direct = drawParameters;
++        static const bool indxOffsetSkipFold = std::getenv("APS5_INDX_OFFSET_SKIP_FOLD") != nullptr;
++        if (vertex.vertexOffsetSgpr >= 0 && (direct.firstVertex == 0 || !indxOffsetSkipFold)) {
++            const auto offset = drawUserWord(main, vertex.vertexOffsetSgpr);
++            require(offset <= std::numeric_limits<std::uint32_t>::max() - direct.firstVertex, "CB resolve vertex offset overflow");
++            direct.firstVertex += offset;
++        }
++        if (vertex.instanceOffsetSgpr >= 0) direct.firstInstance = drawUserWord(main, vertex.instanceOffsetSgpr);
++        std::vector<Graphics::GuestMemorySnapshot> snapshots;
++        for (const auto& region : memory) snapshots.push_back({region.guestAddress, region.bytes});
++        localDevice->ColorResolve(*pass, decode->state, direct, vertex, snapshots);
++        return DrawVerdict::Drawn;
++    }
+     if (const auto pass = Graphics::DecodeColorMetadataPass(queue)) {
+         require(!drawParameters.indirect, "indirect CB metadata passes are unsupported");
+         GuestMemory::TagGpuLockSite(GuestMemory::GpuLockSite::Draw);
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp
+@@ -281,6 +281,9 @@
+     void Draw(const Graphics::State& graphics, const Pm4::DrawParameters& draw, std::span<const Graphics::CompiledShader> shaders, std::span<const Graphics::GuestMemorySnapshot> snapshots = {}, std::shared_ptr<const DrawRecipe>* recipe = nullptr);
+     std::optional<std::string> KnownDrawRejection(const Graphics::State& graphics, std::span<const Graphics::CompiledShader> shaders) const;
+     void ColorMetadataPass(const Graphics::ColorMetadataPass& pass);
++    void ColorResolve(const Graphics::ColorResolvePass& pass, const Graphics::State& raster,
++        const Pm4::DrawParameters& draw, const ShaderRecompiler::RecompileResult& vertex,
++        std::span<const Graphics::GuestMemorySnapshot> snapshots);
+     // A draw-cache hit recorded from its recipe (Graphics::DrawWithRecipe), under the mutex after
+     // the packet's labels; Rebuild when the recipe's device is not this one or DrawWithRecipe
+     // missed (nothing recorded: the caller runs Draw with the hit's stages and re-attaches).
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -11,6 +11,7 @@
+ #include "prx/libSceAgcDriver/Execution/include/BdaFeatures.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/PresentationScaler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DccMetadata.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/DisplayFormat.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureDetiler.hpp"
+@@ -2594,6 +2595,12 @@
+     return Graphics::KnownValidationFailure(graphicsContext(), shaders, graphics);
+ }
+ 
++void VulkanDevice::ColorResolve(const Graphics::ColorResolvePass& pass, const Graphics::State& raster,
++    const Pm4::DrawParameters& draw, const ShaderRecompiler::RecompileResult& vertex,
++    std::span<const Graphics::GuestMemorySnapshot> snapshots) {
++    Graphics::RunColorResolve(graphicsContext(), pass, raster, draw, vertex, snapshots, Target());
++}
++
+ void VulkanDevice::ColorMetadataPass(const Graphics::ColorMetadataPass& pass) {
+     Graphics::RunColorMetadataPass(graphicsContext(), pass);
+ }
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -135,6 +135,8 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorTargetLayout.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/DepthTargetLayout.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorTargetTransfer.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorResolve.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorResolveFragment.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Pipeline.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/PipelineCache.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Resources.cpp
+@@ -455,6 +457,8 @@
+         Graphics/src/ColorTargetLayout.cpp
+         Graphics/src/DepthTargetLayout.cpp
+         Graphics/src/ColorTargetTransfer.cpp
++        Graphics/src/ColorResolve.cpp
++        Graphics/src/ColorResolveFragment.cpp
+         Graphics/src/Resources.cpp
+         Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/ColorSampleTransfer.cpp
+@@ -616,6 +620,8 @@
+             Graphics/src/ColorTargetLayout.cpp
+             Graphics/src/DepthTargetLayout.cpp
+             Graphics/src/ColorTargetTransfer.cpp
++            Graphics/src/ColorResolve.cpp
++            Graphics/src/ColorResolveFragment.cpp
+             Graphics/src/Pipeline.cpp
+             Graphics/src/PipelineCache.cpp
+             Graphics/src/Resources.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp
+@@ -0,0 +1,26 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_COLORRESOLVE_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_COLORRESOLVE_HPP
++
++#include "prx/libSceAgcDriver/Graphics/include/Draw.hpp"
++
++namespace AgcDriver::Graphics {
++
++// GC10 CB_RESOLVE averages MRT0 into MRT1. Storage samples do not
++// determine raster samples: resolve rectangle coverage is single-sampled.
++void ValidateColorResolve(const ColorResolvePass& pass);
++// The original shader is specialized only by sample count and an unused
++// descriptor binding; all reads are from a retained immutable source copy.
++ShaderRecompiler::RecompileResult BuildColorResolveFragment(
++    const ColorTarget& source, const ShaderRecompiler::RecompileResult& vertex);
++void ColorResolveReference(const ColorResolvePass& pass,
++    std::span<const std::byte> source, std::span<std::byte> destination);
++// Uses the actual guest vertex program and canonical rectangle stages. The
++// normal draw path loads destination contents, preserving uncovered pixels.
++void RunColorResolve(const Context& context, const ColorResolvePass& pass,
++    const State& raster, const Pm4::DrawParameters& draw,
++    const ShaderRecompiler::RecompileResult& vertex,
++    std::span<const GuestMemorySnapshot> snapshots,
++    const ShaderRecompiler::SpirvTarget& target);
++
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+@@ -0,0 +1,104 @@
++#include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorTargetTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
++#include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
++#include <algorithm>
++#include <cstring>
++#include <limits>
++#include <new>
++
++namespace AgcDriver::Graphics {
++
++void ValidateColorResolve(const ColorResolvePass& pass) {
++    const auto& source = pass.source;
++    const auto& destination = pass.destination;
++    Require(source.format == VK_FORMAT_R8G8B8A8_UNORM && destination.format == source.format &&
++            source.elementBytes == 4u && destination.elementBytes == 4u &&
++            source.componentMapping == destination.componentMapping,
++            "CB resolve supports matching RGBA8_UNORM formats only");
++    Require((source.samples == 2u || source.samples == 4u || source.samples == 8u) &&
++            source.fragments == source.samples, "CB resolve source requires 2/4/8 equal samples and fragments; EQAA is unsupported");
++    Require(destination.samples == 1u && destination.fragments == 1u,
++            "CB resolve destination must be single-sampled");
++    Require(source.extent.width != 0 && source.extent.height != 0 &&
++            source.extent.width == destination.extent.width && source.extent.height == destination.extent.height,
++            "CB resolve source and destination dimensions disagree");
++    Require(source.tileMode == ColorTileMode::RenderTarget && destination.tileMode == source.tileMode,
++            "CB resolve requires matching R64KB_X source and destination tiling");
++    Require(source.depth == 1u && destination.depth == 1u && source.depthSlice == 0u && destination.depthSlice == 0u &&
++            source.mip == 0u && destination.mip == 0u && source.mipCount == 1u && destination.mipCount == 1u,
++            "CB resolve mipmapped, array or volume views are unsupported");
++    Require(source.dccAddress == 0 && destination.dccAddress == 0 && source.cmaskAddress == 0 && destination.cmaskAddress == 0,
++            "CB resolve compressed or fast-cleared color targets are unsupported");
++    for (const auto* color : {&source, &destination}) {
++        const ColorTargetLayout layout(color->extent.width, color->extent.height, color->tileMode, 4u, color->samples);
++        Require(color->bytes == layout.Bytes(), "CB resolve color allocation size disagrees with its layout");
++        Require(color->address != 0 && color->address % layout.Alignment() == 0 &&
++                color->bytes <= std::numeric_limits<std::uint64_t>::max() - color->address,
++                "CB resolve invalid or overflowing guest range");
++    }
++}
++
++
++void ColorResolveReference(const ColorResolvePass& pass,
++    std::span<const std::byte> source, std::span<std::byte> destination) {
++    ValidateColorResolve(pass);
++    const auto samples = pass.source.samples;
++    const auto bytes = static_cast<std::size_t>(pass.source.extent.width) * pass.source.extent.height * 4u;
++    Require(destination.size() == bytes && source.size() == bytes * samples, "CB resolve reference buffer size mismatch");
++    // Original scalar oracle: round-by-half after the complete logical-sample
++    // mean. Native floating-point UNORM conversion may differ by one at ties.
++    for (std::size_t pixel = 0; pixel < bytes / 4u; ++pixel) {
++        for (unsigned channel = 0; channel < 4u; ++channel) {
++            unsigned sum = 0;
++            for (unsigned sample = 0; sample < samples; ++sample)
++                sum += std::to_integer<unsigned>(source[(pixel * samples + sample) * 4u + channel]);
++            destination[pixel * 4u + channel] = static_cast<std::byte>((sum + samples / 2u) / samples);
++        }
++    }
++}
++
++void RunColorResolve(const Context& context, const ColorResolvePass& pass,
++    const State& raster, const Pm4::DrawParameters& draw,
++    const ShaderRecompiler::RecompileResult& vertex,
++    std::span<const GuestMemorySnapshot> snapshots,
++    const ShaderRecompiler::SpirvTarget& target) {
++    ValidateColorResolve(pass);
++    Require(raster.rectList && raster.samples.count == 1u && raster.colors.size() == 1u &&
++            raster.color.address == pass.destination.address && !raster.depthTest && !raster.depthWrite && !raster.stencilTest,
++            "CB resolve requires its checked single-sample rectangle state");
++    Require(!draw.indirect && !draw.indexed && draw.indexCount == 3u && draw.instanceCount == 1u,
++            "CB resolve requires one direct three-vertex rectangle");
++    // Read through the production flush hook before the destination can change:
++    // pending GPU writes land first, including when source and destination alias.
++    const ColorTargetLayout layout(pass.source.extent.width, pass.source.extent.height,
++                                   pass.source.tileMode, 4u, pass.source.samples);
++    std::vector<std::byte> linear(layout.LinearBytes());
++    ReadColorTarget(pass.source, linear);
++    const auto alignment = std::align_val_t(65536);
++    auto snapshot = std::shared_ptr<std::byte>(static_cast<std::byte*>(::operator new(pass.source.bytes, alignment)),
++        [alignment](std::byte* memory) { ::operator delete(memory, alignment); });
++    std::memset(snapshot.get(), 0, pass.source.bytes);
++    auto immutable = pass.source;
++    immutable.address = immutable.surfaceAddress = reinterpret_cast<std::uintptr_t>(snapshot.get());
++    WriteColorTarget(immutable, linear);
++    auto fragment = BuildColorResolveFragment(immutable, vertex);
++    auto rectangle = ShaderRecompiler::BuildRectListShaders(vertex, fragment, target);
++    using Stage = ShaderRecompiler::ShaderStage;
++    const std::array<CompiledShader, 4> shaders{{
++        {Stage::Vertex, &vertex, 0}, {Stage::TessellationControl, &rectangle.control, 0},
++        {Stage::TessellationEvaluation, &rectangle.evaluation, 0}, {Stage::Fragment, &fragment, 0}
++    }};
++    const auto reason = SplitRectListShaderRejection(shaders, target);
++    Require(reason.empty(), reason);
++    // Single destination attachment: normal draw validation, load/store,
++    // retained descriptors, barriers, fault-buffer completion and alias stamps
++    // still apply. This executes actual geometry, including partial rectangles.
++    Draw(context, raster, draw, shaders, snapshots, nullptr, &target);
++    // Retain the guest-address backing at least through every recorded upload
++    // and read. A synchronous draw already finished; a later batch keeps it
++    // until all earlier work on this queue has completed.
++    if (context.recorder != nullptr) context.recorder->Keep(snapshot, pass.source.bytes);
++}
++
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp
+@@ -0,0 +1,72 @@
++#include "prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp"
++#include "prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h"
++#include <spirv/unified1/spirv.hpp>
++#include <algorithm>
++#include <bit>
++#include <limits>
++
++namespace AgcDriver::Graphics {
++
++ShaderRecompiler::RecompileResult BuildColorResolveFragment(
++    const ColorTarget& source, const ShaderRecompiler::RecompileResult& vertex) {
++    // DecodeTextureResource's GC10 T# uses a 14-bit width and height and a
++    // 48-bit address. NUM_FRAGMENTS is duplicated in LAST_LEVEL and word5.
++    Require(source.format == VK_FORMAT_R8G8B8A8_UNORM && source.elementBytes == 4u &&
++            source.fragments == source.samples && (source.samples == 2u || source.samples == 4u || source.samples == 8u),
++            "CB resolve fragment source must be 2/4/8-sample RGBA8_UNORM");
++    Require(source.tileMode == ColorTileMode::RenderTarget && source.extent.width > 0 && source.extent.width <= 16384u &&
++            source.extent.height > 0 && source.extent.height <= 16384u && source.address != 0 && source.address < (1ull << 48u) &&
++            source.address % 65536u == 0, "CB resolve source cannot be represented by the GC10 image descriptor");
++    std::uint32_t bindingIndex = 0;
++    for (const auto& binding : vertex.bindings) {
++        Require(binding.binding < std::numeric_limits<std::uint32_t>::max(), "CB resolve descriptor binding overflow");
++        bindingIndex = std::max(bindingIndex, binding.binding + 1u);
++    }
++    const std::span<const std::uint32_t> words = source.samples == 2u ? std::span<const std::uint32_t>(COLOR_RESOLVE_2_SPV) :
++        source.samples == 4u ? std::span<const std::uint32_t>(COLOR_RESOLVE_4_SPV) : std::span<const std::uint32_t>(COLOR_RESOLVE_8_SPV);
++    ShaderRecompiler::RecompileResult fragment{};
++    std::vector<std::uint32_t> code(words.begin(), words.end());
++    unsigned patched = 0;
++    for (std::size_t at = 5; at < code.size();) {
++        const auto count = code[at] >> 16u;
++        Require(count > 0 && count <= code.size() - at, "CB resolve embedded SPIR-V is malformed");
++        if ((code[at] & 0xffffu) == spv::OpDecorate && count == 4u && code[at + 2] == spv::DecorationBinding) {
++            Require(code[at + 3] == 0u, "CB resolve embedded descriptor binding changed");
++            code[at + 3] = bindingIndex;
++            ++patched;
++        }
++        at += count;
++    }
++    Require(patched == 1u, "CB resolve must have exactly one known image binding");
++    fragment.spirv = std::move(code);
++    const auto log = static_cast<std::uint32_t>(std::countr_zero(source.samples));
++    const auto width = source.extent.width - 1u;
++    const auto height = source.extent.height - 1u;
++    ShaderRecompiler::DescriptorBinding binding{};
++    binding.kind = ShaderRecompiler::DescriptorKind::SampledImage;
++    binding.role = ShaderRecompiler::DescriptorRole::GuestImages;
++    binding.descriptorSet = 0;
++    binding.binding = bindingIndex;
++    binding.count = 1;
++    binding.guestDescriptor = {
++        static_cast<std::uint32_t>(source.address >> 8u),
++        static_cast<std::uint32_t>(source.address >> 40u) | (56u << 20u) | ((width & 3u) << 30u),
++        (width >> 2u) | (height << 14u),
++        0xfacu | (log << 16u) | (27u << 20u) | (14u << 28u),
++        0u, log << 4u, 0u, 0u
++    };
++    binding.imageShape = ShaderRecompiler::DescriptorImageShape::Image2DMsaaArray;
++    binding.imageWritten = {false};
++    binding.imageDepthCompare = {false};
++    binding.imageAtomic = {false};
++    binding.imageAtomic64 = {false};
++    binding.imageUnnormalized = {false};
++    binding.imageSamplers = {0u};
++    binding.imageLogicalSamples = {source.samples};
++    binding.imageNativeSamples = {std::min(source.samples, 4u)};
++    fragment.bindings.push_back(std::move(binding));
++    return fragment;
++}
++
++
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve.frag b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve.frag
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve.frag
+@@ -0,0 +1,19 @@
++#version 450
++#extension GL_EXT_samplerless_texture_functions : require
++// Each embedded original program has one exact logical count (2/4/8).
++#ifndef APS5_RESOLVE_SAMPLES
++#define APS5_RESOLVE_SAMPLES 8
++#endif
++const int logicalSamples = APS5_RESOLVE_SAMPLES;
++layout(set = 0, binding = 0) uniform texture2DMSArray sourceSamples;
++layout(location = 0) out vec4 color;
++void main() {
++    ivec2 pixel = ivec2(gl_FragCoord.xy);
++    int nativeSamples = min(logicalSamples, 4);
++    vec4 sum = vec4(0.0);
++    for (int sampleIndex = 0; sampleIndex < logicalSamples; ++sampleIndex) {
++        sum += texelFetch(sourceSamples,
++            ivec3(pixel, sampleIndex / nativeSamples), sampleIndex % nativeSamples);
++    }
++    color = sum / float(logicalSamples);
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h
+@@ -0,0 +1,161 @@
++// Original ColorResolve.frag, glslangValidator -V --target-env vulkan1.1.
++// Regenerate with scripts/check-fixed-color-resolve.py --regenerate-shaders.
++#ifndef ANYPS5_COLOR_RESOLVE_SPV_H
++#define ANYPS5_COLOR_RESOLVE_SPV_H
++#include <cstdint>
++
++inline constexpr std::uint32_t COLOR_RESOLVE_2_SPV[] = {
++    0x07230203, 0x00010300, 0x0008000b, 0x0000003e, 0x00000000, 0x00020011, 0x00000001, 0x0006000b,
++    0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001,
++    0x0007000f, 0x00000004, 0x00000004, 0x6e69616d, 0x00000000, 0x0000000d, 0x00000039, 0x00030010,
++    0x00000004, 0x00000007, 0x00030003, 0x00000002, 0x000001c2, 0x000b0004, 0x455f4c47, 0x735f5458,
++    0x6c706d61, 0x656c7265, 0x745f7373, 0x75747865, 0x665f6572, 0x74636e75, 0x736e6f69, 0x00000000,
++    0x00040005, 0x00000004, 0x6e69616d, 0x00000000, 0x00040005, 0x00000009, 0x65786970, 0x0000006c,
++    0x00060005, 0x0000000d, 0x465f6c67, 0x43676172, 0x64726f6f, 0x00000000, 0x00060005, 0x00000013,
++    0x6974616e, 0x61536576, 0x656c706d, 0x00000073, 0x00030005, 0x00000016, 0x006d7573, 0x00050005,
++    0x00000019, 0x706d6173, 0x6e49656c, 0x00786564, 0x00060005, 0x00000025, 0x72756f73, 0x61536563,
++    0x656c706d, 0x00000073, 0x00040005, 0x00000039, 0x6f6c6f63, 0x00000072, 0x00040047, 0x0000000d,
++    0x0000000b, 0x0000000f, 0x00040047, 0x00000025, 0x00000021, 0x00000000, 0x00040047, 0x00000025,
++    0x00000022, 0x00000000, 0x00040047, 0x00000039, 0x0000001e, 0x00000000, 0x00020013, 0x00000002,
++    0x00030021, 0x00000003, 0x00000002, 0x00040015, 0x00000006, 0x00000020, 0x00000001, 0x00040017,
++    0x00000007, 0x00000006, 0x00000002, 0x00040020, 0x00000008, 0x00000007, 0x00000007, 0x00030016,
++    0x0000000a, 0x00000020, 0x00040017, 0x0000000b, 0x0000000a, 0x00000004, 0x00040020, 0x0000000c,
++    0x00000001, 0x0000000b, 0x0004003b, 0x0000000c, 0x0000000d, 0x00000001, 0x00040017, 0x0000000e,
++    0x0000000a, 0x00000002, 0x00040020, 0x00000012, 0x00000007, 0x00000006, 0x0004002b, 0x00000006,
++    0x00000014, 0x00000002, 0x00040020, 0x00000015, 0x00000007, 0x0000000b, 0x0004002b, 0x0000000a,
++    0x00000017, 0x00000000, 0x0007002c, 0x0000000b, 0x00000018, 0x00000017, 0x00000017, 0x00000017,
++    0x00000017, 0x0004002b, 0x00000006, 0x0000001a, 0x00000000, 0x00020014, 0x00000021, 0x00090019,
++    0x00000023, 0x0000000a, 0x00000001, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000,
++    0x00040020, 0x00000024, 0x00000000, 0x00000023, 0x0004003b, 0x00000024, 0x00000025, 0x00000000,
++    0x00040017, 0x0000002b, 0x00000006, 0x00000003, 0x0004002b, 0x00000006, 0x00000036, 0x00000001,
++    0x00040020, 0x00000038, 0x00000003, 0x0000000b, 0x0004003b, 0x00000038, 0x00000039, 0x00000003,
++    0x0004002b, 0x0000000a, 0x0000003b, 0x40000000, 0x00050036, 0x00000002, 0x00000004, 0x00000000,
++    0x00000003, 0x000200f8, 0x00000005, 0x0004003b, 0x00000008, 0x00000009, 0x00000007, 0x0004003b,
++    0x00000012, 0x00000013, 0x00000007, 0x0004003b, 0x00000015, 0x00000016, 0x00000007, 0x0004003b,
++    0x00000012, 0x00000019, 0x00000007, 0x0004003d, 0x0000000b, 0x0000000f, 0x0000000d, 0x0007004f,
++    0x0000000e, 0x00000010, 0x0000000f, 0x0000000f, 0x00000000, 0x00000001, 0x0004006e, 0x00000007,
++    0x00000011, 0x00000010, 0x0003003e, 0x00000009, 0x00000011, 0x0003003e, 0x00000013, 0x00000014,
++    0x0003003e, 0x00000016, 0x00000018, 0x0003003e, 0x00000019, 0x0000001a, 0x000200f9, 0x0000001b,
++    0x000200f8, 0x0000001b, 0x000400f6, 0x0000001d, 0x0000001e, 0x00000000, 0x000200f9, 0x0000001f,
++    0x000200f8, 0x0000001f, 0x0004003d, 0x00000006, 0x00000020, 0x00000019, 0x000500b1, 0x00000021,
++    0x00000022, 0x00000020, 0x00000014, 0x000400fa, 0x00000022, 0x0000001c, 0x0000001d, 0x000200f8,
++    0x0000001c, 0x0004003d, 0x00000023, 0x00000026, 0x00000025, 0x0004003d, 0x00000007, 0x00000027,
++    0x00000009, 0x0004003d, 0x00000006, 0x00000028, 0x00000019, 0x0004003d, 0x00000006, 0x00000029,
++    0x00000013, 0x00050087, 0x00000006, 0x0000002a, 0x00000028, 0x00000029, 0x00050051, 0x00000006,
++    0x0000002c, 0x00000027, 0x00000000, 0x00050051, 0x00000006, 0x0000002d, 0x00000027, 0x00000001,
++    0x00060050, 0x0000002b, 0x0000002e, 0x0000002c, 0x0000002d, 0x0000002a, 0x0004003d, 0x00000006,
++    0x0000002f, 0x00000019, 0x0004003d, 0x00000006, 0x00000030, 0x00000013, 0x0005008b, 0x00000006,
++    0x00000031, 0x0000002f, 0x00000030, 0x0007005f, 0x0000000b, 0x00000032, 0x00000026, 0x0000002e,
++    0x00000040, 0x00000031, 0x0004003d, 0x0000000b, 0x00000033, 0x00000016, 0x00050081, 0x0000000b,
++    0x00000034, 0x00000033, 0x00000032, 0x0003003e, 0x00000016, 0x00000034, 0x000200f9, 0x0000001e,
++    0x000200f8, 0x0000001e, 0x0004003d, 0x00000006, 0x00000035, 0x00000019, 0x00050080, 0x00000006,
++    0x00000037, 0x00000035, 0x00000036, 0x0003003e, 0x00000019, 0x00000037, 0x000200f9, 0x0000001b,
++    0x000200f8, 0x0000001d, 0x0004003d, 0x0000000b, 0x0000003a, 0x00000016, 0x00070050, 0x0000000b,
++    0x0000003c, 0x0000003b, 0x0000003b, 0x0000003b, 0x0000003b, 0x00050088, 0x0000000b, 0x0000003d,
++    0x0000003a, 0x0000003c, 0x0003003e, 0x00000039, 0x0000003d, 0x000100fd, 0x00010038,
++};
++
++inline constexpr std::uint32_t COLOR_RESOLVE_4_SPV[] = {
++    0x07230203, 0x00010300, 0x0008000b, 0x0000003e, 0x00000000, 0x00020011, 0x00000001, 0x0006000b,
++    0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001,
++    0x0007000f, 0x00000004, 0x00000004, 0x6e69616d, 0x00000000, 0x0000000d, 0x00000039, 0x00030010,
++    0x00000004, 0x00000007, 0x00030003, 0x00000002, 0x000001c2, 0x000b0004, 0x455f4c47, 0x735f5458,
++    0x6c706d61, 0x656c7265, 0x745f7373, 0x75747865, 0x665f6572, 0x74636e75, 0x736e6f69, 0x00000000,
++    0x00040005, 0x00000004, 0x6e69616d, 0x00000000, 0x00040005, 0x00000009, 0x65786970, 0x0000006c,
++    0x00060005, 0x0000000d, 0x465f6c67, 0x43676172, 0x64726f6f, 0x00000000, 0x00060005, 0x00000013,
++    0x6974616e, 0x61536576, 0x656c706d, 0x00000073, 0x00030005, 0x00000016, 0x006d7573, 0x00050005,
++    0x00000019, 0x706d6173, 0x6e49656c, 0x00786564, 0x00060005, 0x00000025, 0x72756f73, 0x61536563,
++    0x656c706d, 0x00000073, 0x00040005, 0x00000039, 0x6f6c6f63, 0x00000072, 0x00040047, 0x0000000d,
++    0x0000000b, 0x0000000f, 0x00040047, 0x00000025, 0x00000021, 0x00000000, 0x00040047, 0x00000025,
++    0x00000022, 0x00000000, 0x00040047, 0x00000039, 0x0000001e, 0x00000000, 0x00020013, 0x00000002,
++    0x00030021, 0x00000003, 0x00000002, 0x00040015, 0x00000006, 0x00000020, 0x00000001, 0x00040017,
++    0x00000007, 0x00000006, 0x00000002, 0x00040020, 0x00000008, 0x00000007, 0x00000007, 0x00030016,
++    0x0000000a, 0x00000020, 0x00040017, 0x0000000b, 0x0000000a, 0x00000004, 0x00040020, 0x0000000c,
++    0x00000001, 0x0000000b, 0x0004003b, 0x0000000c, 0x0000000d, 0x00000001, 0x00040017, 0x0000000e,
++    0x0000000a, 0x00000002, 0x00040020, 0x00000012, 0x00000007, 0x00000006, 0x0004002b, 0x00000006,
++    0x00000014, 0x00000004, 0x00040020, 0x00000015, 0x00000007, 0x0000000b, 0x0004002b, 0x0000000a,
++    0x00000017, 0x00000000, 0x0007002c, 0x0000000b, 0x00000018, 0x00000017, 0x00000017, 0x00000017,
++    0x00000017, 0x0004002b, 0x00000006, 0x0000001a, 0x00000000, 0x00020014, 0x00000021, 0x00090019,
++    0x00000023, 0x0000000a, 0x00000001, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000,
++    0x00040020, 0x00000024, 0x00000000, 0x00000023, 0x0004003b, 0x00000024, 0x00000025, 0x00000000,
++    0x00040017, 0x0000002b, 0x00000006, 0x00000003, 0x0004002b, 0x00000006, 0x00000036, 0x00000001,
++    0x00040020, 0x00000038, 0x00000003, 0x0000000b, 0x0004003b, 0x00000038, 0x00000039, 0x00000003,
++    0x0004002b, 0x0000000a, 0x0000003b, 0x40800000, 0x00050036, 0x00000002, 0x00000004, 0x00000000,
++    0x00000003, 0x000200f8, 0x00000005, 0x0004003b, 0x00000008, 0x00000009, 0x00000007, 0x0004003b,
++    0x00000012, 0x00000013, 0x00000007, 0x0004003b, 0x00000015, 0x00000016, 0x00000007, 0x0004003b,
++    0x00000012, 0x00000019, 0x00000007, 0x0004003d, 0x0000000b, 0x0000000f, 0x0000000d, 0x0007004f,
++    0x0000000e, 0x00000010, 0x0000000f, 0x0000000f, 0x00000000, 0x00000001, 0x0004006e, 0x00000007,
++    0x00000011, 0x00000010, 0x0003003e, 0x00000009, 0x00000011, 0x0003003e, 0x00000013, 0x00000014,
++    0x0003003e, 0x00000016, 0x00000018, 0x0003003e, 0x00000019, 0x0000001a, 0x000200f9, 0x0000001b,
++    0x000200f8, 0x0000001b, 0x000400f6, 0x0000001d, 0x0000001e, 0x00000000, 0x000200f9, 0x0000001f,
++    0x000200f8, 0x0000001f, 0x0004003d, 0x00000006, 0x00000020, 0x00000019, 0x000500b1, 0x00000021,
++    0x00000022, 0x00000020, 0x00000014, 0x000400fa, 0x00000022, 0x0000001c, 0x0000001d, 0x000200f8,
++    0x0000001c, 0x0004003d, 0x00000023, 0x00000026, 0x00000025, 0x0004003d, 0x00000007, 0x00000027,
++    0x00000009, 0x0004003d, 0x00000006, 0x00000028, 0x00000019, 0x0004003d, 0x00000006, 0x00000029,
++    0x00000013, 0x00050087, 0x00000006, 0x0000002a, 0x00000028, 0x00000029, 0x00050051, 0x00000006,
++    0x0000002c, 0x00000027, 0x00000000, 0x00050051, 0x00000006, 0x0000002d, 0x00000027, 0x00000001,
++    0x00060050, 0x0000002b, 0x0000002e, 0x0000002c, 0x0000002d, 0x0000002a, 0x0004003d, 0x00000006,
++    0x0000002f, 0x00000019, 0x0004003d, 0x00000006, 0x00000030, 0x00000013, 0x0005008b, 0x00000006,
++    0x00000031, 0x0000002f, 0x00000030, 0x0007005f, 0x0000000b, 0x00000032, 0x00000026, 0x0000002e,
++    0x00000040, 0x00000031, 0x0004003d, 0x0000000b, 0x00000033, 0x00000016, 0x00050081, 0x0000000b,
++    0x00000034, 0x00000033, 0x00000032, 0x0003003e, 0x00000016, 0x00000034, 0x000200f9, 0x0000001e,
++    0x000200f8, 0x0000001e, 0x0004003d, 0x00000006, 0x00000035, 0x00000019, 0x00050080, 0x00000006,
++    0x00000037, 0x00000035, 0x00000036, 0x0003003e, 0x00000019, 0x00000037, 0x000200f9, 0x0000001b,
++    0x000200f8, 0x0000001d, 0x0004003d, 0x0000000b, 0x0000003a, 0x00000016, 0x00070050, 0x0000000b,
++    0x0000003c, 0x0000003b, 0x0000003b, 0x0000003b, 0x0000003b, 0x00050088, 0x0000000b, 0x0000003d,
++    0x0000003a, 0x0000003c, 0x0003003e, 0x00000039, 0x0000003d, 0x000100fd, 0x00010038,
++};
++
++inline constexpr std::uint32_t COLOR_RESOLVE_8_SPV[] = {
++    0x07230203, 0x00010300, 0x0008000b, 0x0000003f, 0x00000000, 0x00020011, 0x00000001, 0x0006000b,
++    0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e, 0x00000000, 0x0003000e, 0x00000000, 0x00000001,
++    0x0007000f, 0x00000004, 0x00000004, 0x6e69616d, 0x00000000, 0x0000000d, 0x0000003a, 0x00030010,
++    0x00000004, 0x00000007, 0x00030003, 0x00000002, 0x000001c2, 0x000b0004, 0x455f4c47, 0x735f5458,
++    0x6c706d61, 0x656c7265, 0x745f7373, 0x75747865, 0x665f6572, 0x74636e75, 0x736e6f69, 0x00000000,
++    0x00040005, 0x00000004, 0x6e69616d, 0x00000000, 0x00040005, 0x00000009, 0x65786970, 0x0000006c,
++    0x00060005, 0x0000000d, 0x465f6c67, 0x43676172, 0x64726f6f, 0x00000000, 0x00060005, 0x00000013,
++    0x6974616e, 0x61536576, 0x656c706d, 0x00000073, 0x00030005, 0x00000016, 0x006d7573, 0x00050005,
++    0x00000019, 0x706d6173, 0x6e49656c, 0x00786564, 0x00060005, 0x00000026, 0x72756f73, 0x61536563,
++    0x656c706d, 0x00000073, 0x00040005, 0x0000003a, 0x6f6c6f63, 0x00000072, 0x00040047, 0x0000000d,
++    0x0000000b, 0x0000000f, 0x00040047, 0x00000026, 0x00000021, 0x00000000, 0x00040047, 0x00000026,
++    0x00000022, 0x00000000, 0x00040047, 0x0000003a, 0x0000001e, 0x00000000, 0x00020013, 0x00000002,
++    0x00030021, 0x00000003, 0x00000002, 0x00040015, 0x00000006, 0x00000020, 0x00000001, 0x00040017,
++    0x00000007, 0x00000006, 0x00000002, 0x00040020, 0x00000008, 0x00000007, 0x00000007, 0x00030016,
++    0x0000000a, 0x00000020, 0x00040017, 0x0000000b, 0x0000000a, 0x00000004, 0x00040020, 0x0000000c,
++    0x00000001, 0x0000000b, 0x0004003b, 0x0000000c, 0x0000000d, 0x00000001, 0x00040017, 0x0000000e,
++    0x0000000a, 0x00000002, 0x00040020, 0x00000012, 0x00000007, 0x00000006, 0x0004002b, 0x00000006,
++    0x00000014, 0x00000004, 0x00040020, 0x00000015, 0x00000007, 0x0000000b, 0x0004002b, 0x0000000a,
++    0x00000017, 0x00000000, 0x0007002c, 0x0000000b, 0x00000018, 0x00000017, 0x00000017, 0x00000017,
++    0x00000017, 0x0004002b, 0x00000006, 0x0000001a, 0x00000000, 0x0004002b, 0x00000006, 0x00000021,
++    0x00000008, 0x00020014, 0x00000022, 0x00090019, 0x00000024, 0x0000000a, 0x00000001, 0x00000000,
++    0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00040020, 0x00000025, 0x00000000, 0x00000024,
++    0x0004003b, 0x00000025, 0x00000026, 0x00000000, 0x00040017, 0x0000002c, 0x00000006, 0x00000003,
++    0x0004002b, 0x00000006, 0x00000037, 0x00000001, 0x00040020, 0x00000039, 0x00000003, 0x0000000b,
++    0x0004003b, 0x00000039, 0x0000003a, 0x00000003, 0x0004002b, 0x0000000a, 0x0000003c, 0x41000000,
++    0x00050036, 0x00000002, 0x00000004, 0x00000000, 0x00000003, 0x000200f8, 0x00000005, 0x0004003b,
++    0x00000008, 0x00000009, 0x00000007, 0x0004003b, 0x00000012, 0x00000013, 0x00000007, 0x0004003b,
++    0x00000015, 0x00000016, 0x00000007, 0x0004003b, 0x00000012, 0x00000019, 0x00000007, 0x0004003d,
++    0x0000000b, 0x0000000f, 0x0000000d, 0x0007004f, 0x0000000e, 0x00000010, 0x0000000f, 0x0000000f,
++    0x00000000, 0x00000001, 0x0004006e, 0x00000007, 0x00000011, 0x00000010, 0x0003003e, 0x00000009,
++    0x00000011, 0x0003003e, 0x00000013, 0x00000014, 0x0003003e, 0x00000016, 0x00000018, 0x0003003e,
++    0x00000019, 0x0000001a, 0x000200f9, 0x0000001b, 0x000200f8, 0x0000001b, 0x000400f6, 0x0000001d,
++    0x0000001e, 0x00000000, 0x000200f9, 0x0000001f, 0x000200f8, 0x0000001f, 0x0004003d, 0x00000006,
++    0x00000020, 0x00000019, 0x000500b1, 0x00000022, 0x00000023, 0x00000020, 0x00000021, 0x000400fa,
++    0x00000023, 0x0000001c, 0x0000001d, 0x000200f8, 0x0000001c, 0x0004003d, 0x00000024, 0x00000027,
++    0x00000026, 0x0004003d, 0x00000007, 0x00000028, 0x00000009, 0x0004003d, 0x00000006, 0x00000029,
++    0x00000019, 0x0004003d, 0x00000006, 0x0000002a, 0x00000013, 0x00050087, 0x00000006, 0x0000002b,
++    0x00000029, 0x0000002a, 0x00050051, 0x00000006, 0x0000002d, 0x00000028, 0x00000000, 0x00050051,
++    0x00000006, 0x0000002e, 0x00000028, 0x00000001, 0x00060050, 0x0000002c, 0x0000002f, 0x0000002d,
++    0x0000002e, 0x0000002b, 0x0004003d, 0x00000006, 0x00000030, 0x00000019, 0x0004003d, 0x00000006,
++    0x00000031, 0x00000013, 0x0005008b, 0x00000006, 0x00000032, 0x00000030, 0x00000031, 0x0007005f,
++    0x0000000b, 0x00000033, 0x00000027, 0x0000002f, 0x00000040, 0x00000032, 0x0004003d, 0x0000000b,
++    0x00000034, 0x00000016, 0x00050081, 0x0000000b, 0x00000035, 0x00000034, 0x00000033, 0x0003003e,
++    0x00000016, 0x00000035, 0x000200f9, 0x0000001e, 0x000200f8, 0x0000001e, 0x0004003d, 0x00000006,
++    0x00000036, 0x00000019, 0x00050080, 0x00000006, 0x00000038, 0x00000036, 0x00000037, 0x0003003e,
++    0x00000019, 0x00000038, 0x000200f9, 0x0000001b, 0x000200f8, 0x0000001d, 0x0004003d, 0x0000000b,
++    0x0000003b, 0x00000016, 0x00070050, 0x0000000b, 0x0000003d, 0x0000003c, 0x0000003c, 0x0000003c,
++    0x0000003c, 0x00050088, 0x0000000b, 0x0000003e, 0x0000003b, 0x0000003d, 0x0003003e, 0x0000003a,
++    0x0000003e, 0x000100fd, 0x00010038,
++};
++
++#endif

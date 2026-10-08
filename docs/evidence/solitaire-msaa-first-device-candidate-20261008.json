@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "status": "FAIL_guest_startup_before_observed_vulkan_creation",
+  "scope": "First bounded physical iPad run of a freshly prepared Solitaire candidate using the current local HLE and Relinker. This report covers this single completed run and its rollback, not later isolation runs.",
+  "title": {
+    "name": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000"
+  },
+  "device": {
+    "model_identifier": "iPad14,10",
+    "gpu_hardware": "Apple M2 GPU",
+    "os": "iPadOS 27.0.1",
+    "os_build": "24A446"
+  },
+  "host": {
+    "app_name": "madeira-anyps5",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "version": "0.1.9",
+    "build": "47",
+    "host_app_rebuilt_for_this_run": false,
+    "automatic_builtin_jit_enabled_before_guest": true,
+    "jit_pool_mib": 512,
+    "normal_memory_tracking": true,
+    "fex_multiblock": true,
+    "fex_maxinst": 5000,
+    "sample_groups_enabled": true,
+    "async_avx_and_integer_flags_preservation_enabled": true,
+    "native_signal_suspend_enabled": true,
+    "veh_context_bridge_enabled": true,
+    "fixed_function_interpolation_enabled": true
+  },
+  "candidate": {
+    "candidate_manifest_sha256": "b7de3489769d4c80ed9e5a229462d3477a23dd21342b8c82489cd2988a04617c",
+    "candidate_manifest_device_readback_matches": true,
+    "hle_archive_sha256": "0c0150bd90a088e75096cd167f1a22a43a7596e0c0d40129bc5c10187abc6c9f",
+    "hle_provenance_report_sha256": "d61a579230da50316f909e72f05e3a6795957449f05b67143f2333bb4617426e",
+    "hle_archive_manifest_report_sha256": "5832ef3704f15bb9bb7fdd6a8df061d346294e2ada7c1f067487e65c654904af",
+    "project_commit_at_build": "114b50f2eceff7f026d6f44413ab7948511a16a8",
+    "anyps5_upstream_commit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "anyps5_diff_sha256_at_build": "1c25b682a9ba3afa9ef195cbef2851d83f44101335aa7f30b726f7ca74239228",
+    "recorded_anyps5_patch_count": 44,
+    "hle_targets_built": 50,
+    "hle_archive_files": 53,
+    "hle_prx_files": 50,
+    "compiler": "WinLibs GCC 15.2.0 posix-seh UCRT r7",
+    "release_build_flags": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "host_cpu_api_tests_passed": 22,
+    "host_test_runtime": "local Wine",
+    "relinker_sha256": "0d8fc2561f32063910f933a52a3cf2f4187856ab7abd195aa5c4295c19de5262",
+    "nid_patcher_sha256": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee",
+    "preparer_sha256": "fa8864fb80a55399a40f8c7f141c962aca66e9f5b6223400e6cb637607d09476",
+    "dependency_audit": {
+      "passed": true,
+      "required_host_libraries": 47,
+      "packaged_libraries": 51,
+      "guest_nids": 3225,
+      "missing_libraries": 0,
+      "unresolved_guest_imports": 0,
+      "unresolved_guest_nids": 0,
+      "unresolved_native_imports": 0
+    },
+    "note": "Archive contents, embedded build provenance, candidate manifest and device runtime readbacks were matched. Host CPU/API checks and a complete dependency audit do not establish game compatibility."
+  },
+  "observed_result": {
+    "game_runtime_seconds_reported_by_host": 2.5,
+    "bounded_capture_seconds": [
+      15,
+      35,
+      60
+    ],
+    "uncaught_cpp_exception": "std::bad_alloc",
+    "wine_exit_code_signed": -1073741795,
+    "wine_exit_status_hex": "0xc000001d",
+    "fatal_exception": "illegal instruction",
+    "vulkan_device_creation_observed": false,
+    "moltenvk_initialization_log_observed": false,
+    "game_msaa_draw_observed": false,
+    "gameplay_accepted": false,
+    "visual_result": "Library view with error dialog at 35 and 60 seconds, as reviewed by the root task; sanitized local OCR independently found Library, Solitaire and Error/Exception text at both times.",
+    "images_published": false,
+    "image_privacy_note": "Captures include unrelated notification content and remain private; only their hashes are recorded here."
+  },
+  "cause_under_investigation": {
+    "status": "static_call_chain_hypothesis_not_yet_validated_by_matched_device_fix",
+    "analysis": "Separate read-only static analysis traces a 48-byte allocation during a guest constructor into the bundled libc allocator, whose initialization state is unset. It then raises bad_alloc and terminates with a deliberate UD2 instruction. The same analysis finds that the newly generated launcher omitted the bundled libc initialization call present in the earlier launcher.",
+    "public_source_corroboration": "At the pinned AnyPS5 commit, WindowsGuestModuleWriter records guest lifecycle entry points only when ReplacementModule is empty; a converted guest module with replacement imports can therefore lose its initialization metadata.",
+    "alternative_interpretations_not_excluded_by_this_run": "This capture alone does not prove the allocator was the sole cause or validate a repair. A dependency-complete package can still fail before graphics.",
+    "successful_fix_included_in_this_run": false
+  },
+  "rollback": {
+    "runtime_files_changed": 52,
+    "runtime_units_changed": [
+      "executable",
+      "HLE libraries",
+      "preparation metadata"
+    ],
+    "all_changed_units_backed_up_against_original_manifest": true,
+    "candidate_runtime_readback_files_verified": 56,
+    "restored_runtime_readback_files_verified": 56,
+    "all_restored_runtime_readbacks_match_original_hashes": true,
+    "original_manifest_restored_byte_for_byte": true,
+    "configuration_restored_byte_for_byte": true,
+    "library_restored_byte_for_byte": true,
+    "own_bundle_processes_before_cleanup": 2,
+    "own_bundle_processes_after_cleanup": 0,
+    "app_termination_command_succeeded": true,
+    "helper_cleanup": "Termination raced an already exited helper; final exact-bundle process inventory was empty.",
+    "game_assets_outside_runtime_units_replaced": false
+  },
+  "native_lifecycle_warning": {
+    "observed_after_guest_failure": true,
+    "symbol": "jit26_detach + 0x4",
+    "mach_exception_type": 6,
+    "log_classification": "UNHANDLED #3",
+    "jit_dump_created": true,
+    "clean_native_shutdown_proven": false
+  },
+  "private_capture_hashes": {
+    "log_sha256": "bf51dda9af696c273d71d2f5bff6df1c5b9716b032cf8e0ac98352f6b064be9d",
+    "run_receipt_sha256": "65360df059c54dd84c3be537ba4c0c0f7118cab9080c31143d84dae05af80068",
+    "cleanup_before_sha256": "efe513c3d5534423c7ee93e51199e8525d035bf6dab30c0f96e2fc4ef0b766be",
+    "cleanup_after_sha256": "8a276ac8eabcb47bc9b7c8a11357f05c81ece183a5e3e675e9b21cffb6875a75",
+    "launch_sha256": "1e05ff2bd0e01947958afea46b54f0127390da96ed1939d3c3c87ad9b54647f8",
+    "screen_15s_sha256": "1411e0d90a4f983aebf3d796c28d7ccca022ce77fca66f5ab779871ba196b28c",
+    "screen_35s_sha256": "53351215c7376c647f714b773328e0b645e373bb4132e1422c8f862b679f8603",
+    "screen_60s_sha256": "eec5ff02a57e3f686303ca4782b8a0f256508d4a4e0941b4736e04a345d867f9"
+  },
+  "limitations": [
+    "This freshly prepared executable changed together with HLE; the first run does not isolate the regression to one component.",
+    "No Vulkan device, game draw, visible game frame, GPU shader execution or game rendering qualification was reached in the captured run.",
+    "No Solitaire gameplay, audio, controls, save/load, background handling, resource stability or FPS acceptance.",
+    "Independent offscreen color/stencil probe results do not turn this failed startup into a successful game integration.",
+    "Later old-launcher/new-HLE isolation and lifecycle-repair candidates are separate experiments and are not results of this run.",
+    "No private game bytes, disassembly, raw shaders, paths or screenshots are published by this report."
+  ]
+}

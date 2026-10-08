@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory(prefix="anyps5-depth-surfaces-") as scratch:
         *["-I" + str(path) for path in includes],
         str(root / "tools/checks/msaa_depth_surface_commands.cpp"),
         str(source / "core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp"),
+        str(source / "core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp"),
         str(source / "core/shader/recompiler/RdnaDecoder/src/RdnaDescriptorFormat.cpp"),
         "-o", str(binary),
     ], check=True)

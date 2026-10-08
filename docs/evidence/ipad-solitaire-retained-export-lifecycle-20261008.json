@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T12:42:15.971934+00:00",
+  "kind": "ipad_solitaire_retained_export_lifecycle_startup",
+  "status": "fresh_guest_startup_reaches_swapchain_game_rendering_unqualified",
+  "source_scope": "Run conclusions are derived from this run’s receipt, read-back installation manifest and closed app log. The private 60-second screenshot was separately reviewed by the coordinating root agent; its bytes are not published.",
+  "inputs": {
+    "receipt.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-lifecycle-msaa-runtime/receipt.json",
+      "sha256": "31346038627ae30bb9f97bd44644f689e685b667160bf8722fe6bedced82f584"
+    },
+    "manifest-readback.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-lifecycle-msaa-runtime/manifest-readback.json",
+      "sha256": "9d76f4fd60fe7f0bc386ae34c47dad652471d2a6b96a05ad8c856ca53626ebdf"
+    },
+    "app-final.log": {
+      "private_local_path": "build/pr1-port/solitaire-build47-lifecycle-msaa-runtime/app-final.log",
+      "sha256": "8284879adbc466ab219a31870f462dd6fc555dd732786cfe3a9387480c55d559"
+    }
+  },
+  "build": {
+    "app_version": "0.1.9",
+    "app_build": 47,
+    "relinker_sha256": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+    "nid_patcher_sha256": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee",
+    "hle_archive_sha256": "0c0150bd90a088e75096cd167f1a22a43a7596e0c0d40129bc5c10187abc6c9f",
+    "hle_source_commit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "hle_source_diff_sha256": "1c25b682a9ba3afa9ef195cbef2851d83f44101335aa7f30b726f7ca74239228",
+    "hle_build_patch_count": 44,
+    "hle_targets": 50,
+    "host_test_suites_recorded_in_build_manifest": 22,
+    "later_graphics_patches_in_tested_hle": false,
+    "scope": "The tested HLE provenance ends at patch0044. The fixed relinker is the patch0045 host-tool build; this device run does not qualify patch0046 or the in-progress color-resolve follow-up."
+  },
+  "installation": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000",
+    "manifest_matches_receipt": true,
+    "dependency_audit_passed": true,
+    "explicit_hle_dependencies": 47,
+    "missing_libraries": 0,
+    "unresolved_guest_imports": 0,
+    "unresolved_guest_nids": 0,
+    "unresolved_native_imports": 0,
+    "prepared_manifest_status": "prepared_unexecuted",
+    "status_note": "The preparation manifest retains its preparation-time status. Execution observations are recorded separately here; no private package metadata is rewritten."
+  },
+  "device": {
+    "model": "iPad14,10",
+    "gpu": "Apple M2 GPU",
+    "os_version": "27.0.1",
+    "os_build": "24A446",
+    "maximum_display_fps": 60,
+    "initial_thermal_state": "nominal",
+    "low_power_mode": false,
+    "increased_memory_entitlement": true,
+    "extended_virtual_addressing_entitlement": true
+  },
+  "runtime": {
+    "builtin_jit_enabled": true,
+    "jit_helper_finished_successfully": true,
+    "normal_memory_tracking": true,
+    "sample_groups_enabled": true,
+    "native_signal_suspend_enabled": true,
+    "async_avx_preservation_enabled": true,
+    "async_flags_preservation_enabled": true,
+    "veh_context_bridge_enabled": true,
+    "avx_enabled": true,
+    "multiblock_enabled": true,
+    "maximum_instructions": 5000,
+    "frame_generation": false,
+    "guest_arena_base": "0x7400000000",
+    "guest_arena_size_bytes": 4294967296,
+    "guest_arena_chunk_bytes": 268435456,
+    "guest_arena_lazy": true,
+    "receipt_test_operation_duration_seconds": 72.52128412500001,
+    "duration_note": "Receipt duration is the bounded test operation, not a proven gameplay duration."
+  },
+  "observations": {
+    "gpu_selected": true,
+    "swapchain_created": true,
+    "swapchain_extent": [
+      768,
+      432
+    ],
+    "swapchain_requested_images": 3,
+    "swapchain_actual_images": 3,
+    "configured_display_resolution": [
+      1280,
+      720
+    ],
+    "resolution_note": "Configured display size and created swapchain extent are separately observed; this run does not qualify the dimensions of every game render target.",
+    "bad_alloc_log_matches": 0,
+    "fatal_log_marker_matches": 0,
+    "absence_scope": "No matching markers in this bounded log; this is not exhaustive exception or memory correctness.",
+    "unique_graphics_rejection_reasons": 2,
+    "skipped_draw_log_records": 4,
+    "graphics_rejections": [
+      {
+        "reason": "AGC graphics: split draw currently requires exactly a vertex/fragment shader pair",
+        "records": 2,
+        "log_lines": [
+          13089,
+          21792
+        ]
+      },
+      {
+        "reason": "AGC graphics: multisample rasterization requires PA_SC_MODE_CNTL_0 MSAA_ENABLE",
+        "records": 2,
+        "log_lines": [
+          13090,
+          21798
+        ]
+      }
+    ]
+  },
+  "visual_review": {
+    "status": "white_game_surface",
+    "reviewer": "coordinating_root_agent",
+    "private_capture_path": "build/pr1-port/solitaire-build47-lifecycle-msaa-runtime/screen-60.png",
+    "private_capture_sha256": "839fd032668766a66293d373d04da7ca3544d83932bbb393550dcbf69c64b995",
+    "observed": "White game output surface, black letterboxing and visible touch controls; no error dialog.",
+    "published_capture": false,
+    "gameplay_qualified": false
+  },
+  "helper_completion": {
+    "ui_message": "Wine finished after 23.5s",
+    "ui_message_log_line": 34194,
+    "subsequent_log_lines": 2686,
+    "videoout_activity_after_message": true,
+    "audio_buffer_activity_after_message": true,
+    "interpretation": "The message accompanies early-detach/JIT-helper completion. Later runtime activity means it does not establish game exit.",
+    "guest_exit_code_observed": false,
+    "clean_guest_teardown_qualified": false
+  },
+  "restoration": {
+    "runtime_hash_restored": true,
+    "config_and_library_byte_preserved": true,
+    "own_processes_closed": true
+  },
+  "limits": [
+    "Connected guest draw and resolve correctness remain unqualified.",
+    "Playable game menu, gameplay, touch behavior, audio correctness, saves and background recovery remain unqualified.",
+    "No measured game FPS, sustained performance, pixel-equivalence result or clean guest exit is established.",
+    "The log still contains protected-page/exception diagnostics; absence of bad_alloc or FATAL is not absence of every exception.",
+    "The as-built0044, local lifecycle-tool and canonical-rectangle qualification records remain separate and unchanged."
+  ],
+  "privacy": "No game binaries, shader code, dumped game assets, pairing data, device identifiers or captured pixels are published. Only summarized runtime observations and hashes are included."
+}

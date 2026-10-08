@@ -1,0 +1,902 @@
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+index 67c7df9..888721d 100644
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -139,6 +139,8 @@ set(agcDriverSources
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/PipelineCache.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Resources.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorRenderTarget.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorSampleTransfer.cpp
++    Graphics/src/StencilSampleTransfer.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Recorder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderInputState.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderResources.cpp
+@@ -455,6 +457,8 @@ add_test_executable(agc_driver_graphics_tests EXCLUDE_FROM_ALL
+         Graphics/src/ColorTargetTransfer.cpp
+         Graphics/src/Resources.cpp
+         Graphics/src/ColorRenderTarget.cpp
++        Graphics/src/ColorSampleTransfer.cpp
++    Graphics/src/StencilSampleTransfer.cpp
+         Graphics/src/ShaderResources.cpp
+         Graphics/src/ShaderAddressResources.cpp
+         Graphics/src/GuestBufferMemory.cpp
+@@ -507,6 +511,8 @@ add_test_executable(agc_driver_bda_device_tests EXCLUDE_FROM_ALL
+         Execution/src/BdaFeatures.cpp
+         Graphics/src/Resources.cpp
+         Graphics/src/ColorRenderTarget.cpp
++        Graphics/src/ColorSampleTransfer.cpp
++    Graphics/src/StencilSampleTransfer.cpp
+         Graphics/src/BufferAddress.cpp
+ )
+ 
+@@ -614,6 +620,8 @@ if(AGC_BUILD_VISUAL_TEST)
+             Graphics/src/PipelineCache.cpp
+             Graphics/src/Resources.cpp
+             Graphics/src/ColorRenderTarget.cpp
++        Graphics/src/ColorSampleTransfer.cpp
++    Graphics/src/StencilSampleTransfer.cpp
+             Graphics/src/ShaderResources.cpp
+             Graphics/src/ShaderAddressResources.cpp
+             Graphics/src/GuestBufferMemory.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawDecode.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawDecode.cpp
+index 90a9919..31ff0d8 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawDecode.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawDecode.cpp
+@@ -2,6 +2,7 @@
+ #include "prx/libSceAgcDriver/Execution/include/Driver/Shaders/ShaderRegistry.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/Driver/Diagnostics.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
++#include <cstdlib>
+ 
+ namespace AgcDriver::DriverDetail {
+ 
+@@ -47,7 +48,7 @@ std::shared_ptr<DrawDecode> Driver::decodeDraw(const QueueState& queue, const Su
+     };
+     {
+         auto product = std::make_shared<DrawDecode>();
+-        product->state = Graphics::DecodeState(queue);
++        product->state = Graphics::DecodeState(queue, std::getenv("APS5_ENABLE_SAMPLE_GROUPS") != nullptr);
+         auto& programs = product->programs;
+         auto& roles = product->roles;
+         programs.reserve(5);
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
+index f2842ad..9d74b11 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp
+@@ -58,7 +58,7 @@ std::optional<DrawVerdict> Driver::precheckDraw(const QueueState& queue, const S
+         }
+     }
+     if (drawPrecheck()) {
+-        rejected = Graphics::DrawRejection(queue, drawParameters.indexed);
++        rejected = Graphics::DrawRejection(queue, drawParameters.indexed, std::getenv("APS5_ENABLE_SAMPLE_GROUPS") != nullptr);
+         if (!rejected.empty()) return DrawVerdict::Rejected;
+     }
+     return std::nullopt;
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+index 6fed909..e372454 100644
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -203,6 +203,10 @@ struct VulkanDevice::State {
+     bool geometryShader = false;
+     bool sampleRateShading = false;
+     bool multisampleArrayImage = true;
++    bool imageViewFormatSwizzle = true;
++    bool constantAlphaColorBlendFactors = true;
++    bool triangleFans = true;
++    bool separateStencilMaskRef = true;
+     bool sampleLocations = false;
+     VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
+     bool shaderClock = false;
+@@ -1136,9 +1140,12 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+         VkPhysicalDeviceFeatures2 query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &portable};
+         state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &query);
+         state->multisampleArrayImage = portable.multisampleArrayImage == VK_TRUE;
+-        // Request only the new operation; retain the previous feature settings.
+-        portable = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR};
+-        portable.multisampleArrayImage = state->multisampleArrayImage ? VK_TRUE : VK_FALSE;
++        // Keep every queried supported feature enabled. Clearing this structure disables
++        // operations already used by ordinary texture views, blends and topology paths.
++        state->imageViewFormatSwizzle = portable.imageViewFormatSwizzle == VK_TRUE;
++        state->constantAlphaColorBlendFactors = portable.constantAlphaColorBlendFactors == VK_TRUE;
++        state->triangleFans = portable.triangleFans == VK_TRUE;
++        state->separateStencilMaskRef = portable.separateStencilMaskRef == VK_TRUE;
+         portable.pNext = byteFeatures.pNext;
+         byteFeatures.pNext = &portable;
+         deviceExtensions.push_back("VK_KHR_portability_subset");
+@@ -1153,6 +1160,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+         deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
+         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+     }
++    if (state->multisampleArrayImage) state->capabilities.push_back(spv::CapabilityImageMSArray);
+     check(state->InstanceFunction<PFN_vkCreateDevice>("vkCreateDevice")(selected, &deviceInfo, nullptr, &state->device), "vkCreateDevice");
+     state->DeviceFunction<PFN_vkGetDeviceQueue>("vkGetDeviceQueue")(state->device, family, 0, &state->queue);
+     APS5_LOG_OUT("Vulkan device ready device=%p queue=%p family=%u", reinterpret_cast<void*>(state->device), reinterpret_cast<void*>(state->queue), family);
+@@ -2493,6 +2501,8 @@ ShaderRecompiler::SpirvTarget VulkanDevice::Target() const {
+     target.fragmentShaderBarycentricEnabled = state->fragmentShaderBarycentric;
+     target.nonConstantImageOffsets = state->maintenance8;
+     target.srgbDecodeFormats = state->srgbDecodeFormats;
++    if (std::getenv("APS5_ENABLE_SAMPLE_GROUPS") != nullptr && state->multisampleArrayImage && state->sampleLocations)
++        target.groupedMsaaMaxSamples = 4u;
+     if (state->meshShader) {
+         const auto& mesh = state->meshLimits;
+         target.mesh = ShaderRecompiler::MeshTargetLimits{{mesh.maxMeshWorkGroupSize[0], mesh.maxMeshWorkGroupSize[1], mesh.maxMeshWorkGroupSize[2]}, mesh.maxMeshWorkGroupInvocations, std::min(mesh.maxMeshSharedMemorySize, mesh.maxMeshPayloadAndSharedMemorySize), mesh.maxMeshOutputVertices, mesh.maxMeshOutputPrimitives, mesh.maxMeshOutputComponents, std::min(mesh.maxMeshOutputMemorySize, mesh.maxMeshPayloadAndOutputMemorySize), mesh.meshOutputPerVertexGranularity, mesh.meshOutputPerPrimitiveGranularity};
+@@ -2563,6 +2573,10 @@ Graphics::Context VulkanDevice::buildContext() const {
+     context.geometryShader = state->geometryShader;
+     context.sampleRateShading = state->sampleRateShading;
+     context.multisampleArrayImage = state->multisampleArrayImage;
++    context.imageViewFormatSwizzle = state->imageViewFormatSwizzle;
++    context.constantAlphaColorBlendFactors = state->constantAlphaColorBlendFactors;
++    context.triangleFans = state->triangleFans;
++    context.separateStencilMaskRef = state->separateStencilMaskRef;
+     context.sampleLocations = state->sampleLocations;
+     context.sampleLocationProperties = state->sampleLocationProperties;
+     context.primitiveListRestart = state->primitiveListRestart;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+index 5ae5ab7..cd997e9 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+@@ -140,6 +140,10 @@ struct Context {
+     bool sampleRateShading = false;
+     // Core Vulkan supports this; portability-subset devices must query and explicitly enable it.
+     bool multisampleArrayImage = true;
++    bool imageViewFormatSwizzle = true;
++    bool constantAlphaColorBlendFactors = true;
++    bool triangleFans = true;
++    bool separateStencilMaskRef = true;
+     bool sampleLocations = false;
+     VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
+     bool primitiveListRestart = false;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp
+index 672123f..7d0f4d5 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp
+@@ -3,6 +3,7 @@
+ 
+ #include "prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/State.hpp"
++#include <array>
+ #include <cstdint>
+ #include <memory>
+ #include <span>
+@@ -13,7 +14,18 @@ class Texture;
+ 
+ // Logical eight-sample depth/stencil uses two independent four-sample layers.
+ // Each group view is retained with the cached surface until device cleanup.
+-VkImageView DepthSurfaceView(const Context& context, const DepthTarget& target, std::uint32_t group = 0);
++// A nonempty pattern fixes the sample-location identity for the surface lifetime.
++// Changing it requires a qualified depth transition, which is not implemented yet.
++VkImageView DepthSurfaceView(const Context& context, const DepthTarget& target, std::uint32_t group = 0, std::span<const VkSampleLocationEXT> positions = {});
++// Borrowed handles remain valid under the caller's GuestMemory::GpuMutex until device cleanup.
++struct DepthSampleImage {
++    VkImage image = VK_NULL_HANDLE;
++    std::array<VkImageView, 2> attachments{};
++    std::uint32_t groups = 0;
++};
++DepthSampleImage DepthSurfaceSampleImage(const Context& context, const DepthTarget& target,
++                                       std::span<const VkSampleLocationEXT> positions);
++
+ std::uint64_t DepthSliceBytes(VkExtent2D extent, std::uint32_t bytesPerTexel);
+ void ClearDepthSurfaces(VkDevice device);
+ bool DepthSurfaceAt(std::uint64_t address);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
+index 0503dcf..796fbdf 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
+@@ -82,6 +82,9 @@ public:
+     VkImage Image() const;
+     // Every group is a distinct framebuffer attachment; none is a resolve image.
+     VkImageView View(std::uint32_t group = 0) const;
++    VkFormat Format() const { return format; }
++    VkExtent2D Extent() const { return extent; }
++    VkDevice Device() const { return context.device; }
+     VkImageView SampledView() const { return sampledView; }
+     VkSampleCountFlagBits NativeSamples() const { return nativeSamples; }
+     std::uint32_t Groups() const { return layers; }
+@@ -89,6 +92,8 @@ public:
+ private:
+     void release() noexcept;
+     Context context;
++    VkFormat format = VK_FORMAT_UNDEFINED;
++    VkExtent2D extent{};
+     VkImage image = VK_NULL_HANDLE;
+     std::array<VkImageView, 2> views{};
+     VkImageView sampledView = VK_NULL_HANDLE;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+index 29e48af..918cadc 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+@@ -138,6 +138,8 @@ public:
+     bool WritesOverlap(std::uint64_t address, std::size_t bytes) const { return guestMemory.WritesOverlap(address, bytes); }
+     // Whether a region the recorded work reads in place through a host import overlaps the range.
+     bool ReadsOverlap(std::uint64_t address, std::size_t bytes) const;
++    // Conservative shader input/attachment alias check, including copied snapshots.
++    bool ReadsGuestRange(std::uint64_t address, std::size_t bytes) const;
+     // The recorder's hazard tracker inputs (Recorder::NoteAccess): the written elements' guest
+     // ranges, the regions read in place, and the storage images with whether each is written.
+     const std::vector<std::pair<std::uint64_t, std::uint64_t>>& GpuWrites() const { return guestMemory.Writes(); }
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Texture.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Texture.hpp
+index 05af6a3..6442cca 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Texture.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Texture.hpp
+@@ -23,6 +23,7 @@ namespace AgcDriver::Graphics {
+ class ResidentColor;
+ class CommandBatch;
+ class StorageTexture;
++class RenderTarget;
+ struct HostImport;
+ 
+ // The Vulkan format storage images of a guest format use (sRGB formats store as their UNORM form).
+@@ -76,6 +77,8 @@ public:
+     VkImageLayout Layout() const { return layout; }
+     VkDeviceSize AllocationBytes() const { return allocationBytes; }
+     VkFormat ViewFormat() const { return viewFormat; }
++    std::uint32_t LogicalSamples() const { return logicalSamples; }
++    std::uint32_t NativeSamples() const { return nativeSamples; }
+     // Whether this texture is a view of a storage image (no snapshot of its own).
+     bool ViewsStorageImage() const { return storageSource != nullptr; }
+     const StorageTexture* StorageSource() const { return storageSource.get(); }
+@@ -105,6 +108,9 @@ private:
+     std::shared_ptr<ResidentColor> source;
+     std::shared_ptr<StorageTexture> storageSource;
+     std::unique_ptr<CommandBatch> upload;
++    std::unique_ptr<RenderTarget> sampleOwner;
++    std::uint32_t logicalSamples = 1;
++    std::uint32_t nativeSamples = 1;
+ };
+ 
+ VkFormat AttachmentProxyFormat(const Context& context, VkFormat format);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp
+index 8df1795..066bf88 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp
+@@ -3,7 +3,7 @@
+ 
+ namespace AgcDriver::Graphics {
+ 
+-RenderTarget::RenderTarget(const Context& context, const ColorTarget& target, bool blending) : context(context) {
++RenderTarget::RenderTarget(const Context& context, const ColorTarget& target, bool blending) : context(context), format(target.format), extent(target.extent) {
+     Require(std::has_single_bit(target.samples) && target.samples <= 8u && target.fragments == target.samples, "unsupported render-target sample/fragment count");
+     nativeSamples = static_cast<VkSampleCountFlagBits>(target.samples > 4u ? 4u : target.samples);
+     layers = target.samples / static_cast<std::uint32_t>(nativeSamples);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp
+index d7bff40..41ed911 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp
+@@ -137,6 +137,7 @@ public:
+     VkDeviceMemory memory = VK_NULL_HANDLE;
+     VkSampleCountFlagBits nativeSamples = VK_SAMPLE_COUNT_1_BIT;
+     std::uint32_t layers = 1;
++    std::vector<VkSampleLocationEXT> positions;
+ 
+     VkImageView View(std::uint32_t group) const {
+         Require(group < layers, "depth/stencil sample group out of range");
+@@ -181,17 +182,41 @@ std::uint64_t DepthSliceBytes(VkExtent2D extent, std::uint32_t bytesPerTexel) {
+     return width * height * bytesPerTexel;
+ }
+ 
+-VkImageView DepthSurfaceView(const Context& context, const DepthTarget& target, std::uint32_t group) {
++VkImageView DepthSurfaceView(const Context& context, const DepthTarget& target, std::uint32_t group, std::span<const VkSampleLocationEXT> positions) {
+     Require(std::has_single_bit(target.samples) && target.samples <= 8u, "unsupported depth/stencil sample count");
+     Require(group < (target.samples > 4u ? 2u : 1u), "depth/stencil sample group out of range");
++    Require(positions.empty() || positions.size() == target.samples, "depth sample-position count differs from target");
++    const auto fixPattern=[&](DepthSurface& surface) {
++        if (positions.empty()) return;
++        if (surface.positions.empty()) { surface.positions.assign(positions.begin(),positions.end()); return; }
++        Require(std::equal(positions.begin(),positions.end(),surface.positions.begin(),surface.positions.end(),
++            [](const auto& a,const auto& b) { return a.x==b.x && a.y==b.y; }),
++            "depth sample positions changed without a compatible depth transition");
++    };
+     std::lock_guard lock(surfacesMutex());
+     for (const auto& surface : surfaces()) {
+-        if (surface->context.device == context.device && sameSurface(surface->target, target)) return surface->View(group);
++        if (surface->context.device == context.device && sameSurface(surface->target, target)) {
++            fixPattern(*surface); return surface->View(group);
++        }
+     }
+     surfaces().push_back(std::make_unique<DepthSurface>(context, target));
++    fixPattern(*surfaces().back());
+     return surfaces().back()->View(group);
+ }
+ 
++DepthSampleImage DepthSurfaceSampleImage(const Context& context, const DepthTarget& target,
++                                       std::span<const VkSampleLocationEXT> positions) {
++    Require(target.samples > 1u && target.stencilAddress != 0u,
++            "sample-plane transfers require a multisample stencil attachment");
++    (void)DepthSurfaceView(context, target, 0u, positions);
++    std::lock_guard lock(surfacesMutex());
++    for (const auto& surface : surfaces()) {
++        if (surface->context.device == context.device && sameSurface(surface->target, target))
++            return {surface->image, surface->views, surface->layers};
++    }
++    throw std::runtime_error("depth sample image disappeared before its transfer");
++}
++
+ void ClearDepthSurfaces(VkDevice device) {
+     std::lock_guard lock(surfacesMutex());
+     std::erase_if(surfaces(), [&](const auto& surface) { return surface->context.device == device; });
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+index 86f8e6a..246cf91 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -1,6 +1,10 @@
+ #include "prx/libSceAgcDriver/Graphics/include/Draw.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ColorTargetTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureDetiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DccMetadata.hpp"
+@@ -488,6 +492,7 @@ bool ValidationKey(const Context& context, std::span<const CompiledShader> shade
+         add(context.subgroup.supportedStages);
+         add(context.subgroup.supportedOperations);
+         add(context.fragmentShaderBarycentric);
++        add(context.multisampleArrayImage);
+         add(state.stages.mesh.has_value());
+         if (state.stages.mesh) {
+             const auto& mesh = *state.stages.mesh;
+@@ -539,7 +544,7 @@ std::set<std::uint32_t> CachedFragmentOutputs(const Context& context, std::span<
+     }
+     std::set<std::uint32_t> outputs;
+     try {
+-        outputs = ValidateShaders(shaders, state, context.subgroup, context.fragmentShaderBarycentric, context.descriptorIndexing, context.imageInt64Atomics, context.geometryShader, context.sampleRateShading);
++        outputs = ValidateShaders(shaders, state, context.subgroup, context.fragmentShaderBarycentric, context.descriptorIndexing, context.imageInt64Atomics, context.geometryShader, context.sampleRateShading, context.multisampleArrayImage);
+     } catch (const std::exception& error) {
+         if (keyed) {
+             std::lock_guard lock(validationMutex());
+@@ -1493,6 +1498,45 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         adapted->viewport = viewport;
+     }
+     const State& state = adapted ? *adapted : guestState;
++    const bool groupedSamples = state.samples.count > 1u;
++    if (groupedSamples) {
++        const auto rejection = SplitDrawShaderRejection(shaders);
++        Require(rejection.empty(), rejection);
++        Require(!state.colors.empty(), "sample-group draws without color attachments are not implemented");
++        Require(!state.rectList && !state.stages.mesh && !state.stages.tessellation, "sample-group draws require an ordinary vertex/fragment pipeline");
++        for (const auto& color : state.colors) {
++            Require(color.samples == state.samples.count && color.fragments == color.samples && color.format == VK_FORMAT_R8G8B8A8_UNORM && color.elementBytes == 4u,
++                    "sample-group draw requires matching RGBA8_UNORM attachments");
++        }
++        // Separate host images cannot reproduce overlapping guest output attachments.
++        // Reject these aliases before reading or recording any attachment transfer.
++        std::vector<std::pair<std::uint64_t, std::uint64_t>> outputs;
++        const auto addOutput = [&](std::uint64_t address, std::uint64_t bytes) {
++            Require(bytes != 0u && address <= std::numeric_limits<std::uint64_t>::max() - bytes,
++                    "sample-group attachment range overflows guest addresses");
++            for (const auto& [other, size] : outputs) {
++                const bool overlap = address >= other ? address - other < size : other - address < bytes;
++                Require(!overlap, "sample-group output attachments alias each other");
++            }
++            outputs.emplace_back(address, bytes);
++        };
++        for (const auto& color : state.colors) addOutput(color.address, color.bytes);
++        if (state.depth) {
++            const auto& depth = *state.depth;
++            const DepthLayoutParameters options{.samples=depth.samples, .fragments=depth.samples};
++            if (depth.address != 0u) {
++                const bool d16 = depth.format == VK_FORMAT_D16_UNORM || depth.format == VK_FORMAT_D16_UNORM_S8_UINT;
++                addOutput(depth.address, DepthTargetLayout(depth.extent.width, depth.extent.height,
++                    d16 ? DepthPlane::Depth16 : DepthPlane::Depth32, options).Bytes());
++            }
++            if (depth.stencilAddress != 0u) addOutput(depth.stencilAddress,
++                DepthTargetLayout(depth.extent.width, depth.extent.height, DepthPlane::Stencil8, options).Bytes());
++        }
++        // The first implementation owns a complete synchronous batch. No framebuffers,
++        // descriptor pools or transfer buffers may be retired while their GPU work is pending.
++        if (auto* active = Recorder::Active()) active->Sync();
++        recipeOut = nullptr;
++    }
+     PerformanceTimer timing("Graphics.Draw");
+     // APS5_PROFILE_DRAW prints the time of each phase of the draw (microseconds) and the [draws] totals.
+     static const bool profile = std::getenv("APS5_PROFILE_DRAW") != nullptr;
+@@ -1534,6 +1578,7 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         std::vector<std::byte> original;
+         TileMipLayout mip{};
+         std::unique_ptr<RenderTarget> target;
++        std::unique_ptr<ColorSampleTransfer> sampleTransfer;
+         // APS5_DUMP_TARGETS: the rendered linear pixels, read back for target_<address>_<n>.raw.
+         std::unique_ptr<Buffer> dump;
+     };
+@@ -1546,14 +1591,14 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         auto& binding = targets[index];
+         binding.color = state.colors[index];
+         const auto& color = binding.color;
+-        binding.gpuTiling = color.tileMode == ColorTileMode::RenderTarget && context.detiler != nullptr;
++        binding.gpuTiling = !groupedSamples && color.tileMode == ColorTileMode::RenderTarget && context.detiler != nullptr;
+         APS5_LOG_OUT_DEBUG("Creating color target %zu address=0x%llx bytes=%llu extent=%ux%u", index, static_cast<unsigned long long>(color.address), static_cast<unsigned long long>(color.bytes), color.extent.width, color.extent.height);
+-        const ColorTargetLayout colorLayout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes);
++        const ColorTargetLayout colorLayout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes, color.fragments);
+         constexpr VkBufferUsageFlags copies = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+         timer.phase(PhaseSetup);
+         // Debug aid: APS5_NO_RESIDENT_TARGETS=1 copies every target in and out again.
+         static const bool residentTargets = std::getenv("APS5_NO_RESIDENT_TARGETS") == nullptr;
+-        if ((binding.gpuTiling || (color.tileMode != ColorTileMode::Linear && context.detiler != nullptr)) && residentTargets) {
++        if (!groupedSamples && (binding.gpuTiling || (color.tileMode != ColorTileMode::Linear && context.detiler != nullptr)) && residentTargets) {
+             // The lookup refreshes the image on every draw (StorageTexture::Refresh: FlushPending,
+             // CollectWrites over the target's pages, the DCC key scan of TextureClearKeys, then
+             // UnchangedSince). The page walk is skipped while the worker's collect epoch lasts
+@@ -1585,7 +1630,7 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+             GuestMemory::Read(color.address, binding.original, colorLayout.Alignment());
+             std::memcpy(binding.tiled->Bytes().data(), binding.original.data(), binding.original.size());
+         } else {
+-            binding.transfer = std::make_unique<Buffer>(context, colorLayout.LinearBytes(), copies);
++            binding.transfer = std::make_unique<Buffer>(context, colorLayout.LinearBytes(), copies | (groupedSamples ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0u));
+             ReadColorTarget(color, binding.transfer->Bytes());
+         }
+         // A fast-cleared DCC target holds its clear value wherever the draw does not write.
+@@ -1606,18 +1651,63 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         }
+         timer.phase(PhaseReadTarget);
+         binding.target = std::make_unique<RenderTarget>(context, color, state.blends.at(color.exportIndex).blendEnable != 0);
++        if (groupedSamples) binding.sampleTransfer = std::make_unique<ColorSampleTransfer>(context, *binding.target, color);
+         targetViews.push_back(binding.target->View());
+     }
+-    if (state.depth) targetViews.push_back(DepthSurfaceView(context, *state.depth));
++    if (state.depth) targetViews.push_back(DepthSurfaceView(context, *state.depth, 0u,
++        groupedSamples ? std::span<const VkSampleLocationEXT>(state.samples.positions).first(state.samples.count) : std::span<const VkSampleLocationEXT>{}));
++    std::unique_ptr<DepthTargetLayout> stencilLayout;
++    std::vector<std::byte> stencilOriginal;
++    std::unique_ptr<Buffer> stencilBuffer;
++    std::unique_ptr<StencilSampleTransfer> stencilTransfer;
++    if (groupedSamples && state.depth) {
++        const auto& depth = *state.depth;
++        // Z values and HTILE have no qualified import path yet. S8 is refreshed from
++        // guest memory on every synchronous draw, so CPU stores cannot leave stale samples.
++        Require(!state.depthTest && !state.depthWrite && !state.depthBoundsTest && depth.stencilAddress != 0u,
++                "sample-group Z consumption requires guest depth/HTILE transfer");
++        stencilLayout = std::make_unique<DepthTargetLayout>(depth.extent.width, depth.extent.height,
++            DepthPlane::Stencil8, DepthLayoutParameters{.samples=depth.samples, .fragments=depth.samples});
++        stencilOriginal.resize(stencilLayout->Bytes());
++        GuestMemory::Read(depth.stencilAddress, stencilOriginal, stencilLayout->Alignment());
++        const auto positions = std::span<const VkSampleLocationEXT>(state.samples.positions).first(state.samples.count);
++        const auto surface = DepthSurfaceSampleImage(context, depth, positions);
++        stencilTransfer = std::make_unique<StencilSampleTransfer>(context, surface.image, depth.format,
++            std::span<const VkImageView>(surface.attachments).first(surface.groups), depth.extent, depth.samples, positions);
++        stencilBuffer = std::make_unique<Buffer>(context, stencilTransfer->PackedBytes(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++        std::fill(stencilBuffer->Bytes().begin(), stencilBuffer->Bytes().end(), std::byte{0});
++        stencilLayout->Detile(stencilOriginal, stencilBuffer->Bytes().first(stencilLayout->LinearBytes()));
++    }
+     timer.phase(PhasePrepare);
+     const bool recordDraws = RecordDraws();
+     auto* recorder = Recorder::Active();
+-    const bool recordable = recordDraws && recorder != nullptr && dumpLimit == 0 && std::all_of(targets.begin(), targets.end(), [](const TargetBinding& binding) { return binding.resident != nullptr; });
++    const bool recordable = !groupedSamples && recordDraws && recorder != nullptr && dumpLimit == 0 && std::all_of(targets.begin(), targets.end(), [](const TargetBinding& binding) { return binding.resident != nullptr; });
+     auto resolved = resolveDrawResources(context, state, draw, shaders, snapshots, indexBytes, recordable, outcome, timer);
+     auto& resources = resolved.resources;
+     const auto& contentKey = resolved.contentKey;
+     const bool cacheable = resolved.cacheable;
+     built = resolved.built;
++    if (groupedSamples) {
++        Require(!resources->WritesMemory(), "repeated sample-group draw has unproven shader memory effects");
++        for (const auto& color : state.colors)
++            Require(!resources->ReadsGuestRange(color.address, color.bytes), "sample-group attachment aliases shader inputs");
++        if (state.depth) {
++            const auto& depth = *state.depth;
++            const DepthLayoutParameters options{.samples=depth.samples, .fragments=depth.samples};
++            if (depth.address != 0) {
++                const bool d16 = depth.format == VK_FORMAT_D16_UNORM || depth.format == VK_FORMAT_D16_UNORM_S8_UINT;
++                const DepthTargetLayout layout(depth.extent.width, depth.extent.height, d16 ? DepthPlane::Depth16 : DepthPlane::Depth32, options);
++                Require(!resources->ReadsGuestRange(depth.address, layout.Bytes()), "sample-group depth attachment aliases shader inputs");
++            }
++            if (depth.stencilAddress != 0) {
++                const DepthTargetLayout layout(depth.extent.width, depth.extent.height, DepthPlane::Stencil8, options);
++                Require(!resources->ReadsGuestRange(depth.stencilAddress, layout.Bytes()), "sample-group stencil attachment aliases shader inputs");
++            }
++        }
++        // Resource construction may have recorded snapshot uploads. Complete these before
++        // starting a separate synchronous draw batch, retaining all referenced owners.
++        if (recorder != nullptr) recorder->Sync();
++    }
+     // The memory-state decision of an indirect draw, made here after the resource build (which may
+     // retire imports and wait for recorded work) and before anything is recorded, exactly as
+     // VulkanDevice::dispatch decides for DISPATCH_INDIRECT: the GPU reads the records in place from
+@@ -1745,6 +1835,21 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+     owners.reserve(targets.size());
+     for (const auto& binding : targets) owners.push_back(binding.resident);
+     auto framebuffer = pipeline->AcquireFramebuffer(targetViews, owners, state.renderExtent);
++    std::vector<std::shared_ptr<Pipeline>> groupPipelines;
++    std::vector<std::shared_ptr<Framebuffer>> groupFramebuffers;
++    if (groupedSamples) {
++        groupPipelines.push_back(pipeline);
++        groupFramebuffers.push_back(framebuffer);
++        for (std::uint32_t group=1u; group<state.samples.groups; ++group) {
++            std::vector<VkImageView> views;
++            for (const auto& binding : targets) views.push_back(binding.target->View(group));
++            if (state.depth) views.push_back(DepthSurfaceView(context, *state.depth, group,
++                std::span<const VkSampleLocationEXT>(state.samples.positions).first(state.samples.count)));
++            auto item=CachedPipeline(context, pipelineState, inputs.vertexInput, *resources, shaders, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, group);
++            groupFramebuffers.push_back(item->AcquireFramebuffer(views, owners, state.renderExtent));
++            groupPipelines.push_back(std::move(item));
++        }
++    }
+     timer.phase(PhasePipeline);
+     APS5_LOG_CHARS_OUT_DEBUG("Pipeline created");
+     if (lean) {
+@@ -1867,6 +1972,13 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+             countBarrier();
+             continue;
+         }
++        if (binding.sampleTransfer) {
++            binding.sampleTransfer->RecordUpload(commands,
++                {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                {VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0},
++                {VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT});
++            continue;
++        }
+         VkBufferImageCopy copy{};
+         copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+         copy.imageExtent = {binding.color.extent.width, binding.color.extent.height, 1};
+@@ -1882,20 +1994,32 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         context.Resolved(&DeviceFunctions::cmdCopyBufferToImage, "vkCmdCopyBufferToImage")(commands, linear, binding.target->Image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+         imageBarrier(context, commands, binding.target->Image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     }
++    if (stencilTransfer) {
++        stencilTransfer->RecordUpload(commands,
++            {stencilBuffer->Handle(), 0, stencilBuffer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++            {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT},
++            {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
++             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT});
++    }
+     APS5_LOG_OUT_DEBUG("Beginning pipeline renderExtent=%ux%u", state.renderExtent.width, state.renderExtent.height);
+-    pipeline->Begin(commands, *framebuffer, state.renderExtent, state);
+-    APS5_LOG_CHARS_OUT_DEBUG("Pipeline Begin OK");
+-    resources->Bind(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->Layout());
+-    APS5_LOG_CHARS_OUT_DEBUG("Resources bound");
+-    pushDrawConstants(*pipeline, commands, state, draw, shaders, *resources, nullptr, 0, meshArguments != nullptr ? meshArguments->DeviceAddress() : 0);
+-    APS5_LOG_CHARS_OUT_DEBUG("Push constants recorded");
+-    recordDrawCommands(context, commands, state, draw, inputs, args != nullptr ? &indirect : nullptr, argumentBuffer, argumentOffset);
++    const auto passCount=groupedSamples ? state.samples.groups : 1u;
++    for (std::uint32_t group=0; group<passCount; ++group) {
++        const auto& selectedPipeline=groupedSamples ? groupPipelines[group] : pipeline;
++        const auto& selectedFramebuffer=groupedSamples ? groupFramebuffers[group] : framebuffer;
++        selectedPipeline->Begin(commands, *selectedFramebuffer, state.renderExtent, state);
++        APS5_LOG_CHARS_OUT_DEBUG("Pipeline Begin OK");
++        resources->Bind(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, selectedPipeline->Layout());
++        APS5_LOG_CHARS_OUT_DEBUG("Resources bound");
++        pushDrawConstants(*selectedPipeline, commands, state, draw, shaders, *resources, nullptr, 0, meshArguments != nullptr ? meshArguments->DeviceAddress() : 0);
++        APS5_LOG_CHARS_OUT_DEBUG("Push constants recorded");
++        recordDrawCommands(context, commands, state, draw, inputs, args != nullptr ? &indirect : nullptr, argumentBuffer, argumentOffset);
++        context.Resolved(&DeviceFunctions::cmdEndRenderPass, "vkCmdEndRenderPass")(commands);
++        APS5_LOG_CHARS_OUT_DEBUG("Render pass ended");
++    }
+     if (meshArguments != nullptr && recorded) recorder->Keep(meshArguments);
+     if (args != nullptr) CountIndirectDraw(indirect.path, indirect.readMs, rewritten);
+     auto checkRecords = indirectRecordCheck(args != nullptr ? &indirect : nullptr);
+     APS5_LOG_CHARS_OUT_DEBUG("Draw recorded");
+-    context.Resolved(&DeviceFunctions::cmdEndRenderPass, "vkCmdEndRenderPass")(commands);
+-    APS5_LOG_CHARS_OUT_DEBUG("Render pass ended");
+     for (auto& binding : targets) {
+         if (binding.proxied) {
+             binding.resident->RecordAttachmentProxyStore(commands, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+@@ -1907,6 +2031,14 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+             countBarrier();
+             continue;
+         }
++        if (binding.sampleTransfer) {
++            binding.sampleTransfer->RecordReadback(commands,
++                {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
++                {VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT},
++                {VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
++                VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
++            continue;
++        }
+         VkBufferImageCopy copy{};
+         copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+         copy.imageExtent = {binding.color.extent.width, binding.color.extent.height, 1};
+@@ -1936,6 +2068,14 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+             CopyBuffer(context, commands, binding.tiledDevice->Handle(), 0, binding.tiled->Handle(), 0, binding.original.size());
+         }
+     }
++    if (stencilTransfer) {
++        stencilTransfer->RecordReadback(commands,
++            {stencilBuffer->Handle(), 0, stencilBuffer->Bytes().size(), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
++            {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
++             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT},
++            {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT},
++            VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
++    }
+     VkMemoryBarrier download{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+     download.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+     download.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+@@ -1997,7 +2137,12 @@ void Draw(const Context& context, const State& guestState, const Pm4::DrawParame
+         if (binding.gpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
+         else WriteColorTarget(binding.color, binding.transfer->Bytes());
+         // The stored texels are the whole target now, so later reads must see them rather than a fast clear.
+-        MarkDccUncompressed(binding.color.dccAddress, ColorTargetLayout(binding.color.extent.width, binding.color.extent.height, binding.color.tileMode, binding.color.elementBytes).Bytes());
++        MarkDccUncompressed(binding.color.dccAddress, ColorTargetLayout(binding.color.extent.width, binding.color.extent.height, binding.color.tileMode, binding.color.elementBytes, binding.color.fragments).Bytes());
++    }
++    if (stencilTransfer && !skipTargetWrite) {
++        auto tiled = stencilOriginal; // Tile changes only logical pixels, preserving guest padding.
++        stencilLayout->Tile(stencilBuffer->Bytes().first(stencilLayout->LinearBytes()), tiled);
++        GuestMemory::WriteChanged(state.depth->stencilAddress, tiled, stencilOriginal);
+     }
+     timer.phase(PhaseWriteBack);
+     if (profile && traceDraws) {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+index 7e1225d..e3e14f1 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+@@ -169,6 +169,14 @@ Pipeline::Pipeline(const Context& context, const State& state, const VertexInput
+             samplePositions[sample] = position;
+         }
+     }
++    Require(context.triangleFans || state.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, "portability device does not support triangle fans");
++    if (!context.constantAlphaColorBlendFactors) for (const auto& blend : state.blends) {
++        const auto alpha=[](VkBlendFactor value) { return value==VK_BLEND_FACTOR_CONSTANT_ALPHA || value==VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA; };
++        Require(!blend.blendEnable || (!alpha(blend.srcColorBlendFactor) && !alpha(blend.dstColorBlendFactor)), "portability device does not support constant-alpha color blend factors");
++    }
++    Require(context.separateStencilMaskRef || !state.stencilTest ||
++        (state.stencilFront.compareMask==state.stencilBack.compareMask && state.stencilFront.writeMask==state.stencilBack.writeMask && state.stencilFront.reference==state.stencilBack.reference),
++        "portability device does not support separate front/back stencil masks or reference");
+     Require(!depthBounds || context.depthBounds, "device does not support the depth bounds test");
+     Require(!depthBias || state.depthBiasClamp == 0.0f || context.depthBiasClamp, "device does not support depth bias clamping");
+     Require(!state.negativeOneToOne || context.depthClipControl, "negative-one-to-one depth clipping requires VK_EXT_depth_clip_control with depthClipControl enabled");
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+index b15233b..1fa0216 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+@@ -228,7 +228,7 @@ bool SampledFromStorageEligible(const Context& context, std::uint32_t format, st
+ }
+ 
+ bool SampledFromStorageEligible(const Context& context, const GuestTextureResource& resource, std::uint64_t guestBytes) {
+-    return SampledFromStorageEligible(context, resource.format, resource.baseAddress, guestBytes);
++    return resource.samples == 1u && SampledFromStorageEligible(context, resource.format, resource.baseAddress, guestBytes);
+ }
+ 
+ // Whether a sampled texture over a fast-cleared, storage-eligible surface views the cleared storage
+@@ -314,7 +314,7 @@ std::shared_ptr<Texture> cachedTexture(const Context& context, std::span<const s
+     // the GPU supplies the texture by a view of it; anything else needs those results in guest
+     // memory first.
+     auto source = StorageTexture::FindPending(address, guestBytes);
+-    if (source != nullptr && (depthCompare || !Texture::CanCopyFrom(*source, resource) || MetadataMoved(*source, resource))) source.reset();
++    if (source != nullptr && (resource.samples != 1u || depthCompare || !Texture::CanCopyFrom(*source, resource) || MetadataMoved(*source, resource))) source.reset();
+     std::optional<DccKeys> keys;
+     bool clearThroughKeys = false;
+     if (source != nullptr && resource.dccAddress != 0 && IsDccClear(source->FilledKeys())) {
+@@ -2558,6 +2558,11 @@ void ShaderResources::resolveImageBinding(const ShaderRecompiler::DescriptorBind
+             const auto resource = record != nullptr && record->decoded ? record->resource : DecodeTextureResource(words);
+             const bool firstLayer = binding.imageShape == ShaderRecompiler::DescriptorImageShape::Image2D && resource.dimension == TextureDimension::k2DArray;
+             if (!firstLayer && !MatchesGuestDimension(*binding.imageShape, resource.dimension)) throw std::runtime_error("AGC graphics: guest texture dimension disagrees with the shader's declared image shape (shape " + std::to_string(static_cast<int>(*binding.imageShape)) + ", dimension " + std::to_string(static_cast<int>(resource.dimension)) + ")");
++            if (resource.samples > 1u) {
++                Require(binding.imageLogicalSamples.size() == binding.count && binding.imageNativeSamples.size() == binding.count &&
++                        binding.imageLogicalSamples[element] == resource.samples && binding.imageNativeSamples[element] == std::min(resource.samples,4u),
++                        "sampled MSAA descriptor does not match grouped shader specialization");
++            }
+             const VkComponentMapping components = ViewComponents(resource);
+             const auto guestBytes = record != nullptr && record->decoded ? record->guestBytes : DescribeSurface(resource).guestBytes;
+             std::shared_ptr<Texture> texture;
+@@ -2566,6 +2571,7 @@ void ShaderResources::resolveImageBinding(const ShaderRecompiler::DescriptorBind
+                 (texture != nullptr ? counters.fastHits : counters.fastMisses).fetch_add(1, std::memory_order_relaxed);
+             }
+             if (texture == nullptr) texture = cachedTexture(context, words, resource, components, guestBytes, !binding.imageDepthCompare.empty() && binding.imageDepthCompare.at(element));
++            Require(texture->LogicalSamples() == resource.samples && texture->NativeSamples() == std::min(resource.samples,4u), "sampled MSAA view count differs from compiled shader");
+             if (element < binding.imageUnnormalized.size() && binding.imageUnnormalized[element]) {
+                 const auto range = texture->SampledViewRange(firstLayer);
+                 const bool singleLevel = range.levels == 1u && range.layers == 1u && resource.baseLevel == 0u && EffectiveMinLod(resource) == 0.0f;
+@@ -2593,6 +2599,7 @@ void ShaderResources::resolveImageBinding(const ShaderRecompiler::DescriptorBind
+         const auto resource = record != nullptr && record->decoded ? record->resource : DecodeTextureResource(words);
+         const bool firstLayer = binding.imageShape == ShaderRecompiler::DescriptorImageShape::Image2D && resource.dimension == TextureDimension::k2DArray;
+         if (binding.imageShape.has_value() && !firstLayer && !MatchesGuestDimension(*binding.imageShape, resource.dimension)) throw std::runtime_error("AGC graphics: guest storage texture dimension disagrees with the shader's declared image shape (shape " + std::to_string(static_cast<int>(*binding.imageShape)) + ", dimension " + std::to_string(static_cast<int>(resource.dimension)) + ")");
++        Require(resource.samples == 1u, "multisample storage image operations are not implemented");
+         const auto mip = std::min(resource.baseLevel + mipOffset, resource.mipCount - 1u);
+         Require(resource.minLod <= mip * 256u, "guest storage texture descriptor clamps its minimum LOD above the level it addresses, which is not implemented");
+         const auto guestBytes = record != nullptr && record->decoded ? record->guestBytes : DescribeSurface(resource).guestBytes;
+@@ -2881,6 +2888,18 @@ bool ShaderResources::WritesMemory() const {
+     return HoldsLease() || NeedsCompletion() || !guestMemory.Writes().empty() || std::any_of(storageWritten.begin(), storageWritten.end(), [](bool written) { return written; });
+ }
+ 
++bool ShaderResources::ReadsGuestRange(std::uint64_t address, std::size_t bytes) const {
++    const auto overlaps=[&](std::uint64_t begin,std::uint64_t size) {
++        if (bytes == 0 || size == 0) return false;
++        // Subtractions avoid wrapping either end of the address range.
++        return begin >= address ? begin-address < bytes : address-begin < size;
++    };
++    if (HoldsLease()) return true; // Address-based reads have no complete descriptor bound.
++    for (const auto& allocation:allocations) if (allocation.guest && overlaps(allocation.address,allocation.size)) return true;
++    for (const auto& range:describedRanges) if (overlaps(range.address,range.bytes) || (range.dccAddress != 0 && overlaps(range.dccAddress,1u))) return true;
++    return ReadsOverlap(address,bytes);
++}
++
+ bool ShaderResources::ReadsOverlap(std::uint64_t address, std::size_t bytes) const {
+     const auto reads = guestMemory.InPlaceReads();
+     return std::any_of(reads.begin(), reads.end(), [&](const auto& range) { return address < range.second && range.first < address + bytes; });
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+index c4fd64c..c47b056 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+@@ -131,7 +131,7 @@ struct Module {
+     }
+ };
+ 
+-Module Inspect(const CompiledShader& compiled, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing, bool imageInt64Atomics, bool geometryShader, bool sampleRateShading) {
++Module Inspect(const CompiledShader& compiled, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing, bool imageInt64Atomics, bool geometryShader, bool sampleRateShading, bool multisampleArrayImage) {
+     using Stage = ShaderRecompiler::ShaderStage;
+     Require(compiled.program != nullptr, "missing compiled shader");
+     const auto& shader = *compiled.program;
+@@ -216,6 +216,7 @@ Module Inspect(const CompiledShader& compiled, const State& state, const VkPhysi
+                     capability == spv::CapabilityImage1D ||
+                     capability == spv::CapabilityImageGatherExtended ||
+                     capability == spv::CapabilityImageQuery ||
++                    (multisampleArrayImage && capability == spv::CapabilityImageMSArray) ||
+                     (fragment && geometryShader && capability == spv::CapabilityGeometry) ||
+                     (fragment && sampleRateShading && capability == spv::CapabilitySampleRateShading) ||
+                     capability == spv::CapabilityStorageImageWriteWithoutFormat ||
+@@ -502,7 +503,7 @@ Module Inspect(const CompiledShader& compiled, const State& state, const VkPhysi
+ 
+ }
+ 
+-std::set<std::uint32_t> ValidateShaders(std::span<const CompiledShader> shaders, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing, bool imageInt64Atomics, bool geometryShader, bool sampleRateShading) {
++std::set<std::uint32_t> ValidateShaders(std::span<const CompiledShader> shaders, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing, bool imageInt64Atomics, bool geometryShader, bool sampleRateShading, bool multisampleArrayImage) {
+     using Stage = ShaderRecompiler::ShaderStage;
+     const bool tessellation = state.stages.path == ShaderPath::Tessellation;
+     const bool mesh = state.stages.path == ShaderPath::Geometry;
+@@ -518,7 +519,7 @@ std::set<std::uint32_t> ValidateShaders(std::span<const CompiledShader> shaders,
+         Require(shaders[i].program != nullptr, "missing compiled shader");
+         Require(shaders[i].stage == expected, "graphics stage order disagrees");
+         for (const auto& binding : shaders[i].program->bindings) Require(binding.descriptorSet == 0, "graphics resource uses a descriptor set other than zero");
+-        const auto current = Inspect(shaders[i], state, subgroup, fragmentShaderBarycentric, descriptorIndexing, imageInt64Atomics, geometryShader, sampleRateShading);
++        const auto current = Inspect(shaders[i], state, subgroup, fragmentShaderBarycentric, descriptorIndexing, imageInt64Atomics, geometryShader, sampleRateShading, multisampleArrayImage);
+         if (i != 0) {
+             for (const auto& [location, signature] : current.inputs) {
+                 const auto output = previous.outputs.find(location);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp
+index a546842..be7d4ff 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp
+@@ -3,6 +3,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/Texture.hpp"
+ #include "prx/libc/include/General.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Resources.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Recorder.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GuestBufferMemory.hpp"
+ // For the declaration of PendingStorageOverlaps, defined below.
+@@ -36,6 +37,16 @@ namespace AgcDriver::Graphics {
+ 
+ namespace {
+ 
++VkComponentMapping SupportedViewComponents(const Context& context, VkComponentMapping components) {
++    if (context.imageViewFormatSwizzle) return components;
++    const auto normalize=[](VkComponentSwizzle value,VkComponentSwizzle identity) {
++        Require(value==VK_COMPONENT_SWIZZLE_IDENTITY || value==identity, "portability device does not support image view component swizzles");
++        return VK_COMPONENT_SWIZZLE_IDENTITY;
++    };
++    return {normalize(components.r,VK_COMPONENT_SWIZZLE_R),normalize(components.g,VK_COMPONENT_SWIZZLE_G),
++            normalize(components.b,VK_COMPONENT_SWIZZLE_B),normalize(components.a,VK_COMPONENT_SWIZZLE_A)};
++}
++
+ // APS5_PROFILE_DRAW: accumulate texture setup phases and report every 200 textures.
+ struct TextureProfile {
+     double allocate = 0, read = 0, gpu = 0, view = 0;
+@@ -230,6 +241,44 @@ Texture::Texture(const Context& context, TextureDetiler& detiler, const GuestTex
+     static const bool profile = std::getenv("APS5_PROFILE_DRAW") != nullptr;
+     PhaseTimer timer;
+     try {
++        if (descriptor.samples > 1u) {
++            Require(!depthCompare, "multisample depth comparison texture is not implemented");
++            const auto geometry = DescribeSurface(descriptor);
++            Require(snapshot.size() == geometry.guestBytes, "multisample texture snapshot size mismatch");
++            ColorTarget color{};
++            color.address = descriptor.baseAddress;
++            color.extent = {descriptor.width, descriptor.height};
++            color.format = VK_FORMAT_R8G8B8A8_UNORM;
++            color.tileMode = ColorTileMode::RenderTarget;
++            color.bytes = geometry.guestBytes;
++            color.samples = descriptor.samples;
++            color.fragments = descriptor.fragments;
++            const ColorTargetLayout guestLayout(descriptor.width, descriptor.height, color.tileMode, 4u, color.fragments);
++            Buffer staging(context, guestLayout.LinearBytes(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++            guestLayout.Detile(snapshot, staging.Bytes());
++            auto target=std::make_unique<RenderTarget>(context, color, false);
++            ColorSampleTransfer transfer(context, *target, color);
++            // Snapshot uploads are complete before the Texture is published into a cache.
++            // Later binding owners retain the image and view through their own GPU fence.
++            if (auto* recorder=Recorder::Active()) recorder->Sync();
++            CommandBatch batch(context);
++            transfer.RecordUpload(batch.Handle(),
++                {staging.Handle(),0,staging.Bytes().size(),VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT},
++                {VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,0},
++                {VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,VK_ACCESS_SHADER_READ_BIT});
++            batch.SubmitAndWait();
++            VkImageViewCreateInfo info{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
++            info.image=target->Image(); info.viewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
++            info.format=color.format; info.components=SupportedViewComponents(context,components);
++            info.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,target->Groups()};
++            Check(context.Function<PFN_vkCreateImageView>("vkCreateImageView")(context.device,&info,nullptr,&view),"vkCreateImageView sampled MSAA color");
++            image=target->Image(); viewFormat=color.format;
++            viewRange={VK_IMAGE_VIEW_TYPE_2D_ARRAY,1,target->Groups()};
++            logicalSamples=color.samples; nativeSamples=static_cast<std::uint32_t>(target->NativeSamples());
++            allocationBytes=geometry.guestBytes;
++            sampleOwner=std::move(target);
++            return;
++        }
+         const auto colorFormat = SampledTextureFormat(context, descriptor.format);
+         Require(!depthCompare || colorFormat == VK_FORMAT_R32_SFLOAT || colorFormat == VK_FORMAT_R16_UNORM, "comparison sampling requires an R32 float or R16 unorm depth texture");
+         Require(!depthCompare || descriptor.dimension != TextureDimension::k3D, "comparison sampling does not support 3D depth textures");
+@@ -425,7 +474,7 @@ Texture::Texture(const Context& context, TextureDetiler& detiler, const GuestTex
+         viewInfo.viewType = ViewTypeFor(descriptor.dimension, viewLayerCount);
+         viewInfo.format = vkFormat;
+         viewFormat = vkFormat;
+-        viewInfo.components = depthCompare ? VkComponentMapping{} : components;
++        viewInfo.components = depthCompare ? VkComponentMapping{} : SupportedViewComponents(context, components);
+         viewInfo.subresourceRange = {aspect, descriptor.baseLevel, viewLevelCount, descriptor.baseArray, viewLayerCount};
+         VkImageViewMinLodCreateInfoEXT minLod{VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT};
+         ChainMinLod(context, descriptor, viewInfo, minLod);
+@@ -472,7 +521,7 @@ Texture::Texture(const Context& context, const std::shared_ptr<StorageTexture>&
+         viewInfo.viewType = ViewTypeFor(descriptor.dimension, viewLayerCount);
+         viewInfo.format = vkFormat;
+         viewFormat = vkFormat;
+-        viewInfo.components = components;
++        viewInfo.components = SupportedViewComponents(context,components);
+         viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, descriptor.baseLevel, viewLevelCount, descriptor.baseArray, viewLayerCount};
+         VkImageViewMinLodCreateInfoEXT minLod{VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT};
+         ChainMinLod(context, descriptor, viewInfo, minLod);
+@@ -498,7 +547,7 @@ Texture::Texture(const Context& context, VkImage depthImage, VkFormat depthForma
+     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+     viewInfo.format = depthFormat;
+     viewFormat = depthFormat;
+-    viewInfo.components = components;
++    viewInfo.components = SupportedViewComponents(context,components);
+     viewInfo.subresourceRange = {aspect, 0, 1, 0, 1};
+     Check(context.Function<PFN_vkCreateImageView>("vkCreateImageView")(context.device, &viewInfo, nullptr, &view), "vkCreateImageView depth plane");
+     viewRange = {viewInfo.viewType, viewInfo.subresourceRange.levelCount, viewInfo.subresourceRange.layerCount};
+@@ -524,6 +573,7 @@ void Texture::release() noexcept {
+     firstLayerView = VK_NULL_HANDLE;
+     // The image and its memory go with the last holder: this texture, or the batch still uploading it.
+     owned.reset();
++    sampleOwner.reset();
+     image = VK_NULL_HANDLE;
+ }
+ 
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
+index cf7677c..d7a241a 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureCache.cpp
+@@ -57,9 +57,7 @@ std::shared_ptr<Texture> TextureCache::Get(std::span<const std::uint32_t> words,
+         entries.erase(it);
+         break;
+     }
+-    const auto mips = ComputeMipLayout(resource.tileMode, resource.format, resource.width, resource.height, resource.mipCount);
+-    const auto layers = resource.dimension == TextureDimension::k2DArray || resource.dimension == TextureDimension::k1DArray || resource.dimension == TextureDimension::kCube ? resource.depthOrLastArray + 1u : 1u;
+-    const auto bytes = ComputeSurfaceSize(mips, layers);
++    const auto bytes = DescribeSurface(resource).guestBytes;
+     Require(bytes != 0 && bytes <= std::numeric_limits<std::size_t>::max(), "texture cache surface size overflow");
+     std::vector<std::byte> snapshot(static_cast<std::size_t>(bytes));
+     GuestMemory::ReadCommitted(resource.baseAddress, snapshot);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureTiling.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureTiling.cpp
+index 0c87d36..9353407 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/TextureTiling.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/TextureTiling.cpp
+@@ -1,6 +1,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/TextureTiling.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Context.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureFormat.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorTargetLayout.hpp"
+ #include <string>
+ #include <algorithm>
+ #include <bit>
+@@ -374,6 +375,21 @@ ThickLayout ComputeThickLayout(TextureTileMode tileMode, std::uint32_t format, s
+ 
+ SurfaceGeometry DescribeSurface(const GuestTextureResource& descriptor) {
+     SurfaceGeometry geometry;
++    if (descriptor.samples > 1u || descriptor.dimension == TextureDimension::k2DMsaa || descriptor.dimension == TextureDimension::k2DMsaaArray) {
++        Require(descriptor.samples > 1u && descriptor.samples == descriptor.fragments && descriptor.samples <= 8u,
++                "sampled MSAA surface has unsupported stored fragment count");
++        Require(descriptor.dimension == TextureDimension::k2DMsaa || descriptor.dimension == TextureDimension::k2DMsaaArray,
++                "multisample surface requires a multisample descriptor type");
++        Require(descriptor.baseArray == 0u && descriptor.depthOrLastArray == 0u && descriptor.baseLevel == 0u && descriptor.mipCount == 1u,
++                "multisample array/mip memory layout is not implemented");
++        Require(descriptor.tileMode == TextureTileMode::kR64KBX && ResolveTextureFormat(descriptor.format) == VK_FORMAT_R8G8B8A8_UNORM && descriptor.dccAddress == 0,
++                "sampled MSAA surface requires uncompressed R64KB_X RGBA8_UNORM");
++        const ColorTargetLayout layout(descriptor.width, descriptor.height, ColorTileMode::RenderTarget, 4u, descriptor.fragments);
++        geometry.guestBytes = geometry.layerBytes = layout.Bytes();
++        geometry.sliceLinearBytes = layout.LinearBytes();
++        geometry.imageLayers = descriptor.samples > 4u ? 2u : 1u;
++        return geometry;
++    }
+     if (descriptor.dimension == TextureDimension::k3D && (descriptor.tileMode == TextureTileMode::kZ64KBX || descriptor.tileMode == TextureTileMode::kD64KBX || descriptor.tileMode == TextureTileMode::kR64KBX)) {
+         const auto depth = descriptor.depthOrLastArray + 1u;
+         geometry.mips = ComputeMipLayout(descriptor.tileMode, descriptor.format, descriptor.width, descriptor.height, descriptor.mipCount);

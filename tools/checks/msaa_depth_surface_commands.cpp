@@ -205,6 +205,15 @@ int main() {
         rejects([&] { DepthSurfaceView(c, t, samples == 8 ? 2u : 1u); }, "group out of range");
         ++configurations;
     }
+    std::array<VkSampleLocationEXT,8> positions{};
+    for(unsigned sample=0;sample<8;++sample) positions[sample]={float(sample)/16.0f,0.5f};
+    const auto fixed=DepthSurfaceView(c,target(8),0,positions);
+    assert(DepthSurfaceView(c,target(8),1,positions)!=fixed);
+    auto moved=positions; moved[7].x=15.0f/16.0f;
+    const auto barriersBeforePatternChange=barriers;
+    rejects([&] { DepthSurfaceView(c,target(8),0,moved); }, "positions changed");
+    rejects([&] { DepthSurfaceView(c,target(8),0,std::span(positions).first(4)); }, "position count");
+    assert(barriers==barriersBeforePatternChange);
     assert(images.size() == 4); // Sample counts may not alias the same cached surface.
     GuestTextureResource resource{}; resource.baseAddress = target(8).stencilAddress;
     const std::array<std::uint32_t, 8> words{};

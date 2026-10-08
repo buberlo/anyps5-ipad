@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "status": "PASS_offscreen_exact_stencil_transfer_and_constant_depth_preservation_only",
+  "scope": "Physical iPad execution of production StencilSampleTransfer S8 import/readback with original synthetic data in a combined D32S8 image. An independent compute shader checks the depth aspect after the transfer.",
+  "device": {
+    "model_identifier": "iPad14,10",
+    "gpu": "Apple M2 GPU",
+    "os": "iPadOS 27.0.1",
+    "os_build": "24A446"
+  },
+  "host": {
+    "app_name": "madeira-anyps5",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "version": "0.1.9",
+    "build": "47",
+    "path": "x86-64 Windows PE through Wine + FEX, Vulkan through MoltenVK to Metal",
+    "moltenvk_version": "1.4.3",
+    "vulkan_version": "1.4.357",
+    "automatic_builtin_jit_enabled_before_guest": true,
+    "jit_pool_mib": 512
+  },
+  "as_built": {
+    "repository_commit_at_build": "114b50f2eceff7f026d6f44413ab7948511a16a8",
+    "includes_uncommitted_probe_and_transfer_changes": true,
+    "package_manifest_sha256": "ae421abe0aac04ccb32ced619b47469f9affdb5995b4d1db17589670fe654ac3",
+    "probe_exe_sha256": "12a72d0be3ce7ede546d010fb51c371ddad60f501c05c915a24c87d9283618c7",
+    "device_exe_readback_sha256": "12a72d0be3ce7ede546d010fb51c371ddad60f501c05c915a24c87d9283618c7",
+    "sources_sha256": {
+      "tools/gpu-probe/stencil_sample_transfer_probe.cpp": "bd15b45bf431212c810d1c190bc0309ca17a71b5d57b3d9b7c1e04fe2d008a14",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/StencilSampleTransfer.cpp": "0e153882d5fc2abb987eaee48299fd5ba0fcadff842ae9803258226fac6e2fa1",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp": "2c5e7ef4887eb53e09e7f7070fdba7eae1ec80ca564e256ba95ee6b1be550b20",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "13aab71af71b65d26eded796afac6616782a0b8df394d964c4b9f955654e64d2",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "4be4285a99d1e15b0e84fc3737fbf6d033761c3e6b6d340ef70cb03072ea9b0d",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.frag": "9df9b045c6e7f19bdcec0bd76f3f03e9263e806314f55b04ee875d524f26da8c",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleReadback.comp": "7b9efd81d2dd72a3c1fc84c30271343a139696e45e4a83df0500279d3c59977c",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleTransfer_spv.h": "8b523a80555cc5d6704a18db3f83d7758b35a476b7d531c8f45a990e27210270",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+      "tools/gpu-probe/stencil_sample_depth_readback.comp": "16eabba9715622ca30bab0867aa13732def4976d393325f66e722793f8091156"
+    },
+    "depth_probe_spirv_sha256": "4a66a5b0776f3a97cd4894a96d26bac1ab711c2f572ea06d5a4947404d74a84d",
+    "note": "These are build-manifest hashes for the tested executable. Renderer wiring was being edited independently; this result does not establish equivalence with the complete current host or renderer source."
+  },
+  "test": {
+    "extent": [
+      17,
+      19
+    ],
+    "combined_image_format": "VK_FORMAT_D32_SFLOAT_S8_UINT",
+    "stencil_format": "S8_UINT",
+    "logical_sample_counts": [
+      2,
+      4,
+      8
+    ],
+    "native_sample_counts": [
+      2,
+      4
+    ],
+    "eight_sample_representation": "two array layers with four native samples each",
+    "sample_locations_extension_enabled": true,
+    "sample_locations_compatible_depth_image": true,
+    "sample_locations_pattern": "fixed 1 by 1 grid; distinct positions in sixteenth-pixel increments, passed to production transfer for each native group",
+    "cases": [
+      {
+        "logical_samples": 2,
+        "native_samples": 2,
+        "groups": 1,
+        "input_output_alias": false,
+        "s8_bytes_checked": 646,
+        "depth_samples_checked": 646,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      },
+      {
+        "logical_samples": 2,
+        "native_samples": 2,
+        "groups": 1,
+        "input_output_alias": true,
+        "s8_bytes_checked": 646,
+        "depth_samples_checked": 646,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      },
+      {
+        "logical_samples": 4,
+        "native_samples": 4,
+        "groups": 1,
+        "input_output_alias": false,
+        "s8_bytes_checked": 1292,
+        "depth_samples_checked": 1292,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      },
+      {
+        "logical_samples": 4,
+        "native_samples": 4,
+        "groups": 1,
+        "input_output_alias": true,
+        "s8_bytes_checked": 1292,
+        "depth_samples_checked": 1292,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      },
+      {
+        "logical_samples": 8,
+        "native_samples": 4,
+        "groups": 2,
+        "input_output_alias": false,
+        "s8_bytes_checked": 2584,
+        "depth_samples_checked": 2584,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      },
+      {
+        "logical_samples": 8,
+        "native_samples": 4,
+        "groups": 2,
+        "input_output_alias": true,
+        "s8_bytes_checked": 2584,
+        "depth_samples_checked": 2584,
+        "depth_errors": 0,
+        "errors_including_guard_and_tail_bytes": 0
+      }
+    ],
+    "total_s8_bytes_checked": 9044,
+    "distinct_s8_values": 256,
+    "all_individual_stencil_samples_checked": true,
+    "resolve_or_averaging": false,
+    "depth_preservation": {
+      "initial_value": 0.625,
+      "samples_checked": 9044,
+      "errors": 0,
+      "comparison": "Every depth sample must be finite and within 0.000001 of 0.625. This is a constant-depth preservation test, not arbitrary depth import/export or a bitwise identity test."
+    },
+    "alias_false_positive_control": "After fragment upload completes, vkCmdFillBuffer overwrites the aliased source/output region with 0xfefefefe before stencil compute readback; original expected values must still match.",
+    "buffer_guards_and_tail": "Prefix/suffix guards retain 0xa5. The two-sample image has two bytes outside the logical S8 payload in the last packed word; these remain 0xa5 with separate output and 0xfe after alias source erasure.",
+    "errors": 0,
+    "guest_exit_code": 0,
+    "guest_exit_observed_before_host_cleanup": true,
+    "vulkan_device_destroyed": true,
+    "moltenvk_allocated_gpu_memory_after_device_destroy_mib": 0
+  },
+  "cleanup": {
+    "own_bundle_processes_before_cleanup": 2,
+    "own_bundle_processes_after_cleanup": 0,
+    "app_termination_command_succeeded": true,
+    "helper_termination_outcome": "No such process; helper had already exited when signalled. Final inventory contains no executable under the exact app bundle.",
+    "configuration_restored_byte_for_byte": true,
+    "library_restored_byte_for_byte": true
+  },
+  "lifecycle_warning": {
+    "observed_after_successful_guest_exit": true,
+    "symbol": "jit26_detach + 0x4",
+    "mach_exception_type": 6,
+    "log_classification": "UNHANDLED #1",
+    "jit_dump_created": true,
+    "clean_native_app_lifecycle_proven": false,
+    "note": "A native debugger-detach breakpoint was logged after the guest exited successfully. Cleanup was verified separately; this probe does not establish a clean app shutdown."
+  },
+  "private_capture_hashes": {
+    "app-final.log": "208effbe89e001509db8464aa45364c51f91de226d105a1a838f167950d4658a",
+    "receipt.json": "eb24ce398764675c65f0a18e5597b9945ecbcd23b811bf131734bcb604cb6b89",
+    "cleanup-before.json": "ab80192c0c5dff22b805d86e7c531cb9d99335c45446c18903ffa6f8c2099f68",
+    "cleanup-after.json": "a6da9755cc03f4d296c243ce32c21046358e5efc5684bf6673cf194afef94f8a",
+    "launch.json": "a79e98db0b03cdf92841c49f511fcb074abfd44073273b1099065e6292e7bec3",
+    "verify-probe.json": "f849baaef9b355278a04de2aeadbb8ea4c9a2f0ec32e57fc375f8d5d578579e1",
+    "verify-pool-config.json": "0653a9937425aceadfd8b99610b09dd936b0123f80fb48b008cd75b258f65caf",
+    "verify-probe-library.json": "00d0627fb36bb0e85237b618bd1807189354b24bb6fb400d8b04961792811e9b"
+  },
+  "limitations": [
+    "Offscreen original synthetic data only: no game binary, private shader, or game asset was used by this executable.",
+    "Combined D32S8 was tested; D16S8 was not tested on the device by this probe.",
+    "No arbitrary depth-plane import/export, depth-test behavior, HTILE/compressed plane handling, or stencil-test game semantics qualification.",
+    "Sample locations were supplied to the transfer; this fullscreen test does not independently measure exact raster coverage positions.",
+    "No proof of guest tiled-memory transfer, complete draw routing, shader resources/cache integration, resolves, or visible swapchain presentation.",
+    "No Solitaire gameplay, audio, touch, save/load, clean native lifecycle, or sustained FPS acceptance.",
+    "Six bounded cases at 17 by 19 pixels; long-running resource stability and production-size performance were not measured."
+  ]
+}

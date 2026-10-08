@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T12:34:31.661117+00:00",
+  "kind": "canonical_rectlist_grouped_msaa_shader_qualification",
+  "patch": {
+    "path": "patches/anyps5/0046-canonical-rectlist-sample-groups.patch",
+    "sha256": "af0c6cef0f4bc2a7f2048f4879e5a3425ad4dc6324c60fc55f11336226a16c97",
+    "production_and_regression_files": 8
+  },
+  "problem": "The sample-group path rejected four-stage rectangles generated internally by BuildRectListShaders. Its required host FaultBuffer completion was also conservatively classified as an unproved guest memory effect.",
+  "implementation": {
+    "ordinary_pair": "Existing SplitDrawShaderRejection remains unchanged and rejects unsafe guest vertex/fragment operations.",
+    "rectangle_provenance": "SplitRectListShaderRejection first checks the original guest VS/PS with the ordinary static guard, then regenerates BuildRectListShaders with the actual device target and requires exact intermediate-stage SPIR-V and all current metadata fields.",
+    "intermediate_contract": "Exact ordered VS/TCS/TES/PS stages, no missing programs, zero intermediate push-constant offsets, exact 20 DescriptorBinding fields and 19 RecompileResult fields. Arbitrary guest tessellation and mutated diagnostics are rejected.",
+    "target_forwarding": "VulkanDevice::Draw materializes and forwards Target only for grouped rectangles. Ordinary rendering incurs no new target construction.",
+    "memory_effects": "WritesGuestMemory retains lease, copied-write, guest written range and storage-written checks. Only the already-qualified canonical rectangle path excludes host fault completion from this predicate.",
+    "old_memory_predicate": "WritesMemory remains NeedsCompletion OR guest effects. HasCopiedWrites is already part of NeedsCompletion, so adding it to WritesGuestMemory preserves ordinary-path semantics.",
+    "unchanged_safety": [
+      "shader input/output attachment alias rejection",
+      "unknown address-based lease rejection",
+      "attachment lifetimes and synchronous fence completion",
+      "shader download barriers",
+      "mandatory WriteBackBuffers::CheckFault before guest attachment write-back",
+      "existing sample-group runtime enable switch"
+    ],
+    "layering": "Patch 0046 includes only the target-forwarding hunk in VulkanDevice::Draw; concurrent patch 0047 resolve changes are excluded."
+  },
+  "source_review": {
+    "rectangle_geometry": "Canonical TCS derives the fourth corner from the real VS three positions, validates finite axis-aligned geometry with equal positive W, and uses fixed tessellation levels of one. TES selects fixed quad vertices. Neither internal stage reads native sample identity.",
+    "repeatable_diagnostic": "Canonical TCS claims an independent host FaultBuffer through device-scope CAS, writes uniform InvalidRectangle and zero payload, then publishes Ready with release semantics. Repeated groups do not expose guest writes.",
+    "coverage_limit": "This proves no fullscreen coverage. Actual VS output may describe a partial rectangle; viewport/scissor alone do not prove full-surface coverage.",
+    "gpu_limit": "Source review supports feasibility; no grouped rectangle GPU pixel-equivalence or game rendering result is asserted."
+  },
+  "validation": {
+    "static_guard": {
+      "result": "passed",
+      "canonical_accepts": 3,
+      "rejections": 90,
+      "sanitizers": [
+        "address",
+        "undefined"
+      ],
+      "optimizer_enabled": false,
+      "spirv_versions": [
+        "1.3",
+        "1.4",
+        "1.5"
+      ]
+    },
+    "independent_spirv_validation": {
+      "result": "passed",
+      "original_modules": 7,
+      "production_generated_or_mutated_modules": 17,
+      "semantically_valid_diagnostic_mutations": [
+        "reason",
+        "destination address",
+        "Ready publication state",
+        "CAS to AtomicIAdd",
+        "descriptor binding"
+      ]
+    },
+    "ordinary_pair_regression": {
+      "result": "passed",
+      "cases": 31,
+      "independently_validated_fixtures": 24,
+      "malformed_module_rejections": 7
+    },
+    "production_native_syntax": {
+      "Draw.cpp": "passed",
+      "ShaderResources.cpp": "passed",
+      "Graphics.cpp resource test body": "passed"
+    },
+    "resource_effect_runtime_regression": {
+      "result": "implemented_unexecuted",
+      "target": "agc_driver_graphics_tests",
+      "argument": "--resource-write-classification-only",
+      "expected_output": "Graphics guest-write classification tests passed",
+      "cases": [
+        "canonical host-only FaultBuffer needs completion and remains excluded from guest writes",
+        "injected InvalidRectangle is still reported by real CheckFault",
+        "readonly, written and unclassified guest buffers retain actual write-back classification",
+        "readonly registered BDA allocation lease remains conservatively unproved"
+      ]
+    },
+    "patch_roundtrip": {
+      "result": "passed",
+      "files": 8,
+      "forward": "byte-equal to scoped final source",
+      "reverse": "byte-equal to saved pre-0046 baseline"
+    },
+    "source_files": {
+      "core/libs/prx/libSceAgcDriver/Graphics/include/Draw.hpp": {
+        "baseline_sha256": "69342c7f2a949b21619f98320f5fd67aa7a7132f66504c7a61c16b8f6c15459f",
+        "packaged_after_only_sha256": "2e42ab6b8a0073083f5240984b41f961332e97186c71a2e3071dae348aa08079",
+        "current_shared_source_sha256": "2e42ab6b8a0073083f5240984b41f961332e97186c71a2e3071dae348aa08079",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": {
+        "baseline_sha256": "c10e272fcb4f60239dda048b0f2b7ece1c18e48e0e3ab05bbabea93119761be3",
+        "packaged_after_only_sha256": "05ba083a9df48a442903440d7fa231d9666e503ae6b26dd3689b21774bb436b7",
+        "current_shared_source_sha256": "05ba083a9df48a442903440d7fa231d9666e503ae6b26dd3689b21774bb436b7",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp": {
+        "baseline_sha256": "5be0f6b4fb57313accb2f96e15e110de23b4c7e370a9c921cebeb4e91ffde479",
+        "packaged_after_only_sha256": "a03eaa97f1ce8b67c0ebad5e10c4796f9838dce4e79a30f60a7cc920f002ed27",
+        "current_shared_source_sha256": "a03eaa97f1ce8b67c0ebad5e10c4796f9838dce4e79a30f60a7cc920f002ed27",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp": {
+        "baseline_sha256": "c12db17716c7cceed552535f080b1eeec8b6a02896fba063b6a5d2cb48e6c407",
+        "packaged_after_only_sha256": "cbaaacb7db28cbff4d34b6d578e21b6f4325fceb8c7e6d3741f734d581dc103c",
+        "current_shared_source_sha256": "cbaaacb7db28cbff4d34b6d578e21b6f4325fceb8c7e6d3741f734d581dc103c",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp": {
+        "baseline_sha256": "fdd546c809ee2baf822b4f1f04e7903ec6205ae8ff80ed82e839e4fa87f13b9a",
+        "packaged_after_only_sha256": "36738c7da0d8566b482142fd1e45dee631869cad092b0bbc7ae103ecabe56945",
+        "current_shared_source_sha256": "36738c7da0d8566b482142fd1e45dee631869cad092b0bbc7ae103ecabe56945",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp": {
+        "baseline_sha256": "63d67bf874abd594372bc7e65bfdd2ffaf06013ae7e3119dc7f9ac222ca254b3",
+        "packaged_after_only_sha256": "6482cea0e386fb5c11d39db797d13c729afde8d9ec811c6547fef24557729d85",
+        "current_shared_source_sha256": "6482cea0e386fb5c11d39db797d13c729afde8d9ec811c6547fef24557729d85",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp": {
+        "baseline_sha256": "a527bc6ec44024a23211ccf211cc4754861354c5985d19dffa6c2db1741af862",
+        "packaged_after_only_sha256": "10743a032b7b6990e8ba019f29887708a28cea4f54708bb126aa88c1514c5483",
+        "current_shared_source_sha256": "1dfca2f8a4d65ac9bf618bb74bfad3819818fe892529782f55324a14e6c62ba8",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      },
+      "core/libs/prx/libSceAgcDriver/tests/Graphics.cpp": {
+        "baseline_sha256": "8a9fbc9c4a3e680bab159b9da718534285a1b0b318b338f8eaf075ef41f12811",
+        "packaged_after_only_sha256": "cd1bc1d8cb41e58a31cd78e95f69af9d9aaa0528c67931eb1f47d11da27de790",
+        "current_shared_source_sha256": "cd1bc1d8cb41e58a31cd78e95f69af9d9aaa0528c67931eb1f47d11da27de790",
+        "forward": "byte_equal_to_scoped_final_source",
+        "reverse": "byte_equal_to_baseline"
+      }
+    },
+    "check_files": {
+      "scripts/check-msaa-rectlist-shaders.py": "f62c783cd8f0e04092b5e4485337acdad351ee5ef395f31e2f062b9edd1c9377",
+      "tools/checks/msaa_rectlist_shader_validation.cpp": "6b7184bad37ee7dd77af46b2ae14a34e82508ad40a512f9c84746b4931d0df7a"
+    }
+  },
+  "limits": [
+    "Passing static provenance checks does not prove dynamic alias correctness or GPU rendering equivalence.",
+    "The linked resource-classification runtime test remains pending the shared HLE build.",
+    "No iPad installation, launch, GPU test or performance measurement was performed for this evidence."
+  ],
+  "privacy": "All committed shader fixtures are synthetic; private game binaries, register captures and shader code remain excluded."
+}

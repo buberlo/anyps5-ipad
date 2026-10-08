@@ -1,0 +1,539 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+@@ -69,7 +69,18 @@
+     std::uint32_t samples = 1;
+ };
+ 
++// Logical coverage/storage samples. Eight guest samples are retained in two
++// native four-sample attachment layers, not reduced to four or averaged.
++struct SampleConfiguration {
++    std::uint32_t count = 1;
++    std::uint32_t nativeCount = 1;
++    std::uint32_t groups = 1;
++    std::uint32_t mask = 1;
++    std::array<VkSampleLocationEXT, 8> positions{};
++};
++
+ struct State {
++    SampleConfiguration samples;
+     ShaderStages stages;
+     std::optional<DepthTarget> depth;
+     bool depthTest = false;
+@@ -104,7 +115,8 @@
+ };
+ 
+ ShaderStages DecodeShaderStages(const QueueState& queue);
+-State DecodeState(const QueueState& queue);
++State DecodeState(const QueueState& queue, bool enableSampleGroups = false);
++SampleConfiguration DecodeSampleConfiguration(const Registers& context, bool enableSampleGroups = false);
+ std::array<std::uint8_t, 8> ExportMappings(const State& state);
+ ColorTarget DecodeColorBuffer(const Registers& context, std::uint32_t slot);
+ std::size_t CmaskBytes(std::uint32_t width, std::uint32_t height);
+@@ -118,7 +130,7 @@
+ // The message DecodeState (or the pixel stage decode after it) would throw for the register rules
+ // this precheck covers, evaluated without exceptions before the draw is decoded; empty when they
+ // pass (DecodeState still checks everything). A register a rule needs that is absent is no verdict.
+-std::string DrawRejection(const QueueState& queue, bool indexed);
++std::string DrawRejection(const QueueState& queue, bool indexed, bool enableSampleGroups = false);
+ bool PixelProgramSkipped(const QueueState& queue);
+ std::string NullPixelProgramRejection(const QueueState& queue);
+ 
+@@ -152,7 +164,7 @@
+     std::uint32_t first;
+     std::uint32_t count;
+ };
+-inline constexpr std::array<DrawKeyRange, 45> DrawKeyRegisters{{
++inline constexpr std::array<DrawKeyRange, 46> DrawKeyRegisters{{
+     {RegisterBank::Context, 0x000, 1}, {RegisterBank::Context, 0x002, 1}, {RegisterBank::Context, 0x007, 7}, {RegisterBank::Context, 0x010, 6}, {RegisterBank::Context, 0x01a, 4},
+     {RegisterBank::Context, 0x080, 4}, {RegisterBank::Context, 0x08c, 4}, {RegisterBank::Context, 0x090, 2}, {RegisterBank::Context, 0x094, 2}, {RegisterBank::Context, 0x0b4, 2}, {RegisterBank::Context, 0x105, 4}, {RegisterBank::Context, 0x10b, 3}, {RegisterBank::Context, 0x10f, 6},
+     // SPI_PS_INPUT_CNTL_0..31, SPI_PS_INPUT_ENA/ADDR, SPI_PS_IN_CONTROL, SPI_SHADER_POS/Z/COL_FORMAT,
+@@ -160,7 +172,7 @@
+     {RegisterBank::Context, 0x191, 32}, {RegisterBank::Context, 0x1b3, 2}, {RegisterBank::Context, 0x1b6, 1}, {RegisterBank::Context, 0x1c3, 3}, {RegisterBank::Context, 0x1e0, 8}, {RegisterBank::Context, 0x1ff, 1},
+     // DB_DEPTH_CONTROL .. PA_CL_VS_OUT_CNTL, PA_SC_MODE_CNTL_0/1, VGT_GS_MODE, VGT_GS_VERT_ITEMSIZE,
+     // PA_SU_VTX_CNTL, the sample masks, PA_SC_CONSERVATIVE_RASTERIZATION_CNTL.
+-    {RegisterBank::Context, 0x200, 8}, {RegisterBank::Context, 0x292, 2}, {RegisterBank::Context, 0x29b, 1}, {RegisterBank::Context, 0x2ab, 1}, {RegisterBank::Context, 0x2ce, 1}, {RegisterBank::Context, 0x2d5, 2}, {RegisterBank::Context, 0x2db, 2}, {RegisterBank::Context, 0x2de, 6}, {RegisterBank::Context, 0x2f8, 2}, {RegisterBank::Context, 0x30e, 2}, {RegisterBank::Context, 0x313, 1},
++    {RegisterBank::Context, 0x200, 8}, {RegisterBank::Context, 0x292, 2}, {RegisterBank::Context, 0x29b, 1}, {RegisterBank::Context, 0x2ab, 1}, {RegisterBank::Context, 0x2ce, 1}, {RegisterBank::Context, 0x2d5, 2}, {RegisterBank::Context, 0x2db, 2}, {RegisterBank::Context, 0x2de, 6}, {RegisterBank::Context, 0x2f8, 2}, {RegisterBank::Context, 0x2fe, 16}, {RegisterBank::Context, 0x30e, 2}, {RegisterBank::Context, 0x313, 1},
+     // CB_COLOR0..7_BASE .. DCC_BASE (15 words a slot), CB_COLOR0..7_BASE_EXT, DCC_BASE_EXT, ATTRIB2, ATTRIB3.
+     {RegisterBank::Context, 0x318, 0x78}, {RegisterBank::Context, 0x390, 8}, {RegisterBank::Context, 0x3a8, 0x18},
+     // The pixel program address, RSRC2 and user words; the geometry-back user pointer and program
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -183,12 +183,12 @@
+             "stencil clear is not equivalent to an always-pass full-mask replacement draw (DB_RENDER_CONTROL)");
+ }
+ 
+-void decodeDepth(const Registers& cx, std::uint32_t depthControl, State& result) {
++void decodeDepth(const Registers& cx, std::uint32_t depthControl, State& result, bool enableSampleGroups) {
+     zero(cx, 0x000, 0x00001f9du, "depth clear, copy, resummarize or decompress draws (DB_RENDER_CONTROL)");
+     if ((read(cx, 0x000) & 2u) != 0) validateEquivalentStencilClear(cx, depthControl);
+     const auto view = read(cx, 0x002);
+     zero(cx, 0x002, 0x3c000000u, "depth mips (DB_DEPTH_VIEW MIP_LEVEL)");
+-    zero(cx, 0x010, 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
++    zero(cx, 0x010, enableSampleGroups ? 0x000f1000u : 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
+     zero(cx, 0x011, 0x00001000u, "partially resident stencil (DB_STENCIL_INFO)");
+     const auto zFormat = read(cx, 0x010) & 3u;
+     const bool stencil = (read(cx, 0x011) & 1u) != 0;
+@@ -202,6 +202,25 @@
+     const bool depthReadOnly = (view & 0x01000000u) != 0;
+     const bool stencilReadOnly = (view & 0x02000000u) != 0;
+     DepthTarget depth{};
++    depth.samples = enableSampleGroups ? 1u << ((read(cx, 0x010) >> 2u) & 3u) : 1u;
++    if (depth.samples > 1u) {
++        // GC10 DB_Z_INFO/DB_STENCIL_INFO SW_MODE, and DB_DEPTH_VIEW slice fields.
++        Require(((read(cx, 0x010) >> 4u) & 31u) == 24u, "multisample depth requires SW_64KB_Z_X");
++        Require(!stencil || ((read(cx, 0x011) >> 4u) & 31u) == 24u, "multisample stencil requires SW_64KB_Z_X");
++        Require((view & 0xc0ffffffu) == 0u, "multisample depth arrays or slices are unsupported");
++        // An unobserved Z plane may have HTILE bound: the stencil-clear draw
++        // neither reads nor writes it. Consuming compressed depth remains blocked.
++        Require((depthControl & 0xeu) == 0u || (read(cx, 0x010) & 0x20000000u) == 0u,
++                "multisample compressed depth/HTILE is unsupported");
++        Require(!stencil || (read(cx, 0x011) & 0x20000000u) != 0u || (read(cx, 0x000) & 0x20u) != 0u,
++                "multisample compressed stencil/HTILE is unsupported");
++        // DepthSurface currently initializes a new image from clear values;
++        // it has no guest-plane import or CPU-write invalidation proof. Admit
++        // only the equivalent stencil initializer already checked above. A
++        // non-clear load must not silently consume fabricated image contents.
++        Require((read(cx, 0x000) & 2u) != 0u && (depthControl & 0xfu) == 1u,
++                "multisample depth/stencil loads require guest-plane import and invalidation tracking");
++    }
+     depth.address = zFormat != 0 ? base(0x012, 0x01a) : 0;
+     depth.stencilAddress = stencil ? base(0x013, 0x01b) : 0;
+     Require(zFormat == 0 || depthReadOnly || base(0x014, 0x01c) == depth.address, "depth read and written at different addresses is unsupported");
+@@ -460,7 +479,59 @@
+     return result;
+ }
+ 
+-State DecodeState(const QueueState& queue) {
++SampleConfiguration DecodeSampleConfiguration(const Registers& cx, bool enableSampleGroups) {
++    SampleConfiguration result;
++    result.positions[0] = {0.5f, 0.5f};
++    const auto config = read(cx, 0x2f8);
++    if (!enableSampleGroups) {
++        zero(cx, 0x2f8, ~0u, "multisampling or coverage conversion");
++        return result;
++    }
++    // Linux AMD gc_10_1_0_sh_mask.h: NUM_SAMPLES [2:0], MAX_SAMPLE_DIST
++    // [16:13], EXPOSED_SAMPLES [22:20]. Coverage conversion/centroid mode
++    // and reserved flags remain rejected. No EQAA mapping is guessed.
++    zero(cx, 0x2f8, ~0x0071e007u, "coverage conversion or centroid determination");
++    const auto logSamples = config & 7u;
++    Require(logSamples <= 3u, "raster coverage sample count above eight is unsupported");
++    Require(((config >> 20u) & 7u) == logSamples, "different exposed and coverage sample counts are unsupported");
++    result.count = 1u << logSamples;
++    result.nativeCount = std::min(result.count, 4u);
++    result.groups = result.count / result.nativeCount;
++    result.mask = (1u << result.count) - 1u;
++    Require(read(cx, 0x30e) == 0xffffffffu && read(cx, 0x30f) == 0xffffffffu, "sample masks are unsupported");
++    if (result.count == 1u) {
++        Require(config == 0u, "custom single-sample locations are unsupported");
++        return result;
++    }
++    // Mask-export and alpha rates may be lower when those consumers are
++    // disabled. Multisample sample-mask export and alpha-to-coverage stay
++    // rejected by DecodeState, independently of these advertised rates.
++    const auto eqaa = read(cx, 0x201);
++    Require((eqaa & 7u) == logSamples && ((eqaa >> 4u) & 7u) <= logSamples &&
++            ((eqaa >> 8u) & 7u) <= logSamples && ((eqaa >> 12u) & 7u) <= logSamples &&
++            (eqaa & 0x0f0c0000u) == 0u,
++            "EQAA sample count conversion, Z interpolation or overrasterization is unsupported");
++    unsigned maxDistance = 0;
++    for (unsigned pixel = 0; pixel < 4; ++pixel) {
++        for (unsigned sample = 0; sample < result.count; ++sample) {
++            // GC10 offsets X0Y0=0x2fe, X1Y0=0x302, X0Y1=0x306,
++            // X1Y1=0x30a. Four packed signed XY nibble pairs per DWORD.
++            const auto word = read(cx, 0x2feu + 4u * pixel + sample / 4u);
++            const auto nibble = [](unsigned value) { return static_cast<int>(value & 7u) - static_cast<int>(value & 8u); };
++            const auto x = nibble(word >> (8u * (sample % 4u)));
++            const auto y = nibble(word >> (8u * (sample % 4u) + 4u));
++            const VkSampleLocationEXT position{0.5f + static_cast<float>(x) / 16.0f, 0.5f + static_cast<float>(y) / 16.0f};
++            maxDistance = std::max(maxDistance, static_cast<unsigned>(std::max(std::abs(x), std::abs(y))));
++            if (pixel == 0u) result.positions[sample] = position;
++            else Require(position.x == result.positions[sample].x && position.y == result.positions[sample].y,
++                         "varying sample positions across a pixel quad are unsupported");
++        }
++    }
++    Require(((config >> 13u) & 15u) >= maxDistance, "maximum sample distance is smaller than the programmed positions");
++    return result;
++}
++
++State DecodeState(const QueueState& queue, bool enableSampleGroups) {
+     const auto& cx = queue.context;
+     State result{};
+     result.stages = DecodeShaderStages(queue);
+@@ -494,7 +565,7 @@
+     {
+         const auto depthControl = read(cx, 0x200);
+         if ((depthControl & 0xbu) != 0 && depthSurfaceBound(cx)) {
+-            decodeDepth(cx, depthControl, result);
++            decodeDepth(cx, depthControl, result, enableSampleGroups);
+         } else if (depthPassThrough(depthControl) || ((depthControl & 3u) != 0 && depthPlanesAbsent(cx))) {
+             static bool reported = false;
+             if (!reported) {
+@@ -515,8 +586,10 @@
+     }
+     zero(cx, 0x203, shaderControlMask(read(cx, 0x1c4)), "depth export, shader coverage or ordered fragment execution");
+     zero(cx, 0x2dc, AlphaToCoverageMask, "alpha-to-coverage");
+-    zero(cx, 0x2f8, ~0u, "multisampling or coverage conversion");
+-    zero(cx, 0x292, ScanModeMask, "scan conversion mode");
++    result.samples = DecodeSampleConfiguration(cx, enableSampleGroups);
++    Require(result.samples.count == 1u || read(cx, 0x1c4) != 9u, "multisample shader sample-mask export is unsupported");
++    zero(cx, 0x292, result.samples.count > 1u ? (ScanModeMask & ~1u) : ScanModeMask, "scan conversion mode");
++    Require(result.samples.count == 1u || (read(cx, 0x292) & 1u) != 0u, "multisample rasterization requires PA_SC_MODE_CNTL_0 MSAA_ENABLE");
+     zero(cx, 0x293, ScanControlMask, "sample iteration, primitive discard or out-of-order rasterization");
+     zero(cx, 0x80, ~0u, "window offset");
+     zero(cx, 0x8d, ScreenOffsetMask, "reserved PA_SU_HARDWARE_SCREEN_OFFSET bits");
+@@ -572,7 +645,8 @@
+         const auto slotExport = (exportFormat >> (4u * index)) & 0xfu;
+         if (slotExport == 0 || slotExport == 7 || slotExport == 8 || slotExport > 9) throw std::runtime_error("AGC graphics: color export format " + std::to_string(slotExport) + " is unsupported");
+         auto color = DecodeColorBuffer(cx, slot);
+-        Require(color.samples == 1, "multisampled color rendering requires a sample-aware renderer");
++        Require(enableSampleGroups || color.samples == 1, "multisampled color rendering requires a sample-aware renderer");
++        Require(color.samples == result.samples.count, "color target sample count differs from raster coverage");
+         color.exportIndex = index;
+         APS5_LOG_OUT_DEBUG("Color %u address=0x%llx extent=%ux%u bytes=%llu VkFormat=%u", slot, static_cast<unsigned long long>(color.address), color.extent.width, color.extent.height, static_cast<unsigned long long>(color.bytes), static_cast<unsigned>(color.format));
+         if (result.colors.empty()) {
+@@ -582,6 +656,7 @@
+         }
+         result.colors.push_back(color);
+     }
++    Require(!result.depth || result.depth->samples == result.samples.count, "depth target sample count differs from raster coverage");
+     if (result.hasColorTarget) {
+         result.color = result.colors.front();
+         if (result.depth) result.renderExtent = {std::min(result.renderExtent.width, result.depth->extent.width), std::min(result.renderExtent.height, result.depth->extent.height)};
+@@ -804,7 +879,7 @@
+     return pass;
+ }
+ 
+-std::string DrawRejection(const QueueState& queue, bool indexed) {
++std::string DrawRejection(const QueueState& queue, bool indexed, bool enableSampleGroups) {
+     const auto& cx = queue.context;
+     // A register a rule needs that is absent gives no verdict here: DecodeState reports it.
+     const auto value = [&](const Registers& registers, std::uint32_t offset, std::uint32_t& out) {
+@@ -837,8 +912,20 @@
+     static_cast<void>(value(cx, 0x1c4, zFormat));
+     if (auto reason = nonzero(cx, 0x203, shaderControlMask(zFormat), "depth export, shader coverage or ordered fragment execution"); !reason.empty()) return reason;
+     if (auto reason = nonzero(cx, 0x2dc, AlphaToCoverageMask, "alpha-to-coverage"); !reason.empty()) return reason;
+-    if (auto reason = nonzero(cx, 0x2f8, ~0u, "multisampling or coverage conversion"); !reason.empty()) return reason;
+-    if (auto reason = nonzero(cx, 0x292, ScanModeMask, "scan conversion mode"); !reason.empty()) return reason;
++    if (!enableSampleGroups) {
++        if (auto reason = nonzero(cx, 0x2f8, ~0u, "multisampling or coverage conversion"); !reason.empty()) return reason;
++    } else if (cx.contains(0x2f8)) {
++        try { static_cast<void>(DecodeSampleConfiguration(cx, true)); }
++        catch (const std::runtime_error& error) {
++            // Preserve precheck's missing-register contract; DecodeState gives
++            // the definitive error once a complete draw is requested.
++            if (std::string_view(error.what()).find("missing register") == std::string_view::npos) return error.what();
++        }
++    }
++    const auto aaConfig = find(cx, 0x2f8);
++    const bool multisample = enableSampleGroups && aaConfig != cx.end() && (aaConfig->second & 7u) != 0u;
++    if (auto reason = nonzero(cx, 0x292, multisample ? (ScanModeMask & ~1u) : ScanModeMask, "scan conversion mode"); !reason.empty()) return reason;
++    if (multisample && value(cx, 0x292, word) && (word & 1u) == 0u) return "AGC graphics: multisample rasterization requires PA_SC_MODE_CNTL_0 MSAA_ENABLE";
+     if (auto reason = nonzero(cx, 0x293, ScanControlMask, "sample iteration, primitive discard or out-of-order rasterization"); !reason.empty()) return reason;
+     if (auto reason = nonzero(cx, 0x80, ~0u, "window offset"); !reason.empty()) return reason;
+     if (auto reason = nonzero(cx, 0x8d, ScreenOffsetMask, "reserved PA_SU_HARDWARE_SCREEN_OFFSET bits"); !reason.empty()) return reason;
+@@ -854,7 +941,27 @@
+     if (value(cx, 0x8e, targetMask) && value(cx, 0x8f, shaderMask) && value(cx, 0x202, word) && !colorControlSupported(word, (targetMask & shaderMask) != 0)) return colorControlMessage(word);
+     for (std::uint32_t slot = 0; slot < 8; ++slot) {
+         if (((targetMask & shaderMask) >> (4u * slot) & 0xfu) == 0) continue;
+-        if (value(cx, 0x31d + slot * 0xfu, word) && (word & 0x0001f000u) != 0) return zeroMessage(0x31d + slot * 0xfu, word, "multisampled color rendering without a sample-aware renderer");
++        if (value(cx, 0x31d + slot * 0xfu, word)) {
++            if (!enableSampleGroups && (word & 0x0001f000u) != 0) return zeroMessage(0x31d + slot * 0xfu, word, "multisampled color rendering without a sample-aware renderer");
++            const auto config = find(cx, 0x2f8);
++            if (enableSampleGroups && config != cx.end()) {
++                const auto rasterSamples = 1u << (config->second & 7u);
++                if ((1u << ((word >> 12u) & 7u)) != rasterSamples) return "AGC graphics: color target sample count differs from raster coverage";
++                if ((1u << ((word >> 15u) & 3u)) != rasterSamples) return "AGC graphics: EQAA color targets require FMASK sample mapping";
++            }
++        }
++    }
++    if (enableSampleGroups) {
++        const auto config = find(cx, 0x2f8);
++        const auto z = find(cx, 0x010);
++        const auto depth = find(cx, 0x200);
++        if (config != cx.end() && z != cx.end() && depth != cx.end() && (depth->second & 0xbu) != 0 && depthSurfaceBound(cx) &&
++            (1u << ((z->second >> 2u) & 3u)) != (1u << (config->second & 7u))) return "AGC graphics: depth target sample count differs from raster coverage";
++        if (config != cx.end() && (config->second & 7u) != 0u && zFormat == 9u) return "AGC graphics: multisample shader sample-mask export is unsupported";
++        const auto renderControl = find(cx, 0x000);
++        if (config != cx.end() && (config->second & 7u) != 0u && depth != cx.end() && (depth->second & 0xbu) != 0u &&
++            depthSurfaceBound(cx) && renderControl != cx.end() && (renderControl->second & 2u) == 0u)
++            return "AGC graphics: multisample depth/stencil loads require guest-plane import and invalidation tracking";
+     }
+     if (auto reason = nonzero(cx, 0x1c4, zFormatSupported(zFormat) ? 0u : ~0u, "depth or sample-mask export"); !reason.empty()) return reason;
+     if (PixelProgramSkipped(queue)) return NullPixelProgramRejection(queue);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp
+@@ -36,8 +36,10 @@
+     // `vertexInput` the layout of the draw's vertex descriptors; the shaders were validated by the
+     // caller (ValidateShaders). `attachmentLayout` is the layout the color attachments are in
+     // before, during and after the pass (GENERAL for resident targets, which then need no
+-    // transitions).
+-    Pipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
++    // transitions). A sample group uses the corresponding layer view and subset
++    // of the guest's sample locations; the caller must keep depth contents tied
++    // to that pattern when reusing a resident depth image.
++    Pipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, std::uint32_t sampleGroup = 0);
+     ~Pipeline();
+     Pipeline(const Pipeline&) = delete;
+     Pipeline& operator=(const Pipeline&) = delete;
+@@ -45,8 +47,8 @@
+     std::shared_ptr<Framebuffer> AcquireFramebuffer(std::span<const VkImageView> targets, std::span<const std::shared_ptr<StorageTexture>> owners, VkExtent2D extent);
+     // Begins the render pass on the framebuffer, binds the pipeline and sets its dynamic state.
+     void Begin(VkCommandBuffer commands, const Framebuffer& framebuffer, VkExtent2D extent, const State& state) const;
+-    // The same inside a render pass another pipeline of the same attachments began (compatible by
+-    // construction: the attachment formats alone decide).
++    // The same inside a render pass with compatible attachment formats/counts
++    // and the same sample-location pattern (required on fixed-pattern devices).
+     void Continue(VkCommandBuffer commands, const State& state) const;
+     void PushConstants(VkCommandBuffer commands, VkShaderStageFlags stages, std::span<const std::byte, PipelinePushConstantBytes> bytes) const;
+     // Forgets the Vulkan objects without destroying them: for entries of a device that is already gone.
+@@ -60,6 +62,7 @@
+         std::shared_ptr<Framebuffer> framebuffer;
+     };
+     void release() noexcept;
++    void validateSamples(const State& state) const;
+     Context context;
+     std::vector<VkShaderModule> _modules;
+     VkPipelineLayout layout = VK_NULL_HANDLE;
+@@ -69,16 +72,20 @@
+     std::size_t colorAttachments = 0;
+     bool depthBounds = false;
+     bool depthBias = false;
++    std::uint32_t sampleGroup = 0;
++    SampleConfiguration sampleConfiguration;
++    std::array<VkSampleLocationEXT, 4> samplePositions{};
+     std::vector<CachedFramebuffer> framebuffers;
+ };
+ 
+ // The pipeline for this configuration, shared across draws and frames: keyed by the stages' variant
+ // ids (the rect-list tessellation pair by the vertex and fragment ids that generate it), the vertex
+-// input layout, the descriptor set layout key, push constant stages and every pipeline state field.
++// input layout, the descriptor set layout key, push constant stages, guest sample
++// count/group/pattern and every pipeline state field.
+ // A configuration whose stage has no variant id gets a private pipeline. Entries are LRU-bounded and
+ // only evicted once no recorded draw holds them. Debug aid: APS5_NO_PIPELINE_CACHE=1 builds one per
+ // draw as before.
+-std::shared_ptr<Pipeline> CachedPipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
++std::shared_ptr<Pipeline> CachedPipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, std::uint32_t sampleGroup = 0);
+ // Destroys the cached pipelines of a device; to be called before the device goes away. Without it,
+ // entries of a gone device are recognised by their buffer pool (made and reset with the device, so
+ // it tells device instances apart when the loader reuses a VkDevice handle) and forgotten unused.
+@@ -93,7 +100,7 @@
+ 
+ void ValidateShaderPair(const ShaderRecompiler::RecompileResult& vertex, const ShaderRecompiler::RecompileResult& fragment);
+ // Returns the color attachment locations the pixel shader writes.
+-std::set<std::uint32_t> ValidateShaders(std::span<const CompiledShader> shaders, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing = false, bool imageInt64Atomics = false, bool geometryShader = false, bool sampleRateShading = false);
++std::set<std::uint32_t> ValidateShaders(std::span<const CompiledShader> shaders, const State& state, const VkPhysicalDeviceSubgroupProperties& subgroup, bool fragmentShaderBarycentric, bool descriptorIndexing = false, bool imageInt64Atomics = false, bool geometryShader = false, bool sampleRateShading = false, bool multisampleArrayImage = false);
+ 
+ }
+ 
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+@@ -4,6 +4,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
+ #include <algorithm>
+ #include <array>
++#include <bit>
+ #include <chrono>
+ #include <cmath>
+ #include <cstdio>
+@@ -134,13 +135,40 @@
+     Require(std::min(viewport.y, viewport.y + viewport.height) >= context.limits.viewportBoundsRange[0] && std::max(viewport.y, viewport.y + viewport.height) <= context.limits.viewportBoundsRange[1], "viewport Y exceeds device bounds");
+ }
+ 
+-Pipeline::Pipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout) : context(context), _modules(shaders.size()), attachments(state.colors.size() + (state.depth ? 1u : 0u)), colorAttachments(state.colors.size()), depthBounds(state.depth.has_value() && state.depthBoundsTest), depthBias(state.depth.has_value() && state.depthBias) {
++Pipeline::Pipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout, std::uint32_t sampleGroup) : context(context), _modules(shaders.size()), attachments(state.colors.size() + (state.depth ? 1u : 0u)), colorAttachments(state.colors.size()), depthBounds(state.depth.has_value() && state.depthBoundsTest), depthBias(state.depth.has_value() && state.depthBias), sampleGroup(sampleGroup), sampleConfiguration(state.samples) {
+     // A cached pipeline may outlive its device's teardown (see ClearCachedPipelines); it must not keep
+     // the buffer pool, which is reset with the device, alive past it.
+     this->context.bufferPool.reset();
+     Require(state.blends.size() == (state.colors.empty() ? 0u : state.colors.back().exportIndex + 1u) && state.colors.size() <= state.blends.size(), "blend states do not match decoded color state");
+     Require(state.blends.size() <= context.limits.maxColorAttachments, "color targets exceed device attachment limits");
+-    Require(state.hasColorTarget || (context.limits.framebufferNoAttachmentsSampleCounts & VK_SAMPLE_COUNT_1_BIT) != 0, "device does not support single-sample rendering without attachments");
++    const auto nativeSamples = static_cast<VkSampleCountFlagBits>(state.samples.nativeCount);
++    Require(std::has_single_bit(state.samples.count) && state.samples.count <= 8u &&
++            state.samples.nativeCount == std::min(state.samples.count, 4u) &&
++            state.samples.groups == state.samples.count / state.samples.nativeCount && sampleGroup < state.samples.groups,
++            "invalid pipeline sample group configuration");
++    Require(state.samples.mask == (1u << state.samples.count) - 1u, "partial pipeline sample masks are unsupported");
++    for (const auto& color : state.colors) Require(color.samples == state.samples.count && color.fragments == state.samples.count, "pipeline color sample count mismatch");
++    Require(!state.depth || state.depth->samples == state.samples.count, "pipeline depth sample count mismatch");
++    Require(state.samples.count != 1u || state.hasColorTarget || (context.limits.framebufferNoAttachmentsSampleCounts & VK_SAMPLE_COUNT_1_BIT) != 0, "device does not support single-sample rendering without attachments");
++    if (state.samples.count > 1u) {
++        Require(state.hasColorTarget || state.depth || (context.limits.framebufferNoAttachmentsSampleCounts & nativeSamples) != 0, "device does not support rendering without attachments at this sample count");
++        Require(state.colors.empty() || (context.limits.framebufferColorSampleCounts & nativeSamples) != 0, "device framebuffer color sample count unsupported");
++        Require(!state.depth || (context.limits.framebufferDepthSampleCounts & nativeSamples) != 0, "device framebuffer depth sample count unsupported");
++        Require(!state.depth || !state.depth->stencilAddress || (context.limits.framebufferStencilSampleCounts & nativeSamples) != 0, "device framebuffer stencil sample count unsupported");
++        const auto& properties = context.sampleLocationProperties;
++        Require(context.sampleLocations && (properties.sampleLocationSampleCounts & nativeSamples) != 0 &&
++                properties.maxSampleLocationGridSize.width >= 1u && properties.maxSampleLocationGridSize.height >= 1u &&
++                properties.sampleLocationSubPixelBits >= 4u,
++                "device sample-location capabilities do not support the guest pattern");
++        for (unsigned sample = 0; sample < state.samples.nativeCount; ++sample) {
++            const auto position = state.samples.positions[sampleGroup * state.samples.nativeCount + sample];
++            Require(std::isfinite(position.x) && std::isfinite(position.y) &&
++                    position.x >= properties.sampleLocationCoordinateRange[0] && position.x <= properties.sampleLocationCoordinateRange[1] &&
++                    position.y >= properties.sampleLocationCoordinateRange[0] && position.y <= properties.sampleLocationCoordinateRange[1],
++                    "sample position outside device coordinate range");
++            samplePositions[sample] = position;
++        }
++    }
+     Require(!depthBounds || context.depthBounds, "device does not support the depth bounds test");
+     Require(!depthBias || state.depthBiasClamp == 0.0f || context.depthBiasClamp, "device does not support depth bias clamping");
+     Require(!state.negativeOneToOne || context.depthClipControl, "negative-one-to-one depth clipping requires VK_EXT_depth_clip_control with depthClipControl enabled");
+@@ -187,7 +215,7 @@
+         for (std::uint32_t index = 0; index < state.colors.size(); ++index) {
+             VkAttachmentDescription color{};
+             color.format = state.colors[index].format;
+-            color.samples = VK_SAMPLE_COUNT_1_BIT;
++            color.samples = nativeSamples;
+             color.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+             color.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+             color.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+@@ -205,7 +233,7 @@
+         if (state.depth) {
+             VkAttachmentDescription depth{};
+             depth.format = state.depth->format;
+-            depth.samples = VK_SAMPLE_COUNT_1_BIT;
++            depth.samples = nativeSamples;
+             depth.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+             depth.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+             depth.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+@@ -252,7 +280,14 @@
+         raster.depthBiasEnable = depthBias;
+         raster.lineWidth = 1;
+         VkPipelineMultisampleStateCreateInfo samples{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+-        samples.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
++        samples.rasterizationSamples = nativeSamples;
++        const VkSampleMask sampleMask = (state.samples.mask >> (sampleGroup * state.samples.nativeCount)) & ((1u << state.samples.nativeCount) - 1u);
++        if (state.samples.count > 1u) samples.pSampleMask = &sampleMask;
++        VkPipelineSampleLocationsStateCreateInfoEXT sampleLocations{VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT};
++        sampleLocations.sampleLocationsEnable = VK_TRUE;
++        sampleLocations.sampleLocationsInfo = {VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT, nullptr,
++            nativeSamples, {1, 1}, state.samples.nativeCount, samplePositions.data()};
++        if (state.samples.count > 1u) samples.pNext = &sampleLocations;
+         VkPipelineDepthStencilStateCreateInfo depthStencil{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+         depthStencil.depthTestEnable = state.depthTest;
+         depthStencil.depthWriteEnable = state.depthWrite;
+@@ -366,15 +401,41 @@
+ }
+ 
+ void Pipeline::Begin(VkCommandBuffer commands, const Framebuffer& framebuffer, VkExtent2D extent, const State& state) const {
++    validateSamples(state);
+     VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+     begin.renderPass = renderPass;
+     begin.framebuffer = framebuffer.Handle();
+     begin.renderArea = {{0, 0}, extent};
++    VkRenderPassSampleLocationsBeginInfoEXT locations{VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT};
++    const VkSampleLocationsInfoEXT info{VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT, nullptr,
++        static_cast<VkSampleCountFlagBits>(sampleConfiguration.nativeCount), {1, 1}, sampleConfiguration.nativeCount, samplePositions.data()};
++    const VkAttachmentSampleLocationsEXT initial{static_cast<std::uint32_t>(colorAttachments), info};
++    const VkSubpassSampleLocationsEXT after{0, info};
++    if (attachments > colorAttachments && sampleConfiguration.count > 1u) {
++        locations.attachmentInitialSampleLocationsCount = 1;
++        locations.pAttachmentInitialSampleLocations = &initial;
++        locations.postSubpassSampleLocationsCount = 1;
++        locations.pPostSubpassSampleLocations = &after;
++        begin.pNext = &locations;
++    }
+     context.Resolved(&DeviceFunctions::cmdBeginRenderPass, "vkCmdBeginRenderPass")(commands, &begin, VK_SUBPASS_CONTENTS_INLINE);
+     Continue(commands, state);
+ }
+ 
++void Pipeline::validateSamples(const State& state) const {
++    Require(state.samples.count == sampleConfiguration.count && state.samples.mask == sampleConfiguration.mask,
++            "draw samples do not match the pipeline configuration");
++    if (sampleConfiguration.count > 1u) {
++        for (unsigned sample = 0; sample < sampleConfiguration.nativeCount; ++sample) {
++            const auto position = state.samples.positions[sampleGroup * sampleConfiguration.nativeCount + sample];
++            Require(position.x == samplePositions[sample].x && position.y == samplePositions[sample].y,
++                    "draw sample pattern does not match the pipeline configuration");
++        }
++    }
++}
++
+ void Pipeline::Continue(VkCommandBuffer commands, const State& state) const {
++    validateSamples(state);
+     context.Resolved(&DeviceFunctions::cmdBindPipeline, "vkCmdBindPipeline")(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+     context.Resolved(&DeviceFunctions::cmdSetViewport, "vkCmdSetViewport")(commands, 0, 1, &state.viewport);
+     context.Resolved(&DeviceFunctions::cmdSetScissor, "vkCmdSetScissor")(commands, 0, 1, &state.scissor);
+@@ -401,11 +462,20 @@
+ // (the recompiler could not identify it, so nothing else may share its pipeline). The rect-list
+ // control and evaluation stages are generated from the vertex and fragment results, which the key
+ // already names, so they carry no id of their own.
+-std::vector<std::byte> pipelineKey(const Context& context, const State& state, const VertexInputLayout& input, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout) {
++std::vector<std::byte> pipelineKey(const Context& context, const State& state, const VertexInputLayout& input, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout, std::uint32_t sampleGroup) {
+     using Stage = ShaderRecompiler::ShaderStage;
+     std::vector<std::byte> key;
+     append(key, context.device);
+     append(key, attachmentLayout);
++    append(key, sampleGroup);
++    append(key, state.samples.count);
++    append(key, state.samples.nativeCount);
++    append(key, state.samples.groups);
++    append(key, state.samples.mask);
++    for (unsigned sample = 0; sample < state.samples.count && sample < state.samples.positions.size(); ++sample) {
++        append(key, state.samples.positions[sample].x);
++        append(key, state.samples.positions[sample].y);
++    }
+     append(key, shaders.size());
+     for (const auto& shader : shaders) {
+         Require(shader.program != nullptr, "missing compiled shader");
+@@ -444,13 +514,14 @@
+     for (const auto& blend : state.blends) append(key, blend);
+     for (const auto value : state.blendConstants) append(key, value);
+     append(key, state.colors.size());
+-    for (const auto& color : state.colors) append(key, color.format);
++    for (const auto& color : state.colors) { append(key, color.format); append(key, color.samples); append(key, color.fragments); }
+     if (state.blends.size() != state.colors.size()) {
+         for (const auto& color : state.colors) append(key, color.exportIndex);
+     }
+     append(key, state.depth.has_value());
+     if (state.depth) {
+         append(key, state.depth->format);
++        append(key, state.depth->samples);
+         append(key, state.depthTest);
+         append(key, state.depthWrite);
+         append(key, state.depthCompare);
+@@ -549,16 +620,16 @@
+ 
+ }
+ 
+-std::shared_ptr<Pipeline> CachedPipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout) {
++std::shared_ptr<Pipeline> CachedPipeline(const Context& context, const State& state, const VertexInputLayout& vertexInput, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout, std::uint32_t sampleGroup) {
+     static const bool disabled = std::getenv("APS5_NO_PIPELINE_CACHE") != nullptr;
+-    if (disabled) return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout);
++    if (disabled) return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout, sampleGroup);
+     auto& store = Pipelines();
+     std::lock_guard lock(store.mutex);
+     reportPipelines(store);
+-    const auto key = pipelineKey(context, state, vertexInput, resources, shaders, attachmentLayout);
++    const auto key = pipelineKey(context, state, vertexInput, resources, shaders, attachmentLayout, sampleGroup);
+     if (key.empty()) {
+         ++store.uncached;
+-        return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout);
++        return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout, sampleGroup);
+     }
+     const auto hash = hashKey(key);
+     if (const auto found = store.index.find(hash); found != store.index.end()) {
+@@ -575,7 +646,7 @@
+         } else {
+             // A different configuration with the same hash keeps the resident entry; this one stays private.
+             ++store.uncached;
+-            return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout);
++            return std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout, sampleGroup);
+         }
+     }
+     ++store.misses;
+@@ -584,7 +655,7 @@
+     for (auto it = store.entries.begin(); it != store.entries.end();) {
+         it = alive(*it, context) ? std::next(it) : abandon(store, it);
+     }
+-    auto pipeline = std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout);
++    auto pipeline = std::make_shared<Pipeline>(context, state, vertexInput, resources, shaders, attachmentLayout, sampleGroup);
+     store.entries.push_back({context.device, context.bufferPool, hash, key, pipeline});
+     store.index[hash] = std::prev(store.entries.end());
+     constexpr std::size_t bound = 256;

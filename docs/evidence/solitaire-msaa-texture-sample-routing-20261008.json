@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "checkpoint": "grouped-msaa-texture-descriptor-and-shader-routing",
+  "date": "2026-10-08",
+  "device_run": false,
+  "game_data_used": false,
+  "github_actions_used": false,
+  "source_reference": {
+    "gc10_descriptor": "https://github.com/GPUOpen-Drivers/pal/blob/c5e800072a32f68b6ccc4422936d96167c6e0728/src/core/hw/gfxip/gfx9/gfx9Device.cpp#L4205",
+    "interpretation": "LAST_LEVEL and MAX_MIP both encode log2(stored fragments); texture descriptors do not independently encode coverage samples.",
+    "query_contract": "https://docs.amd.com/api/khub/documents/UkT_UPQL21KfKAMUBFnZTw/content"
+  },
+  "implementation": {
+    "native_option": "SpirvTarget.groupedMsaaMaxSamples defaults to 0, preserving native resource representation. 4 selects grouped sampled images.",
+    "descriptor_shapes": [
+      "Image2DMsaa",
+      "Image2DMsaaArray"
+    ],
+    "descriptor_counts": "imageLogicalSamples[i] is the stored fragment/sample-index count; imageNativeSamples[i] is 0 for native layout, otherwise 2 or 4 for grouped sampled-image array.",
+    "mapping": "host layer = logical layer * (logicalSamples/nativeSamples) + sample/nativeSamples; host sample = sample%nativeSamples",
+    "query": "OpImageQuerySize returns host array layers; logical arrays divide the returned layer count by groups. MSAA mip count returned by IMAGE_GET_RESINFO is 1.",
+    "representation_keys": [
+      "source context memo grouping option",
+      "source compile target grouping option",
+      "resource specialization logical and native sample counts",
+      "disk compile key logical and native sample counts",
+      "disk result descriptor count vectors"
+    ],
+    "disk_cache_format": 8,
+    "request_serialization_version": 11,
+    "required_capability": "ImageMSArray, checked against enabled target capabilities before emitting the MS array type"
+  },
+  "verification": {
+    "command": "python3 scripts/check-msaa-texture-routing.py",
+    "result": "passed",
+    "production_spirv_modules": 28,
+    "independent_validator": "spirv-val --target-env vulkan1.1",
+    "covered_shader_forms": [
+      "2D MSAA load and dimensions",
+      "2D MSAA array load and logical dimensions"
+    ],
+    "sample_counts": [
+      2,
+      4,
+      8
+    ],
+    "independent_emitted_arithmetic_check": "Actual emitted integer arithmetic is evaluated independently; each fixture matches expected host layer and native sample.",
+    "distinct_cpu_sample_addresses": 84,
+    "rejection_cases": 28,
+    "descriptor_counts_decoded": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "sanitizers": "ASan and UBSan cover the focused decoder and fixture translation units; production recompiler is built Release, without full sanitizer instrumentation. STL container annotations disabled at the mixed instrumentation boundary.",
+    "public_fixtures": "Own synthetic descriptors and IR, no captured game shaders.",
+    "patch_round_trip": "applied from exact per-file baseline, byte-compared all 18 modified or added production files, reversed and verified exact restoration",
+    "shader_cache_guard_review": {
+      "reviewed_name": "TextureFragmentCount",
+      "classification": "Pure decoder of descriptor dwords word3 and word5; no mutable global state, environment changes or shader-compiler configuration writes.",
+      "existing_key_inputs": [
+        "RecompileCacheKey includes request.target.groupedMsaaMaxSamples",
+        "ShaderDiskCache::BuildKey serializes ResourceSpecialization::Image.logicalSamples and nativeSamples"
+      ],
+      "source_invalidation": "GroupedMsaa.hpp is in the recompiler source glob hashed by ShaderCacheVersion.cmake.",
+      "new_BuildKey_input_required": false,
+      "reason": "Compiler use decodes descriptor-derived sample counts into the already-keyed resource specialization. GuestTextureResource use only validates and decodes host texture metadata.",
+      "validation": "Production ShaderCacheVersion.cmake run against the full HLE guard manifest with Windows paths normalized to this Mac. Original unreviewed manifest fails precisely on TextureFragmentCount; adding the reviewed name passes.",
+      "guard_files": 182,
+      "negative_control_exit": 1,
+      "reviewed_exit": 0,
+      "generated_source_version": "0x244ac81bc5688738",
+      "negative_control_log_sha256": "f548369eeb8e2cb00312a770910ebd2af3cee443ec870d04e80936d95e1b604b",
+      "reviewed_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "native_routing_regression": "Rerun passed: 28 production SPIR-V fixtures, 84 distinct addresses, 28 rejection cases; all emitted modules independently validated and evaluated."
+    }
+  },
+  "guards": [
+    "One-fragment grouped MSAA sampled image has no proved host representation and is refused.",
+    "Only R64KB_X color MSAA texture descriptors are admitted by the host decoder.",
+    "MSAA descriptor fragment-count fields must agree and remain within 1/2/4/8.",
+    "MSAA depth texture reads remain refused.",
+    "Compressed MSAA textures, nonzero minimum LOD and multi-layer guest MSAA arrays are refused by the host decoder.",
+    "MSAA shader storage writes, atomics, packed access, depth comparison, filtering, gather, and LOD query are refused.",
+    "128-bit MSAA descriptors are explicitly refused."
+  ],
+  "limitations": [
+    "The logical multi-layer address calculation is shader-tested; host guest arrays currently permit only one logical layer.",
+    "This checkpoint does not prove descriptor-to-host-view integration or any iPad GPU execution of the recompiled fixtures.",
+    "Solitaire rendering, full runtime library build, launch, audio and gameplay are not qualified by this evidence.",
+    "Grouped host texture resources and target option enablement belong to a separate integration checkpoint."
+  ],
+  "patch": {
+    "path": "patches/anyps5/0042-msaa-texture-sample-routing.patch",
+    "sha256": "0d3ca9ad4a358012b6c7beedc08fe27ca4a8f095ed0fb5ecea0c136a9d0ee31e"
+  },
+  "public_source_sha256": {
+    "scripts/check-msaa-texture-routing.py": "515c090f433c0bfc0eb2f59777b95bdd5dbf5ecf15d59163d33703d9c1e886be",
+    "tools/checks/msaa_texture_sample_routing.cpp": "68cd78c275b1e9e3d9bd42bfc80f29a1d86a4e54b08596a1bb8d38ff22e423d9",
+    "upstreams/AnyPS5/core/shader/recompiler/CMakeLists.txt": "771f2e20962cae97a5066fb5a4f9aad3f83e7806817fd4ea817fb4d03e607d04"
+  }
+}

@@ -1,0 +1,686 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp
+@@ -58,7 +58,9 @@
+     k2DArray,
+     kCube,
+     k3D,
+-    k1DArray
++    k1DArray,
++    k2DMsaa,
++    k2DMsaaArray
+ };
+ 
+ struct GuestTextureResource {
+@@ -83,6 +85,9 @@
+     bool dccAlphaOnMsb = false;
+     std::uint32_t minLod = 0;
+     std::uint32_t allocatedMipCount = 0;
++    // Stored fragment/sample-index count; T# does not encode coverage count.
++    std::uint32_t samples = 1;
++    std::uint32_t fragments = 1;
+ };
+ 
+ float EffectiveMinLod(const GuestTextureResource& resource);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/GuestTextureResource.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/GuestTextureResource.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/GuestTextureResource.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/GuestTextureResource.cpp
+@@ -1,4 +1,5 @@
+ #include <cstdio>
++#include "GroupedMsaa.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GuestTextureResource.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Context.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/TextureTiling.hpp"
+@@ -43,6 +44,8 @@
+         case 11: return TextureDimension::kCube;
+         case 12: return TextureDimension::k1DArray;
+         case 13: return TextureDimension::k2DArray;
++        case 14: return TextureDimension::k2DMsaa;
++        case 15: return TextureDimension::k2DMsaaArray;
+         default: throw std::runtime_error("AGC graphics: guest texture descriptor uses an unsupported image type " + std::to_string(raw));
+     }
+ }
+@@ -110,7 +113,7 @@
+     Require(!cornerSample, "guest texture descriptor uses corner sampling which is not implemented");
+     Require(!prtDefColor, "guest texture descriptor uses a partially resident default color which is not implemented");
+     Require(arrayPitch == 0, "guest texture descriptor uses a nonzero array pitch which is not implemented");
+-    Require(!msaaDepth, "guest texture descriptor uses MSAA which is not implemented");
++    Require(!msaaDepth, "guest texture descriptor uses multisampled depth sampling which is not implemented");
+     static_cast<void>(maxUncompBlkSize);
+     static_cast<void>(maxCompBlkSize);
+     // Surfaces are always written uncompressed here (render targets and storage images bypass DCC), so
+@@ -126,6 +129,14 @@
+     }
+     Require(bcSwizzle == 0, "guest texture descriptor uses a BC swizzle which is not implemented");
+ 
++    const bool multisampled = typeRaw == 14u || typeRaw == 15u;
++    const auto fragments = multisampled ? ShaderRecompiler::TextureFragmentCount(words[3], words[5]) : 1u;
++    if (multisampled) {
++        Require(minLod == 0u, "multisampled texture cannot use a minimum LOD");
++        Require(!metaCompress && !writeCompress && metaAddr == 0u, "compressed multisampled texture sampling is not implemented");
++        Require(tileModeRaw == 0x1bu, "multisampled color texture needs the R64KB_X layout");
++        lastLevel = 0u;
++    }
+     Require(baseLevel <= lastLevel, "guest texture descriptor has a base mip level past its last mip level");
+ 
+ 
+@@ -148,6 +159,7 @@
+         case TextureDimension::k1D:
+             Require(height == 1 && depth == 0 && baseArray == 0, "guest 1D texture descriptor has a nonzero height, depth or base array");
+             break;
++        case TextureDimension::k2DMsaa:
+         case TextureDimension::k2D:
+             Require(depth == 0 && baseArray == 0, "guest 2D texture descriptor has a nonzero depth or base array");
+             break;
+@@ -155,6 +167,9 @@
+             // word4 DEPTH holds the depth minus one; BASE_ARRAY has no meaning for volumes.
+             Require(baseArray == 0, "guest 3D texture descriptor has a nonzero base array");
+             break;
++        case TextureDimension::k2DMsaaArray:
++            Require(baseArray == 0u && depth == 0u, "multisampled array texture sampling currently supports only one logical layer");
++            [[fallthrough]];
+         case TextureDimension::k2DArray:
+             Require(baseArray <= depth, "guest 2D array texture descriptor has a base array past its last array slice");
+             break;
+@@ -176,8 +191,9 @@
+     result.height = height;
+     result.depthOrLastArray = depth;
+     result.baseArray = baseArray;
+-    result.mipCount = maxMip + 1u;
+-    result.allocatedMipCount = maxMip + 1u;
++    result.mipCount = multisampled ? 1u : maxMip + 1u;
++    result.allocatedMipCount = result.mipCount;
++    result.samples = result.fragments = fragments;
+     result.baseLevel = baseLevel;
+     result.lastLevel = lastLevel;
+     result.tileMode = tileMode;
+@@ -210,6 +226,10 @@
+         case ShaderRecompiler::DescriptorImageShape::ImageCube: return dimension == TextureDimension::kCube;
+         case ShaderRecompiler::DescriptorImageShape::Image3D: return dimension == TextureDimension::k3D;
+         case ShaderRecompiler::DescriptorImageShape::Image1DArray: return dimension == TextureDimension::k1DArray;
++        case ShaderRecompiler::DescriptorImageShape::Image2DMsaa: return dimension == TextureDimension::k2DMsaa;
++        // A grouped non-array guest image also binds as a multisampled host array.
++        // The caller must additionally check imageNativeSamples against that view.
++        case ShaderRecompiler::DescriptorImageShape::Image2DMsaaArray: return dimension == TextureDimension::k2DMsaaArray || dimension == TextureDimension::k2DMsaa;
+     }
+     throw std::runtime_error("AGC graphics: MatchesGuestDimension encountered an unknown descriptor image shape");
+ }
+diff --git a/core/libs/prx/libSceAgcDriver/tests/GuestTextureResource.cpp b/core/libs/prx/libSceAgcDriver/tests/GuestTextureResource.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/GuestTextureResource.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/GuestTextureResource.cpp
+@@ -102,6 +102,17 @@
+     Require(result.format == 56, "decoded format changed");
+     Require(result.dstSelX == 4 && result.dstSelY == 5 && result.dstSelZ == 6 && result.dstSelW == 7, "decoded destination selectors changed");
+ 
++    for (const auto type : {14u, 15u}) {
++        for (std::uint32_t log = 0u; log != 4u; ++log) {
++            Fields ms = base; ms.typeRaw = type; ms.base40 = 0x120000u;
++            ms.tileModeRaw = 0x1bu; ms.lastLevel = ms.maxMip = log;
++            const auto image = DecodeTextureResource(pack(ms));
++            Require(image.samples == (1u << log) && image.fragments == image.samples, "MSAA T# fragment count changed");
++            Require(image.mipCount == 1u && image.lastLevel == 0u && image.baseLevel == 0u, "MSAA count fields were interpreted as mips");
++            Require(image.dimension == (type == 14u ? TextureDimension::k2DMsaa : TextureDimension::k2DMsaaArray), "MSAA T# dimension changed");
++            ms.maxMip = (log + 1u) & 3u; rejectFields(ms, "fragment-count");
++        }
++    }
+     Fields wide = base;
+     wide.width = 8192;
+     wide.height = 4096;
+@@ -273,7 +284,7 @@
+ 
+     Fields badMsaa = base;
+     badMsaa.msaaDepth = true;
+-    rejectFields(badMsaa, "MSAA");
++    rejectFields(badMsaa, "multisampled depth");
+ 
+     Fields blockSize = base;
+     blockSize.maxUncompBlkSize = 1;
+diff --git a/core/shader/recompiler/Recompiler.hpp b/core/shader/recompiler/Recompiler.hpp
+--- a/core/shader/recompiler/Recompiler.hpp
++++ b/core/shader/recompiler/Recompiler.hpp
+@@ -199,6 +199,8 @@
+     std::optional<TessellationTargetLimits> tessellation;
+     bool nonConstantImageOffsets = false;
+     std::uint32_t srgbDecodeFormats = 0;
++    // 0: native sampled MSAA. 4: group logical samples in MSAA array layers.
++    std::uint32_t groupedMsaaMaxSamples = 0;
+ };
+ 
+ struct BindingLayout {
+@@ -293,7 +295,9 @@
+     Image2DArray,
+     ImageCube,
+     Image3D,
+-    Image1DArray
++    Image1DArray,
++    Image2DMsaa,
++    Image2DMsaaArray
+ };
+ 
+ enum class DescriptorRole {
+@@ -335,6 +339,9 @@
+     std::vector<bool> samplerUnnormalized;
+     std::vector<bool> imageUnnormalized;
+     std::vector<std::uint32_t> imageSamplers;
++    // One entry per guest-image descriptor; native=0 means unmodified image shape.
++    std::vector<std::uint32_t> imageLogicalSamples;
++    std::vector<std::uint32_t> imageNativeSamples;
+ };
+ 
+ struct VertexAttribute {
+diff --git a/core/shader/recompiler/Recompiler.cpp b/core/shader/recompiler/Recompiler.cpp
+--- a/core/shader/recompiler/Recompiler.cpp
++++ b/core/shader/recompiler/Recompiler.cpp
+@@ -173,6 +173,7 @@
+     deadCodeEliminator.Eliminate(program);
+     dumpIr("resources");
+     program.Resources().srgbDecodeFormats = request.target.srgbDecodeFormats;
++    program.Resources().groupedMsaaMaxSamples = request.target.groupedMsaaMaxSamples;
+ 
+     return program;
+ }
+diff --git a/core/shader/recompiler/CacheKey.hpp b/core/shader/recompiler/CacheKey.hpp
+--- a/core/shader/recompiler/CacheKey.hpp
++++ b/core/shader/recompiler/CacheKey.hpp
+@@ -37,7 +37,8 @@
+         append(key, RayTracingMiss());
+     }
+ 
+-    // A hash over every field Build appends except the code, the target and the probe flag: the
++    // A hash over every field Build appends except the code, the fixed device target
++    // (keeping the grouped-image representation), and the probe flag: the
+     // key of a source memo whose owner fixes the code (a registered shader at an offset) and the
+     // device itself, and which is bypassed while the probe is active.
+     static std::uint64_t ContextHash(const RecompileRequest& request) {
+@@ -52,6 +53,8 @@
+         append(key, request.context.pixel);
+         append(key, request.context.vertex);
+         appendMesh(key, request);
++        // Source memo owners do not fix the grouped sampled-image representation.
++        append(key, request.target.groupedMsaaMaxSamples);
+         std::uint64_t hash = 0xcbf29ce484222325ull;
+         for (const auto value : key) {
+             hash ^= value;
+@@ -203,6 +206,7 @@
+         append(key, value.tessellation);
+         append(key, value.nonConstantImageOffsets);
+         append(key, value.srgbDecodeFormats);
++        append(key, value.groupedMsaaMaxSamples);
+     }
+ };
+ 
+diff --git a/core/shader/recompiler/ShaderDiskCache.hpp b/core/shader/recompiler/ShaderDiskCache.hpp
+--- a/core/shader/recompiler/ShaderDiskCache.hpp
++++ b/core/shader/recompiler/ShaderDiskCache.hpp
+@@ -12,7 +12,7 @@
+ 
+ namespace ShaderRecompiler::ShaderDiskCache {
+ 
+-inline constexpr std::uint32_t FormatVersion = 7;
++inline constexpr std::uint32_t FormatVersion = 8;
+ 
+ enum class LoadStatus {
+     Loaded,
+diff --git a/core/shader/recompiler/ShaderDiskCache.cpp b/core/shader/recompiler/ShaderDiskCache.cpp
+--- a/core/shader/recompiler/ShaderDiskCache.cpp
++++ b/core/shader/recompiler/ShaderDiskCache.cpp
+@@ -64,13 +64,13 @@
+ 
+ #if defined(__linux__) && defined(__x86_64__) && defined(__GLIBCXX__)
+ static_assert(sizeof(RecompileResult) == 176, "RecompileResult changed: update EncodeResult and DecodeResult");
+-static_assert(sizeof(DescriptorBinding) == 448, "DescriptorBinding changed: update the binding encoder");
++static_assert(sizeof(DescriptorBinding) == 496, "DescriptorBinding changed: update the binding encoder");
+ static_assert(sizeof(VertexAttribute) == 28, "VertexAttribute changed: update the attribute encoder");
+ static_assert(sizeof(FragmentParameter) == 12, "FragmentParameter changed: update the parameter encoder");
+ static_assert(sizeof(CompiledShaderInfo) == 304, "CompiledShaderInfo changed: update the info encoder");
+ static_assert(sizeof(ShaderInfo) == 200, "ShaderInfo changed: update the info encoder");
+ static_assert(sizeof(BufferResource) == 36, "BufferResource changed: update the info encoder");
+-static_assert(sizeof(ImageResource) == 96, "ImageResource changed: update the info encoder");
++static_assert(sizeof(ImageResource) == 104, "ImageResource changed: update the info encoder");
+ static_assert(sizeof(SamplerResource) == 12, "SamplerResource changed: update the info encoder");
+ static_assert(sizeof(SampledResourcePair) == 12, "SampledResourcePair changed: update the info encoder");
+ static_assert(sizeof(StageInput) == 56, "StageInput changed: update the info encoder");
+@@ -80,7 +80,7 @@
+ static_assert(sizeof(BindingAllocationResult) == 120, "BindingAllocationResult changed: update the allocation encoder");
+ static_assert(sizeof(ResourceSpecialization) == 72, "ResourceSpecialization changed: update BuildKey");
+ static_assert(sizeof(ResourceSpecialization::Buffer) == 16, "ResourceSpecialization::Buffer changed: update BuildKey");
+-static_assert(sizeof(ResourceSpecialization::Image) == 48, "ResourceSpecialization::Image changed: update BuildKey");
++static_assert(sizeof(ResourceSpecialization::Image) == 56, "ResourceSpecialization::Image changed: update BuildKey");
+ static_assert(sizeof(BindingLayout) == 16, "BindingLayout changed: update BuildKey");
+ #endif
+ 
+@@ -255,6 +255,8 @@
+     writer.Flags(binding.samplerUnnormalized);
+     writer.Flags(binding.imageUnnormalized);
+     writer.Values(std::span<const std::uint32_t>(binding.imageSamplers));
++    writer.Values(std::span<const std::uint32_t>(binding.imageLogicalSamples));
++    writer.Values(std::span<const std::uint32_t>(binding.imageNativeSamples));
+ }
+ 
+ void decodeBinding(Reader& reader, DescriptorBinding& binding) {
+@@ -278,6 +280,8 @@
+     reader.Flags(binding.samplerUnnormalized);
+     reader.Flags(binding.imageUnnormalized);
+     reader.Values(binding.imageSamplers);
++    reader.Values(binding.imageLogicalSamples);
++    reader.Values(binding.imageNativeSamples);
+ }
+ 
+ void encodeResult(Writer& writer, const RecompileResult& result) {
+@@ -404,6 +408,8 @@
+         out.Value(image.dimension);
+         out.Value(image.mipMode);
+         out.Value(image.mipCount);
++        out.Value(image.logicalSamples);
++        out.Value(image.nativeSamples);
+         out.Value(image.conversionFormat);
+         out.Value(image.shaderSwizzle);
+         out.Value(image.read);
+@@ -497,6 +503,8 @@
+         in.Value(image.dimension);
+         in.Value(image.mipMode);
+         in.Value(image.mipCount);
++        in.Value(image.logicalSamples);
++        in.Value(image.nativeSamples);
+         in.Value(image.conversionFormat);
+         in.Value(image.shaderSwizzle);
+         in.Value(image.read);
+@@ -818,6 +826,8 @@
+         out.Value(image.numericClass);
+         out.Value(image.dimension);
+         out.Value(image.mipCount);
++        out.Value(image.logicalSamples);
++        out.Value(image.nativeSamples);
+         out.Value(image.conversionFormat);
+         out.Value(image.shaderSwizzle);
+         out.Value(image.indirectRoot);
+diff --git a/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp b/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
+--- a/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
++++ b/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
+@@ -697,7 +697,7 @@
+     std::string buffer;
+     Writer writer(buffer);
+     writer.WriteU32(0x41505335u);
+-    writer.WriteU32(10u);
++    writer.WriteU32(11u);
+     writeShaderBinary(writer, request.shader);
+     writeGuestContext(writer, request.context);
+     writeSpirvTarget(writer, request.target);
+@@ -715,6 +715,7 @@
+     writer.WriteBool(request.target.nonConstantImageOffsets);
+     writer.WriteU32(request.target.srgbDecodeFormats);
+     if (request.context.compute.has_value()) writer.WriteU32(request.context.compute->scratchDwords);
++    writer.WriteU32(request.target.groupedMsaaMaxSamples);
+     return base64Encode(buffer);
+ }
+ 
+@@ -723,7 +724,7 @@
+     Reader reader(decoded);
+     if (reader.ReadU32() != 0x41505335u) throw std::runtime_error("invalid recompile request signature");
+     const auto version = reader.ReadU32();
+-    if (version < 1u || version > 10u) throw std::runtime_error("unsupported recompile request serialization version");
++    if (version < 1u || version > 11u) throw std::runtime_error("unsupported recompile request serialization version");
+     DeserializedRequest result{};
+     result.request.shader = readShaderBinary(reader, result.shaderCode, result.shaderHeader);
+     result.request.context = readGuestContext(reader, result, version);
+@@ -742,6 +743,7 @@
+     if (version >= 6u) result.request.target.nonConstantImageOffsets = reader.ReadBool();
+     if (version >= 9u) result.request.target.srgbDecodeFormats = reader.ReadU32();
+     if (version >= 10u && result.request.context.compute.has_value()) result.request.context.compute->scratchDwords = reader.ReadU32();
++    if (version >= 11u) result.request.target.groupedMsaaMaxSamples = reader.ReadU32();
+     return result;
+ }
+ 
+diff --git a/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/Resources.hpp b/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/Resources.hpp
+--- a/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/Resources.hpp
++++ b/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/Resources.hpp
+@@ -64,6 +64,8 @@
+     RdnaImageDimension dimension = RdnaImageDimension::Unknown;
+     ImageMipMode mipMode = ImageMipMode::None;
+     std::uint32_t mipCount = 1;
++    std::uint32_t logicalSamples = 1;
++    std::uint32_t nativeSamples = 0;
+     IrBufferFormat conversionFormat = IrBufferFormat::Invalid;
+     std::uint32_t shaderSwizzle = ShaderImageIdentitySwizzle;
+     bool read = false;
+diff --git a/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/ResourcePlan.hpp b/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/ResourcePlan.hpp
+--- a/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/ResourcePlan.hpp
++++ b/core/shader/recompiler/IntermediateRepresentation/include/IntermediateRepresentation/IrMetadata/ResourcePlan.hpp
+@@ -56,6 +56,7 @@
+     std::uint32_t userDataBase = 0;
+     std::uint32_t userDataCount = 64;
+     std::uint32_t srgbDecodeFormats = 0;
++    std::uint32_t groupedMsaaMaxSamples = 0;
+     std::vector<std::unique_ptr<IrValue>> valueStorage;
+     std::vector<std::unique_ptr<IrBlock>> blockStorage;
+     std::vector<MemoryInfo> memoryInfo;
+diff --git a/core/shader/recompiler/Optimization/include/Optimization/ResourceMaterializer.hpp b/core/shader/recompiler/Optimization/include/Optimization/ResourceMaterializer.hpp
+--- a/core/shader/recompiler/Optimization/include/Optimization/ResourceMaterializer.hpp
++++ b/core/shader/recompiler/Optimization/include/Optimization/ResourceMaterializer.hpp
+@@ -22,6 +22,8 @@
+         IrTextureNumericClass numericClass = IrTextureNumericClass::Unsupported;
+         RdnaImageDimension dimension = RdnaImageDimension::Unknown;
+         std::uint32_t mipCount = 1;
++        std::uint32_t logicalSamples = 1;
++        std::uint32_t nativeSamples = 0;
+         IrBufferFormat conversionFormat = IrBufferFormat::Invalid;
+         std::uint32_t shaderSwizzle = ShaderImageIdentitySwizzle;
+         std::uint32_t indirectRoot = ImageResource::NoIndirectImage;
+diff --git a/core/shader/recompiler/Optimization/src/ResourceMaterializer.cpp b/core/shader/recompiler/Optimization/src/ResourceMaterializer.cpp
+--- a/core/shader/recompiler/Optimization/src/ResourceMaterializer.cpp
++++ b/core/shader/recompiler/Optimization/src/ResourceMaterializer.cpp
+@@ -1,4 +1,5 @@
+ #include "Optimization/ResourceMaterializer.hpp"
++#include "GroupedMsaa.hpp"
+ #include "Optimization/SrtWalker/SrtFlatSlotClasses.hpp"
+ #include "IntermediateRepresentation/IrBuilder.hpp"
+ #include "Optimization/ShaderStageInputInfo.hpp"
+@@ -39,6 +40,8 @@
+     IrTextureNumericClass numericClass = IrTextureNumericClass::Unsupported;
+     RdnaImageDimension dimension = RdnaImageDimension::Unknown;
+     std::uint32_t mipCount = 1;
++    std::uint32_t logicalSamples = 1;
++    std::uint32_t nativeSamples = 0;
+     IrBufferFormat conversionFormat = IrBufferFormat::Invalid;
+     std::uint32_t shaderSwizzle = ShaderImageIdentitySwizzle;
+     bool cube = false;
+@@ -117,7 +120,7 @@
+         const auto baseLevel = (descriptor.dwords[3] >> 12u) & 0xfu;
+         const auto fragments = (descriptor.dwords[3] >> 16u) & 0xfu;
+         const auto maxMip = (descriptor.dwords[5] >> 4u) & 0xfu;
+-        return baseLevel == 0u && fragments >= 1u && fragments <= 3u && (r128 || maxMip == fragments);
++        return baseLevel == 0u && fragments <= 3u && (r128 || maxMip == fragments);
+     }
+     return true;
+ }
+@@ -131,7 +134,7 @@
+     return mipBase <= mipLast ? mipLast - mipBase + 1u : 0u;
+ }
+ 
+-DecodedImage decodeImageDescriptor(const DescriptorValue& descriptor, const ImageResource& base, std::uint32_t srgbDecodeFormats) {
++DecodedImage decodeImageDescriptor(const DescriptorValue& descriptor, const ImageResource& base, std::uint32_t srgbDecodeFormats, std::uint32_t groupedMsaaMaxSamples) {
+     DecodedImage decoded;
+     decoded.mipCount = storageMipCount(base, descriptor);
+     if (decoded.mipCount == 0u) {
+@@ -151,6 +154,14 @@
+     }
+     decoded.dimension = descriptorDimension(descriptor, base.dimension);
+     decoded.cube = descriptorIsCube(descriptor);
++    if (decoded.dimension == RdnaImageDimension::Dim2DMsaa || decoded.dimension == RdnaImageDimension::Dim2DMsaaArray) {
++        if (base.r128) throw std::runtime_error("128-bit multisampled texture descriptors are not implemented");
++        if (base.resourceClass != ImageResourceClass::Sampled || base.written || base.atomic || base.packed || base.depthCompare)
++            throw std::runtime_error("multisampled texture supports sample-index loads only");
++        decoded.logicalSamples = TextureFragmentCount(descriptor.dwords[3], descriptor.dwords[5]);
++        decoded.nativeSamples = GroupedNativeSamples(decoded.logicalSamples, groupedMsaaMaxSamples);
++        decoded.mipCount = 1u;
++    }
+     const auto format = rawImageFormat(descriptor);
+     if (base.atomic64 && format != IrBufferFormat::Format32_32UInt && format != IrBufferFormat::Format32_32SInt && format != IrBufferFormat::Format32_32Float) {
+         throw std::runtime_error("64-bit atomic image descriptor uses an unsupported format " + std::to_string(static_cast<std::uint32_t>(format)));
+@@ -386,7 +397,7 @@
+         bool usable = !nullImageDescriptor(candidate) && validImageDescriptor(candidate, image.r128);
+         if (usable) {
+             try {
+-                decoded = decodeImageDescriptor(candidate, image, plan.srgbDecodeFormats);
++                decoded = decodeImageDescriptor(candidate, image, plan.srgbDecodeFormats, plan.groupedMsaaMaxSamples);
+             } catch (const std::exception&) {
+                 usable = false;
+             }
+@@ -399,7 +410,7 @@
+             paddedConversion++;
+             continue;
+         }
+-        if (shape.has_value() && (decoded.numericClass != shape->numericClass || decoded.dimension != shape->dimension || decoded.cube != shape->cube)) {
++        if (shape.has_value() && (decoded.numericClass != shape->numericClass || decoded.dimension != shape->dimension || decoded.cube != shape->cube || decoded.logicalSamples != shape->logicalSamples || decoded.nativeSamples != shape->nativeSamples)) {
+             paddedShape++;
+             continue;
+         }
+@@ -573,6 +584,9 @@
+ }
+ 
+ void buildResourceSpecialization(const IrResourcePlan& plan, ResourceSnapshot& snapshot, const std::vector<TableResolution>& tables, ResourceSpecialization& specialization) {
++    // Validate the target option even if this shader never references an MSAA image.
++    if (plan.groupedMsaaMaxSamples != 0u && plan.groupedMsaaMaxSamples != 4u)
++        throw std::runtime_error("unsupported grouped MSAA native sample limit");
+     ResourceSpecialization result;
+     result.buffers.reserve(plan.info.buffers.size());
+     for (std::uint32_t i = 0; i < plan.info.buffers.size(); i++) {
+@@ -600,7 +614,9 @@
+     result.images.reserve(plan.info.images.size());
+     for (std::uint32_t i = 0; i < plan.info.images.size(); i++) {
+         const auto& image = plan.info.images[i];
+-        const DecodedImage decoded = decodeImageDescriptor(snapshot.images[i], image, plan.srgbDecodeFormats);
++        const DecodedImage decoded = decodeImageDescriptor(snapshot.images[i], image, plan.srgbDecodeFormats, plan.groupedMsaaMaxSamples);
++        if (decoded.nativeSamples != 0u && std::any_of(plan.info.sampledPairs.begin(), plan.info.sampledPairs.end(), [i](const SampledResourcePair& pair) { return pair.image == i; }))
++            throw std::runtime_error("grouped multisampled texture supports sample-index loads only");
+         if (decoded.fmask && std::any_of(plan.info.sampledPairs.begin(), plan.info.sampledPairs.end(), [i](const SampledResourcePair& pair) { return pair.image == i; })) {
+             throw std::runtime_error("FMASK requires a direct image load");
+         }
+@@ -608,6 +624,8 @@
+         entry.numericClass = decoded.numericClass;
+         entry.dimension = decoded.dimension;
+         entry.mipCount = decoded.mipCount;
++        entry.logicalSamples = decoded.logicalSamples;
++        entry.nativeSamples = decoded.nativeSamples;
+         entry.conversionFormat = decoded.conversionFormat;
+         entry.shaderSwizzle = decoded.shaderSwizzle;
+         entry.indirectRoot = ImageResource::NoIndirectImage;
+@@ -698,6 +716,8 @@
+         image.numericClass = source.numericClass;
+         image.dimension = source.dimension;
+         image.mipCount = source.mipCount;
++        image.logicalSamples = source.logicalSamples;
++        image.nativeSamples = source.nativeSamples;
+         image.conversionFormat = source.conversionFormat;
+         image.shaderSwizzle = source.shaderSwizzle;
+         image.indirectRoot = source.indirectRoot;
+@@ -958,6 +978,7 @@
+     plan.userDataBase = source.userDataBase;
+     plan.userDataCount = source.userDataCount;
+     plan.srgbDecodeFormats = source.srgbDecodeFormats;
++    plan.groupedMsaaMaxSamples = source.groupedMsaaMaxSamples;
+     plan.memoryInfo = source.memoryInfo;
+     plan.descriptorSources = source.descriptorSources;
+     plan.controlFlow = source.controlFlow;
+@@ -1039,7 +1060,7 @@
+ }
+ 
+ bool ResourceSpecialization::Image::operator==(const Image& other) const {
+-    return numericClass == other.numericClass && dimension == other.dimension && mipCount == other.mipCount && conversionFormat == other.conversionFormat && shaderSwizzle == other.shaderSwizzle && indirectRoot == other.indirectRoot && indirectMappingOffset == other.indirectMappingOffset && indirectSearchIterations == other.indirectSearchIterations && cube == other.cube && fmask == other.fmask && depthBits == other.depthBits && depthUnorm16 == other.depthUnorm16 && packedFormat == other.packedFormat && emulatedCompare == other.emulatedCompare && srgbDecode == other.srgbDecode;
++    return numericClass == other.numericClass && dimension == other.dimension && mipCount == other.mipCount && logicalSamples == other.logicalSamples && nativeSamples == other.nativeSamples && conversionFormat == other.conversionFormat && shaderSwizzle == other.shaderSwizzle && indirectRoot == other.indirectRoot && indirectMappingOffset == other.indirectMappingOffset && indirectSearchIterations == other.indirectSearchIterations && cube == other.cube && fmask == other.fmask && depthBits == other.depthBits && depthUnorm16 == other.depthUnorm16 && packedFormat == other.packedFormat && emulatedCompare == other.emulatedCompare && srgbDecode == other.srgbDecode;
+ }
+ 
+ bool ResourceSpecialization::operator==(const ResourceSpecialization& other) const {
+diff --git a/core/shader/recompiler/Optimization/src/DescriptorBindingBuilder.cpp b/core/shader/recompiler/Optimization/src/DescriptorBindingBuilder.cpp
+--- a/core/shader/recompiler/Optimization/src/DescriptorBindingBuilder.cpp
++++ b/core/shader/recompiler/Optimization/src/DescriptorBindingBuilder.cpp
+@@ -76,7 +76,7 @@
+ DescriptorImageShape ImageShapeForResource(const ImageResource& image) {
+     const RdnaImageDimensionInfo& info = RdnaImageDimensionInfoFor(image.dimension);
+     if (info.multisampled != 0u) {
+-        fail("DescriptorBindingBuilder::Populate multisampled image resources have no descriptor image shape");
++        return info.arrayed != 0u || image.nativeSamples != 0u ? DescriptorImageShape::Image2DMsaaArray : DescriptorImageShape::Image2DMsaa;
+     }
+     if (info.spirvDimension == spv::Dim1D) {
+         return info.arrayed != 0u ? DescriptorImageShape::Image1DArray : DescriptorImageShape::Image1D;
+@@ -336,6 +336,8 @@
+             physical.imageShape = ImageShapeFor(info.images, logical.resources);
+             for (const std::uint32_t resource : logical.resources) {
+                 const auto& image = info.images.at(resource);
++                physical.imageLogicalSamples.push_back(image.logicalSamples);
++                physical.imageNativeSamples.push_back(image.nativeSamples);
+                 physical.imageWritten.push_back(image.written || image.atomic);
+                 physical.imageDepthCompare.push_back(image.depthCompare);
+                 physical.imageAtomic.push_back(image.atomic);
+diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvImageEmitter.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvImageEmitter.cpp
+--- a/core/shader/recompiler/SpirvBackend/src/SpirvImageEmitter.cpp
++++ b/core/shader/recompiler/SpirvBackend/src/SpirvImageEmitter.cpp
+@@ -394,7 +394,8 @@
+     const auto image = LoadSampledImageDescriptor(state, access.mem.resource, access.slot);
+     const auto size = state.module.AllocateId();
+     if (info.multisampled != 0u) {
+-        state.module.AddFunction(spv::OpImageQuerySize, ImageViewSizeType(state, dimension), size, image);
++        const auto sizeType = access.image.nativeSamples != 0u ? TypeU32Vector(state, 3) : ImageViewSizeType(state, dimension);
++        state.module.AddFunction(spv::OpImageQuerySize, sizeType, size, image);
+     } else {
+         state.module.AddFunction(spv::OpImageQuerySizeLod, ImageViewSizeType(state, dimension), size, image, AddressU32(ctx, access, 0));
+     }
+@@ -408,9 +409,17 @@
+             state.module.AddFunction(spv::OpCompositeExtract, TypeU32(state), result[index], size, index);
+         }
+     }
++    if (access.image.nativeSamples != 0u && info.arrayed != 0u) {
++        const auto groups = access.image.logicalSamples / access.image.nativeSamples;
++        result[2] = Binary(state, spv::OpUDiv, TypeU32(state), result[2], ConstantU32(state, groups));
++    }
+     if (info.multisampled == 0u) {
+         result[3] = state.module.AllocateId();
+         state.module.AddFunction(spv::OpImageQueryLevels, TypeU32(state), result[3], image);
++    } else {
++        // IMAGE_GET_RESINFO returns the number of mip levels, not physical groups.
++        // GC10 multisampled images have exactly one mip level.
++        result[3] = ConstantU32(state, 1u);
+     }
+     const auto vector = state.module.AllocateId();
+     state.module.AddFunction(spv::OpCompositeConstruct, TypeU32Vector(state, 4), vector, result[0], result[1], result[2], result[3]);
+@@ -835,6 +844,8 @@
+ 
+ void EmitQueryLodOp(SpirvValueEmitContext& ctx, const ImageEmitAccess& access) {
+     auto& state = ctx.state;
++    if (RdnaImageDimensionInfoFor(access.image.dimension).multisampled != 0u)
++        ctx.Fail(access.inst, "queries LOD of a multisampled image");
+     if (ImageConversionFormat(access.image).type == SpirvFormatComponentType::Unorm) {
+         ctx.Fail(access.inst, "queries the level of detail of a converted unorm image, which is not implemented");
+     }
+@@ -862,13 +873,24 @@
+     ctx.Define(access.inst, EmitValueOrDefaultIfCondition(state, condition, TypeU32Vector(state, 4), ConstantU32CompositeZero(state, 4), [&]() {
+         const auto descriptor = LoadSampledImageDescriptor(state, access.mem.resource, access.slot);
+         const auto color = state.module.AllocateId();
+-        const auto coord = CoordU32(ctx, access);
++        auto coord = CoordU32(ctx, access);
+         if (dimensionInfo.multisampled != 0u) {
+             const auto& addressInfo = AddressDimension(access);
+             if (addressInfo.multisampled == 0u || access.mem.imageAddressComponents <= addressInfo.coordinateComponents) {
+                 ctx.Fail(access.inst, "has no sample index in the image address");
+             }
+-            state.module.AddFunction(spv::OpImageFetch, ImageVectorType(state, numericClass, 4), color, descriptor, coord, spv::ImageOperandsSampleMask, AddressU32(ctx, access, addressInfo.coordinateComponents));
++            auto sample = AddressU32(ctx, access, addressInfo.coordinateComponents);
++            if (access.image.nativeSamples != 0u) {
++                const auto native = ConstantU32(state, access.image.nativeSamples);
++                const auto groups = ConstantU32(state, access.image.logicalSamples / access.image.nativeSamples);
++                const auto guestLayer = dimensionInfo.arrayed != 0u ? AddressU32(ctx, access, 2u) : ConstantU32(state, 0u);
++                const auto group = Binary(state, spv::OpUDiv, TypeU32(state), sample, native);
++                const auto layer = Binary(state, spv::OpIAdd, TypeU32(state), Binary(state, spv::OpIMul, TypeU32(state), guestLayer, groups), group);
++                sample = Binary(state, spv::OpUMod, TypeU32(state), sample, native);
++                coord = state.module.AllocateId();
++                state.module.AddFunction(spv::OpCompositeConstruct, TypeU32Vector(state, 3), coord, AddressU32(ctx, access, 0u), AddressU32(ctx, access, 1u), layer);
++            }
++            state.module.AddFunction(spv::OpImageFetch, ImageVectorType(state, numericClass, 4), color, descriptor, coord, spv::ImageOperandsSampleMask, sample);
+         } else {
+             state.module.AddFunction(spv::OpImageFetch, ImageVectorType(state, numericClass, 4), color, descriptor, coord, spv::ImageOperandsLodMask, LodU32(ctx, access));
+         }
+@@ -952,6 +974,7 @@
+ 
+ SampleSetup MakeSampleSetup(SpirvValueEmitContext& ctx, const ImageEmitAccess& access) {
+     const auto& dimensionInfo = RdnaImageDimensionInfoFor(access.image.dimension);
++    if (dimensionInfo.multisampled != 0u) ctx.Fail(access.inst, "filters or gathers a multisampled image");
+     const auto layout = Layout(access.mem);
+     const bool dref = HasFlag(access.mem, RdnaImageSampleFlagCompare);
+     if (dref && access.image.conversionFormat != IrBufferFormat::Invalid) {
+diff --git a/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvDescriptors.cpp b/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvDescriptors.cpp
+--- a/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvDescriptors.cpp
++++ b/core/shader/recompiler/SpirvBackend/src/SpirvMemory/SpirvDescriptors.cpp
+@@ -3,6 +3,7 @@
+ #include "SpirvBackend/SpirvMemory/SpirvConstants.hpp"
+ #include "SpirvBackend/SpirvEmitterHelpers.hpp"
+ #include "Optimization/ResourceMaterializer.hpp"
++#include "GroupedMsaa.hpp"
+ #include <spirv/unified1/spirv.hpp>
+ #include <algorithm>
+ #include <stdexcept>
+@@ -124,8 +125,18 @@
+         FailEmit("invalid image resource class");
+     }
+     const auto& info = RdnaImageDimensionInfoFor(image.dimension);
++    if (image.nativeSamples != 0u) {
++        if (info.multisampled == 0u || image.resourceClass != ImageResourceClass::Sampled ||
++            image.nativeSamples != GroupedNativeSamples(image.logicalSamples, 4u))
++            FailEmit("invalid grouped multisampled image representation");
++    }
++    if (info.multisampled != 0u && (info.arrayed != 0u || image.nativeSamples != 0u)) {
++        if (std::find(state.supportedCapabilities.begin(), state.supportedCapabilities.end(), spv::CapabilityImageMSArray) == state.supportedCapabilities.end())
++            FailEmit("multisampled array image capability is unavailable");
++        state.module.EmitCapability(spv::CapabilityImageMSArray);
++    }
+     const auto scalar = image.atomic64 ? TypeScalarU64(state) : ImageScalarType(state, image.numericClass);
+-    return state.module.Type(spv::OpTypeImage, scalar, info.spirvDimension, image.depthCompare ? 1u : 0u, info.arrayed, info.multisampled, sampled, format);
++    return state.module.Type(spv::OpTypeImage, scalar, info.spirvDimension, image.depthCompare ? 1u : 0u, image.nativeSamples != 0u ? 1u : info.arrayed, info.multisampled, sampled, format);
+ }
+ 
+ std::uint32_t ImageViewSizeType(SpirvEmitterState& state, RdnaImageDimension dimension) {
+diff --git a/core/shader/recompiler/GroupedMsaa.hpp b/core/shader/recompiler/GroupedMsaa.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/shader/recompiler/GroupedMsaa.hpp
+@@ -0,0 +1,48 @@
++#ifndef CORE_SHADER_RECOMPILER_GROUPEDMSAA_HPP
++#define CORE_SHADER_RECOMPILER_GROUPEDMSAA_HPP
++
++#include <algorithm>
++#include <cstdint>
++#include <stdexcept>
++
++namespace ShaderRecompiler {
++
++// GC10 T# LAST_LEVEL and MAX_MIP both encode log2(stored fragments) for
++// types 14/15. Coverage samples cannot be inferred from a texture T#.
++// AMD PAL gfx9Device.cpp (c5e8000), CreateImageViewSrds, lines 4205-4212.
++inline std::uint32_t TextureFragmentCount(std::uint32_t word3, std::uint32_t word5) {
++    const auto base = (word3 >> 12u) & 15u;
++    const auto last = (word3 >> 16u) & 15u;
++    const auto maximum = (word5 >> 4u) & 15u;
++    if (base != 0u || last > 3u || last != maximum)
++        throw std::runtime_error("multisampled texture has inconsistent fragment-count fields");
++    return 1u << last;
++}
++
++// 0 preserves the native image representation. 4 selects a separately
++// allocated MSAA array image; eight stored samples become two four-sample layers.
++inline std::uint32_t GroupedNativeSamples(std::uint32_t fragments, std::uint32_t maximum) {
++    if (maximum != 0u && maximum != 4u)
++        throw std::runtime_error("unsupported grouped MSAA native sample limit");
++    if (fragments != 1u && fragments != 2u && fragments != 4u && fragments != 8u)
++        throw std::runtime_error("unsupported multisampled texture fragment count");
++    if (maximum == 0u) return 0u;
++    if (fragments == 1u)
++        throw std::runtime_error("one-fragment MSAA image sampling has no proved host representation");
++    return std::min(fragments, maximum);
++}
++
++struct GroupedSampleAddress { std::uint32_t layer; std::uint32_t sample; };
++
++inline GroupedSampleAddress GroupedSample(std::uint32_t layer, std::uint32_t sample,
++                                         std::uint32_t fragments, std::uint32_t nativeSamples) {
++    if (nativeSamples == 0u || nativeSamples != GroupedNativeSamples(fragments, 4u) || sample >= fragments)
++        throw std::runtime_error("invalid grouped MSAA sample address");
++    const auto groups = fragments / nativeSamples;
++    if (layer > (UINT32_MAX - groups + 1u) / groups)
++        throw std::runtime_error("grouped MSAA layer address overflows");
++    return {layer * groups + sample / nativeSamples, sample % nativeSamples};
++}
++
++}
++#endif
+diff --git a/core/shader/recompiler/CMakeLists.txt b/core/shader/recompiler/CMakeLists.txt
+--- a/core/shader/recompiler/CMakeLists.txt
++++ b/core/shader/recompiler/CMakeLists.txt
+@@ -221,6 +221,9 @@
+             ShaderCacheDirectory
+             SrgbDecodeBit
+             SrgbUnormFormat
++            # Pure descriptor decoder; the resulting logical/native sample counts
++            # already enter ResourceSpecialization and ShaderDiskCache::BuildKey.
++            TextureFragmentCount
+             ThreadOwned
+             WriteFileAtomically
+     )

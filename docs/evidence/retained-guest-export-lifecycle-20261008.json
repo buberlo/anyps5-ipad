@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T11:53:48.731498+00:00",
+  "kind": "retained_guest_export_lifecycle_regression",
+  "source_commit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+  "patch": {
+    "path": "patches/anyps5/0045-retained-guest-export-lifecycle.patch",
+    "sha256": "0fcfcebcfa88446473d5c32aff2efcd3bdb192b757c55c519765b4d80aad5843"
+  },
+  "problem": "Replacement-module identity suppressed all guest initializers/finalizers even while guest exports were retained and resolved by dependent modules. A retained guest allocator can therefore be called before its private heap state is initialized.",
+  "policy": {
+    "ordinary_guest": "Preserve guest init/fini and arrays.",
+    "replacement_with_retained_defined_visible_export": "Preserve guest init/fini and arrays independent of symbol type: functions, exported mutable data and TLS can all depend on guest-owned initialization.",
+    "replacement_without_retained_defined_visible_export": "Continue suppressing guest lifecycle for no-export, local, internal/hidden, undefined and absolute-only symbols.",
+    "host_companion": "Keep host companion dependencies, independent host lifecycle, guest-first symbol routing and module dependency ordering unchanged.",
+    "platforms": [
+      "Windows PE startup metadata",
+      "Linux ELF dynamic lifecycle tags"
+    ]
+  },
+  "synthetic_regressions": {
+    "uninitialized_allocator": "Provider returns NULL until its own initializer runs; dependent constructor requests exactly 48 bytes, and a separate host companion verifies valid storage.",
+    "initialized_exported_data": "Provider initializer writes 42 to exported STT_OBJECT data; dependent constructor verifies 42 through the retained guest export.",
+    "allocator_success_events": "HBIACaih",
+    "data_success_events": "HIADaih",
+    "event_legend": {
+      "H": "host companion init",
+      "B": "allocator verified NULL before guest init",
+      "I": "guest DT_INIT",
+      "A": "guest init array",
+      "C": "dependent constructor verified 48-byte allocation",
+      "D": "dependent constructor verified initialized exported data",
+      "a": "guest fini array",
+      "i": "guest DT_FINI",
+      "h": "host companion fini"
+    },
+    "symbol_matrix": [
+      "no-export",
+      "local",
+      "internal",
+      "hidden",
+      "undefined",
+      "absolute",
+      "global-function",
+      "weak-function",
+      "protected-function",
+      "data-only",
+      "notype-code",
+      "notype-data"
+    ],
+    "unsupported_ifunc": "STT_GNU_IFUNC remains an explicit input-reader rejection; two negative fixtures verify that contract."
+  },
+  "validation": {
+    "native_host_suite": {
+      "result": "passed",
+      "tests": 32,
+      "configuration": "Release; native macOS arm64 host tools"
+    },
+    "elf_and_pe_structural_matrix": {
+      "result": "passed",
+      "successful_conversions": 52,
+      "expected_unsupported_symbol_rejections": 2
+    },
+    "actual_windows_pe_execution": {
+      "result": "passed",
+      "runtime": "Local x86-64 Wine on macOS Apple Silicon",
+      "successful_executions": 25,
+      "expected_unresolved_import_failures": 1,
+      "game_assets_used": false,
+      "fixture_sha256": "46cd6b5840f8970b0bb61d4bd4ddeaaaa91f3b51bbd08fffecdd2ae216286d35",
+      "fixed_relinker_sha256": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe"
+    },
+    "matched_suppression_policy_negative_control": {
+      "result": "passed",
+      "baseline_relinker_sha256": "0d8fc2561f32063910f933a52a3cf2f4187856ab7abd195aa5c4295c19de5262",
+      "conversions": 2,
+      "expected_allocation_failures": 1,
+      "error": "Guest allocator was called before retained libc initialization",
+      "actual_events": "Hh",
+      "guest_lifecycle_events_present": false,
+      "note": "Windows may detach the host companion DLL after immediate CRT exit; H or Hh is accepted, with no guest init/fini events."
+    },
+    "patch_roundtrip": {
+      "result": "passed",
+      "files": 5,
+      "forward": "byte-equal to final source",
+      "reverse": "byte-equal to pre-policy source"
+    },
+    "source_files": {
+      "core/relinker/relinker/include/relinker/guest/GuestImage.hpp": {
+        "baseline_sha256": "07ae75cebee452a4fd00f8c3851c10cdb18a39aa51cae2abb3364cc775292d5c",
+        "final_sha256": "2084980002f6a02dc0648b61debeae9a7d74f794fe4861c577bf6cbaca0fe424",
+        "forward_status": "byte_equal",
+        "reverse_status": "byte_equal_to_baseline"
+      },
+      "core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp": {
+        "baseline_sha256": "ab734af9fe01d815edf0967e56a32b4a17765b92dff69e0976187edd6ed6bf4c",
+        "final_sha256": "422dd60413882c820119109cd4fb60c63026c5e4b0defed79954f1235fcd846b",
+        "forward_status": "byte_equal",
+        "reverse_status": "byte_equal_to_baseline"
+      },
+      "core/relinker/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp": {
+        "baseline_sha256": "3d132ed5fa0996ea59d3ee089721cb092aeb68781ecc4319766c775cb4aeb69a",
+        "final_sha256": "4131f2bdce7cba6e86bf79dd2273efbd1c1394b9bdbfe1e5d462d5dd506c0094",
+        "forward_status": "byte_equal",
+        "reverse_status": "byte_equal_to_baseline"
+      },
+      "core/relinker/relinker/tests/test_guest_lifecycle_ownership.py": {
+        "baseline_sha256": "5197aade4c892dd3f6ba192200579a1e70acaae00fade6374dc58d8e454877f4",
+        "final_sha256": "692db96da034aef578ef7f517bbe067cdf002e0f90feb3e8223c633aa229b77e",
+        "forward_status": "byte_equal",
+        "reverse_status": "byte_equal_to_baseline"
+      },
+      "core/relinker/elfpatcher/tests/GuestLifecycleReplacement.cpp": {
+        "baseline_sha256": "e65204c7fb928dad2c3e8ad6b93a7a5fdd232fd36f20b720ba7f9911c69aa090",
+        "final_sha256": "dc0dfc1c0f4accc3957d8cc12fa71c9d22785a72cfa13f4d1f2cc1fcc98be492",
+        "forward_status": "byte_equal",
+        "reverse_status": "byte_equal_to_baseline"
+      }
+    }
+  },
+  "limits": [
+    "Native Linux x86-64 execution was skipped on this macOS arm64 host; Linux conversion metadata is covered.",
+    "Fixture execution does not establish iPad game startup, graphics correctness, playability or performance.",
+    "No fallback modules, runtime policy flag, guest import rerouting or graphics changes are part of this fix."
+  ],
+  "privacy": "All published fixtures and source are synthetic. Private game binaries, shader code and runtime dumps are excluded."
+}

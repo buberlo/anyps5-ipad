@@ -1,0 +1,331 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Draw.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Draw.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Draw.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Draw.hpp
+@@ -15,7 +15,7 @@
+ // `recipe`, when given, receives the DrawRecipe a recorded, cacheable, reusable, non-indirect draw
+ // built for its draw-cache entry (design_cpu_final M8; null otherwise, and always under
+ // APS5_NO_DRAW_RECIPE=1).
+-void Draw(const Context& context, const State& state, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots = {}, std::shared_ptr<const DrawRecipe>* recipe = nullptr);
++void Draw(const Context& context, const State& state, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots = {}, std::shared_ptr<const DrawRecipe>* recipe = nullptr, const ShaderRecompiler::SpirvTarget* target = nullptr);
+ std::optional<std::string> KnownValidationFailure(const Context& context, std::span<const CompiledShader> shaders, const State& state);
+ 
+ struct DrawInputCopy {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -1490,7 +1490,7 @@
+     return std::nullopt;
+ }
+ 
+-void Draw(const Context& context, const State& guestState, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, std::shared_ptr<const DrawRecipe>* recipeOut) {
++void Draw(const Context& context, const State& guestState, const Pm4::DrawParameters& draw, std::span<const CompiledShader> shaders, std::span<const GuestMemorySnapshot> snapshots, std::shared_ptr<const DrawRecipe>* recipeOut, const ShaderRecompiler::SpirvTarget* target) {
+     const auto viewport = ResolveUnobservedViewportDepth(context, guestState, shaders);
+     std::optional<State> adapted;
+     if (viewport.minDepth != guestState.viewport.minDepth || viewport.maxDepth != guestState.viewport.maxDepth) {
+@@ -1500,10 +1500,12 @@
+     const State& state = adapted ? *adapted : guestState;
+     const bool groupedSamples = state.samples.count > 1u;
+     if (groupedSamples) {
+-        const auto rejection = SplitDrawShaderRejection(shaders);
++        Require(!state.rectList || target != nullptr, "sample-group rectangle draw requires the actual shader target");
++        const auto rejection = state.rectList ? SplitRectListShaderRejection(shaders, *target) : SplitDrawShaderRejection(shaders);
+         Require(rejection.empty(), rejection);
+         Require(!state.colors.empty(), "sample-group draws without color attachments are not implemented");
+-        Require(!state.rectList && !state.stages.mesh && !state.stages.tessellation, "sample-group draws require an ordinary vertex/fragment pipeline");
++        Require(!state.stages.mesh && !state.stages.tessellation && state.stages.path == ShaderPath::Vertex,
++                "sample-group draws require a vertex/fragment or canonical rectangle pipeline");
+         for (const auto& color : state.colors) {
+             Require(color.samples == state.samples.count && color.fragments == color.samples && color.format == VK_FORMAT_R8G8B8A8_UNORM && color.elementBytes == 4u,
+                     "sample-group draw requires matching RGBA8_UNORM attachments");
+@@ -1688,7 +1690,11 @@
+     const bool cacheable = resolved.cacheable;
+     built = resolved.built;
+     if (groupedSamples) {
+-        Require(!resources->WritesMemory(), "repeated sample-group draw has unproven shader memory effects");
++        // Canonical rectangle qualification above permits only the factory's
++        // host fault diagnostic. It still requires synchronous completion and
++        // CheckFault; guest writes and unknown address-based reads stay blocked.
++        Require(!(state.rectList ? resources->WritesGuestMemory() : resources->WritesMemory()),
++                "repeated sample-group draw has unproven shader memory effects");
+         for (const auto& color : state.colors)
+             Require(!resources->ReadsGuestRange(color.address, color.bytes), "sample-group attachment aliases shader inputs");
+         if (state.depth) {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp
+@@ -15,5 +15,14 @@
+ // This is not called for ordinary single-sample rendering.
+ std::string SplitDrawShaderRejection(std::span<const CompiledShader> shaders);
+ 
++// The same prerequisite for the internally generated rectangle pipeline. The
++// original guest vertex/fragment programs must pass the ordinary static guard.
++// Both intermediate stages, including all their resource metadata, must match
++// a fresh BuildRectListShaders result for these programs and the actual target.
++// Only that canonical factory's private fault diagnostic may be repeated; this
++// does not admit arbitrary guest tessellation or relax dynamic resource checks.
++std::string SplitRectListShaderRejection(std::span<const CompiledShader> shaders,
++                                       const ShaderRecompiler::SpirvTarget& target);
++
+ }
+ #endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+@@ -10,6 +10,7 @@
+ #include <optional>
+ #include <set>
+ #include <string>
++#include <tuple>
+ #include <vector>
+ 
+ namespace AgcDriver::Graphics {
+@@ -799,4 +800,61 @@
+     return {};
+ }
+ 
+-}
++namespace {
++
++bool canonicalBinding(const ShaderRecompiler::DescriptorBinding& actual,
++                      const ShaderRecompiler::DescriptorBinding& expected) {
++    const auto fields = [](const ShaderRecompiler::DescriptorBinding& binding) {
++        return std::tie(binding.kind, binding.role, binding.descriptorSet, binding.binding,
++            binding.count, binding.guestDescriptor, binding.readOnly, binding.imageShape,
++            binding.samplerDepthCompare, binding.imageWritten, binding.imageDepthCompare,
++            binding.imageAtomic, binding.imageAtomic64, binding.bufferAtomic,
++            binding.bufferWritten, binding.samplerUnnormalized, binding.imageUnnormalized,
++            binding.imageSamplers, binding.imageLogicalSamples, binding.imageNativeSamples);
++    };
++    return fields(actual) == fields(expected);
++}
++
++bool canonicalRectStage(const ShaderRecompiler::RecompileResult& actual,
++                        const ShaderRecompiler::RecompileResult& expected) {
++    // The factory emits no guest vertex inputs or fragment interpolation
++    // metadata. Reject extra metadata even if the SPIR-V itself is unchanged.
++    return actual.spirv == expected.spirv && actual.bindings.size() == expected.bindings.size() &&
++        std::equal(actual.bindings.begin(), actual.bindings.end(), expected.bindings.begin(), canonicalBinding) &&
++        actual.pushConstants == expected.pushConstants && actual.memoryOffsetDword == expected.memoryOffsetDword &&
++        actual.bdaAbiVersion == expected.bdaAbiVersion && actual.vertexAttributes.empty() && expected.vertexAttributes.empty() &&
++        actual.vertexOffsetSgpr == expected.vertexOffsetSgpr && actual.instanceOffsetSgpr == expected.instanceOffsetSgpr &&
++        actual.vertexOffsetShared == expected.vertexOffsetShared && actual.instanceOffsetShared == expected.instanceOffsetShared &&
++        actual.vertexOffsetConflict == expected.vertexOffsetConflict && actual.instanceOffsetConflict == expected.instanceOffsetConflict &&
++        actual.hostSubgroupSize == expected.hostSubgroupSize && actual.parameterExports == expected.parameterExports &&
++        actual.fragmentParameters.empty() && expected.fragmentParameters.empty() &&
++        actual.cacheHit == expected.cacheHit && actual.variantId == expected.variantId;
++}
++
++}
++
++std::string SplitRectListShaderRejection(std::span<const CompiledShader> shaders,
++                                       const ShaderRecompiler::SpirvTarget& target) {
++    using Stage = ShaderRecompiler::ShaderStage;
++    if (shaders.size() != 4 || shaders[0].stage != Stage::Vertex ||
++        shaders[1].stage != Stage::TessellationControl || shaders[2].stage != Stage::TessellationEvaluation ||
++        shaders[3].stage != Stage::Fragment) return "split rectangle draw requires ordered vertex/control/evaluation/fragment stages";
++    for (const auto& shader : shaders)
++        if (shader.program == nullptr) return "split rectangle draw is missing a compiled shader";
++    if (shaders[1].pushConstantOffset != 0 || shaders[2].pushConstantOffset != 0)
++        return "split rectangle intermediate stages have noncanonical push constant offsets";
++    const std::array original{shaders[0], shaders[3]};
++    if (const auto rejection = SplitDrawShaderRejection(original); !rejection.empty()) return rejection;
++    try {
++        const auto expected = ShaderRecompiler::BuildRectListShaders(*shaders[0].program, *shaders[3].program, target);
++        if (!canonicalRectStage(*shaders[1].program, expected.control))
++            return "split rectangle control shader is not the canonical factory result";
++        if (!canonicalRectStage(*shaders[2].program, expected.evaluation))
++            return "split rectangle evaluation shader is not the canonical factory result";
++    } catch (const std::exception& error) {
++        return std::string("split rectangle factory: ") + error.what();
++    }
++    return {};
++}
++
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+@@ -150,6 +150,11 @@
+     // sampled, or the image itself bound): a recorded draw's render pass may only be continued by
+     // a draw for which neither holds (Draw.cpp).
+     bool WritesMemory() const;
++    // Guest-side effects, retaining conservative rejection of address-based
++    // leases. A host BDA/fault diagnostic still requires NeedsCompletion and
++    // CheckFault; excluding that completion is safe only after the caller has
++    // proved the shader's diagnostic is canonical and repeatable.
++    bool WritesGuestMemory() const;
+     bool ReadsImage(const StorageTexture* image) const;
+     const std::vector<std::uint32_t>& LayoutKey() const { return layoutKey; }
+     // Debug aid: each bound guest resource with the fraction of sampled bytes that are nonzero.
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+@@ -2885,7 +2885,12 @@
+ }
+ 
+ bool ShaderResources::WritesMemory() const {
+-    return HoldsLease() || NeedsCompletion() || !guestMemory.Writes().empty() || std::any_of(storageWritten.begin(), storageWritten.end(), [](bool written) { return written; });
++    return NeedsCompletion() || WritesGuestMemory();
++}
++
++bool ShaderResources::WritesGuestMemory() const {
++    return HoldsLease() || HasCopiedWrites() || !guestMemory.Writes().empty() ||
++        std::any_of(storageWritten.begin(), storageWritten.end(), [](bool written) { return written; });
+ }
+ 
+ bool ShaderResources::ReadsGuestRange(std::uint64_t address, std::size_t bytes) const {
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -2604,7 +2604,9 @@
+     static const bool trace = std::getenv("APS5_TRACE_DRAWS") != nullptr;
+     if (trace) APS5_LOG_OUT("VulkanDevice::Draw indices=%u instances=%u indexSize=%u address=0x%llx shaders=%zu colorTarget=%u", draw.indexCount, draw.instanceCount, draw.indexSize, static_cast<unsigned long long>(draw.indexAddress), shaders.size(), static_cast<unsigned>(graphics.hasColorTarget));
+     const auto context = graphicsContext();
+-    Graphics::Draw(context, graphics, draw, shaders, snapshots, recipe);
++    std::optional<ShaderRecompiler::SpirvTarget> target;
++    if (graphics.rectList && graphics.samples.count > 1u) target = Target();
++    Graphics::Draw(context, graphics, draw, shaders, snapshots, recipe, target ? &*target : nullptr);
+     if (trace) APS5_LOG_CHARS_OUT("VulkanDevice::Draw complete");
+ }
+ 
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -5,8 +5,10 @@
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Draw.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ShaderInputState.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DccMetadata.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Texture.hpp"
++#include "prx/libc/include/GuestAllocations.hpp"
+ #include "SceShaders.hpp"
+ #include "ControlFlow/RequestSerializer.hpp"
+ #include "CacheKey.hpp"
+@@ -2042,6 +2044,106 @@
+     expectFailure([&] { Draw(context, state, draw, {}); }, "incomplete rect-list");
+ }
+ 
++void guestWriteClassificationTests() {
++    using namespace ShaderRecompiler;
++    using namespace AgcDriver::Graphics;
++    auto context = mockContext();
++    context.limits.maxStorageBufferRange = 1u << 27;
++    const auto color = DecodeState(makeState()).color;
++    const std::array<std::uint32_t, 2> capabilities{spv::CapabilityShader, spv::CapabilityTessellation};
++    SpirvTarget target{};
++    target.vulkanVersion = VK_API_VERSION_1_1;
++    target.spirvVersion = 0x00010300u;
++    target.supportedCapabilities = capabilities;
++    target.tessellation = TessellationTargetLimits{32, 128, 128, 120, 4096, 128, 128};
++    RecompileResult vertex;
++    vertex.spirv = makeModule({});
++    RecompileResult fragment;
++    fragment.spirv = makeModule({.fragment = true});
++    const auto rectangle = BuildRectListShaders(vertex, fragment, target);
++    const std::array<CompiledShader, 4> stages{{{ShaderStage::Vertex, &vertex, 0},
++        {ShaderStage::TessellationControl, &rectangle.control, 0},
++        {ShaderStage::TessellationEvaluation, &rectangle.evaluation, 0},
++        {ShaderStage::Fragment, &fragment, 0}}};
++    Require(SplitRectListShaderRejection(stages, target).empty(), "factory rectangle was not statically qualified");
++    mock = MockVulkan{};
++    {
++        ShaderResources resources(context, stages, color, 0, 0);
++        Require(resources.NeedsCompletion() && resources.WritesMemory(), "rectangle fault diagnostics lost their completion requirement");
++        Require(!resources.HoldsLease() && !resources.HasCopiedWrites() && resources.GpuWrites().empty() && !resources.WritesGuestMemory(),
++                "a host-only rectangle fault buffer was classified as a guest write");
++        const auto descriptor = findWrite(rectangle.control.bindings.at(0).binding).buffers.at(0);
++        auto& fault = mock.memories.at(mock.bufferMemory.at(descriptor.buffer));
++        Require(std::all_of(fault.begin(), fault.end(), [](auto byte) { return byte == std::byte{}; }), "rectangle fault buffer was not cleared");
++        const BdaAbi::Fault report{BdaAbi::FaultState::Ready, BdaAbi::FaultReason::InvalidRectangle, 0, 0, 0, 0, 0};
++        std::memcpy(fault.data(), &report, sizeof(report));
++        expectFailure([&] { resources.WriteBackBuffers(); }, "rect-list requires");
++        std::memset(fault.data(), 0, fault.size());
++        resources.WriteBackBuffers();
++    }
++    Require(mock.live == 0, "host-only rectangle resources leaked Vulkan objects");
++
++    // The recompiler's per-element classification, not a descriptor's readOnly
++    // decoration flag, controls guest buffer writes. Missing entries stay written.
++    for (const auto classification : {0u, 1u, 2u}) {
++        mock = MockVulkan{};
++        RecompileResult guest;
++        auto binding = makeBinding(Role::GuestBuffers, 3, 1, vsharp(guestThird.data(), sizeof(guestThird)));
++        if (classification != 2) binding.bufferWritten = {classification == 1};
++        guest.bindings.push_back(std::move(binding));
++        const CompiledShader shader{ShaderStage::Compute, &guest, 0};
++        {
++            ShaderResources resources(context, shader);
++            const bool written = classification != 0;
++            Require(!resources.HoldsLease(), "descriptor-only resource unexpectedly holds an address-space lease");
++            Require(resources.WritesGuestMemory() == written && resources.WritesMemory() == written && resources.HasCopiedWrites() == written,
++                    "guest buffer write classification lost a real or unclassified write");
++            Require(resources.NeedsCompletion() == written && resources.GpuWrites().empty() == !written,
++                    "guest buffer completion or written ranges disagree with its classification");
++            const auto before = guestThird;
++            const auto descriptor = findWrite(3).buffers.at(0);
++            const std::uint32_t changed = before[0] ^ 0xffffffffu;
++            std::memcpy(mock.memories.at(mock.bufferMemory.at(descriptor.buffer)).data(), &changed, sizeof(changed));
++            resources.WriteBackBuffers();
++            Require(guestThird[0] == (written ? changed : before[0]), "guest buffer write-back disagrees with its classification");
++            guestThird = before;
++        }
++        Require(mock.live == 0, "classified guest buffer resources leaked Vulkan objects");
++    }
++
++    // Read-only address-based shaders still hold an unknown allocation lease.
++    // They cannot become eligible just because their BDA table has no writable ranges.
++    mock = MockVulkan{};
++    context.bufferDeviceAddress = true;
++    RecompileResult addressBased;
++    addressBased.bdaAbiVersion = BdaAbi::Version;
++    addressBased.bindings = {makeBinding(Role::BdaPagetable, 4, 1, {}), makeBinding(Role::FaultBuffer, 5, 1, {})};
++    const CompiledShader shader{ShaderStage::Compute, &addressBased, 0};
++    {
++        GuestAllocations::Mutation mutation;
++        mutation.Add(guestSecond.data(), sizeof(guestSecond), true, false);
++    }
++    try {
++        {
++            ShaderResources resources(context, shader);
++            Require(resources.HoldsLease() && resources.NeedsCompletion() && resources.WritesMemory() && resources.WritesGuestMemory(),
++                    "a read-only BDA allocation lease was treated as a proven guest-write-free resource");
++            Require(resources.GpuWrites().empty() && !resources.HasCopiedWrites(), "read-only BDA fixture unexpectedly declares guest writes");
++            resources.WriteBackBuffers();
++            Require(!resources.HoldsLease(), "completed read-only BDA resource retained its allocation lease");
++        }
++    } catch (...) {
++        GuestAllocations::Mutation mutation;
++        mutation.Remove(guestSecond.data());
++        throw;
++    }
++    {
++        GuestAllocations::Mutation mutation;
++        mutation.Remove(guestSecond.data());
++    }
++    Require(mock.live == 0, "read-only BDA resource classification leaked Vulkan objects");
++}
++
+ ShaderRecompiler::RecompileResult recompilePixel(std::initializer_list<std::uint32_t> controls, std::span<const std::uint32_t> code) {
+     auto queue = makeState();
+     queue.context[0x1b3] = 0x2u;
+@@ -2550,6 +2652,11 @@
+             unrestricted.depthRangeUnrestricted = true;
+             AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
+         }
++        if (argc == 2 && std::string_view(argv[1]) == "--resource-write-classification-only") {
++            guestWriteClassificationTests();
++            std::cout << "Graphics guest-write classification tests passed\n";
++            return 0;
++        }
+         UnobservedViewportDepthTests();
+         stateTests();
+         RunColorTargetSampleTests();
+@@ -2590,6 +2697,7 @@
+         vertexCopyTests();
+         pixelParameterSlotTests();
+         rectListTests();
++        guestWriteClassificationTests();
+         mock = MockVulkan{};
+         auto bdaContext = mockContext();
+         bdaContext.bufferDeviceAddress = true;

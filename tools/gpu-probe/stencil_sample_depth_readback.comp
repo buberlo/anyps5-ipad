@@ -1,0 +1,14 @@
+#version 450
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 64) in;
+layout(set = 0, binding = 0) uniform texture2DMSArray depthSamples;
+layout(set = 0, binding = 1, std430) writeonly buffer Results { float values[]; } destination;
+layout(push_constant) uniform Parameters { uint width; uint samples; uint nativeSamples; uint total; } parameters;
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    if (index >= parameters.total) return;
+    uint sampleIndex = index % parameters.samples;
+    uint pixelIndex = index / parameters.samples;
+    ivec2 pixel = ivec2(pixelIndex % parameters.width, pixelIndex / parameters.width);
+    destination.values[index] = texelFetch(depthSamples, ivec3(pixel, sampleIndex / parameters.nativeSamples), int(sampleIndex % parameters.nativeSamples)).r;
+}

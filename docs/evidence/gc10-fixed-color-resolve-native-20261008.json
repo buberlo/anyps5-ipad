@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "scope": "Production GC10 CB_RESOLVE state decoder, original fragment factory, scalar reference and native adapted color transfers; no GPU/device or complete-renderer claim.",
+  "qualification": "passed_native_sanitized_checks_and_windows_production_syntax",
+  "patch": {
+    "path": "patches/anyps5/0047-gc10-fixed-function-color-resolve.patch",
+    "sha256": "24fbd1c2b746d78049ed483562bea01dec613dc80ced8d3a274bbfd5ce36689b",
+    "byteExactRoundtrip": true,
+    "sourceFileCount": 11
+  },
+  "implementation": {
+    "operation": "GC10 CB_COLOR_CONTROL mode3 averages MRT0 logical samples into single-sample MRT1.",
+    "supported": "Uncompressed matching RGBA8_UNORM R64KB_X views, 2/4/8 equal coverage/fragments, no mips/arrays/depth/stencil work, one direct unindexed three-vertex rectangle.",
+    "geometry": "Actual guest vertex program and canonical generated TCS/TES; no fullscreen coverage assumption. Normal destination load/store preserves pixels outside the rectangle/scissor.",
+    "sourceIsolation": "ReadColorTarget flushes pending GPU writes via production GuestMemory; a retained immutable tiled copy precedes destination writes, including aliasing ranges.",
+    "descriptor": "Samplerless set0 sampled texture2DMSArray; unused binding above guest VS bindings; logical8 is native4 samples in two layers.",
+    "ordering": "Resolve recognized before ordinary PA_SC_MODE_CNTL_0 MSAA_ENABLE rejection. Storage sample count does not force raster MSAA during fixed-function resolve.",
+    "notOptimizedYet": "Snapshot/detile/retile/upload is a correctness-first path; repeated resolve resource growth and a GPU-resident fast path remain to be measured."
+  },
+  "tests": {
+    "nativeCommand": "python3 scripts/check-fixed-color-resolve.py [--private-registers local-capture.regs]",
+    "asan": true,
+    "ubsan": true,
+    "cases": 144,
+    "scalarChannelValues": 401712,
+    "dimensions": [
+      [
+        17,
+        19
+      ],
+      [
+        257,
+        129
+      ]
+    ],
+    "logicalSamples": [
+      2,
+      4,
+      8
+    ],
+    "checks": [
+      "all256 byte values",
+      "independent scalar average",
+      "half-rounding boundaries",
+      "last logical sample contribution",
+      "actual production tiled transfers",
+      "overlapping source/destination storage",
+      "destination padding, alias suffix and guard preservation",
+      "unsupported state/format/EQAA/compression rejection",
+      "rejection leaves scalar output unchanged",
+      "missing optional target registers",
+      "normal draws distinguished from resolves"
+    ],
+    "spirv": "Original GLSL variants2/4/8 and production factory binding remaps0/6 passed spirv-val --target-env vulkan1.1.",
+    "capturedState": {
+      "diagnosticSha256": "352c1000c8715b27d13ea66961c61c5d3cede54dec1c7ab17d4715aba35e8be9",
+      "passed": true,
+      "extent": [
+        1920,
+        1080
+      ],
+      "sourceSamples": 8,
+      "destinationSamples": 1,
+      "rasterSamples": 1,
+      "memory": "Test-owned native allocations only; no game pixels or shader contents used."
+    },
+    "nativeMemoryBoundary": "Explicit macOS mapped-range adapter. Wine GuestMemory write-watch, deferred GPU hooks and GPU rasterization are outside this native fixture.",
+    "scalarRounding": "Integer round-by-half oracle. GPU UNORM conversion may differ by one byte at ties; this native test does not establish AMD hardware rounding equivalence.",
+    "nativeLogSha256": "1f29d4c95f4fa9c4bb2f74b8f81fa5f5eec31f7d2fcef5d531c10f7d004c9d79",
+    "windowsSyntax": [
+      {
+        "file": "Graphics/src/ColorResolve.cpp",
+        "exitCode": 0,
+        "logSha256": "09a930a99d38596e3d6ae29729d0b875a80d78251bd86c266b42c3021988601d"
+      },
+      {
+        "file": "Graphics/src/ColorResolveFragment.cpp",
+        "exitCode": 0,
+        "logSha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c"
+      },
+      {
+        "file": "Execution/src/Driver/Draw/DrawPrecheck.cpp",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "Execution/src/VulkanDevice.cpp",
+        "exitCode": 0,
+        "logSha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c"
+      }
+    ]
+  },
+  "limits": [
+    "No full HLE link or production Driver execution is claimed here.",
+    "No Solitaire visual/gameplay, audio or FPS qualification.",
+    "No iPad runtime or GPU result inferred from these native checks.",
+    "The independent original GPU probe and subsequent full-renderer device test are separate evidence."
+  ],
+  "sources": {
+    "core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "426513c4764b441126a2f1b11d6b6a8020bf8ac72d493dce082feb3a4493bf56",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp": "830d2f1c3a8816dee791fc69d94072f1291c013171a6edf88d4c83426e6070b1",
+    "core/libs/prx/libSceAgcDriver/Execution/src/Driver/Draw/DrawPrecheck.cpp": "45d57e585113bcbaa951664629052510d5a7bfc17d3316f3c4ed7d2580f64836",
+    "core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp": "7a56c327486ee217283e306ce2d28237d78c2dc316a81d5dc1674739fc0deb7e",
+    "core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp": "1dfca2f8a4d65ac9bf618bb74bfad3819818fe892529782f55324a14e6c62ba8",
+    "core/libs/prx/libSceAgcDriver/CMakeLists.txt": "560ad304f94cf7cb5ae186822ebb0bf5e0ec6ac4ce58fd735542e8d84d57134a",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp": "68ae0609581f19a19a556996b089f2fc11b632a3b4b5383091b8bf02b153c93e",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": "694c973e3ea84c3d1684341edd1df9b300a08cf2eb53611b7643cb70ea0b3307",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp": "3f46c40a73faba453443860c9718b3355a4659e0ff3a80b40ad79959e2f0a317",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve.frag": "4302ba70f8f8006e2517544725aaabdf5d00e259711a9fa7ae655952eb4e17d6",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h": "1c3ed53b162750eba76ffa0c399fac66bb25c215ddda32c2c60c84a29e985a17"
+  },
+  "testArtifacts": {
+    "scripts/check-fixed-color-resolve.py": "6155f006314f1a9810ef445f70cdc19c892bc58f8885987e3cfc3ea576c31ef7",
+    "tools/checks/fixed_color_resolve.cpp": "b5f4becabbba6e3829f20e898e8d1ae2d5a7b615e94031dea516d20c9fabd4f0",
+    "tools/checks/color_target_samples_memory_adapter.cpp": "0330f7d988c07f64ab4069df16dd4cd60667e930e2f2aedc31aed1841473224b"
+  },
+  "primaryReferences": [
+    {
+      "url": "https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/gfx9/chip/gfx9_plus_merged_enum.h",
+      "supports": "CB_RESOLVE__GFX10 mode3."
+    },
+    {
+      "url": "https://github.com/GPUOpen-Drivers/pal/blob/dev/src/core/hw/gfxip/rpm/gfx9/gfx9RsrcProcMgr.cpp",
+      "supports": "HwlCanDoFixedFuncResolve: matching format/offset/swizzle and hardware average rather than min/max."
+    }
+  ]
+}

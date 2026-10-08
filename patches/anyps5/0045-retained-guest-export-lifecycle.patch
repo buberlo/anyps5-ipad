@@ -1,0 +1,442 @@
+diff --git a/core/relinker/relinker/include/relinker/guest/GuestImage.hpp b/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
+--- a/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
++++ b/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
+@@ -4,6 +4,7 @@
+ #include <codegen/CodegenTypes.hpp>
+ #include <domain/Types.hpp>
+ #include <relinker/domain/ISyscallScanner.hpp>
++#include <algorithm>
+ #include <filesystem>
+ #include <set>
+ #include <string>
+@@ -42,6 +43,18 @@
+     std::uint64_t Fini = 0;
+     std::uint64_t Got = 0;
+     bool UsePlatformTlsResolver = true;
++
++    bool RequiresGuestLifecycle() const {
++        if (ReplacementModule.empty()) return true;
++        // A companion HLE library owns its own state, not the state used by
++        // retained guest exports. Functions and data can depend on the guest's
++        // initialization and finalization, regardless of their symbol type.
++        // Absolute exports are constants and do not expose guest-owned state.
++        return std::any_of(Symbols.begin(), Symbols.end(), [](const GuestSymbol& symbol) {
++            return symbol.Section != 0 && symbol.Section != AbsoluteSection &&
++                (symbol.Info >> 4) != 0 && symbol.Visibility != 1 && symbol.Visibility != 2;
++        });
++    }
+ };
+ 
+ class GuestImageReader {
+diff --git a/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp b/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
+--- a/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
++++ b/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
+@@ -170,7 +170,7 @@
+     }
+     const auto entry = nextRva;
+     sections.push_back({".dllmain", entry, SectionRead | SectionExecute | 0x20u, {0xb8, 1, 0, 0, 0, 0xc3}});
+-    if (guest.ReplacementModule.empty()) {
++    if (guest.RequiresGuestLifecycle()) {
+         for (const auto slot : guest.InitArray) runtime.InitArrayRvas.push_back(image.GetRva(slot, 8));
+         for (const auto slot : guest.FiniArray) runtime.FiniArrayRvas.push_back(image.GetRva(slot, 8));
+         runtime.InitRva = guest.Init == 0 ? 0 : image.GetRva(guest.Init);
+diff --git a/core/relinker/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp b/core/relinker/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp
+--- a/core/relinker/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp
++++ b/core/relinker/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp
+@@ -71,7 +71,7 @@
+         Io::AppendU32(bytes, static_cast<std::uint32_t>(displacement));
+         return start;
+     };
+-    const bool ownsLifecycle = image.ReplacementModule.empty();
++    const bool ownsLifecycle = image.RequiresGuestLifecycle();
+     const auto init = ownsLifecycle ? lifecycle(image.Init) : 0;
+     const auto fini = ownsLifecycle ? lifecycle(image.Fini) : 0;
+     Io::AlignBuffer(bytes, 8);
+diff --git a/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py b/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
+--- a/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
++++ b/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
+@@ -1,25 +1,30 @@
+ from pathlib import Path
++import argparse
++import contextlib
+ import os
++import re
++import shlex
+ import shutil
+ import struct
+ import subprocess
+ import sys
+ import tempfile
+ 
+-from test_guest_intel_trampolines import elf_loads
++from test_guest_intel_trampolines import elf_loads, pe_sections
+ from test_guest_module_directories import needed_libraries
+ from test_guest_symbol_names import module_symbols
+ from test_windows_import_modules import executable
+ 
+ 
+-def guest(identity=None, module_name=None, missing_import=False, module_info_tag=0x6100000d):
++def guest(identity=None, module_name=None, missing_import=False, module_info_tag=0x6100000d,
++          import_name='Record'):
+     image = bytearray(0x3000)
+     image[:16] = b'\x7fELF\x02\x01\x01' + bytes(9)
+     struct.pack_into('<HHIQQQIHHHHHH', image, 16,
+                      3, 62, 1, 0, 64, 0, 0, 64, 56, 3, 0, 0, 0)
+     struct.pack_into('<IIQQQQQQ', image, 64, 1, 7, 0, 0, 0, len(image), len(image), 0x1000)
+     struct.pack_into('<IIQQQQQQ', image, 176, 0x6474e551, 6, 0, 0, 0, 0, 0, 16)
+-    strings = b'\0shared#A#B\0' + (b'absent' if missing_import else b'Record') + b'\0'
++    strings = b'\0shared#A#B\0' + (b'absent' if missing_import else import_name.encode()) + b'\0'
+     dependency = len(strings)
+     strings += b'libc.prx\0'
+     tags = [(5, 0x2600), (10, 0), (6, 0x2400), (11, 24), (4, 0x2500),
+@@ -89,24 +94,191 @@
+     return image
+ 
+ 
++def set_dynamic_value(image, tag, value, start=0x2000):
++    for position in range(start, start + 0x200, 16):
++        current, = struct.unpack_from('<q', image, position)
++        if current == tag:
++            struct.pack_into('<Q', image, position + 8, value)
++            return
++        if current == 0:
++            break
++    raise AssertionError(f'Missing dynamic tag {tag}')
++
++
++def no_import_executable(owner):
++    image = executable(owner)
++    set_dynamic_value(image, 8, 0, 0x4600)
++    image[0x4898:0x48b0] = bytes(24)
++    image[0x4000:0x4007] = b'\xb8\x2a\0\0\0\xc3\x90'
++    return image
++
++
++def event_call(address, event, slot=0x2820):
++    return b'\xbf' + struct.pack('<I', ord(event)) + b'\xff\x15' + struct.pack('<i', slot - (address + 11))
++
++
++def initialized_export(allocation):
++    image = guest()
++    set_dynamic_value(image, 12, 0x1100)
++    code = bytearray(b'\x48\x83\xec\x08')
++    if allocation:
++        # The Sony-like allocator returns NULL until its own initializer enables it.
++        allocator = b'\x83\x3d' + struct.pack('<i', 0x2860 - 0x1007) + b'\x00\x74\x08'
++        allocator += b'\x48\x8d\x05' + struct.pack('<i', 0x2880 - 0x1010) + b'\xc3\x31\xc0\xc3'
++        image[0x1000:0x1000 + len(allocator)] = allocator
++        struct.pack_into('<Q', image, 0x2418 + 16, len(allocator))
++        code += b'\xbf\x30\0\0\0\xe8' + struct.pack('<i', 0x1000 - (0x1100 + len(code) + 10))
++        code += b'\x48\x85\xc0\x74\x02\x0f\x0b'
++        code += event_call(0x1100 + len(code), 'B')
++        state, value = 0x2860, 1
++    else:
++        struct.pack_into('<IBBHQQ', image, 0x2418, 1, 0x11, 0, 1, 0x2840, 4)
++        state, value = 0x2840, 42
++    code += b'\xc7\x05' + struct.pack('<i', state - (0x1100 + len(code) + 10)) + struct.pack('<I', value)
++    code += event_call(0x1100 + len(code), 'I')
++    code += b'\x48\x83\xc4\x08\xc3'
++    image[0x1100:0x1100 + len(code)] = code
++    return image
++
++
++def initialized_export_consumer(allocation):
++    image = guest(import_name='CheckAllocation' if allocation else 'CheckInitializedData')
++    struct.pack_into('<IBBHQQ', image, 0x2418, 1, 0x12 if allocation else 0x11, 0, 0, 0, 0)
++    struct.pack_into('<QQq', image, 0x2700, 0x2820, (1 << 32) | 6, 0)
++    struct.pack_into('<QQq', image, 0x2718, 0x2828, (2 << 32) | 6, 0)
++    set_dynamic_value(image, 8, 48)
++    set_dynamic_value(image, 12, 0x1100)
++    # This dependent initializer consumes the retained export before main entry.
++    code = bytearray(b'\x48\x83\xec\x08')
++    if allocation:
++        code += b'\xbf\x30\0\0\0\xff\x15' + struct.pack('<i', 0x2820 - (0x1100 + len(code) + 11))
++        code += b'\x48\x89\xc7\xbe\x30\0\0\0'
++    else:
++        code += b'\x48\x8b\x3d' + struct.pack('<i', 0x2820 - (0x1100 + len(code) + 7))
++    code += b'\xff\x15' + struct.pack('<i', 0x2828 - (0x1100 + len(code) + 6))
++    code += b'\x48\x83\xc4\x08\xc3'
++    image[0x1100:0x1100 + len(code)] = code
++    # Only the provider owns the array/finalizer events.
++    for tag in (25, 26, 27, 28, 13):
++        set_dynamic_value(image, tag, 0)
++    return image
++
++
++def windows_lifecycle_targets(image):
++    entry = next(section for section in pe_sections(image) if section[0] == b'.entry')
++    code = image[entry[3]:entry[3] + entry[2]]
++    return [struct.unpack('<I', match[1])[0] for match in re.finditer(
++        rb'\x48\x8b\x05.{4}\xb9(.{4})\x48\x01\xc8', code, re.S)]
++
++
+ def main():
+-    if sys.argv[1] == '--load':
++    if len(sys.argv) > 1 and sys.argv[1] in ('--load', '--load-placeholder', '--load-initialized-export'):
+         import ctypes
+         import _ctypes
+         library = ctypes.CDLL(sys.argv[2])
+         second = ctypes.CDLL(sys.argv[2])
+-        assert getattr(library, 'shared#guest')() == 42
+-        assert getattr(second, 'shared#guest')() == 42
++        if sys.argv[1] == '--load':
++            assert getattr(library, 'shared#guest')() == 42
++            assert getattr(second, 'shared#guest')() == 42
+         before = Path(os.environ['ANYPS5_LIFECYCLE_EVENTS']).read_text()
+         _ctypes.dlclose(library._handle)
+         assert Path(os.environ['ANYPS5_LIFECYCLE_EVENTS']).read_text() == before
+         _ctypes.dlclose(second._handle)
+         return
+-    relinker = Path(sys.argv[1]).resolve()
+-    fixture = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
+-    with tempfile.TemporaryDirectory(prefix='anyps5-guest-lifecycle-') as directory:
++    parser = argparse.ArgumentParser()
++    parser.add_argument('relinker', type=Path)
++    parser.add_argument('fixture', nargs='?', type=Path)
++    parser.add_argument('--windows-runner', help='Command prefix for executing PE fixtures, such as wine')
++    parser.add_argument('--work-directory', type=Path, help='Preserve generated regression cases here')
++    parser.add_argument('--allocation-only', action='store_true', help='Run only the constructor allocation regression')
++    parser.add_argument('--expect-allocation-failure', action='store_true', help='Verify the old suppression policy fails the allocation regression')
++    args = parser.parse_args()
++    if args.expect_allocation_failure:
++        args.allocation_only = True
++    relinker = args.relinker.resolve()
++    fixture = args.fixture.resolve() if args.fixture else None
++    runner = shlex.split(args.windows_runner) if args.windows_runner else []
++    counts = {'converted': 0, 'rejected': 0, 'executed': 0, 'expected_import_failures': 0, 'expected_allocation_failures': 0}
++    context = contextlib.nullcontext(args.work_directory) if args.work_directory else tempfile.TemporaryDirectory(prefix='anyps5-guest-lifecycle-')
++    with context as directory:
+         work = Path(directory)
++        work.mkdir(parents=True, exist_ok=True)
++
++        def convert(case, windows, original, source, dependent=None, expected_error=None):
++            modules = case / 'sce_module'
++            modules.mkdir(parents=True, exist_ok=True)
++            (modules / 'libc.prx').write_bytes(original)
++            if dependent is not None:
++                (modules / 'consumer.prx').write_bytes(dependent)
++            input_path = case / 'input.elf'
++            input_path.write_bytes(source)
++            output = case / ('output.exe' if windows else 'output.elf')
++            result = subprocess.run([str(relinker), *(['--windows'] if windows else []),
++                                     '--skip-syscall-check', str(input_path), str(output)],
++                                    capture_output=True, text=True, timeout=30)
++            if expected_error is not None:
++                assert result.returncode == 2 and expected_error in result.stderr, (case.name, result.stdout, result.stderr)
++                counts['rejected'] += 1
++                return None, None
++            assert result.returncode == 0, (case.name, result.stdout, result.stderr)
++            counts['converted'] += 1
++            return output, case / 'app0' / 'sce_module' / 'libc.prx.guest.prx'
++
++        def execute(case, windows, output, library, expected, load_mode='--load'):
++            native = (os.name == 'nt' or bool(runner)) if windows else (sys.platform == 'linux' and os.uname().machine == 'x86_64')
++            if not native:
++                return None
++            if not fixture:
++                raise AssertionError('Native lifecycle test requires the replacement fixture')
++            libraries = case / 'libs'
++            libraries.mkdir(exist_ok=True)
++            shutil.copyfile(fixture, libraries / 'libc.prx')
++            events = case / 'events.txt'
++            events.unlink(missing_ok=True)
++            event_path = str(events.resolve())
++            if windows and runner and os.name != 'nt':
++                event_path = 'Z:' + event_path.replace('/', '\\')
++            output.chmod(0o755)
++            command = [*runner, str(output)] if windows else [sys.executable, __file__, load_mode, str(library)]
++            run = subprocess.run(command, env={**os.environ, 'ANYPS5_LIFECYCLE_EVENTS': event_path},
++                                 capture_output=True, text=True, timeout=30)
++            if expected is None:
++                assert run.returncode != 0 and 'absent' in run.stderr, (case.name, run.returncode, run.stdout, run.stderr)
++                counts['expected_import_failures'] += 1
++                return run
++            if expected == 'allocation-failure':
++                assert run.returncode != 0 and 'Guest allocator was called before retained libc initialization' in run.stderr, (
++                    case.name, run.returncode, run.stdout, run.stderr)
++                # Windows may detach the companion DLL even after immediate
++                # CRT exit; neither outcome may contain guest lifecycle events.
++                expected_events = {'H', 'Hh'} if windows else {'H'}
++                assert events.read_text() in expected_events, (case.name, events.read_text())
++                counts['expected_allocation_failures'] += 1
++                return run
++            assert run.returncode == (42 if windows else 0), (case.name, run.returncode, run.stdout, run.stderr)
++            actual = events.read_text()
++            assert actual == expected, (case.name, actual, expected)
++            counts['executed'] += 1
++            return run
++
+         for windows in (False, True):
++            for allocation in ((True,) if args.allocation_only else (True, False)):
++                case = work / f'{windows}-initialized-{"allocator" if allocation else "data"}'
++                output, converted = convert(case, windows, initialized_export(allocation),
++                                            no_import_executable('libc.prx'), initialized_export_consumer(allocation))
++                image = converted.read_bytes()
++                if windows:
++                    assert windows_lifecycle_targets(output.read_bytes()).count(0x11100) == (1 if args.expect_allocation_failure else 2)
++                else:
++                    assert lifecycle_tags(image) == (set() if args.expect_allocation_failure else {12, 13, 25, 26, 27, 28})
++                    assert needed_libraries(image) == ['libc.prx']
++                    assert needed_libraries((converted.parent / 'consumer.prx.guest.prx').read_bytes()) == [
++                        '$ORIGIN/libc.prx.guest.prx', 'libc.prx']
++                execute(case, windows, output, converted.parent / 'consumer.prx.guest.prx',
++                        'allocation-failure' if args.expect_allocation_failure else 'HBIACaih' if allocation else 'HIADaih',
++                        '--load-initialized-export')
++            if args.allocation_only:
++                continue
+             for name, identity, module_name, replacement, module_info_tag in (
+                     ('libc.prx', None, None, 'libc.prx', 0x6100000d),
+                     ('renamed.prx', 'libc.prx', None, 'libc.prx', 0x6100000d),
+@@ -119,10 +291,11 @@
+                     ('libkernel.prx', None, None, 'libkernel.prx', 0x6100000d),
+                     ('ordinary.prx', None, None, None, 0x6100000d),
+                     ('unimplemented.prx', 'libNotReplaced.prx', None, None, 0x6100000d)):
+-                suppressed = replacement is not None
++                # Every existing fixture retains a visible callable guest export.
++                suppressed = False
+                 case = work / f'{windows}-{name}-{identity}-{module_name}'
+                 modules = case / 'sce_module'
+-                modules.mkdir(parents=True)
++                modules.mkdir(parents=True, exist_ok=True)
+                 original = guest(identity, module_name, module_info_tag=module_info_tag)
+                 (modules / name).write_bytes(original)
+                 (modules / 'consumer.prx').write_bytes(consumer(name))
+@@ -133,6 +306,7 @@
+                                          '--skip-syscall-check', str(source), str(output)],
+                                         capture_output=True, text=True, timeout=30)
+                 assert result.returncode == 0, (result.stdout, result.stderr)
++                counts['converted'] += 1
+                 converted = case / 'app0' / 'sce_module' / (name + '.guest.prx')
+                 image = converted.read_bytes()
+                 if not windows:
+@@ -147,27 +321,53 @@
+                     assert 'libc.prx' in needed
+                     if replacement:
+                         assert replacement in needed
+-                native = (os.name == 'nt') if windows else (sys.platform == 'linux' and os.uname().machine == 'x86_64')
+-                if native and not fixture:
+-                    raise AssertionError('Native lifecycle test requires the replacement fixture')
+-                if native and fixture:
++                else:
++                    assert windows_lifecycle_targets(output.read_bytes()).count(0x11010) == 2
++                if fixture and replacement and replacement != 'libc.prx':
+                     libraries = case / 'libs'
+-                    libraries.mkdir()
+-                    shutil.copyfile(fixture, libraries / 'libc.prx')
+-                    if replacement and replacement != 'libc.prx':
+-                        shutil.copyfile(fixture, libraries / replacement)
+-                    events = case / 'events.txt'
+-                    output.chmod(0o755)
+-                    command = [str(output)] if windows else [sys.executable, __file__, '--load',
+-                        str(converted.parent / 'consumer.prx.guest.prx')]
+-                    run = subprocess.run(command, env={**os.environ, 'ANYPS5_LIFECYCLE_EVENTS': str(events)},
+-                                         capture_output=True, text=True, timeout=30)
+-                    assert run.returncode == (42 if windows else 0), (name, run.returncode, run.stdout, run.stderr)
+-                    actual = events.read_text()
+-                    assert actual == ('HHhh' if replacement and replacement != 'libc.prx' else 'Hh' if suppressed else 'HIAaih'), (name, actual)
++                    libraries.mkdir(exist_ok=True)
++                    shutil.copyfile(fixture, libraries / replacement)
++                execute(case, windows, output, converted.parent / 'consumer.prx.guest.prx',
++                        'HHIAaihh' if replacement and replacement != 'libc.prx' else 'HIAaih')
++
++            for label, symbol_name, info, visibility, section, value, retained in (
++                    ('no-export', 0, 0, 0, 0, 0, False),
++                    ('local', 1, 0x02, 0, 1, 0x1000, False),
++                    ('internal', 1, 0x12, 1, 1, 0x1000, False),
++                    ('hidden', 1, 0x12, 2, 1, 0x1000, False),
++                    ('undefined', 1, 0x12, 0, 0, 0, False),
++                    ('absolute', 1, 0x12, 0, 0xfff1, 0x1000, False),
++                    ('global-function', 1, 0x12, 0, 1, 0x1000, True),
++                    ('weak-function', 1, 0x22, 0, 1, 0x1000, True),
++                    ('protected-function', 1, 0x12, 3, 1, 0x1000, True),
++                    ('data-only', 1, 0x11, 0, 1, 0x2840, True),
++                    ('notype-code', 1, 0x10, 0, 1, 0x1000, True),
++                    ('notype-data', 1, 0x10, 0, 1, 0x2840, True),
++                    ('ifunc', 1, 0x1a, 0, 1, 0x1000, True)):
++                original = guest()
++                struct.pack_into('<IBBHQQ', original, 0x2418, symbol_name, info, visibility, section, value, 6)
++                case = work / f'{windows}-exports-{label}'
++                if label == 'ifunc':
++                    # The reader rejects IFUNC before lifecycle ownership is considered.
++                    convert(case, windows, original, no_import_executable('libc.prx'),
++                            expected_error='Unsupported symbol attributes')
++                    continue
++                output, converted = convert(case, windows, original, no_import_executable('libc.prx'))
++                if windows:
++                    targets = windows_lifecycle_targets(output.read_bytes())
++                    assert targets.count(0x11010) == int(retained), (label, targets)
++                    assert targets.count(0x12800) == int(retained), (label, targets)
++                    assert targets.count(0x11070) == 2 * int(retained), (label, targets)
++                    assert targets.count(0x12808) == 2 * int(retained), (label, targets)
++                else:
++                    image = converted.read_bytes()
++                    assert lifecycle_tags(image) == ({12, 13, 25, 26, 27, 28} if retained else set()), label
++                    assert needed_libraries(image) == ['libc.prx']
++                execute(case, windows, output, converted, 'HIAaih' if retained else 'Hh', '--load-placeholder')
++
+             case = work / f'{windows}-missing-import'
+             modules = case / 'sce_module'
+-            modules.mkdir(parents=True)
++            modules.mkdir(parents=True, exist_ok=True)
+             (modules / 'libc.prx').write_bytes(guest(missing_import=True))
+             source = case / 'input.elf'
+             source.write_bytes(executable('libc.prx'))
+@@ -176,21 +376,14 @@
+                                      '--skip-syscall-check', str(source), str(output)],
+                                     capture_output=True, text=True, timeout=30)
+             assert result.returncode == 0, (result.stdout, result.stderr)
++            counts['converted'] += 1
+             converted = case / 'app0' / 'sce_module' / 'libc.prx.guest.prx'
+             if not windows:
+                 assert 'absent' in module_symbols(converted.read_bytes())
+-                assert lifecycle_tags(converted.read_bytes()) == set()
+-            if native:
+-                libraries = case / 'libs'
+-                libraries.mkdir()
+-                shutil.copyfile(fixture, libraries / 'libc.prx')
+-                output.chmod(0o755)
+-                command = [str(output)] if windows else [sys.executable, __file__, '--load', str(converted)]
+-                run = subprocess.run(command, env={**os.environ, 'ANYPS5_LIFECYCLE_EVENTS': str(case / 'events.txt')},
+-                                     capture_output=True, text=True, timeout=30)
+-                assert run.returncode != 0 and 'absent' in run.stderr, (run.returncode, run.stderr)
+-        print('Guest lifecycle ownership conversion tests passed')
+-        if os.name != 'nt' and (sys.platform != 'linux' or os.uname().machine != 'x86_64'):
++                assert lifecycle_tags(converted.read_bytes()) == {12, 13, 25, 26, 27, 28}
++            execute(case, windows, output, converted, None)
++        print(f'Guest lifecycle ownership tests passed: {counts}')
++        if not runner and os.name != 'nt' and (sys.platform != 'linux' or os.uname().machine != 'x86_64'):
+             print('Native lifecycle execution skipped: Linux x86-64 or Windows required')
+ 
+ 
+diff --git a/core/relinker/elfpatcher/tests/GuestLifecycleReplacement.cpp b/core/relinker/elfpatcher/tests/GuestLifecycleReplacement.cpp
+--- a/core/relinker/elfpatcher/tests/GuestLifecycleReplacement.cpp
++++ b/core/relinker/elfpatcher/tests/GuestLifecycleReplacement.cpp
+@@ -1,6 +1,9 @@
+ #include "prx/libc/include/general/VabiMacros.hpp"
+ #include <cstdio>
+ #include <cstdlib>
++#include <cstddef>
++#include <cstdint>
++#include <cstring>
+ 
+ namespace {
+ 
+@@ -22,6 +25,18 @@
+     if (result == EOF || closed != 0) Fail("Cannot write lifecycle event");
+ }
+ 
++extern "C" void APS5_VABI CheckAllocation(void* allocation, std::size_t bytes) {
++    if (bytes != 48) Fail("Dependent constructor requested an unexpected allocation size");
++    if (allocation == nullptr) Fail("Guest allocator was called before retained libc initialization");
++    std::memset(allocation, 0x5a, bytes);
++    Record('C');
++}
++
++extern "C" void APS5_VABI CheckInitializedData(const std::uint32_t* state) {
++    if (state == nullptr || *state != 42) Fail("Exported guest data was used before its initializer");
++    Record('D');
++}
++
+ namespace {
+ 
+ struct Runtime {

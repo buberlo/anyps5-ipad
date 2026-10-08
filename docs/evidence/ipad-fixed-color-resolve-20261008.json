@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T12:49:05.782852+00:00",
+  "kind": "ipad_production_fixed_color_resolve_isolated_gpu_probe",
+  "qualification": "six_isolated_gpu_cases_pass_guest_exit_zero_clean_native_lifecycle_unqualified",
+  "sources": {
+    "app_log": {
+      "private_local_path": "build/pr1-port/fixed-color-resolve-build47-mixed-smoke/app-final.log",
+      "sha256": "510ed292af2104cc7ba6b3120a5c2614c17620d08cbce5e249a7204514b11bc6"
+    },
+    "receipt": {
+      "private_local_path": "build/pr1-port/fixed-color-resolve-build47-mixed-smoke/receipt.json",
+      "sha256": "5ffe4324cea54c705a126801385d4b470322b4e0faded7b3cb0b2410268c8559"
+    },
+    "probe_manifest": {
+      "private_local_path": "build/fixed-color-resolve-probe/windows/manifest.json",
+      "sha256": "a96c362ec3cb156f6ac25b7f4ecab7e48dfb975d135bf41541e414be78cbdd9b"
+    },
+    "device_readback_executable": {
+      "private_local_path": "build/pr1-port/fixed-color-resolve-build47-mixed-smoke/probe-readback.exe",
+      "sha256": "3be694878268553d8cb61d000d0cf07d4994a54b8894723ef0efdf164d06e52d"
+    }
+  },
+  "probe_identity": {
+    "manifest_matches_receipt": true,
+    "device_readback_matches_built_executable": true,
+    "app_build": 47,
+    "project_commit_at_build": "114b50f2eceff7f026d6f44413ab7948511a16a8",
+    "as_built_production_source_hashes": {
+      "tools/gpu-probe/fixed_color_resolve_probe.cpp": "a4e5a61425e7618924b93fa29e1e9cd8e1925f736b659174a10fc740c60aeec3",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp": "7042a932836768ddf060cd8683b73971186f8b7288f099645e4692eacddfc285",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleTransfer.cpp": "9c66aaf1bec0fda477a47dcba7be2badbd29aceeb5f26c18c97bb2fbe8f9b129",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp": "3f46c40a73faba453443860c9718b3355a4659e0ff3a80b40ad79959e2f0a317",
+      "upstreams/AnyPS5/core/shader/recompiler/SpirvBackend/src/RectListShaders.cpp": "079909ce78b59ae696d5415ee3511dd59de0b6e2af3fbea3b9b4a26ec603c975",
+      "upstreams/AnyPS5/core/shader/recompiler/SpirvBackend/src/SpirvModule.cpp": "37708c30974f1d28465a88eb796f15d51b04d4c15917655cbb86e6935cdf1d1a",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp": "68ae0609581f19a19a556996b089f2fc11b632a3b4b5383091b8bf02b153c93e",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "17179f135e2b4d06ee117d7f64e176046d0b9d6fd9bc42a36fb3ad53d74a46f4",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "13aab71af71b65d26eded796afac6616782a0b8df394d964c4b9f955654e64d2",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "426513c4764b441126a2f1b11d6b6a8020bf8ac72d493dce082feb3a4493bf56",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleReadback.comp": "2e0bed3040ab29e6c2eb6868b7ba446e0f6bbe57619a9fbc3c09ac1973f5212e",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.frag": "8a62aea574c9d61bcad56e1eb6647c2664526b0f9159d0046f9b9e861f4604b6",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTransfer_spv.h": "a9bce2ff9f216f0423bf76dd7ec736f7d77422c6542a0e0d7cfac585a48fea41",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve.frag": "4302ba70f8f8006e2517544725aaabdf5d00e259711a9fa7ae655952eb4e17d6",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h": "1c3ed53b162750eba76ffa0c399fac66bb25c215ddda32c2c60c84a29e985a17",
+      "tools/gpu-probe/fixed_color_resolve.vert": "3318200c0502ef99f91d8a7e5aa12d8baa96c357857ee37cf5cbe27f4e5869f1",
+      "scripts/build-fixed-color-resolve-probe.sh": "26163e534136d2b811a022315722b42dcb95ee878a28810261524ccef27d10b1",
+      "upstreams/AnyPS5/core/shader/recompiler/Recompiler.hpp": "1c58c677503b18bd97f1f3fb0271a78b1724ee0acc175b40e9543b9849d32ea3"
+    }
+  },
+  "device": {
+    "model": "iPad14,10",
+    "gpu": "Apple M2 GPU",
+    "os_version": "27.0.1",
+    "os_build": "24A446",
+    "initial_thermal_state": "nominal",
+    "low_power_mode": false,
+    "tessellation": true,
+    "storage_atomics": true,
+    "builtin_jit_enabled": true
+  },
+  "scope": {
+    "dimensions": [
+      17,
+      19
+    ],
+    "format": "RGBA8_UNORM",
+    "logical_sample_counts": [
+      2,
+      4,
+      8
+    ],
+    "native_sample_counts": [
+      2,
+      4,
+      4
+    ],
+    "group_counts": [
+      1,
+      1,
+      2
+    ],
+    "pipelines": "Production fixed-function resolve fragment factory, production canonical rect-list TCS/TES and production color sample upload, assembled into an isolated Vulkan probe pipeline.",
+    "geometry": "Full and partial synthetic rectangles use real vertex positions. Destination load/store and scissor retain pixels outside the tested rectangle; no arbitrary guest fullscreen assumption.",
+    "references": "Independent integer scalar average at 2/4/8 samples; native vkCmdResolveImage additionally compared at 2/4.",
+    "exclusions": [
+      "Production AGC command decoding and complete Driver/ColorResolve execution",
+      "Wine GuestMemory write-watch and deferred GPU hooks",
+      "Actual game shaders, captured pixels, game assets and swapchain presentation",
+      "Production-size cache, lifetime and performance qualification"
+    ]
+  },
+  "results": {
+    "cases": 6,
+    "channels": 7752,
+    "preserved_channels": 2580,
+    "native_cases": 4,
+    "native_channels": 5168,
+    "rounding_ties": 2281,
+    "non_tie_means": 2891,
+    "integer_means": 1779,
+    "errors": 0,
+    "status": "PASS",
+    "summary_log_line": 1522,
+    "case_log_lines": [
+      1504,
+      1509,
+      1510,
+      1511,
+      1516,
+      1521
+    ],
+    "rounding_contract": {
+      "non_tie_maximum_allowed_error_unorm_units": 0,
+      "outside_geometry_maximum_allowed_error_unorm_units": 0,
+      "half_tie_maximum_allowed_error_unorm_units": 1,
+      "native_comparison_uses_same_tie_tolerance": true,
+      "integer_means_are_subset_of_non_tie_means": true,
+      "note": "PASS means all tested channels satisfy this contract. Half ties are allowed to differ by one byte; exact AMD hardware tie rounding is not established."
+    }
+  },
+  "termination": {
+    "guest_exit_code": 0,
+    "guest_exit_log_line": 1591,
+    "post_exit_native_breakpoint": true,
+    "post_exit_breakpoint_log_line": 1628,
+    "post_exit_symbol_log_line": 1629,
+    "post_exit_symbol": "jit26_detach",
+    "clean_native_app_lifecycle_qualified": false,
+    "note": "The explicit Windows/Wine guest exit precedes the native StikDebug-protocol BRK at JIT detach. A passing guest does not establish clean native app teardown."
+  },
+  "restoration": {
+    "configuration_byte_equal": true,
+    "configuration_sha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56",
+    "library_byte_equal": true,
+    "library_sha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f",
+    "own_processes_closed": true,
+    "receipt_test_operation_duration_seconds": 37.131313666
+  },
+  "separate_connected_hle_build": {
+    "qualification": "full_hle_build_22_selected_host_tests_and_graphics_host_suites_pass_game_rendering_blocked",
+    "archive_sha256": "b6d690d56c7da1f70820ae9a746f067c8c7b12f56c95aa2804bb0e3b0fd58309",
+    "private_archive_path": "build/solitaire-investigation/rectlist-resolve-hle-candidate/hle-runtime.zip",
+    "provenance_sha256": "d25c14ea3e8bc0e216e29c311c7ed10d3d8a3b8c1269398732c7aeb9e0c9de88",
+    "embedded_manifest_sha256": "d50af91e30b12ca09410f2298c5ae8889529ef4ee609d709ee8a6b8acd81b836",
+    "embedded_provenance_matches_sidecar_except_archive_hash": true,
+    "all_embedded_file_hashes_verified": 53,
+    "prx_files": 50,
+    "windows_runtime_dll_files": 3,
+    "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "a69954357b26124d9a5eeb140ffffad7a096770f0121610da55e2e31fdc1992e",
+    "patch_count": 47,
+    "host_test_runtime": "local Wine",
+    "host_test_suites_passed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "resource_classification_graphics_test": "passed",
+    "full_graphics_suite": "passed",
+    "fresh_game_preparation": "complete",
+    "fresh_game_device_runtime": "ran_white_unknown_spirv_type_rejection",
+    "series_validation": {
+      "private_record_path": "build/solitaire-investigation/msaa-series-validation.json",
+      "sha256": "0735399e11abf415117701610261731dc3d6118da7b6a9cd161e65744e590816",
+      "paths_checked": 137,
+      "forward_apply": true,
+      "matches_checked_source": true,
+      "reverse_restores_pin": true,
+      "hashes_match_hle_build_provenance": true
+    },
+    "patch0047": {
+      "path": "patches/anyps5/0047-gc10-fixed-function-color-resolve.patch",
+      "sha256": "24fbd1c2b746d78049ed483562bea01dec613dc80ced8d3a274bbfd5ce36689b"
+    },
+    "note": "The connected HLE package is separate from the isolated GPU probe and earlier as-built0044 startup. Its subsequent game run removes the prior guards but remains white with an unknown-SPIR-V-type rejection; see the separate fresh game record.",
+    "graphics_host_tests": {
+      "test-rectlist-resource.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-rectlist-resource.log",
+        "sha256": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+        "passed": true,
+        "success_marker": "Graphics guest-write classification tests passed"
+      },
+      "test-rectlist-full-graphics.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-rectlist-full-graphics.log",
+        "sha256": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+        "passed": true,
+        "success_marker": "Graphics validation tests passed"
+      }
+    },
+    "fresh_game_device_evidence": "docs/evidence/ipad-solitaire-rectlist-resolve-20261008.json"
+  },
+  "limits": [
+    "No Solitaire playability, correct connected guest draw/resolve, audio, input, save/load, displayed FPS or sustained performance claim.",
+    "Partial synthetic geometry is tested; arbitrary guest vertex shaders and game render-target contents are not.",
+    "No bit-exact tie-rounding claim or native AMD hardware comparison.",
+    "Earlier as-built0044, lifecycle-device, native-resolve and canonical-rectangle evidence records remain separate and unchanged."
+  ],
+  "privacy": "Published probe fixtures are original synthetic data. No game dump, captured private shader code, game pixels, pairing data or device identifiers are included."
+}

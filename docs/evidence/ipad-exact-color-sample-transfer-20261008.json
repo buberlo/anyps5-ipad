@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "status": "PASS_offscreen_exact_color_transfer_only",
+  "scope": "Physical iPad execution of the production RenderTarget and ColorSampleTransfer RGBA8_UNORM import/readback code with original synthetic sample data.",
+  "device": {
+    "model_identifier": "iPad14,10",
+    "gpu": "Apple M2 GPU",
+    "os": "iPadOS 27.0.1",
+    "os_build": "24A446"
+  },
+  "host": {
+    "app_name": "madeira-anyps5",
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "version": "0.1.9",
+    "build": "47",
+    "path": "x86-64 Windows PE through Wine + FEX, Vulkan through MoltenVK to Metal",
+    "moltenvk_version": "1.4.3",
+    "vulkan_version": "1.4.357",
+    "automatic_builtin_jit_enabled_before_guest": true,
+    "jit_pool_mib": 512,
+    "avx_setting": 1
+  },
+  "as_built": {
+    "repository_commit_at_build": "114b50f2eceff7f026d6f44413ab7948511a16a8",
+    "includes_uncommitted_probe_and_transfer_changes": true,
+    "package_manifest_sha256": "ff84d2ca6808a7cbafd1066b2eaa3becc16ebafe0a869189399d0604afc9feb7",
+    "probe_exe_sha256": "e9f881c24f7371fec3a05730aa1ecb2adcc8d883047dd76bbe907a28ae02b137",
+    "device_exe_readback_sha256": "e9f881c24f7371fec3a05730aa1ecb2adcc8d883047dd76bbe907a28ae02b137",
+    "sources_sha256": {
+      "tools/gpu-probe/color_sample_transfer_probe.cpp": "99dae9724680a87bb0ed40be35dcdbdea2945f885feed40a99cee8750deac78f",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp": "7042a932836768ddf060cd8683b73971186f8b7288f099645e4692eacddfc285",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleTransfer.cpp": "9c66aaf1bec0fda477a47dcba7be2badbd29aceeb5f26c18c97bb2fbe8f9b129",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "17179f135e2b4d06ee117d7f64e176046d0b9d6fd9bc42a36fb3ad53d74a46f4",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "eca20ecb1c77002da64ac5d686b4bf305806ea6dabedc9cbf2b95a4647a56774",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "4be4285a99d1e15b0e84fc3737fbf6d033761c3e6b6d340ef70cb03072ea9b0d",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleReadback.comp": "2e0bed3040ab29e6c2eb6868b7ba446e0f6bbe57619a9fbc3c09ac1973f5212e",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.frag": "8a62aea574c9d61bcad56e1eb6647c2664526b0f9159d0046f9b9e861f4604b6",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTransfer_spv.h": "a9bce2ff9f216f0423bf76dd7ec736f7d77422c6542a0e0d7cfac585a48fea41"
+    },
+    "note": "These are build-manifest hashes for the tested executable. Context.hpp changed after this build; the result does not claim equivalence with the complete current renderer source."
+  },
+  "test": {
+    "extent": [
+      17,
+      19
+    ],
+    "format": "VK_FORMAT_R8G8B8A8_UNORM",
+    "logical_sample_counts": [
+      2,
+      4,
+      8
+    ],
+    "native_sample_counts": [
+      2,
+      4
+    ],
+    "eight_sample_representation": "two array layers with four native samples each",
+    "cases": [
+      {
+        "logical_samples": 2,
+        "native_samples": 2,
+        "groups": 1,
+        "input_output_alias": false,
+        "rgba8_words_checked": 646,
+        "errors_including_guard_bytes": 0
+      },
+      {
+        "logical_samples": 2,
+        "native_samples": 2,
+        "groups": 1,
+        "input_output_alias": true,
+        "rgba8_words_checked": 646,
+        "errors_including_guard_bytes": 0
+      },
+      {
+        "logical_samples": 4,
+        "native_samples": 4,
+        "groups": 1,
+        "input_output_alias": false,
+        "rgba8_words_checked": 1292,
+        "errors_including_guard_bytes": 0
+      },
+      {
+        "logical_samples": 4,
+        "native_samples": 4,
+        "groups": 1,
+        "input_output_alias": true,
+        "rgba8_words_checked": 1292,
+        "errors_including_guard_bytes": 0
+      },
+      {
+        "logical_samples": 8,
+        "native_samples": 4,
+        "groups": 2,
+        "input_output_alias": false,
+        "rgba8_words_checked": 2584,
+        "errors_including_guard_bytes": 0
+      },
+      {
+        "logical_samples": 8,
+        "native_samples": 4,
+        "groups": 2,
+        "input_output_alias": true,
+        "rgba8_words_checked": 2584,
+        "errors_including_guard_bytes": 0
+      }
+    ],
+    "total_rgba8_words_checked": 9044,
+    "distinct_r_g_b_a_component_values": [
+      256,
+      256,
+      42,
+      256
+    ],
+    "errors": 0,
+    "all_individual_samples_checked": true,
+    "resolve_or_averaging": false,
+    "alias_false_positive_control": "After fragment upload completes, vkCmdFillBuffer overwrites the aliased source/output values with 0xfefefefe before compute readback; original expected values and prefix/suffix guards must still match.",
+    "guest_exit_code": 0,
+    "guest_exit_observed_before_host_cleanup": true,
+    "vulkan_device_destroyed": true,
+    "moltenvk_allocated_gpu_memory_after_device_destroy_mib": 0
+  },
+  "cleanup": {
+    "own_bundle_processes_before_cleanup": 2,
+    "own_bundle_processes_after_cleanup": 0,
+    "app_termination_command_succeeded": true,
+    "helper_termination_outcome": "No such process; helper had already exited when signalled. Final process inventory contains no executable under the exact app bundle.",
+    "configuration_restored_byte_for_byte": true,
+    "library_restored_byte_for_byte": true
+  },
+  "lifecycle_warning": {
+    "observed_after_successful_guest_exit": true,
+    "symbol": "jit26_detach + 0x4",
+    "mach_exception_type": 6,
+    "log_classification": "UNHANDLED #1",
+    "jit_dump_created": true,
+    "clean_native_app_lifecycle_proven": false,
+    "note": "A native debugger-detach breakpoint was logged after the guest exited successfully. Cleanup was verified separately; this probe does not establish a clean app shutdown."
+  },
+  "private_capture_hashes": {
+    "app-final.log": "b18f72be09562307e5dfc96d562b093c7530ab03da3a550d267746d7505d8ecb",
+    "receipt.json": "fdef7e497f16e5cedbd8c35e441534b45ebbc69bc06f3a81f8b38119aaef44a2",
+    "cleanup-before.json": "c18692415238ec0b17895d27861368e64070ef3d88883353f82bf97b2c757c77",
+    "cleanup-after.json": "1831c61c8566e69f9f5b081dc599cfe62502febd475f8808dce905e9c796b57d",
+    "launch.json": "905ff8abc20b2cccdbd711c46b6a4ade7a96085d0638a4e00a7e532a4918c6e1",
+    "verify-probe.json": "22348dba588c8061997d7c5955a6d3ad738d5bd61479cffa137d98763f7a03e3",
+    "verify-pool-config.json": "b07886f5b4ef6b277351f87eed1b1a3651b22a9c0432905a7adec357ba1e2244",
+    "verify-probe-library.json": "34c0bcbcdca94cb06c102d7d7dc1666f7c3a6a919865ca04bf99be095cbb8832"
+  },
+  "limitations": [
+    "Offscreen synthetic transfer only: no game binary, private shader, or game asset was used by this executable.",
+    "No proof of guest draw routing, shader resource/cache integration, resolve correctness, or visible swapchain presentation.",
+    "No depth or stencil sample import/export qualification.",
+    "No qualification of programmable guest sample locations by this color-transfer probe.",
+    "No Solitaire gameplay, audio, touch, save/load, lifecycle, or sustained FPS acceptance.",
+    "Only six bounded cases at 17 by 19 pixels; long-running resource stability and production-size performance were not measured."
+  ]
+}

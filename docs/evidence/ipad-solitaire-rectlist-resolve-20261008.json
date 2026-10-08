@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-08T12:52:18.019473+00:00",
+  "kind": "ipad_solitaire_rectlist_resolve_connected_renderer_checkpoint",
+  "qualification": "guest_startup_passes_previous_guards_absent_unknown_spirv_type_blocks_rendering",
+  "inputs": {
+    "receipt.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-rectlist-resolve-runtime/receipt.json",
+      "sha256": "cef2d7d04e9a342e1ea2ba4ed7f643743eb3b62c70c4331fd03a2a004f0eb3a6"
+    },
+    "manifest-readback.json": {
+      "private_local_path": "build/pr1-port/solitaire-build47-rectlist-resolve-runtime/manifest-readback.json",
+      "sha256": "18c53960cda7dd698c55789bb17a255d9fc4ca2a27ea1f9199daaa6bc808f63a"
+    },
+    "app-final.log": {
+      "private_local_path": "build/pr1-port/solitaire-build47-rectlist-resolve-runtime/app-final.log",
+      "sha256": "db4792bf3b1829249a4d7e3df2effcdb54a3c89d1551089275456757cb9acd6c"
+    }
+  },
+  "build": {
+    "app_build": 47,
+    "relinker_sha256": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+    "hle_archive_sha256": "b6d690d56c7da1f70820ae9a746f067c8c7b12f56c95aa2804bb0e3b0fd58309",
+    "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "source_diff_sha256": "a69954357b26124d9a5eeb140ffffad7a096770f0121610da55e2e31fdc1992e",
+    "patch_count": 47,
+    "host_test_suite_count": 22,
+    "graphics_host_tests": {
+      "test-rectlist-resource.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-rectlist-resource.log",
+        "sha256": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+        "passed": true,
+        "success_marker": "Graphics guest-write classification tests passed"
+      },
+      "test-rectlist-full-graphics.log": {
+        "private_local_path": "build/anyps5-winlibs-local/test-rectlist-full-graphics.log",
+        "sha256": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+        "passed": true,
+        "success_marker": "Graphics validation tests passed"
+      }
+    },
+    "host_test_limit": "These resource/graphics suites test production logic with explicit Vulkan adapters/mocks; they do not establish a real GPU game render."
+  },
+  "package": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "content_version": "01.000.000",
+    "manifest_matches_receipt": true,
+    "dependency_audit_passed": true,
+    "explicit_hle_dependencies": 47,
+    "missing_libraries": 0,
+    "unresolved_guest_imports": 0,
+    "unresolved_guest_nids": 0,
+    "unresolved_native_imports": 0,
+    "preparation_complete": true
+  },
+  "runtime": {
+    "sample_groups_enabled": true,
+    "native_signal_suspend_enabled": true,
+    "async_avx_preservation_enabled": true,
+    "async_flags_preservation_enabled": true,
+    "veh_context_bridge_enabled": true,
+    "normal_memory_tracking": true
+  },
+  "observations": {
+    "gpu": "Apple M2 GPU",
+    "swapchain_created": true,
+    "swapchain_extent": [
+      768,
+      432
+    ],
+    "swapchain_images": 3,
+    "bad_alloc_log_matches": 0,
+    "fatal_log_marker_matches": 0,
+    "former_pair_guard_log_matches": 0,
+    "former_msaa_enable_guard_log_matches": 0,
+    "unique_graphics_rejections": 1,
+    "skipped_draw_log_records": 1,
+    "remaining_rejection": "AGC graphics: SPIR-V refers to an unknown type",
+    "remaining_rejection_log_line": 13669,
+    "scope": "Absence of earlier guard messages in this bounded run is progress, not completed resolve or successful visible game rendering."
+  },
+  "visual_review": {
+    "reviewer": "coordinating_root_agent",
+    "status": "white_game_surface_with_controls",
+    "private_capture_path": "build/pr1-port/solitaire-build47-rectlist-resolve-runtime/screen-35.png",
+    "private_capture_sha256": "e936b94c34c9b193eca0cd4dff14a778f35a7ff8e316aed47030be3574c304cd",
+    "pixels_published": false,
+    "gameplay_qualified": false
+  },
+  "helper_completion": {
+    "message": "Wine finished after 23.5s",
+    "log_line": 16746,
+    "subsequent_log_lines": 8361,
+    "videoout_activity_after_message": true,
+    "guest_exit_code_observed": false,
+    "clean_guest_exit_qualified": false,
+    "note": "The early-detach/helper message is followed by continued runtime activity and does not establish game exit."
+  },
+  "restoration": {
+    "runtime_hash_restored": true,
+    "config_and_library_byte_preserved": true,
+    "own_processes_closed": true,
+    "original_and_restored_manifest_byte_equal": true,
+    "receipt_test_operation_duration_seconds": 72.941613208
+  },
+  "next_step": {
+    "status": "type_validator_repair_in_progress_not_device_qualified",
+    "diagnosis_from_coordinator": "The resolve fragment directly declares an OpTypeImage omitted by the current conservative SPIR-V type parser. The log directly establishes the unknown-type rejection; source repair and new device verification are separate work."
+  },
+  "limits": [
+    "No playable game scene, audio correctness, input behavior, saves, stable presentation timing or FPS qualification.",
+    "The isolated resolve GPU probe is separate and does not prove complete Driver/ColorResolve or guest memory behavior.",
+    "The previous lifecycle45/as-built44 records remain unchanged and describe their original packages."
+  ],
+  "privacy": "No private guest binary, shader code, assets, pixels, pairing data or device identifiers are published."
+}

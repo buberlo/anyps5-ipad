@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "scope": "production exact uncompressed S8 sample upload/readback with existing combined depth preserved; pending guest renderer integration and GPU qualification",
+  "layout": {
+    "samples": [
+      2,
+      4,
+      8
+    ],
+    "native_samples_max": 4,
+    "combined_formats": [
+      "D16_UNORM_S8_UINT",
+      "D32_SFLOAT_S8_UINT"
+    ],
+    "logical_layer": "i/nativeSamples",
+    "native_sample": "i%nativeSamples",
+    "packing": "S8 bytes in ((y*width+x)*samples+i) order, round up to four bytes; preserve output last-word unused bytes"
+  },
+  "upload": "stencil-aspect-only zero clear; eight fragment-discard bitplane draws per logical sample; native sample-mask pipeline per group/sample; dynamic one-bit stencil write mask and passOp REPLACE reference255",
+  "depth_preservation": "depthTest/depthWrite disabled, depth attachment LOAD/STORE; transitions reject UNDEFINED and include both DS aspects and unchanged per-layer sample positions",
+  "readback": "compute unsigned stencil-only texture2DMSArray fetch; each invocation packs one disjoint output uint, preserves partial-word padding",
+  "synchronization": "explicit queue-local image and buffer stage/access states; immutable retained descriptor pools; caller fence lifetime",
+  "native_contract": {
+    "production_source": "StencilSampleTransfer.cpp",
+    "instrumentation": [
+      "ASan",
+      "UBSan"
+    ],
+    "layouts": 6,
+    "rejections_and_failure_unwinds": 234,
+    "errors": 0,
+    "checks": [
+      "descriptor isolation",
+      "per-layer sample-location pNext chains",
+      "stencil-only clear",
+      "depth LOAD/STORE",
+      "bitplane/native-sample routing",
+      "zero leaked handles"
+    ],
+    "scope": "deterministic Vulkan API adapter, not GPU results"
+  },
+  "shaders": {
+    "original": true,
+    "production_count": 3,
+    "independent_depth_probe_count": 1,
+    "validation": "glslangValidator and spirv-val for Vulkan1.1; production output matches embedded SPIR-V"
+  },
+  "windows_probe": {
+    "built": true,
+    "executed_here": false,
+    "exe_sha256": "12a72d0be3ce7ede546d010fb51c371ddad60f501c05c915a24c87d9283618c7",
+    "manifest_sha256": "ae421abe0aac04ccb32ced619b47469f9affdb5995b4d1db17589670fe654ac3",
+    "cases": 6,
+    "extent": [
+      17,
+      19
+    ],
+    "s8_sample_bytes": 9044,
+    "depth_sample_checks": 9044,
+    "s8_values": 256,
+    "includes": [
+      "separate buffers",
+      "alias with post-upload source erasure",
+      "prefix/suffix guards",
+      "partial final-word padding",
+      "unchanged D32 depth0.625"
+    ]
+  },
+  "limitations": [
+    "raw image and view metadata/lifetimes remain caller prerequisites",
+    "no Z plane import/export or depth-consuming guest draws",
+    "no compressed stencil/HTILE decode",
+    "fixed 1x1 guest sample pattern only",
+    "not connected to production guest rendering by this patch"
+  ],
+  "patch": {
+    "path": "patches/anyps5/0044-stencil-sample-gpu-transfer.patch",
+    "sha256": "6e30f78c66984d86f9b74cb7feae2d0fe102f180eb7020d18bab5f7aa88154eb"
+  },
+  "sources": {
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp": "2c5e7ef4887eb53e09e7f7070fdba7eae1ec80ca564e256ba95ee6b1be550b20",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/StencilSampleTransfer.cpp": "0e153882d5fc2abb987eaee48299fd5ba0fcadff842ae9803258226fac6e2fa1",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleUpload.frag": "9df9b045c6e7f19bdcec0bd76f3f03e9263e806314f55b04ee875d524f26da8c",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleReadback.comp": "7b9efd81d2dd72a3c1fc84c30271343a139696e45e4a83df0500279d3c59977c",
+    "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/shaders/StencilSampleTransfer_spv.h": "8b523a80555cc5d6704a18db3f83d7758b35a476b7d531c8f45a990e27210270"
+  },
+  "references": [
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkSampleLocationsInfoEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkRenderPassSampleLocationsBeginInfoEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdClearDepthStencilImage.html"
+  ]
+}

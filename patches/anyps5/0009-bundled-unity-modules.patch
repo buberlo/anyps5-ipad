@@ -1,8 +1,8 @@
 diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-index f82baec8..b0842e15 100644
+index 7dd28aba..9649c01f 100644
 --- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
 +++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
-@@ -21,10 +21,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -23,10 +23,14 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
      const bool hasPlural = std::filesystem::exists(plural);
      const bool hasPrx = std::filesystem::exists(prx);
      if (hasSingular && hasPlural) throw Domain::RelinkerException("Both sce_module and sce_modules exist beside the input executable");
@@ -18,7 +18,7 @@ index f82baec8..b0842e15 100644
      std::vector<std::filesystem::path> paths;
      std::set<std::string> unmatchedExclusions = excludedModules;
      const auto isElf = [](const std::filesystem::path& path) {
-@@ -236,12 +240,8 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -260,12 +264,8 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
      };
      for (const auto index : order) if (!windows) addNeeded("$ORIGIN/app0/" + images[index].SourcePath.parent_path().lexically_relative(root).generic_string() + "/" + images[index].OutputName);
      for (const auto& name : hostLibraries) addNeeded(name);
@@ -33,7 +33,7 @@ index f82baec8..b0842e15 100644
      std::vector<GuestArtifact> artifacts;
      for (const auto index : order) {
          const auto& image = images[index];
-@@ -258,6 +258,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
+@@ -282,6 +282,11 @@ std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path
          std::vector<std::uint8_t> output;
          if (windows) output = Elfpatcher::GuestModuleWriter().WriteWindows(image, runtime);
          else {

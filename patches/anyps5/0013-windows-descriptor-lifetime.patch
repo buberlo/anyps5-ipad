@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libkernel/File/src/Open.cpp b/core/libs/prx/libkernel/File/src/Open.cpp
-index 807fd4bb..8f7e237a 100644
+index 2e323a8d..a4c98627 100644
 --- a/core/libs/prx/libkernel/File/src/Open.cpp
 +++ b/core/libs/prx/libkernel/File/src/Open.cpp
 @@ -13,11 +13,43 @@
@@ -48,10 +48,10 @@ index 807fd4bb..8f7e237a 100644
  static std::int64_t NativeLseek(int fd, std::int64_t offset, int whence) {
      return ::_lseeki64(fd, offset, whence);
 diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index 910c7cbf..13f9b7c8 100644
+index 90c789fc..01f79739 100644
 --- a/core/libs/prx/libkernel/File/src/Stdio.cpp
 +++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
-@@ -65,7 +65,7 @@ static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
+@@ -86,7 +86,7 @@ static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
          constexpr std::int64_t epoch = 11644473600LL;
          if (times[i].tv_usec < 0 || times[i].tv_usec >= 1000000 || times[i].tv_sec < -epoch ||
              times[i].tv_sec > static_cast<std::int64_t>(INT64_MAX / 10000000ULL) - epoch) {
@@ -60,10 +60,10 @@ index 910c7cbf..13f9b7c8 100644
          }
          const std::uint64_t ticks = static_cast<std::uint64_t>(times[i].tv_sec + epoch) * 10000000ULL +
              static_cast<std::uint64_t>(times[i].tv_usec) * 10ULL;
-@@ -87,7 +87,16 @@ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
-     if (descriptor < 0) { errno = EBADF; return -1; }
+@@ -110,7 +110,16 @@ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
      HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
      if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
+     if (const auto path = NativeDescriptorPath(descriptor); path) RecordWrittenPath_nid_no_patch(*path);
 -    return NativeSetTimes(handle, times);
 +    const int direct = NativeSetTimes(handle, times);
 +    if (direct == 0 || GetLastError() != ERROR_ACCESS_DENIED) return direct;
@@ -78,20 +78,16 @@ index 910c7cbf..13f9b7c8 100644
  }
  static int NativeFchmod(int descriptor, std::uint16_t mode) {
      if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
-@@ -95,17 +104,24 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
-     if (descriptor < 0) { errno = EBADF; return -1; }
+@@ -119,13 +128,24 @@ static int NativeFchmod(int descriptor, std::uint16_t mode) {
      HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
      if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
+     if (const auto path = NativeDescriptorPath(descriptor); path) RecordWrittenPath_nid_no_patch(*path);
 -    FILE_BASIC_INFO basic{};
 -    if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
 -    if (mode & _S_IWRITE) basic.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
 -    else basic.FileAttributes |= FILE_ATTRIBUTE_READONLY;
 -    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
 -    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
--}
--static int NativeFutimes(int descriptor, const KernelTimeval* times) {
--    const auto path = NativeDescriptorPath(descriptor);
--    return path ? NativeUtimes(*path, times) : -1;
 +    const auto apply = [&](HANDLE target) {
 +        FILE_BASIC_INFO basic{};
 +        if (!GetFileInformationByHandleEx(target, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();

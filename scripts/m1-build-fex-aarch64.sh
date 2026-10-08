@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the pinned FEX fork (ios-port-2607) for aarch64 Linux.
+# Build the pinned FEX monthly release with the local iOS port for aarch64 Linux.
 # On aarch64 this is a native Clang build. Elsewhere it cross-compiles
 # with scripts/cmake/aarch64-linux-gnu-clang.cmake and -DTUNE_CPU=cortex-a78.
 # Clang is required; FEX rejects GCC. This is the slim FEX configuration

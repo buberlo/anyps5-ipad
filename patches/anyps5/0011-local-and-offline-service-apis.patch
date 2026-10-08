@@ -1,8 +1,8 @@
 diff --git a/core/libs/CMakeLists.txt b/core/libs/CMakeLists.txt
-index f6c6df5e..117288bf 100644
+index 880bf340..bd35bc69 100644
 --- a/core/libs/CMakeLists.txt
 +++ b/core/libs/CMakeLists.txt
-@@ -199,3 +199,16 @@ if(BUILD_TESTING)
+@@ -202,3 +202,16 @@ if(BUILD_TESTING)
              "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceSaveData.native>")
      endif()
  endif()
@@ -108,7 +108,7 @@ index dff923fb..ee1ef648 100644
 +    endif()
 +endif()
 diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
-index 8a544709..3449fd83 100644
+index 0b65d4fd..4e5baaee 100644
 --- a/core/libs/prx/libSceJson2/Export.cpp
 +++ b/core/libs/prx/libSceJson2/Export.cpp
 @@ -5,6 +5,9 @@
@@ -498,7 +498,7 @@ index 8a544709..3449fd83 100644
 +    self->context = userData;
  }
  
- int APS5_VABI _ZN3sce4Json5Value5clearEv(void) {
+ void APS5_VABI _ZN3sce4Json5Value5clearEv(Value* self) {
 diff --git a/core/libs/prx/libSceMsgDialog.native/Export.cpp b/core/libs/prx/libSceMsgDialog.native/Export.cpp
 index edb76df0..5882e295 100644
 --- a/core/libs/prx/libSceMsgDialog.native/Export.cpp
@@ -972,38 +972,27 @@ index af435d9a..5ff897c9 100644
  
  APS5_EXPORT("kP2L8t3j-aM", sceVideoOutUnknown00);
 diff --git a/core/libs/prx/libkernel/File/src/Stdio.cpp b/core/libs/prx/libkernel/File/src/Stdio.cpp
-index d1aaae10..910c7cbf 100644
+index 3c5d7e71..90c789fc 100644
 --- a/core/libs/prx/libkernel/File/src/Stdio.cpp
 +++ b/core/libs/prx/libkernel/File/src/Stdio.cpp
-@@ -45,37 +45,62 @@ static int NativeMkdir(const std::filesystem::path& path, std::uint16_t mode) {
- static int NativeChmod(const std::filesystem::path& path, int mode) {
-     return ::_wchmod(path.wstring().c_str(), mode);
+@@ -66,22 +66,65 @@ static std::optional<std::filesystem::path> NativeDescriptorPath(int descriptor)
+     path.resize(length);
+     return path;
  }
--static std::optional<std::filesystem::path> NativeDescriptorPath(int descriptor) {
--    if (auto directory = File::DirectoryDescriptorPath(descriptor)) return directory;
--    const auto handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
--    if (handle == INVALID_HANDLE_VALUE) {
--        errno = EBADF;
--        return std::nullopt;
--    }
--    std::wstring path(MAX_PATH, L'\0');
--    auto length = ::GetFinalPathNameByHandleW(handle, path.data(), static_cast<DWORD>(path.size()), FILE_NAME_NORMALIZED);
--    if (length >= path.size()) {
--        path.resize(length);
--        length = ::GetFinalPathNameByHandleW(handle, path.data(), length, FILE_NAME_NORMALIZED);
-+static int NativeFtruncate(int descriptor, std::int64_t length) {
-+    return static_cast<int>(::_chsize_s(descriptor, length));
-+}
+-static int NativeFchmod(int descriptor, int mode) {
+-    const auto path = NativeDescriptorPath(descriptor);
+-    return path ? NativeChmod(*path, mode) : -1;
+-}
+ static int NativeFtruncate(int descriptor, std::int64_t length) {
+     return static_cast<int>(::_chsize_s(descriptor, length));
+ }
 +static int NativeWindowsError() {
 +    switch (GetLastError()) {
 +    case ERROR_ACCESS_DENIED: errno = EACCES; break;
 +    case ERROR_INVALID_HANDLE: errno = EBADF; break;
 +    case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND: errno = ENOENT; break;
 +    default: errno = EIO; break;
-     }
--    if (length == 0 || length >= path.size()) {
--        errno = EINVAL;
--        return std::nullopt;
++    }
 +    return -1;
 +}
 +static int NativeSetTimes(HANDLE handle, const KernelTimeval* times) {
@@ -1019,15 +1008,14 @@ index d1aaae10..910c7cbf 100644
 +        const std::uint64_t ticks = static_cast<std::uint64_t>(times[i].tv_sec + epoch) * 10000000ULL +
 +            static_cast<std::uint64_t>(times[i].tv_usec) * 10ULL;
 +        values[i] = {static_cast<DWORD>(ticks), static_cast<DWORD>(ticks >> 32)};
-     }
--    path.resize(length);
--    return path;
++    }
 +    return SetFileTime(handle, nullptr, &values[0], &values[1]) ? 0 : NativeWindowsError();
- }
--static int NativeFchmod(int descriptor, int mode) {
--    const auto path = NativeDescriptorPath(descriptor);
--    return path ? NativeChmod(*path, mode) : -1;
-+static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
++}
+ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
+     RecordWrittenPath_nid_no_patch(path);
+-    if (times == nullptr) return ::_wutime(path.wstring().c_str(), nullptr);
+-    struct _utimbuf values{static_cast<time_t>(times[0].tv_sec), static_cast<time_t>(times[1].tv_sec)};
+-    return ::_wutime(path.wstring().c_str(), &values);
 +    HANDLE handle = CreateFileW(path.wstring().c_str(), FILE_WRITE_ATTRIBUTES,
 +        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 +    if (handle == INVALID_HANDLE_VALUE) return NativeWindowsError();
@@ -1036,25 +1024,23 @@ index d1aaae10..910c7cbf 100644
 +    CloseHandle(handle); errno = saved;
 +    return result;
  }
--static int NativeFtruncate(int descriptor, std::int64_t length) {
--    return static_cast<int>(::_chsize_s(descriptor, length));
-+static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+ static int NativeFutimes(int descriptor, const KernelTimeval* times) {
+-    const auto path = NativeDescriptorPath(descriptor);
+-    return path ? NativeUtimes(*path, times) : -1;
 +    if (const auto path = File::DirectoryDescriptorPath(descriptor); path) return NativeUtimes(*path, times);
 +    if (descriptor < 0) { errno = EBADF; return -1; }
 +    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
 +    if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
++    if (const auto path = NativeDescriptorPath(descriptor); path) RecordWrittenPath_nid_no_patch(*path);
 +    return NativeSetTimes(handle, times);
- }
--static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval* times) {
--    if (times == nullptr) return ::_wutime(path.wstring().c_str(), nullptr);
--    struct _utimbuf values{static_cast<time_t>(times[0].tv_sec), static_cast<time_t>(times[1].tv_sec)};
--    return ::_wutime(path.wstring().c_str(), &values);
++}
 +static int NativeFchmod(int descriptor, std::uint16_t mode) {
 +    if (const auto path = File::DirectoryDescriptorPath(descriptor); path)
 +        return NativeChmod(*path, mode & (_S_IREAD | _S_IWRITE));
 +    if (descriptor < 0) { errno = EBADF; return -1; }
 +    HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
 +    if (handle == INVALID_HANDLE_VALUE) { errno = EBADF; return -1; }
++    if (const auto path = NativeDescriptorPath(descriptor); path) RecordWrittenPath_nid_no_patch(*path);
 +    FILE_BASIC_INFO basic{};
 +    if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &basic, sizeof(basic))) return NativeWindowsError();
 +    if (mode & _S_IWRITE) basic.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
@@ -1062,9 +1048,9 @@ index d1aaae10..910c7cbf 100644
 +    if (!basic.FileAttributes) basic.FileAttributes = FILE_ATTRIBUTE_NORMAL;
 +    return SetFileInformationByHandle(handle, FileBasicInfo, &basic, sizeof(basic)) ? 0 : NativeWindowsError();
  }
- static int NativeFutimes(int descriptor, const KernelTimeval* times) {
-     const auto path = NativeDescriptorPath(descriptor);
-@@ -173,6 +198,7 @@ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval*
+ static int NativeFlock(int descriptor, int operation) {
+     HANDLE handle = reinterpret_cast<HANDLE>(::_get_osfhandle(descriptor));
+@@ -175,6 +218,7 @@ static int NativeUtimes(const std::filesystem::path& path, const KernelTimeval*
  }
  static int NativeFutimes(int descriptor, const KernelTimeval* times) {
      if (times == nullptr) return ::futimes(descriptor, nullptr);
@@ -1072,7 +1058,7 @@ index d1aaae10..910c7cbf 100644
      struct timeval values[2]{{static_cast<time_t>(times[0].tv_sec), static_cast<suseconds_t>(times[0].tv_usec)},
          {static_cast<time_t>(times[1].tv_sec), static_cast<suseconds_t>(times[1].tv_usec)}};
      return ::futimes(descriptor, values);
-@@ -708,6 +734,7 @@ int APS5_VABI futimes_nid_postfix(int d, const KernelTimeval* times) {
+@@ -717,6 +761,7 @@ int APS5_VABI futimes_nid_postfix(int d, const KernelTimeval* times) {
  int APS5_VABI fsync_nid_postfix(int fd) {
      if (sceKernelFsync(fd) != 0) return PosixFailure(errno);
      return 0;
@@ -1297,10 +1283,10 @@ index 8c4c425e..78681f28 100644
      Require(!std::filesystem::exists(root));
  }
 diff --git a/core/libs/tests/GuestJson.cpp b/core/libs/tests/GuestJson.cpp
-index a9756e5e..463f3707 100644
+index 7c4c4ad6..001d3c9e 100644
 --- a/core/libs/tests/GuestJson.cpp
 +++ b/core/libs/tests/GuestJson.cpp
-@@ -345,11 +345,17 @@ static void ValueAccess() {
+@@ -346,11 +346,17 @@ static void ValueAccess() {
      _ZN3sce4Json14InitParameter2C1Ev(parameter);
      int allocator = 0;
      int userData = 0;

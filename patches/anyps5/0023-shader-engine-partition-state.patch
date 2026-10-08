@@ -14,10 +14,10 @@ index 959031d3..cc1052bc 100644
  constexpr std::uint32_t ScreenOffsetMask = ~0x01ff01ffu;
  // Bits 26/27 (ZCLIP_NEAR/FAR_DISABLE) become depth clamping; bit 19 selects the [0, 1] clip space.
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index 29e3ea5c..f7acd760 100644
+index 9e2bdf6b..02b3fc36 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -287,6 +287,21 @@ void srgb8TargetTests() {
+@@ -288,6 +288,21 @@ void srgb8TargetTests() {
      setProxyVariable("");
  }
  
@@ -39,7 +39,7 @@ index 29e3ea5c..f7acd760 100644
  void hardwareScreenOffsetTests() {
      auto queue = makeState();
      queue.context[0x90] = 0x80010003;
-@@ -2251,7 +2266,7 @@ void vertexCopyTests() {
+@@ -2280,7 +2295,7 @@ void vertexCopyTests() {
      }
  }
  
@@ -48,7 +48,7 @@ index 29e3ea5c..f7acd760 100644
  #ifdef _WIN32
      _putenv_s("APS5_PIN_WAIT_MS", "200");
  #else
-@@ -2289,8 +2304,13 @@ int main() {
+@@ -2318,8 +2333,13 @@ int main() {
              AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
          }
          stateTests();

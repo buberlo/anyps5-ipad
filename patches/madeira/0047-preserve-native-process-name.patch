@@ -1,0 +1,25 @@
+diff --git a/build/ntdll-unix/env_ios.c b/build/ntdll-unix/env_ios.c
+--- a/build/ntdll-unix/env_ios.c
++++ b/build/ntdll-unix/env_ios.c
+@@ -497,6 +497,13 @@
+  */
+ static void set_process_name( const char *name )
+ {
++#ifdef WINE_IOS
++    /* The Wine session shares the UIKit host process. Darwin setprogname
++     * retains its argument rather than copying it; WineProcessBridge's argv
++     * may refer to a Wine thread's stack, which is released at session exit.
++     * Keep the original app name valid for later libc/XPC/UIKit callbacks. */
++    (void)name;
++#else
+     char *p;
+ 
+ #ifdef HAVE_SETPROCTITLE
+@@ -513,6 +520,7 @@
+ #endif
+     prctl( PR_SET_NAME, name );
+ #endif
++#endif /* WINE_IOS */
+ }
+ 
+ 

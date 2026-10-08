@@ -1,5 +1,5 @@
 diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
-index 755ba869..a27390c1 100644
+index 19052014..adb9c4c6 100644
 --- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
 @@ -25,6 +25,14 @@
@@ -26,7 +26,7 @@ index 755ba869..a27390c1 100644
  #include <spirv/unified1/spirv.hpp>
  #include <array>
  #include <optional>
-@@ -563,13 +569,36 @@ struct VulkanDevice::State {
+@@ -564,13 +570,36 @@ struct VulkanDevice::State {
              reinterpret_cast<PFN_vkDestroyInstance>(instanceProc(instance, "vkDestroyInstance"))(instance, nullptr);
          }
          if (library != nullptr) {
@@ -63,7 +63,7 @@ index 755ba869..a27390c1 100644
  #ifdef _WIN32
      state->library = SDL_LoadObject("vulkan-1.dll");
  #else
-@@ -578,8 +607,9 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -579,8 +608,9 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      if (state->library == nullptr) {
          throw std::runtime_error(std::string("Vulkan loader: ") + SDL_GetError());
      }
@@ -74,7 +74,7 @@ index 755ba869..a27390c1 100644
      if (state->instanceProc == nullptr) {
          throw std::runtime_error("Vulkan loader: vkGetInstanceProcAddr missing");
      }
-@@ -611,6 +641,23 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -612,6 +642,23 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          create.enabledExtensionCount = static_cast<std::uint32_t>(instanceExtensions.size());
          create.ppEnabledExtensionNames = instanceExtensions.data();
      }
@@ -98,7 +98,7 @@ index 755ba869..a27390c1 100644
      check(state->InstanceFunction<PFN_vkCreateInstance>("vkCreateInstance")(&create, nullptr, &state->instance), "vkCreateInstance");
      APS5_LOG_OUT("Vulkan instance created instance=%p", reinterpret_cast<void*>(state->instance));
      if (window != nullptr) {
-@@ -750,6 +797,10 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -751,6 +798,10 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
          state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &features);
          state->fragmentShaderBarycentric = barycentricFeatures.fragmentShaderBarycentric == VK_TRUE;
      }
@@ -109,8 +109,8 @@ index 755ba869..a27390c1 100644
      VkPhysicalDeviceShaderClockFeaturesKHR clockFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR};
      if (hasExtension(VK_KHR_SHADER_CLOCK_EXTENSION_NAME)) {
          VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &clockFeatures};
-@@ -776,7 +827,10 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
-     const bool bufferInt64Atomics = atomicInt64Features.shaderBufferInt64Atomics == VK_TRUE;
+@@ -778,7 +829,10 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+     if (bufferInt64Atomics) state->capabilities.push_back(spv::CapabilityInt64Atomics);
      atomicInt64Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR};
      atomicInt64Features.shaderBufferInt64Atomics = VK_TRUE;
 -    if (bufferInt64Atomics) deviceExtensions.push_back(VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME);
@@ -121,7 +121,7 @@ index 755ba869..a27390c1 100644
      VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT imageAtomicInt64Features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT};
      if (hasExtension(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME)) {
          VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &imageAtomicInt64Features};
-@@ -901,7 +955,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -903,7 +957,7 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      enabled.tessellationShader = available.tessellationShader;
      state->tessellationShader = enabled.tessellationShader == VK_TRUE;
      if (state->tessellationShader) state->capabilities.push_back(3);
@@ -130,7 +130,7 @@ index 755ba869..a27390c1 100644
      require(available.samplerAnisotropy && available.textureCompressionBC, "device lacks sampler anisotropy or BC texture compression support required for texture sampling");
      enabled.samplerAnisotropy = VK_TRUE;
      enabled.textureCompressionBC = VK_TRUE;
-@@ -1066,6 +1120,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
+@@ -1068,6 +1122,13 @@ VulkanDevice::VulkanDevice(const PresentationWindow* window) : state(std::make_u
      }
      bdaFeatures.pNext = &byteFeatures;
      deviceInfo.pNext = &bdaFeatures;

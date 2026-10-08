@@ -20,6 +20,31 @@ endif()
 function(add_test_executable target)
     add_executable(${target} ${ARGN})
 endfunction()
+function(configure_windows_unwind target)
+    # Match the full project's fixture helper. No Windows unwind section exists
+    # in the native Mach-O/ELF host-tools build.
+    if(MINGW)
+        if(NOT EXISTS "${CMAKE_OBJCOPY}")
+            message(FATAL_ERROR "Windows DWARF unwinding requires objcopy")
+        endif()
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND "${CMAKE_OBJCOPY}" --rename-section .eh_frame=.ehfram "$<TARGET_FILE:${target}>"
+            VERBATIM)
+    endif()
+endfunction()
+# The full project publishes this catalog from core/libs before configuring
+# the relinker. Derive the same directory catalog without building guest HLE
+# or its SDL/FFmpeg dependencies in this native host-tools project.
+set(ANYPS5_REPLACEMENT_MODULES libc.prx)
+file(GLOB module_dirs LIST_DIRECTORIES true "${ANYPS5_SOURCE}/core/libs/prx/*")
+foreach(module_dir IN LISTS module_dirs)
+    if(IS_DIRECTORY "${module_dir}")
+        get_filename_component(module_name "${module_dir}" NAME)
+        if(NOT module_name STREQUAL "libc")
+            list(APPEND ANYPS5_REPLACEMENT_MODULES "${module_name}.prx")
+        endif()
+    endif()
+endforeach()
 add_subdirectory("${ANYPS5_SOURCE}/core/relinker" relinker)
 file(GLOB nid_sources "${ANYPS5_SOURCE}/core/libs/nid/src/*.cpp")
 add_executable(nid_patcher ${nid_sources})

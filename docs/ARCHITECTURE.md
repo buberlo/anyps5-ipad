@@ -44,7 +44,8 @@ is used instead. The iPad runs the Windows PE, so it hits the Windows arena.
 `FEXBridge.mm` uses the same `JIT_PAGE_SIZE`. That match is real; it does
 not by itself make the arena fit.
 
-**FEX** (`willfaust/FEX`, branch `ios-port-2607`) translates the PE's x86-64
+**FEX** (official `FEX-2610`, with the reconciled Madeira iOS port in
+`patches/fex/`) translates the PE's x86-64
 code. Apple A-series and M-series cores have NEON and do not implement SVE.
 In this tree `GetGuestVectorLength()` returns 256-bit only when both
 `SupportsAVX` and `SupportsSVE256` are set. With SVE off, AVX and AVX2 stay

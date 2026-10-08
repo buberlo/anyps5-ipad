@@ -6,8 +6,7 @@
 	url = https://github.com/willfaust/Madeira.git
 [submodule "upstreams/FEX"]
 	path = upstreams/FEX
-	url = https://github.com/willfaust/FEX.git
-	branch = ios-port-2607
+	url = https://github.com/FEX-Emu/FEX.git
 [submodule "upstreams/wine"]
 	path = upstreams/wine
 	url = https://github.com/willfaust/wine.git

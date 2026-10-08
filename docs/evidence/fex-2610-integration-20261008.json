@@ -1,0 +1,329 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "official_fex_2610_integration_and_bounded_ipad_checks",
+  "source_heads_observed_at": "2026-10-08T09:34:14.553562+00:00",
+  "source_pins": {
+    "AnyPS5": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "FEX": "14c92681f4d62cf84d901460e0358de09c8847a7",
+    "Madeira": "48f976429c189f8396e23d251d8a82f43c705922",
+    "wine": "257f271cfffed9f22f7987cac53bc00095d092fe",
+    "MoltenVK": "67b2682699d7903606b97a0392061d85d27d49e6"
+  },
+  "fex_release": "FEX-2610",
+  "fex_port_lineage": "3bec2ac498bf78156ab47c0c194b0e8cb2849756",
+  "rpmalloc_release_pin": "09142d726429416bfa7b459151515fe3ab7622dd",
+  "pristine_patch_validation": {
+    "fex_and_rpmalloc": {
+      "schema": 1,
+      "paths_checked": 101,
+      "forward_applied": true,
+      "matches_built_source": true,
+      "matches_public_checkout": true,
+      "reverse_restores_pristine": true
+    },
+    "anyps5": {
+      "schema": 1,
+      "paths_checked": 70,
+      "patches": 33,
+      "forward_applied": true,
+      "matches_reviewed_source": true,
+      "matches_public_checkout": true,
+      "reverse_restores_pristine": true
+    }
+  },
+  "host_checks": {
+    "native_relinker_tests_passed": 32,
+    "native_relinker_tests_failed": 0,
+    "production_interpolation_cases_passed": 111,
+    "asan_ubsan_hle_contract_groups_passed": 4,
+    "fex_darwin_directory_and_entropy_contracts": "passed",
+    "native_pe_exception_layout": "passed",
+    "native_process_name_lifetime": {
+      "before": "original production function fails regression",
+      "after": "actual patched production function passes eight expired stack/heap argv sets with ASan/UBSan"
+    }
+  },
+  "built_components": {
+    "fex_arm64ec_dll": {
+      "bytes": 5865472,
+      "sha256": "1232184daa17913cfdcaca2e4d353b2293368d9195ca077dca533345a2b42d3e"
+    },
+    "fex_wow64_dll": {
+      "bytes": 5259264,
+      "sha256": "03c82c4eb3c11cdd8a8a116d64440ced1dab4ac1f2a71f715db3563970f40679"
+    },
+    "native_fex_core": {
+      "bytes": 5045504,
+      "sha256": "143661619000d1e3553ec9cf01f59795662b0ea1c33a822f9db897f7837d217b"
+    },
+    "native_fex_base": {
+      "bytes": 281816,
+      "sha256": "46bbab2c3b9a3b08daea15641612aedf101638e4549b806eeb3205ba5b5c5c1c"
+    },
+    "native_fex_jemalloc": {
+      "bytes": 9184,
+      "sha256": "67e08d97ed8e5bef7fe34e11bdf75604771b073ab2a4259e7e981f61e314500e"
+    },
+    "moltenvk_ios_archive": {
+      "bytes": 7063776,
+      "sha256": "2a2ef8c70bd7cdf6744daf4f0b5eb3bb425324307ef923cb3f4a0b3222513d84"
+    },
+    "app47_macho": {
+      "bytes": 32266416,
+      "sha256": "933ef8e0a864229e76000c81880452d6c7ea2a0496418cd933b693199343c36a"
+    },
+    "native_ntdll_archive": {
+      "bytes": 2155200,
+      "sha256": "902955f7d71c8d0c48c4e034da4fa4b7a54c68f34020655203e0add3aee83f21"
+    }
+  },
+  "installed": {
+    "app_name": "madeira-anyps5",
+    "version": "0.1.9",
+    "build": 47,
+    "bundle_id": "com.buberlo.anyps5ipad",
+    "device": "iPad Air 13-inch M2",
+    "os": "iPadOS 27.0.1",
+    "jit_method": "builtIn",
+    "jit_pool_mib_for_probes": 512,
+    "configuration_preserved": true,
+    "library_preserved": true,
+    "new_anyps5_hle_built_and_installed": false
+  },
+  "device_checks": [
+    {
+      "app_build": 44,
+      "kind": "pending_upper_avx_at_protected_fault",
+      "cases": 6,
+      "faults": 6,
+      "errors": 0,
+      "snapshot_errors": 0,
+      "query_errors": 0,
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "c9bed224dff3dbf809aff262ef413b65daac9b0b2a7f899de51c75d965a86957",
+      "probe_sha256": "f1241d06d3463102a6ce9e8355b7e0ca284f18b6bb14839249e537d592285565",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 44,
+      "kind": "nested_protected_stores",
+      "cases": 24,
+      "faults": 24,
+      "nested_faults": 12,
+      "rejected_requests": 108,
+      "errors": 0,
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "84b2dbcb2bca42aea30a0ea2202e3593282545022826d7b9ded72c1454eed8bf",
+      "probe_sha256": "f89abbf4a5b69ce3b35e5fd6a19bdec8722c351c20ab43b17507adc70e7184d2",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 44,
+      "kind": "cross_page_protected_stores",
+      "cases": 153,
+      "faults": 153,
+      "errors": 0,
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "101a268acde2d2514b9c0f14fbca4e8cecdca7c1009b1d0ab9627c19be386fe0",
+      "probe_sha256": "27a36dc0f7c3fb4c697e75aa35005e01c47d7cd457e6dee1f550f471e27af206",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 44,
+      "kind": "safe_self_read",
+      "cases": 13,
+      "failures": 0,
+      "exception_callbacks": 0,
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "d30afbd59ebe00db2105296c5c2cfac3f1701bfc46ca535cea22a392bc9b9b58",
+      "probe_sha256": "90b522c89eeb310349a3364f07d5fdfc68d30a4f793fd3befd2a0552791455fd",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 45,
+      "kind": "asynchronous_exception_delivery",
+      "deliveries": 543,
+      "avx": "verified",
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "25289fc499d903a05b677d296d6e84b16ae07abe2e43b559f522df4a07f26deb",
+      "probe_sha256": "f5033110f9c3856700ad70f10d584df07beded4507c44cfac6a9da1f23026a78",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 45,
+      "kind": "pipe_read_plain_writable_buffer",
+      "worker_start_and_wait_ms": 18,
+      "result": "passed",
+      "wine_exit_code": 0,
+      "log_sha256": "6054f6bfe7197796d99f9e4adb798aa5116a9e865c0cf7b279efae3bc7834933",
+      "probe_sha256": "eae5f1aace73ef8191c3d32ba38f2d8702d132ae2ba54bc51db3e30d74657e89",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 43,
+      "kind": "pipe_read_executed_code_page",
+      "result": "failed_bounded_probe",
+      "observation": "stalled before worker creation",
+      "probe_sha256": "eae5f1aace73ef8191c3d32ba38f2d8702d132ae2ba54bc51db3e30d74657e89",
+      "log_sha256": "abe48f43020d12823618de077d4dd82dc7bfec367095c1a6798b88d509529757",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 46,
+      "kind": "pipe_read_executed_code_page",
+      "result": "failed_bounded_probe",
+      "observation": "worker executes old code and completes in 16 ms; pipe reply fails with errno 14",
+      "probe_sha256": "eae5f1aace73ef8191c3d32ba38f2d8702d132ae2ba54bc51db3e30d74657e89",
+      "log_sha256": "b5e7483dd1a24cea59432cb5b80253a1e6c6471b0532c2e77de0080616169c55",
+      "configuration_restored": true,
+      "library_restored": true
+    },
+    {
+      "app_build": 46,
+      "kind": "split_msaa_coverage_and_center_interpolation",
+      "result": "gpu_passed_native_post_exit_fault",
+      "values": 512,
+      "group_values": 1024,
+      "gpu_errors": 0,
+      "guest_exit_code": 0,
+      "post_exit_native_fault": "UIKit/XPC string duplication reads expired Wine argument storage; candidate cause confirmed by source lifetime contract, addressed by Madeira0047",
+      "log_sha256": "58511e951acb5ecb304edc46137dfa5e21a7658e3690b271a673982ead687666"
+    },
+    {
+      "app_build": 47,
+      "kind": "split_msaa_coverage_and_center_interpolation",
+      "run": "default-smoke",
+      "result": "passed_bounded_gpu_and_library_return",
+      "values": 512,
+      "group_values": 1024,
+      "partial_coverage_pixels": 33,
+      "gpu_errors": 0,
+      "guest_exit_code": 0,
+      "native_post_exit_string_faults": 0,
+      "expected_stikdebug_detach_breakpoints": 1,
+      "configuration_restored": true,
+      "library_restored": true,
+      "log_sha256": "d4adb97f86f4e072d64faf04a99983d2cc855b07320e4d499e05fa09fbe321a8",
+      "probe_sha256": "f14dcdb34f0fb81030455eb6b20250f28bf87ca6dacd3ee1f735d29c472fbc32"
+    },
+    {
+      "app_build": 47,
+      "kind": "split_msaa_coverage_and_center_interpolation",
+      "run": "default-repeat-smoke",
+      "result": "passed_bounded_gpu_and_library_return",
+      "values": 512,
+      "group_values": 1024,
+      "partial_coverage_pixels": 33,
+      "gpu_errors": 0,
+      "guest_exit_code": 0,
+      "native_post_exit_string_faults": 0,
+      "expected_stikdebug_detach_breakpoints": 1,
+      "configuration_restored": true,
+      "library_restored": true,
+      "log_sha256": "e0a8e3501f2770a3271f7d9a1b9e2874b7b75c7aabac2364a0a1b929429d3a36",
+      "probe_sha256": "f14dcdb34f0fb81030455eb6b20250f28bf87ca6dacd3ee1f735d29c472fbc32"
+    }
+  ],
+  "limits": [
+    "Bounded CPU/GPU probes do not qualify Solitaire rendering, audio, lifecycle or sustained frame rate.",
+    "FEX WOW64 adapter compiled but not run on device.",
+    "Native FEXBridge compiled with the new API; PE FEX is the tested execution path.",
+    "The final AnyPS5 source is not the installed game HLE package.",
+    "The split-MSAA rerun covers synthetic coverage and pixel-center interpolation only; eight-sample AGC renderer integration remains open.",
+    "Executable-page pipe read returns a native bad-address error despite concurrent worker progress; coordination with Wine remains open."
+  ],
+  "github_actions_used": false,
+  "patch_sha256": {
+    "fex": {
+      "0000-ios-port-2610.patch": "09c58730b1e9094cc90585ac38759ebc13fd8d8219aea750b80f51dc34778b5d",
+      "0001-rpmalloc-ios-port.patch": "1d27ab063ae3e6cd9e147e90f95c692a8cde63a474b57fb7aacb01410ceb8c59"
+    },
+    "madeira": {
+      "0003-winevulkan-moltenvk.patch": "d09048366f6a4ce74b9393c82e8fff71511c885364fff7bbfca5d652bc573690",
+      "0006-winevulkan-ios-integration.patch": "b68ee7d0dd97e133fa9c1a44e006dfc37858e76bbe3b75a6b4660e9c04bf05da",
+      "0007-anyps5-runtime-profile.patch": "d7a3a6a3a185882241c33e6c1688ee05f84370566653d1696b75e13f3bff8fc6",
+      "0014-vulkan-explicit-surface-scaling.patch": "8030749a10c9698d3bc4304124fb395de10737d31a573100b556a7bdf42dac36",
+      "0015-independent-session-logs-and-touch-default.patch": "fee89df01ba7ff59b2525033b01340a7e987d7b29630f0ada7b50049c408fa51",
+      "0017-verified-write-repair-progress.patch": "8b0025a570c51a4d05121f9ab4777c291cee92f715fa09f212929ccdd8a8d435",
+      "0018-vulkan-lifecycle-pause.patch": "749760c9732fe47a568a22e934f0558d0143177b1514bfa4bc10f448fe2aac69",
+      "0019-display-timing.patch": "c18bdee20c478587d8442c654d4837c973ac7e6747bb0a31538102fbef7b1325",
+      "0020-bounded-diagnostics.patch": "211fd7c81cb726044aa97aef2baa4b2f7dc1967079f2962bd10a369a81204d20",
+      "0021-display-hud-and-hidden-title.patch": "b78e75a1f250b687d65b3b8816590054fb6d093000dfc2ebaf25cb6ac4ac4e73",
+      "0022-display-tracking-capacity.patch": "9152faf3a6b04a5ff383476d91b3c5c479645715d9d2cb18525e2d875bb149a2",
+      "0023-quiet-measurement.patch": "b648168b9b91ec5f1683dabd0ec83d8fa3c322adcd30afd7a39b1838256dc2a5",
+      "0024-perf-report-memory.patch": "8c26c049a1220834b2aecfb91517af851f5d5960677373b5581fc46eb8cb232a",
+      "0025-audio-device-period.patch": "3b6a1878a5f470b41596051bb43f65bd5784cb14976bf929ab9f3f39113d8a69",
+      "0026-menu-app-identity.patch": "026cc3f456457b6f14ed44cb21bcc1d6559a942ecc046bb931d7376d4001faf8",
+      "0027-early-measurement-profile.patch": "3c4eaf31f4cf03e43a79a4f7596d8fc6e6afb5f372571b3a073ccd64929bf374",
+      "0028-menu-vulkan-lifecycle.patch": "fc2f9b182659da77fa3a7965388561146a2e4e53fdf6ee74b696032d2a905180",
+      "0029-atomic-write-fault-direction.patch": "7a100af53bb8f3da96ad0b44ab3a960d93102b39e3fb51bd7d472fc899fc44be",
+      "0030-config-diagnostic-build-version.patch": "c707b27132605ee6a5ad156657ded3e0c2f4d886faf2241ea26ce84b178be239",
+      "0031-live-argument-diagnostic-build-version.patch": "7df6000f59a0ca9d7246db0dfff488362b3a1ed90c7d3194299f049fa5f7958c",
+      "0032-block-diagnostic-build-version.patch": "5043acf1259f3e32af343f0c7a8c502a4b684b85154090c5fb15255402525aa9",
+      "0033-arithmetic-build-version.patch": "6578669e9545d971bf98896967a8e26e5ee446ffae593a3d90454b7365fcabce",
+      "0034-detach-lifecycle-build-version.patch": "091ef93b69fb378df572f4266dbfb7d83ab8bb2a29ce4eafb5987d7ed677943e",
+      "0035-capture-owner-build-version.patch": "877836880a5d8cc4614bde80dd7c6919a054e125446e9143d1fd8873ac904642",
+      "0036-redzone-build-version.patch": "a77492efc778d1c06d543151bd07a2d3f3fbb4f1a65f9a6846037acc1d2c824e",
+      "0037-target-published-x64-suspend.patch": "5d320aa703b61f30464a4598e79321a5b20f7b99cdcbda806ecd3418103be32b",
+      "0038-target-suspend-build-version.patch": "c597e8975557e2d80f934ac8de499b9d6a4384cf2402f5dbd4547d36cff93bb6",
+      "0039-query-reconstructed-guest-flags.patch": "ebb4e0566b7d2eeaf1411b5b4f0ec6edf2c74a0f01fdcfe3dd850e5947f55506",
+      "0040-async-flags-build-version.patch": "23382b3f64c01d12a1173172f682545400bd4e472f7df1546c618c72565ba255",
+      "0041-protected-store-guest-state.patch": "82b767691f5ce904f1427d64c465ce913ce8bd479635f653a47419336000f084",
+      "0042-protected-store-build-version.patch": "f0b034874401bd179b9d4c695d01b9d9fcf31bb06362666668060c95ded110e1",
+      "0043-fault-safe-self-process-reads.patch": "c30e3cdfb06d21398a4aed15bc0ba88ba516c228ce956accc387f76097d1d127",
+      "0044-safe-read-build-version.patch": "d2297e5bf7c07c994a0dec9e6fe9adf87c6926e6570d563404982765bcb944b7",
+      "0045-early-fex-block-limit.patch": "1eb2360ec191af4177b42e25755324b383fd6936d6a9b3fad59f006d17f9cc4a",
+      "0046-fex-2610-native-api.patch": "c76a2825be4b27bb4dab3a90e2b67b818f0cd30619e5c1a39ebb7c3c2a294ab1",
+      "0047-preserve-native-process-name.patch": "3f602fe112fbd824d6c08ce339aedab125822c5c7abb3af7a7fdd2e56af67314"
+    },
+    "anyps5": {
+      "0001-guest-arena-lazy.patch": "0031ba7a04d5bbdf41e343f26f084a3fee3487988b2ed7e8b312f76f6f954152",
+      "0002-vulkan-portability.patch": "5ff1c1d06e03f30c1d09f21b25be0d65829d0678b6c77aa42c9690647c9dc197",
+      "0003-mingw11-getthreaddescription.patch": "2193cc29db009114f4088972a2c453cb4855fed303a83d38bd64096405396934",
+      "0004-slim-vulkan-loader.patch": "4072658a96942ce53899ab6a1bd822cf43d1f2eb3c8918a6cd53b692fa067a80",
+      "0006-invariant-masked-shift.patch": "f77fe3f1382364370771936f8a959def66ccf0e7fc76232470efc0f104db5a40",
+      "0007-validated-fixed-function-interpolation.patch": "5822aef71868e01a5b365c973263d522d29b5f0fc239aa4859f7d3b21fecee0a",
+      "0008-capture-draw-before-source-validation.patch": "2b6597e59596c4057ed7d29f8f77c90bbd88e1f32f0a44bb965ef57b4ba4c409",
+      "0009-bundled-unity-modules.patch": "dd496b4de61af02455f288280ac2d9437835f7a0df82a3f99411a1d44bf486fb",
+      "0010-optional-frame-timing.patch": "9c63cec42ba1f4510ba46963e074f784bb9e176a8e95c5995a8193e087681a65",
+      "0011-local-and-offline-service-apis.patch": "2ee2b6fa311411474dca8bfb4004941abffab6e450a14f1a07f7c71556b348fd",
+      "0012-unsigned-conversion-overflow.patch": "7b833c941c684d3f77c4a97485fb8abf304494b194e96d46192cf3563a9ee14a",
+      "0013-windows-descriptor-lifetime.patch": "cc7e328fba9ce1ba0ef47282b13bb0ad4c50c1fc736d813868535d167bb2cab6",
+      "0014-three-swapchain-images.patch": "9635aa9fbb43cd1a4ae680d7623792f7ee9e7f605f1fe4b856df36d27685bfb6",
+      "0015-native-thread-stack-guards.patch": "fab52adcc92d9c7d8f3ba82bcd5c0a47c041bdb5e7bc160088b3c59f0ff817c8",
+      "0016-buffer-int64-atomics-diagnostic.patch": "03f2e346afe27da5c2591827e58026399e55ec9e2d9313d46d7aaa91b6d33b53",
+      "0017-pipeline-cache-hit-miss.patch": "7a2134b63aae8734fee1eee6f4c0eb320d91e3cdf78ef06f6c856338fdec854a",
+      "0018-flip-rate-frame-counters.patch": "13b4c375e857e9ddcb05811ed3b70119feab608a99a789dc0161ebbd5d2f55f3",
+      "0019-vblank-hz-60.patch": "876f46027a6147728857e60710e1e475928802ad853d686fa2aa31837ce273d8",
+      "0020-texture-cache-mib.patch": "87fc20ac922c408e94aeb90141eb155f9bd75f1dd2781c18d7bc9dc5295ff789",
+      "0021-log-flip-inflight.patch": "20d4338ced36045be8488e03e3109295d04f1bc0b736e6de7361eb0eb023adf5",
+      "0022-dword-aligned-shader-headers.patch": "0791a313a4c4cce0ebc88950dbd3e0f57cb41c9ac7b103a52417dfbd723a9b36",
+      "0023-shader-engine-partition-state.patch": "64156fcf3e973344899f24a277a6e861ba5b83b3cf2143a4db7b79a126b805e4",
+      "0024-equivalent-single-sample-stencil-clear.patch": "730b615101d411199d8159918399ccd04e00ae8c74628562d94d24eafaddce5e",
+      "0025-independent-texture-sample-interpolation.patch": "20958770b26632c61bf0797d3934d5a46e85b19dee473a00529805b9791a4d27",
+      "0026-fixed-function-discard-continuations.patch": "2be9b8d65e1a0b69d64dd0b01f32880c529cafd8514c4d4c6f3e4db95964622d",
+      "0027-equivalent-stencil-z-order.patch": "2dba5e12626d668aa8a72f48ba9efade3501119e35260bce4e7ce7087da0cb2b",
+      "0027-uniform-wave-branches.patch": "574726ac84b40303bba0190a3f1695468637cd1f062ad952d134c962ff6ebebb",
+      "0028-unobserved-viewport-depth.patch": "d079390ca5d13cfe052e34b090e204bad09dadd981cb89ca6e4d39fd18005380",
+      "0029-safe-wait-delivery-and-validation.patch": "fa0199fb24e5fd757987cc5ea198de59bb5eb12423423fd0fb3d74c2c9ce542e",
+      "0030-native-wait-exception-contracts.patch": "4d070b189c05fa805cf504c91e54c95ba8d214bec095501e569680da9fadb0f0",
+      "0031-preserve-async-avx-state.patch": "2ecce98796e3f1437f7fa0af86c75f031865663d7ce6735cd01f4e15d29a3f66",
+      "0032-preserve-async-integer-flags.patch": "6b720c8de5142ebc5286d13a565c9d39bf583cd21f910d532d91f973c21520d4",
+      "0033-protected-store-exception-state.patch": "352e9143eb47819a21e2d72792a038e22d5cde4074b4c58fdbdb0ecaae49b00c"
+    }
+  },
+  "historical_component_note": "Build44 used the first release adaptation; Build45 includes the final nonblocking-read callback fix. Builds46/47 use that same final PE FEX binary. Build47 adds the native process-name lifetime repair; native archives and app hashes above identify Build47, not prior app binaries."
+}

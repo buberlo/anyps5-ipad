@@ -37,10 +37,10 @@ index cc1052bc..5cbc379c 100644
      zero(cx, 0x002, 0x3c000000u, "depth mips (DB_DEPTH_VIEW MIP_LEVEL)");
      zero(cx, 0x010, 0x000f100cu, "multisampled, partially resident or mipmapped depth (DB_Z_INFO)");
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index f7acd760..4aa15799 100644
+index 02b3fc36..bc6ccbc0 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -588,6 +588,72 @@ void CompactedExportTests() {
+@@ -617,6 +617,72 @@ void CompactedExportTests() {
      Require(state.blends[1].colorWriteMask == 0 && !state.blends[1].blendEnable && state.blends[2].blendEnable, "the write-masked export 1 was not left unused");
  }
  
@@ -113,7 +113,7 @@ index f7acd760..4aa15799 100644
  void DepthStencilTests() {
      auto queue = makeState();
      queue.context[0x000] = 0;
-@@ -2305,12 +2371,19 @@ int main(int argc, char** argv) {
+@@ -2334,12 +2400,19 @@ int main(int argc, char** argv) {
          }
          stateTests();
          shaderEnginePartitionTests();

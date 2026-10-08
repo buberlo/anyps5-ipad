@@ -27,10 +27,10 @@ index 5cbc379c..27fa6cb1 100644
  
  void decodeDepth(const Registers& cx, std::uint32_t depthControl, State& result) {
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index 4aa15799..23a79a04 100644
+index bc6ccbc0..64953e1b 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -615,6 +615,8 @@ void equivalentStencilClearTests() {
+@@ -644,6 +644,8 @@ void equivalentStencilClearTests() {
                      face.depthFailOp == VK_STENCIL_OP_REPLACE, "equivalent stencil clear lost replacement state");
          }
      };
@@ -39,7 +39,7 @@ index 4aa15799..23a79a04 100644
      verify();
      queue.context[0x00a] = 0x7a;
      queue.context[0x10c] |= 0x7a;
-@@ -645,7 +647,8 @@ void equivalentStencilClearTests() {
+@@ -674,7 +676,8 @@ void equivalentStencilClearTests() {
      reject(0x200, 0x7002f1, "stencil clear"); // front compare is equal
      reject(0x200, 0x2007f1, "stencil clear"); // back compare is equal
      reject(0x203, 0x50, "stencil clear"); // shader kill enabled

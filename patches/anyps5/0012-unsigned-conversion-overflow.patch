@@ -1,11 +1,11 @@
 diff --git a/core/libs/prx/libc/src/Strings.cpp b/core/libs/prx/libc/src/Strings.cpp
-index 62c41a92..ba91ca94 100644
+index 533611a1..51c6e294 100644
 --- a/core/libs/prx/libc/src/Strings.cpp
 +++ b/core/libs/prx/libc/src/Strings.cpp
-@@ -6,9 +6,21 @@
- #include <cwchar>
+@@ -7,9 +7,21 @@
  #include <cstdio>
  #include <limits>
+ #include <string>
 +#include <cerrno>
  
  #include "prx/libc/include/General.hpp"
@@ -24,7 +24,7 @@ index 62c41a92..ba91ca94 100644
  namespace {
  
  int CompareUnits(char16_t left, char16_t right) {
-@@ -108,7 +120,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
+@@ -124,7 +136,7 @@ std::int64_t APS5_VABI strtol_nid_postfix(const char* str, char** endptr, int ba
  }
  
  std::uint64_t APS5_VABI strtoul_nid_postfix(const char* str, char** endptr, int base) {
@@ -33,7 +33,7 @@ index 62c41a92..ba91ca94 100644
  }
  
  long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base) {
-@@ -116,7 +128,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
+@@ -132,7 +144,7 @@ long long APS5_VABI strtoll_nid_postfix(const char* str, char** endptr, int base
  }
  
  unsigned long long APS5_VABI strtoull_nid_postfix(const char* str, char** endptr, int base) {
@@ -42,7 +42,7 @@ index 62c41a92..ba91ca94 100644
  }
  
  double APS5_VABI strtod_nid_postfix(const char* str, char** endptr) {
-@@ -300,7 +312,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
+@@ -316,7 +328,7 @@ char* APS5_VABI strnstr_nid_postfix(const char* haystack, const char* needle, si
  }
  
  unsigned long long APS5_VABI _Stoull_nid_postfix(const char* str, char** endptr, int base) {

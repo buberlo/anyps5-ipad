@@ -4,7 +4,8 @@ Copyright (C) 2026 buberlo for this repository's own files. That copyright
 does not attach to the upstream projects below, and it does not replace
 their copyright notices.
 
-Checked 2026-10-06 against the commits in [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
+Initial license review: 2026-10-06; source pins refreshed 2026-10-08.
+Current build inputs are recorded in [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 GitHub's license API reports the older SPDX ids `GPL-2.0` and `GPL-3.0`.
 The "only" or "or later" result below comes from the project's own grant,
 not from that API id.
@@ -30,7 +31,7 @@ the licenses in those checkouts.
 ## AnyPS5
 
 - Remote: https://github.com/boykopovar/AnyPS5
-- Pin: `0518f0e02187b6c7c00e6f7e7a7265c848efb346`
+- Pin: `6e037e9899efb7439913a6e1151b901a92c9c9c8`
 - License file: `LICENSE`, the GNU GPL version 2 text
 - Grant, from that commit's `README.md`: "This project is licensed under the GNU General Public License version 2 only."
 - The same sentence is on `main` as of this check. Sampled sources (`CMakeLists.txt`, `core/relinker/main.cpp`, `CONTRIBUTING.md`) carry no "or later" notice. The phrase "either version 2 of the License, or" occurs only inside the GPL's "How to Apply These Terms" appendix, which is instructions, not AnyPS5's grant.
@@ -40,7 +41,7 @@ the licenses in those checkouts.
 ## Madeira
 
 - Remote: https://github.com/willfaust/Madeira
-- Pin: `bbbf8d0e20fd8b75f433f4a8d2a8eaf8d5571120`
+- Pin: `48f976429c189f8396e23d251d8a82f43c705922`
 - `LICENSE` and `COPYING` are the GNU GPL version 3 text (same blob).
 - Grant, from `LICENSE-EXCEPTION.md` at that commit: "Madeira is licensed under the GNU General Public License, version 3 or (at your option) any later version (see `COPYING`)." The README badge is GPL-3.0-or-later.
 - Additional permission: Madeira Converter Exception, version 1, adopted 2026-09-24 by Will Faust, under GPL-3.0 section 7. It covers copyright held by the Madeira authors. Copyright held by buberlo stays under the license of the file, without that exception. The PS5 graphics path uses MoltenVK.
@@ -49,19 +50,22 @@ the licenses in those checkouts.
 
 ## FEX
 
-- Remote pinned here: https://github.com/willfaust/FEX (branch `ios-port-2607`)
-- Pin: `be778d7ba5b98bee0405fd1d6a50d305a0807df0` (Madeira's gitlink at the Madeira pin)
-- Upstream project: https://github.com/FEX-Emu/FEX
+- Remote pinned here: https://github.com/FEX-Emu/FEX
+- Pin: `14c92681f4d62cf84d901460e0358de09c8847a7` (`FEX-2610`)
+- Local iOS-port lineage: https://github.com/willfaust/FEX at
+  `3bec2ac498bf78156ab47c0c194b0e8cb2849756`, reconciled as `patches/fex/0000`.
+- rpmalloc release gitlink: `09142d726429416bfa7b459151515fe3ab7622dd`, with
+  the iOS allocator port carried by `patches/fex/0001`.
 - `LICENSE` at the pin is the MIT license, Copyright (c) 2019 Ryan Houdek.
-- `COPYING.GPL-3.0` is the GNU GPL version 3 text.
-- `LICENSE-MADEIRA.md` and `Readme.md` at the pin: upstream FEX-Emu code stays MIT; modifications and new files authored for Madeira are GPL-3.0-or-later, with the Madeira Converter Exception for those modifications. A file that contains both may only be distributed under terms compatible with GPL-3.0-or-later. The same file says upstream rpmalloc stays 0BSD.
+- The local port patch carries `COPYING.GPL-3.0`, the GNU GPL version 3 text.
+- `LICENSE-MADEIRA.md` and the port license notes applied by the patch: upstream FEX-Emu code stays MIT; modifications and new files authored for Madeira are GPL-3.0-or-later, with the Madeira Converter Exception for those modifications. A file that contains both may only be distributed under terms compatible with GPL-3.0-or-later. The same file says upstream rpmalloc stays 0BSD.
 - Result for this fork: **upstream MIT (rpmalloc 0BSD); Madeira's modifications GPL-3.0-or-later**.
 - `patches/fex/` is a derivative of that fork and stays GPL-3.0-or-later. Applying a patch does not change the MIT or 0BSD grant on the upstream code.
 
 ## Wine
 
 - Remote pinned here: https://github.com/willfaust/wine (branch `madeira-lgpl`)
-- Pin: `3a54f56896c85c932870afe6fd91404bbbcb74c8` (Madeira's gitlink at the Madeira pin)
+- Pin: `257f271cfffed9f22f7987cac53bc00095d092fe` (Madeira's gitlink at the Madeira pin)
 - Upstream project: https://www.winehq.org/ and https://gitlab.winehq.org/wine/wine
 - `LICENSE` at the pin: "either version 2.1 of the License, or (at your option) any later version." `COPYING.LIB` is the GNU LGPL version 2.1 text. `README.md` says Wine is released under the GNU LGPL.
 - `LICENSE-MADEIRA.md` at the pin: this branch keeps LGPL-2.1-or-later. It was rebuilt from upstream `wine-11.4`. The earlier LGPL section 3 conversion of another branch to GPL-3.0-or-later is not applied here. Madeira's modifications on this branch are LGPL-2.1-or-later.
@@ -71,7 +75,7 @@ the licenses in those checkouts.
 ## MoltenVK
 
 - Remote: https://github.com/KhronosGroup/MoltenVK
-- Pin: `fae55a18779ee59da2cc5373a367a0282779c171`
+- Pin: `67b2682699d7903606b97a0392061d85d27d49e6`
 - `LICENSE` at the pin is the Apache License, Version 2.0, January 2004.
 - Result: **Apache-2.0**
 - `patches/moltenvk/` contains optional upstream stability fixes, excluded from the default build. Apache-2.0 is compatible with GPL-3.0 and is not compatible with GPL-2.0-only, so the statically linked iOS app is the GPL-3.0 combination, not a GPL-2.0-only binary.

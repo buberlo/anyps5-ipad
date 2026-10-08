@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare pinned gitlinks with live upstream branches, without modifying either.
+"""Compare gitlinks with live branches and the canonical FEX monthly release.
 
 Run locally before a runtime update. A moving branch is never silently substituted
 for a reproducible pin. Exit 1 means integration is needed; exit 2 means a query
@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 UPSTREAMS = (
     ("AnyPS5", "main"),
     ("Madeira", "main"),
-    ("FEX", "ios-port-2607"),
+    ("FEX", "monthly release"),
     ("wine", "madeira-lgpl"),
     ("MoltenVK", "main"),
 )
@@ -32,6 +32,8 @@ def git(*args):
 
 def check(item):
     name, branch = item
+    if name == "FEX":
+        return check_fex_release()
     path = "upstreams/" + name
     record = {"name": name, "branch": branch}
     try:
@@ -54,13 +56,13 @@ def check(item):
 
 
 def check_fex_release():
-    """A current iOS fork branch does not establish mainline release freshness.
+    """Compare the canonical monthly release with the pinned source commit.
 
-    Do not fetch or change the fork. An ancestry check is available only when
-    both commits already exist locally; backported changes need manual review.
+    The iOS port is a local patch series. Source freshness never establishes
+    qualification of an installed app or game package.
     """
     url = "https://github.com/FEX-Emu/FEX.git"
-    record = {"name": "FEX mainline release", "url": url}
+    record = {"name": "FEX", "branch": "monthly release", "url": url}
     try:
         rows = git("ls-remote", "--tags", url, "refs/tags/FEX-[0-9][0-9][0-9][0-9]*").splitlines()
         tags = {}
@@ -83,8 +85,9 @@ def check_fex_release():
         # peeled ref, when returned, identifies the commit rather than the tag.
         sha = tags[tag].get("commit", tags[tag]["tag_object"])
         pin = git("rev-parse", ":upstreams/FEX")
-        record.update(tag=tag, release_commit=sha, pin=pin,
-                      status="release_not_compared", installed_runtime_qualified=False)
+        record.update(tag=tag, release_commit=sha, pin=pin, upstream_head=sha,
+                      status="current" if pin == sha else "update_required",
+                      installed_runtime_qualified=False)
         repo = ROOT / "upstreams/FEX"
         exists = subprocess.run(["git", "-C", str(repo), "cat-file", "-e", sha + "^{commit}"],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
@@ -94,7 +97,7 @@ def check_fex_release():
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
         if result.returncode not in (0, 1):
             raise ValueError("ancestry check failed")
-        record["status"] = "release_ancestor_of_pin" if result.returncode == 0 else "release_integration_review_required"
+        record["release_ancestor_of_pin"] = result.returncode == 0
     except (OSError, subprocess.SubprocessError, ValueError) as error:
         record.update(status="query_failed", reason=type(error).__name__)
     return record
@@ -103,18 +106,18 @@ def check_fex_release():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit a machine-readable report")
-    parser.add_argument("--fex-release", action="store_true", help="also inspect mainline monthly FEX tags; never fetch or replace the iOS fork")
+    parser.add_argument("--fex-release", action="store_true", help="also emit the FEX monthly-release record separately (always checked)")
     args = parser.parse_args()
     with ThreadPoolExecutor(max_workers=len(UPSTREAMS)) as pool:
         records = list(pool.map(check, UPSTREAMS))
-    release = check_fex_release() if args.fex_release else None
+    release = next(r for r in records if r["name"] == "FEX") if args.fex_release else None
     failed = any(r["status"] == "query_failed" for r in records)
     behind = any(r["status"] == "update_required" for r in records)
     if release:
         failed |= release["status"] == "query_failed"
-        behind |= release["status"] in ("release_not_compared", "release_integration_review_required")
+        behind |= release["status"] == "update_required"
     if args.json:
-        report = {"schema": 1, "scope": "live branch heads versus indexed pins",
+        report = {"schema": 1, "scope": "live branch heads and canonical monthly FEX tag versus indexed pins",
                   "checked_at": datetime.now(timezone.utc).isoformat(),
                   "modified_files": False, "upstreams": records}
         if release:

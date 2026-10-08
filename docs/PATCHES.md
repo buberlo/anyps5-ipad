@@ -1,5 +1,15 @@
 # Patch status
 
+The current FEX stack is consolidated into two release-based patches:
+[0000 iOS port and 0001 allocator](../patches/fex/README.md), applied to official
+FEX-2610. Historical patch numbers/results below describe their original builds.
+Madeira0046 adapts the native bridge to FEX's new API; Madeira0047 preserves the
+native process-name lifetime after an embedded Wine session. The latest AnyPS5
+pin retains all 33 reconciled local patches. See the
+[integration evidence](evidence/fex-2610-integration-20261008.json) for separate
+source, build, device and unqualified-path states.
+
+
 The implementation follow-ups are documented in
 [IMPLEMENTATION.md](IMPLEMENTATION.md): transactional GuestArena (now folded into AnyPS5 0001),
 accurate unavailable SDK telemetry (now upstream), the complete static Vulkan

@@ -14,7 +14,7 @@ index 91ac2ae6..d2e1bf24 100644
  
  void ValidateShaderPair(const ShaderRecompiler::RecompileResult& vertex, const ShaderRecompiler::RecompileResult& fragment);
 diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
-index f9e21abd..ad40b513 100644
+index 6a821c3d..86f8e6ae 100644
 --- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
 +++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
 @@ -1485,7 +1485,14 @@ std::optional<std::string> KnownValidationFailure(const Context& context, std::s
@@ -108,10 +108,10 @@ index e77279db..67b3dd37 100644
      Require(std::isfinite(viewport.minDepth) && std::isfinite(viewport.maxDepth), "non-finite viewport depth range");
      Require(context.depthRangeUnrestricted || (viewport.minDepth >= 0 && viewport.minDepth <= 1 && viewport.maxDepth >= 0 && viewport.maxDepth <= 1), "viewport depth outside [0, 1] requires VK_EXT_depth_range_unrestricted");
 diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-index 23a79a04..6e8fb818 100644
+index 64953e1b..d4be5bae 100644
 --- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
 +++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
-@@ -17,6 +17,11 @@
+@@ -18,6 +18,11 @@
  #include <cstring>
  #include <initializer_list>
  #include <iostream>
@@ -123,7 +123,7 @@ index 23a79a04..6e8fb818 100644
  #include <map>
  #include <optional>
  #include <set>
-@@ -988,6 +993,146 @@ void cmaskTests() {
+@@ -1017,6 +1022,146 @@ void cmaskTests() {
      Require(texels(0x5a5a5a5au), "a refused pass changed the texels of a DCC target");
  }
  
@@ -270,7 +270,7 @@ index 23a79a04..6e8fb818 100644
  void DepthClipTests() {
      auto queue = makeState();
      const auto direct = AgcDriver::Graphics::DecodeState(queue);
-@@ -2342,6 +2487,10 @@ int main(int argc, char** argv) {
+@@ -2371,6 +2516,10 @@ int main(int argc, char** argv) {
      setenv("APS5_PIN_WAIT_MS", "200", 1);
  #endif
      try {
@@ -281,7 +281,7 @@ index 23a79a04..6e8fb818 100644
          {
              const AgcDriver::Graphics::Context context{};
              const AgcDriver::Graphics::State state{};
-@@ -2372,6 +2521,7 @@ int main(int argc, char** argv) {
+@@ -2401,6 +2550,7 @@ int main(int argc, char** argv) {
              unrestricted.depthRangeUnrestricted = true;
              AgcDriver::Graphics::ValidateDepthBounds(unrestricted, bounded);
          }

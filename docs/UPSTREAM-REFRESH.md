@@ -1,6 +1,16 @@
 # AnyPS5 upstream refresh, 2026-10-08
 
-The source pin now uses
+Current source inputs: AnyPS5 `6e037e9899efb7439913a6e1151b901a92c9c9c8`,
+official FEX-2610 `14c92681f4d62cf84d901460e0358de09c8847a7` with the local
+iOS port, and MoltenVK `67b2682699d7903606b97a0392061d85d27d49e6`.
+Madeira/Wine remain at the checked heads in [UPSTREAMS.md](UPSTREAMS.md).
+The final check observed these heads at 09:34 UTC. The sections below retain
+chronological checkpoints and their original qualification limits; earlier
+pins and device builds are not the current source or installed HLE package.
+
+## Initial refresh checkpoint (superseded source pin)
+
+The initial source refresh used
 [`df16c4c256be3c44e03eb9149a6ce5f8e8a038b2`](https://github.com/boykopovar/AnyPS5/commit/df16c4c256be3c44e03eb9149a6ce5f8e8a038b2).
 Compared with `ee391a5614246338aec9cb7a3a3dd4f479aec9f3`, this incorporates
 all 285 additional commits, including merges, across 359 files: 13,333
@@ -342,3 +352,60 @@ Configuration and library bytes are restored and own processes are verified
 closed. See the [matched device evidence](evidence/ipad-pending-avx-fix-20261008.json).
 This does not qualify FEX-2610, game frame rate, or the still-missing eight-sample
 renderer path.
+
+## Official FEX-2610 integration and final source checkpoint
+
+The FEX gitlink now names the official monthly release, rather than an
+unpublished fork merge. Two ordered patches reconcile the full Madeira iOS
+port and release rpmalloc with that baseline. Former local patches 0002–0011
+are included, preserving protected-fault AVX state, the SysV red zone, dual
+JIT mappings, thread teardown guards and opt-in diagnostics. The release's
+shared atomic code-buffer allocator and direct syscall-state API are adapted
+to iOS. Madeira's separate native FEXBridge uses the new API too. The 32-bit
+Wine CPU-area adapter builds but has not been run on the iPad.
+
+Pristine forward application, byte comparison against the built sources and
+reverse restoration pass for all 101 FEX/allocator paths. The rebuilt ARM64EC
+and WOW64 DLLs and native iPhoneOS archives build successfully. The native/PE
+exception-layout check passes; actual Darwin directory/entropy implementations
+pass ASan/UBSan. On the physical iPad, Build44 repeats the six pending-AVX,
+24 nested-store, 153 cross-page and thirteen safe-read cases with zero errors.
+Build45 passes 543 asynchronous exception deliveries with AVX verified. These
+are bounded CPU contracts, not exhaustive instruction-set qualification.
+
+The canonical nonblocking file-read invalidation path is retained. A plain
+writable-buffer pipe read completes correctly while another thread starts.
+For an already executed, FEX-protected code page, the worker can now start in
+16 ms, but Wine cannot deliver the pipe bytes and reports a bad-address error.
+The same updated synthetic executable stalls earlier on Build43. This proves
+a narrower concurrency improvement; executable-page reads and asynchronous
+invalidation still require Wine/FEX coordination and are **not qualified**.
+
+AnyPS5 was updated again to `6e037e98`. All 33 local patches apply, match the
+70 reviewed paths and reverse cleanly. New descriptor-path/write tracking,
+structured shader failures, heap-overflow guards and relinker validation are
+preserved. The fresh native host tools pass 32 tests; the actual interpolation
+guard passes 111 cases and four sanitizer contract groups pass. The standalone
+tools build derives the upstream replacement-module catalog and supplies the
+new unwind fixture helper. The Windows HLE/game package has not been rebuilt
+from this final snapshot.
+
+MoltenVK `67b26826` is built for iPhoneOS and included in Build46. The synthetic
+split-MSAA PE exits 0 with 512 combined and 1,024 per-group values correct;
+this rerun uses the coverage/center-interpolation mode, not the extended array
+mode. After guest exit, native UIKit/XPC callbacks encounter a stale string
+pointer. The previous Build42 run lacks that fault, but this alone does not
+attribute it to MoltenVK or FEX.
+
+The native call chain led to Madeira's embedded Wine `set_process_name`:
+Darwin `setprogname` retains a borrowed pointer, while WineProcessBridge can
+supply stack-backed arguments. Patch0047 keeps the UIKit host's process name
+unchanged on iOS. Desktop behavior remains intact. An ASan/UBSan regression
+runs the actual production function with eight expired stack/heap argument
+sets and verifies the host name remains valid. Build47 is signed and installed with library/configuration bytes preserved.
+Two bounded repetitions pass the same GPU checks, exit Wine with code0 and
+return to the library without the native string fault; the expected StikDebug
+detach breakpoint remains. These runs do not qualify long-session lifecycle.
+Hashes and separate build results are in the [integration evidence](evidence/fex-2610-integration-20261008.json).
+Solitaire's eight-sample renderer integration, white output, audio and sustained
+frame rate remain open. No GitHub Actions were used.

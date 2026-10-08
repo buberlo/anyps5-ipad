@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "pending_upper_avx_exception_snapshot_regression",
+  "source_base_commit": "45e5ad3",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "probe": {
+    "source": "tools/runtime-probes/pending_avx_state_probe.c",
+    "source_sha256": "1cd4dc277abaad200b42d7d760380c8004a0dffce2606790fd20193c46853314",
+    "exe_sha256": "f1241d06d3463102a6ce9e8355b7e0ca284f18b6bb14839249e537d592285565",
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7 via macOS Wine",
+    "build_options": [
+      "-std=gnu11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-static-libgcc"
+    ],
+    "data": "Own deterministic patterns; no game data or instructions"
+  },
+  "switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_SAFE_SELF_READ": true
+  },
+  "contract": {
+    "updates": [
+      "VEX XMM load clears the upper YMM1 half",
+      "YMM load replaces all of YMM1 with distinct values"
+    ],
+    "update_immediately_before_independent_protected_xmm_store": true,
+    "no_branch_popfq_call_or_fence_between_update_and_fault": true,
+    "three_arithmetic_direction_flag_patterns": true,
+    "unrelated_ymm0_and_ymm2_checked": true,
+    "handler_deliberately_zeroes_vector_state": true,
+    "destination_and_guard_checked_bytes": 16384
+  },
+  "same_binary_results": {
+    "protected": {
+      "cases": 6,
+      "faults": 6,
+      "resumed_state_or_data_errors": 12,
+      "snapshot_upper_errors": 12,
+      "query_errors": 0,
+      "invalid_faults": 0,
+      "wine_exit_code": 1,
+      "fex_multiblock": true,
+      "fex_maxinst": 5000,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "1412db8bb549cea871e9b4ffba3d21e79bdf08fe026b185648632c3af0427d3f",
+      "private_receipt_sha256": "eb308505bcc0d151a0962d74cc414e8681f89af37f37d881069aeb2c4789aa14"
+    },
+    "unprotected": {
+      "cases": 6,
+      "faults": 0,
+      "resumed_state_or_data_errors": 0,
+      "snapshot_upper_errors": 0,
+      "query_errors": 0,
+      "invalid_faults": 0,
+      "wine_exit_code": 0,
+      "fex_multiblock": true,
+      "fex_maxinst": 5000,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "3b6fd0bdbb10573bdfffe96603c389c464bbd175cdbf914cb3d259d0cd1cd396",
+      "private_receipt_sha256": "fe6b8a8038d08dfd848ce09db6e52c05b9f58de13fff354c56a0d2649542873d"
+    },
+    "maxinst1": {
+      "cases": 6,
+      "faults": 6,
+      "resumed_state_or_data_errors": 0,
+      "snapshot_upper_errors": 0,
+      "query_errors": 0,
+      "invalid_faults": 0,
+      "wine_exit_code": 0,
+      "fex_multiblock": false,
+      "fex_maxinst": 1,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "3e969fdedfe655a00b68fb8187c2dff1082e4d855960d320d6bbbe4786a8fff5",
+      "private_receipt_sha256": "2d1736bc5884b9a92922efe4926142ed8559a7af5159df3e6272a3943c65b5bb"
+    }
+  },
+  "interpretation": {
+    "ordinary_vex_execution_correct_in_unprotected_control": true,
+    "protected_default_snapshot_reports_stale_upper_ymm1": true,
+    "transport_success_does_not_prove_state_freshness": true,
+    "existing_single_instruction_configuration_avoids_reproducer": true,
+    "fex_source_fix_implemented": false,
+    "performance_fix_qualified": false,
+    "earlier_non_temporal_and_compound_cases_remain_only_sequence_specific": true
+  }
+}

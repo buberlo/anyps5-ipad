@@ -38,6 +38,9 @@ src="$root/tools/runtime-probes"
     -I"$root/upstreams/Madeira/build/ntdll-unix" \
     "$src/protected_store_state_probe.c" -o "$out/protected-store-state-probe.exe"
 "$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -static-libgcc \
+    -I"$root/upstreams/Madeira/build/ntdll-unix" \
+    "$src/pending_avx_state_probe.c" -o "$out/pending-avx-state-probe.exe"
+"$win_cxx" -x c -std=gnu11 -Wall -Wextra -Werror -O2 -static-libgcc \
     "$src/self_read_probe.c" -o "$out/self-read-probe.exe"
 printf 'Built Windows x64 probes and scalar reference in %s\n' "$out"
 printf 'Run cpu-probe.exe [seed], then memory-probe.exe [exact-base] [size] on the target.\n'

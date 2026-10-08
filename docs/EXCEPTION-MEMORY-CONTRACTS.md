@@ -5,6 +5,12 @@ violations use different paths. Passing the asynchronous tests did not qualify
 write-watch handling. A protected store can enter libc's VEH through FEX's
 ARM64EC exception dispatcher without preserving all x86 state in `CONTEXT`.
 
+**Known limit:** a newer independent test reproduces stale upper YMM state
+when an AVX update is still pending inside a larger FEX block. The paired
+transport cannot recover state that was not committed to its source CPU frame.
+The earlier passing store sequences below do not qualify arbitrary AVX fault
+locations. See [pending AVX state](#pending-avx-state-within-a-jit-block).
+
 ## Ordinary protected-store repair
 
 On the M2 iPad, the independent protected-store probe found correct general
@@ -208,3 +214,52 @@ unidentified and arbitrary instruction sequences remain unqualified.
 Earlier runs rejected an 8-sample draw on the
 M2, whose queried Vulkan attachment counts are 1, 2 and 4. The CPU test repair
 therefore does not establish rendered or playable Solitaire.
+
+## Pending AVX state within a JIT block
+
+`tools/runtime-probes/pending_avx_state_probe.c` uses only its own deterministic
+data. It loads a nonzero YMM1, then either clears its upper half with a VEX XMM
+load or replaces the full register with different values. An independent XMM0
+store immediately faults on a read-only page. No branch, call, fence or POPFQ
+separates the update from that store. The handler deliberately clears all vector
+registers and uses the paired query/prepare protocol. The test checks resumed
+YMM0/YMM1/YMM2, seven flags, destination bytes and the rest of the 16-KiB page.
+
+The same binary on Build 42 gives these results:
+
+| Configuration | Cases / faults | Resumed errors | Snapshot upper-half errors | Wine exit |
+| --- | --- | --- | --- | --- |
+| Protected, multiblock enabled, maxinst 5000 | 6 / 6 | 12 | 12 | 1 |
+| `--unprotected`, same FEX settings | 6 / 0 | 0 | 0 | 0 |
+| Protected, `FEX_MULTIBLOCK=0`, `FEX_MAXINST=1` | 6 / 6 | 0 | 0 | 0 |
+
+All three runs have zero query errors and preserve their original library and
+configuration after testing. Thus a successful snapshot query is insufficient
+to prove register freshness. Read-only inspection of the pinned FEX code shows
+that its per-instruction SRA flush excludes the cached upper AVX halves; Madeira
+copies those halves from the reconstructed CPU frame. A full block boundary
+flush explains the single-instruction result. The underlying FEX correction is
+still pending. See the [device evidence](evidence/ipad-pending-avx-state-20261008.json).
+
+For bounded diagnosis, configure the existing FEX switches before Wine starts:
+
+```ini
+env.FEX_MULTIBLOCK = 0
+env.FEX_MAXINST = 1
+```
+
+Patch `0045-early-fex-block-limit.patch` exports the block limit alongside the
+existing early FEX configuration in the app and selected library entry. It does
+not change defaults or automatically apply the diagnostic profile. The patch
+passes pristine-stack application/reversal and Swift parsing; it is not included
+in the installed Build 42. That build's measurements used launch-environment
+variables to ensure the settings reached FEX before initialization.
+
+A separate 60-second Solitaire run with this profile uses the regular memory
+tracking and no private instruction observers. It has no logged instance of the
+previous graphics-worker CPU fault, but still shows white output and rejects
+multisampling draws. It does not establish that every packet is correct, that the
+profile is performant, or that the game is playable. Earlier private observers
+can themselves trigger the newly reproduced snapshot defect, so their packet
+observations cannot alone identify an original game writer as the cause.
+See the [bounded game checkpoint](evidence/solitaire-build42-single-instruction-checkpoint.json).

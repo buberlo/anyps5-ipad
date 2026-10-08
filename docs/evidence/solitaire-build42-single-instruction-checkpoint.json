@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "title": "15in1 Solitaire",
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "status": "bounded_single_instruction_configuration_cpu_progress_white_graphics",
+  "switches": {
+    "FEX_MULTIBLOCK": false,
+    "FEX_MAXINST": 1,
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_SAFE_SELF_READ": true,
+    "APS5_FIXED_FUNCTION_INTERPOLATION": true,
+    "normal_memory_tracking": true,
+    "private_instruction_observers": false
+  },
+  "observation": {
+    "capture_seconds": [
+      15,
+      35,
+      60
+    ],
+    "duration_seconds": 72.572883458,
+    "previous_graphics_worker_read_fault_logged": false,
+    "visible_output_reviewed_at_seconds": 60,
+    "visible_output": "white game surface and touch overlay",
+    "skipped_multisampling_draw_messages": 2,
+    "captured_aa_config": "0x0030e003",
+    "audio_source_logged_nonzero": true,
+    "audio_quality_qualified": false,
+    "gameplay_qualified": false,
+    "performance_qualified": false,
+    "cpu_fault_free_claim_limited_to_observation_window": true
+  },
+  "restoration": {
+    "runtime_hash_restored": true,
+    "config_and_library_byte_preserved": true,
+    "own_processes_closed": true
+  },
+  "private_evidence_sha256": {
+    "log": "e2a60540fe070921e7feadd91d46f21b33970f51f75d4749e28e61cfd80d1ba1",
+    "receipt": "9d67f2888ba2406a112aea0d1c54a64ac0fc7aedb8276ffc98eead0faf4f1d05",
+    "manifest": "61ecb33dc3eeabe96a1e67c62bd740438f967f0484ea0d79d902bb0052bcac49",
+    "screenshots": {
+      "15": "3e2607715d1f2c476579926a437982419a9c625902121c964b6ed6f17ad4998d",
+      "35": "de12dec18956ed426682ff53ba8a9d4f9e9ba754b7f776b9e6f31907ec707f97",
+      "60": "de12dec18956ed426682ff53ba8a9d4f9e9ba754b7f776b9e6f31907ec707f97"
+    }
+  },
+  "remaining": [
+    "Targeted correction of pending upper-AVX state in the exception snapshot",
+    "Preserve requested sample/coverage semantics despite native 8-sample attachment limitation",
+    "Actual game output, controls, audio and saves",
+    "Performance measurements after correctness repair"
+  ],
+  "private_dump_and_shader_contents_published": false
+}

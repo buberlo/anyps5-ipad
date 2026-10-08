@@ -1,0 +1,24 @@
+diff --git a/app/Madeira/MadeiraApp.swift b/app/Madeira/MadeiraApp.swift
+--- a/app/Madeira/MadeiraApp.swift
++++ b/app/Madeira/MadeiraApp.swift
+@@ -32,7 +32,7 @@
+         for name in ["MADEIRA_FEX_AVX", "APS5_GUEST_ARENA_LAZY", "APS5_GUEST_ARENA_BASE",
+                      "APS5_GUEST_ARENA_SIZE", "APS5_GUEST_ARENA_CHUNK", "MADEIRA_CONTROLS_XBOX_DEFAULT",
+                      "APS5_MEASURE", "APS5_PERF_REPORT", "FEX_TSOENABLED", "FEX_HALFBARRIERTSOENABLED",
+-                     "FEX_VECTORTSOENABLED", "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_VOLATILEMETADATA"] {
++                     "FEX_VECTORTSOENABLED", "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_MAXINST", "FEX_VOLATILEMETADATA"] {
+             if let value = MadeiraConfig.get("env." + name) { setenv(name, value, 1) }
+         }
+ 
+diff --git a/app/Madeira/Library.swift b/app/Madeira/Library.swift
+--- a/app/Madeira/Library.swift
++++ b/app/Madeira/Library.swift
+@@ -550,7 +550,7 @@
+         // General game env lines still use WineProcessBridge's normal parser.
+         for name in ["APS5_MEASURE", "APS5_PERF_REPORT", "FEX_TSOENABLED",
+                      "FEX_HALFBARRIERTSOENABLED", "FEX_VECTORTSOENABLED",
+-                     "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_VOLATILEMETADATA"] {
++                     "FEX_MEMCPYSETTSOENABLED", "FEX_MULTIBLOCK", "FEX_MAXINST", "FEX_VOLATILEMETADATA"] {
+             if let value = MadeiraConfig.gameValue("env." + name) ?? MadeiraConfig.get("env." + name) {
+                 setenv(name, value, 1)
+             }

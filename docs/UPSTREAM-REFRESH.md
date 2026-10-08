@@ -226,6 +226,43 @@ runtime hashes, manifest, configuration and library are restored. Build 35 stays
 installed with the new native path default-off. Further game qualification is
 required before enabling it as a general default.
 
+## Asynchronous AVX state follow-up
+
+A separate synthetic busy-thread test exposed lost upper YMM halves after a
+handler executed `vzeroall`. The original four-register case lost eight of its
+16 uint64 lanes on both the local Wine host and Build 35. The legacy Windows
+`CONTEXT` carries FXSAVE/XMM state but needs an extended state path for AVX;
+see Microsoft's [XState context interface](https://learn.microsoft.com/en-us/windows/win32/debug/working-with-xstate-context).
+On this iPad runtime, `GetEnabledXStateFeatures` reports zero even though FEX
+advertises and executes AVX. The HLE follow-up therefore preserves live guest
+upper halves at the first assembly instruction of the redirected entry.
+
+Patch 0031 uses `APS5_PRESERVE_ASYNC_AVX=1` and a CPU feature gate, default-off.
+It initializes GCC's feature detector, resolves `NtContinue` before suspension,
+uses the guest context's 832-byte floating-state area for low/high registers,
+and copies handler changes back. Clearing the AVX state bit initializes only
+the upper halves. An assembly tail call restores all upper halves immediately
+before the existing native continuation, so neither C++ nor a `vzeroupper` can
+intervene. Self-delivery and cooperative APC calls keep their existing ABI call
+semantics; this patch qualifies redirected busy-thread state rather than every
+possible nested native interruption. FEX sources are unchanged.
+
+The physical iPad passes 543 deliveries: the original extended 441 plus 100
+preservation, one handler-edit and one AVX-reset delivery. Every vector stage
+checks all 16 YMM registers, including the saved handler context and restored
+values. The local host passes its 441 cases but does not advertise AVX; its
+extended vector checks explicitly skip. All 31 AnyPS5 patches apply from the
+pinned source, match the root checkout and reverse to the pristine source.
+
+A freshly prepared private game candidate resolves all 47 explicit HLE
+requirements. Its 60-second iPad test uses normal memory tracking and both
+opt-in exception paths. All three screenshots remain white. A multisampling
+draw is rejected, and the graphics worker later faults reading `0x2` at game
+RVA `0x1426ac4`. The earlier fault was reading `0x30` at another instruction;
+the changed site does not establish a causal fix or playable rendering. Actual
+pre-test runtime hashes, manifest, configuration and library are restored.
+Audio is not qualified. See the [AVX and game record](evidence/ipad-async-avx-context-20261008.json).
+
 ## Runtime qualification after integration
 
 Source integration, local builds and host contracts do not qualify the iPad

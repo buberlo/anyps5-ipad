@@ -37,6 +37,26 @@ and [result hashes](evidence/ipad-target-published-suspend-20261008.json).
 Solitaire still faults in its graphics worker with normal memory tracking;
 the native change is not promoted to a global default.
 
+## Asynchronous AVX context preservation: 2026-10-08
+
+AnyPS5 `0031-preserve-async-avx-state.patch` captures the upper halves of all
+16 YMM registers at the first redirected guest instruction, before C++ or a
+handler can clear them. The guest context exposes the standard non-compacted
+AVX state area, copies back handler edits, and initializes the upper halves when
+the handler clears its AVX state bit. A final assembly tail call restores that
+state immediately before `NtContinue`, retaining native wait-result handling.
+Feature and loader checks run before suspending the target. The opt-in
+`APS5_PRESERVE_ASYNC_AVX=1` requires an advertised usable AVX feature; default-off
+and unsupported-CPU routes execute no new AVX instructions.
+
+The full synthetic test retains the original 441 delivery assertions and adds
+102 deliveries with all 16 live registers, deliberate handler clobbering, context
+edits and AVX reset. It exits 0 on Build 35 with both native suspension and this
+HLE path enabled. The local host passes its 441 cases but does not advertise
+AVX, so its vector cases explicitly skip and do not qualify AVX restoration.
+The combined private Solitaire run still fails; all production files and
+settings are restored. See the [device record](evidence/ipad-async-avx-context-20261008.json).
+
 ## Current local refresh: 2026-10-07
 
 The [recorded pins](UPSTREAMS.md) are built in isolated local checkouts. All

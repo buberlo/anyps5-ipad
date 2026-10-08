@@ -1,0 +1,320 @@
+diff --git a/core/libs/prx/libkernel/System/src/Exception.cpp b/core/libs/prx/libkernel/System/src/Exception.cpp
+index ba3d9b1..78f895c 100644
+--- a/core/libs/prx/libkernel/System/src/Exception.cpp
++++ b/core/libs/prx/libkernel/System/src/Exception.cpp
+@@ -6,6 +6,8 @@
+ #include "prx/libkernel/Pthread/include/Pthread.hpp"
+ #include <array>
+ #include <cstring>
++#include <cstdlib>
++
+ #include <memory>
+ #include <mutex>
+ #include <stdexcept>
+@@ -107,9 +109,40 @@ struct Delivery {
+     int signum;
+     CONTEXT context;
+     std::atomic<int>* waitState = nullptr;
++    bool preserveAvx = false;
++    alignas(16) M128A ymmUpper[16]{};
+ };
++static_assert(offsetof(Delivery, preserveAvx) == 1256);
++static_assert(offsetof(Delivery, ymmUpper) == 1264);
++using NativeContinue = LONG (WINAPI *)(CONTEXT*, BOOLEAN);
++extern "C" LONG Aps5RestoreExtended(CONTEXT*, const M128A*, NativeContinue);
++
++bool PreserveAsyncAvx() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("APS5_PRESERVE_ASYNC_AVX");
++        if (!value || std::strcmp(value, "1") != 0) return false;
++#if defined(__GNUC__) || defined(__clang__)
++        __builtin_cpu_init();
++        return __builtin_cpu_supports("avx") != 0;
++#else
++        return IsProcessorFeaturePresent(PF_AVX_INSTRUCTIONS_AVAILABLE) != FALSE;
++#endif
++    }();
++    return enabled;
++}
++NativeContinue ContinueFunction() {
++    static const auto function = reinterpret_cast<NativeContinue>(
++        GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtContinue"));
++    return function;
++}
+ 
+-void Deliver(GuestExceptionHandler handler, int signum, CONTEXT& context) {
++// Non-compacted XSAVE layout: 512-byte FXSAVE, 64-byte header, YMM high halves.
++constexpr std::size_t XstateHeaderOffset = 512;
++constexpr std::size_t YmmUpperOffset = 576;
++static_assert(YmmUpperOffset + sizeof(Delivery::ymmUpper) == sizeof(GuestMcontext::fpstate));
++
++
++void Deliver(GuestExceptionHandler handler, int signum, CONTEXT& context, M128A* ymmUpper = nullptr) {
+     GuestUcontext ucontext{};
+     auto& m = ucontext.mcontext;
+     m.rdi = context.Rdi;
+@@ -135,6 +168,12 @@ void Deliver(GuestExceptionHandler handler, int signum, CONTEXT& context) {
+     m.len = sizeof(GuestMcontext);
+     static_assert(sizeof(context.FltSave) <= sizeof(m.fpstate));
+     std::memcpy(m.fpstate, &context.FltSave, sizeof(context.FltSave));
++    if (ymmUpper) {
++        const std::uint64_t xstateMask = 7; // x87, SSE, AVX
++        auto* state = reinterpret_cast<unsigned char*>(m.fpstate);
++        std::memcpy(state + XstateHeaderOffset, &xstateMask, sizeof(xstateMask));
++        std::memcpy(state + YmmUpperOffset, ymmUpper, sizeof(Delivery::ymmUpper));
++    }
+     handler(signum, &ucontext);
+     context.Rdi = m.rdi;
+     context.Rsi = m.rsi;
+@@ -155,11 +194,24 @@ void Deliver(GuestExceptionHandler handler, int signum, CONTEXT& context) {
+     context.Rsp = m.rsp;
+     context.EFlags = static_cast<DWORD>(m.rflags);
+     std::memcpy(&context.FltSave, m.fpstate, sizeof(context.FltSave));
++    if (ymmUpper) {
++        const auto* state = reinterpret_cast<const unsigned char*>(m.fpstate);
++        std::uint64_t xstateMask;
++        std::memcpy(&xstateMask, state + XstateHeaderOffset, sizeof(xstateMask));
++        if (xstateMask & 4) std::memcpy(ymmUpper, state + YmmUpperOffset, sizeof(Delivery::ymmUpper));
++        else std::memset(ymmUpper, 0, sizeof(Delivery::ymmUpper));
++    }
+ }
+ 
+ [[noreturn]] void RedirectedEntry(Delivery* delivery) {
+     CONTEXT context = delivery->context;
+-    Deliver(delivery->handler, delivery->signum, context);
++    Deliver(delivery->handler, delivery->signum, context, delivery->preserveAvx ? delivery->ymmUpper : nullptr);
++    if (delivery->preserveAvx) {
++        // Restore the high halves immediately before NtContinue. No C++ call may
++        // intervene: a handler or compiler-generated vzeroupper can destroy them.
++        Aps5RestoreExtended(&context, delivery->ymmUpper, ContinueFunction());
++        std::abort(); // NtContinue returns only on failure.
++    }
+     RtlRestoreContext(&context, nullptr);
+     std::abort();
+ }
+@@ -199,6 +251,10 @@ bool RaiseOn(Pthread thread, GuestExceptionHandler handler, int signum) {
+         Deliver(handler, signum, context);
+         return true;
+     }
++    // Resolve features and loader functions before suspending another thread;
++    // the target could own CRT or loader locks needed by these operations.
++    const bool preserveAvx = PreserveAsyncAvx();
++    if (preserveAvx && !ContinueFunction()) throw std::runtime_error("sceKernelRaiseException: NtContinue unavailable");
+     const auto native = static_cast<HANDLE>(thread->nativeHandle);
+     auto queued = std::make_unique<Delivery>(Delivery{handler, signum, {}});
+     if (SuspendThread(native) == static_cast<DWORD>(-1)) {
+@@ -231,6 +287,7 @@ bool RaiseOn(Pthread thread, GuestExceptionHandler handler, int signum) {
+     // The idle path needs a completed suspension before editing its context.
+     // Alertable waits above use an atomic reservation instead of a snapshot.
+     alignas(16) Delivery delivery{handler, signum, {}};
++    delivery.preserveAvx = preserveAvx;
+     delivery.context.ContextFlags = CONTEXT_FULL | CONTEXT_FLOATING_POINT;
+     if (!GetThreadContext(native, &delivery.context)) {
+         const bool exited = Exited(native);
+@@ -268,6 +325,25 @@ extern "C" [[noreturn]] void Aps5RedirectedEntry(void* delivery) {
+ asm(".text\n"
+     ".globl Aps5RedirectedEntryStub\n"
+     "Aps5RedirectedEntryStub:\n"
++    "    cmpb $0, 1296(%rsp)\n"
++    "    je 1f\n"
++    "    vextractf128 $1, %ymm0, 1304(%rsp)\n"
++    "    vextractf128 $1, %ymm1, 1320(%rsp)\n"
++    "    vextractf128 $1, %ymm2, 1336(%rsp)\n"
++    "    vextractf128 $1, %ymm3, 1352(%rsp)\n"
++    "    vextractf128 $1, %ymm4, 1368(%rsp)\n"
++    "    vextractf128 $1, %ymm5, 1384(%rsp)\n"
++    "    vextractf128 $1, %ymm6, 1400(%rsp)\n"
++    "    vextractf128 $1, %ymm7, 1416(%rsp)\n"
++    "    vextractf128 $1, %ymm8, 1432(%rsp)\n"
++    "    vextractf128 $1, %ymm9, 1448(%rsp)\n"
++    "    vextractf128 $1, %ymm10, 1464(%rsp)\n"
++    "    vextractf128 $1, %ymm11, 1480(%rsp)\n"
++    "    vextractf128 $1, %ymm12, 1496(%rsp)\n"
++    "    vextractf128 $1, %ymm13, 1512(%rsp)\n"
++    "    vextractf128 $1, %ymm14, 1528(%rsp)\n"
++    "    vextractf128 $1, %ymm15, 1544(%rsp)\n"
++    "1:\n"
+     "    movq %rax, 176(%rsp)\n"
+     "    movq %rcx, 184(%rsp)\n"
+     "    movq %rdx, 192(%rsp)\n"
+@@ -284,7 +360,28 @@ asm(".text\n"
+     "    movq %r14, 288(%rsp)\n"
+     "    movq %r15, 296(%rsp)\n"
+     "    leaq 40(%rsp), %rcx\n"
+-    "    jmp Aps5RedirectedEntry\n");
++    "    jmp Aps5RedirectedEntry\n"
++    ".globl Aps5RestoreExtended\n"
++    "Aps5RestoreExtended:\n"
++    "    vinsertf128 $1, 0(%rdx), %ymm0, %ymm0\n"
++    "    vinsertf128 $1, 16(%rdx), %ymm1, %ymm1\n"
++    "    vinsertf128 $1, 32(%rdx), %ymm2, %ymm2\n"
++    "    vinsertf128 $1, 48(%rdx), %ymm3, %ymm3\n"
++    "    vinsertf128 $1, 64(%rdx), %ymm4, %ymm4\n"
++    "    vinsertf128 $1, 80(%rdx), %ymm5, %ymm5\n"
++    "    vinsertf128 $1, 96(%rdx), %ymm6, %ymm6\n"
++    "    vinsertf128 $1, 112(%rdx), %ymm7, %ymm7\n"
++    "    vinsertf128 $1, 128(%rdx), %ymm8, %ymm8\n"
++    "    vinsertf128 $1, 144(%rdx), %ymm9, %ymm9\n"
++    "    vinsertf128 $1, 160(%rdx), %ymm10, %ymm10\n"
++    "    vinsertf128 $1, 176(%rdx), %ymm11, %ymm11\n"
++    "    vinsertf128 $1, 192(%rdx), %ymm12, %ymm12\n"
++    "    vinsertf128 $1, 208(%rdx), %ymm13, %ymm13\n"
++    "    vinsertf128 $1, 224(%rdx), %ymm14, %ymm14\n"
++    "    vinsertf128 $1, 240(%rdx), %ymm15, %ymm15\n"
++    "    xorl %edx, %edx\n"
++    "    jmp *%r8\n"
++);
+ #endif
+ 
+ extern "C" {
+diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRaiseException.cpp
+index 830d8fd..9c2f965 100644
+--- a/core/libs/tests/GuestRaiseException.cpp
++++ b/core/libs/tests/GuestRaiseException.cpp
+@@ -38,6 +38,10 @@ static std::atomic<std::thread::id> handlerThread;
+ static std::atomic<std::uint64_t> handlerRsp{0};
+ static std::atomic<std::uintptr_t> handlerFrame{0};
+ 
++static std::atomic<int> vectorMode{0};
++static std::uint64_t vectorPattern[64];
++static constexpr std::uint64_t VectorMutation = UINT64_C(0x0102030405060708);
++
+ static void APS5_VABI Handler(int signum, void* context) {
+     Require(signum == SIGUSR1);
+     std::uint64_t rsp = 0;
+@@ -46,6 +50,29 @@ static void APS5_VABI Handler(int signum, void* context) {
+     handlerFrame.store(reinterpret_cast<std::uintptr_t>(&local));
+     handlerRsp.store(rsp);
+     handlerThread.store(std::this_thread::get_id());
++    if (const int mode = vectorMode.load()) {
++        auto* state = static_cast<unsigned char*>(context) + 0x140;
++        std::uint64_t mask;
++        std::memcpy(&mask, state + 512, sizeof(mask));
++        Require((mask & 7) == 7);
++        for (int reg = 0; reg < 16; ++reg) {
++            for (int lane = 0; lane < 4; ++lane) {
++                auto* address = state + (lane < 2 ? 160 : 576) + reg * 16 + (lane % 2) * 8;
++                std::uint64_t value;
++                std::memcpy(&value, address, sizeof(value));
++                Require(value == vectorPattern[reg * 4 + lane]);
++                if (mode == 2) {
++                    value ^= VectorMutation;
++                    std::memcpy(address, &value, sizeof(value));
++                }
++            }
++        }
++        if (mode == 3) {
++            mask &= ~UINT64_C(4);
++            std::memcpy(state + 512, &mask, sizeof(mask));
++        }
++        __asm__ volatile("vzeroall" : : : "xmm0","xmm1","xmm2","xmm3","xmm4","xmm5","xmm6","xmm7","xmm8","xmm9","xmm10","xmm11","xmm12","xmm13","xmm14","xmm15");
++    }
+     calls.fetch_add(1);
+ }
+ 
+@@ -160,6 +187,88 @@ static void CheckNativeWait(bool signalEvent) {
+     }
+ }
+ 
++struct VectorWorker {
++    Worker worker;
++    std::atomic<std::uint32_t> resumed{0};
++    alignas(32) std::uint64_t result[64];
++};
++extern "C" void APS5_VABI HoldVectorState(const void*, void*, const void*, void*, void*);
++__asm__(
++    ".text\n.global HoldVectorState\nHoldVectorState:\n"
++    "vmovdqu 0(%rdi), %ymm0\n"
++    "vmovdqu 32(%rdi), %ymm1\n"
++    "vmovdqu 64(%rdi), %ymm2\n"
++    "vmovdqu 96(%rdi), %ymm3\n"
++    "vmovdqu 128(%rdi), %ymm4\n"
++    "vmovdqu 160(%rdi), %ymm5\n"
++    "vmovdqu 192(%rdi), %ymm6\n"
++    "vmovdqu 224(%rdi), %ymm7\n"
++    "vmovdqu 256(%rdi), %ymm8\n"
++    "vmovdqu 288(%rdi), %ymm9\n"
++    "vmovdqu 320(%rdi), %ymm10\n"
++    "vmovdqu 352(%rdi), %ymm11\n"
++    "vmovdqu 384(%rdi), %ymm12\n"
++    "vmovdqu 416(%rdi), %ymm13\n"
++    "vmovdqu 448(%rdi), %ymm14\n"
++    "vmovdqu 480(%rdi), %ymm15\n"
++    "movb $1, (%rcx)\n"
++    "vector_spin:\nlock incl (%r8)\ncmpb $0, (%rdx)\nje vector_spin\n"
++    "vmovdqu %ymm0, 0(%rsi)\n"
++    "vmovdqu %ymm1, 32(%rsi)\n"
++    "vmovdqu %ymm2, 64(%rsi)\n"
++    "vmovdqu %ymm3, 96(%rsi)\n"
++    "vmovdqu %ymm4, 128(%rsi)\n"
++    "vmovdqu %ymm5, 160(%rsi)\n"
++    "vmovdqu %ymm6, 192(%rsi)\n"
++    "vmovdqu %ymm7, 224(%rsi)\n"
++    "vmovdqu %ymm8, 256(%rsi)\n"
++    "vmovdqu %ymm9, 288(%rsi)\n"
++    "vmovdqu %ymm10, 320(%rsi)\n"
++    "vmovdqu %ymm11, 352(%rsi)\n"
++    "vmovdqu %ymm12, 384(%rsi)\n"
++    "vmovdqu %ymm13, 416(%rsi)\n"
++    "vmovdqu %ymm14, 448(%rsi)\n"
++    "vmovdqu %ymm15, 480(%rsi)\n"
++    "vzeroupper\nret\n"
++);
++static void* APS5_VABI VectorBusy(void* arg) {
++    auto& vector = *static_cast<VectorWorker*>(arg);
++    vector.worker.id = std::this_thread::get_id();
++    HoldVectorState(vectorPattern, vector.result, &vector.worker.stop, &vector.worker.started, &vector.resumed);
++    return nullptr;
++}
++static void CheckVectors(int mode) {
++    VectorWorker vector{};
++    for (int i = 0; i < 64; ++i) vectorPattern[i] = UINT64_C(0x123456789abcdef0) ^ ((std::uint64_t)(i + 1) << 40);
++    vectorMode.store(mode);
++    Pthread target = nullptr;
++    Require(scePthreadCreate(&target, nullptr, VectorBusy, &vector, "vector busy") == 0);
++    while (!vector.worker.started.load()) std::this_thread::yield();
++    for (int round = 0; round < (mode == 1 ? 100 : 1); ++round) {
++        int before = calls.load();
++        Require(sceKernelRaiseException(target, SIGUSR1) == 0);
++        ExpectDelivery(before, vector.worker.id);
++        const auto resumed = vector.resumed.load();
++        for (int attempt = 0; attempt < 5000 && vector.resumed.load() == resumed; ++attempt)
++            std::this_thread::sleep_for(std::chrono::milliseconds(1));
++        Require(vector.resumed.load() != resumed);
++    }
++    vector.worker.stop.store(true);
++    Require(scePthreadJoin(target, nullptr) == 0);
++    vectorMode.store(0);
++    int errors = 0;
++    for (int i = 0; i < 64; ++i) {
++        const auto expected = mode == 3 && i % 4 >= 2 ? 0 : vectorPattern[i] ^ (mode == 2 ? VectorMutation : 0);
++        if (expected != vector.result[i]) {
++            ++errors;
++            std::fprintf(stderr, "Vector lane=%d upper=%d expected=%llx actual=%llx\n", i, i % 4 >= 2,
++                         (unsigned long long)expected, (unsigned long long)vector.result[i]);
++        }
++    }
++    std::fprintf(stderr, "Async vector checks=64 mode=%s errors=%d\n", mode == 2 ? "mutate" : mode == 3 ? "reset-avx" : "preserve", errors);
++    Require(errors == 0);
++}
++
+ int main() {
+     Require(sceKernelRaiseException(scePthreadSelf(), 11) == SCE_KERNEL_ERROR_EINVAL);
+     bool rejected = false;
+@@ -247,6 +356,15 @@ int main() {
+     CheckNativeWait(false);
+     CheckNativeWait(true);
+     Require(calls.load() == 441);
++    __builtin_cpu_init();
++    const bool vectors = __builtin_cpu_supports("avx") && std::getenv("APS5_PRESERVE_ASYNC_AVX") &&
++                         std::strcmp(std::getenv("APS5_PRESERVE_ASYNC_AVX"), "1") == 0;
++    if (vectors) {
++        CheckVectors(1);
++        CheckVectors(2);
++        CheckVectors(3);
++    } else std::fprintf(stderr, "Async AVX checks skipped: CPU feature or opt-in unavailable.\n");
++    Require(calls.load() == (vectors ? 543 : 441));
+     Require(sceKernelRemoveExceptionHandler(SIGUSR1) == 0);
+-    std::fprintf(stderr, "All 441 exception deliveries verified.\n");
++    std::fprintf(stderr, "All %d exception deliveries verified; AVX=%s.\n", calls.load(), vectors ? "verified" : "skipped");
+ }

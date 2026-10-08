@@ -615,3 +615,14 @@ compare matched scenes with capture/profiling disabled. The native Mac byte
 checks and timestamp chain are not iPad FPS evidence.
 [Native qualification](evidence/color-sample-pixel-owned-native-20261009.json),
 [combined host build](evidence/pixel-owned-and-audio-ingress-build-20261009.json).
+
+A separate enabled native48/source63 iPad diagnostic visibly selects Golf and
+opens its full board through two verified touch inputs. Its fresh native
+pipeline cache is completely decoded and contains the expected module size/hash
+key and converted Metal kernel with the XY/eight-sample loop. Raw shader dumps
+remain absent; a cache key is not collision-free raw SPIR-V identity or GPU
+completion evidence. The original runtime, metadata, diagnostics and cache are
+restored afterward. This captured/profiled run establishes no card move, audio
+quality or matched off/on performance gain; keep the variant default-off until
+a separate comparison qualifies it.
+[Enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json).

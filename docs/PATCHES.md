@@ -115,7 +115,7 @@ source, build, device and unqualified-path states.
 | 0060 | Opt-in zero-invariant D32S8 path: per-draw stencil-only clear replaces transfers when the entire eight-sample S8 snapshot remains provably zero | Source/native contracts and independent review pass. The complete 60-patch/152-path series, full HLE with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; 137 private preparation files and dependency closure are independently verified. A bounded iPad run exercises the real clear and visibly verifies a legal Golf move and undo. Speed, audio and complete gameplay remain unqualified. [Source/native evidence](evidence/zero-stencil-invariant-native-20261009.json), [build checkpoint](evidence/zero-stencil-invariant-build-20261009.json), [device controls](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json). |
 | 0061 | Opt-in immutable coherent color baseline and full GPU output seed, removing one CPU snapshot copy while preserving padding/fence/alias commits | Helper contracts, 60 native raster comparisons, 15 omitted-copy negatives and four Windows guest-memory modes pass. Full 61-patch/154-path HLE and 25 host suites pass. iPad stock draw, undo and selection respond; two A attempts produce no visible tableau change. No legal move or speed/audio acceptance in this run. [Focused qualification](evidence/color-sample-staging-copy-native-20261009.json), [build checkpoint](evidence/color-sample-staging-copy-build-20261009.json), [device result](evidence/ipad-solitaire-color-sample-staging-copy-controls-20261009.json). |
 | 0062 | Default-off bounded fingerprints before legacy AudioOut preparation and immediately before SDL enqueue, preserving original queue behavior | Actual old/new queue, format, pacing and error contracts pass sanitizer checks; exclusive exports and a missing-hook negative pass. Full combined 63-patch rebuild passes. A bounded iPad run completes exports and worker closure; recurring input fingerprints are already present before SDL. Audio cause/quality and general DLL detach remain unqualified. [Focused checks](evidence/audioout-ingress-trace-focused-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [device result](evidence/ipad-solitaire-audioout-ingress-20261009.json). |
-| 0063 | Default-off pixel-owned eight-sample color tiling with immutable per-owner variant and distinct specialization/cache keys | 99 paired compute and 60 paired raster chains match independent AMD bytes and seeded padding. Shader, cache, failure, descriptor and negative controls pass; full combined HLE and 25 host suites pass. Mac timestamp results are scoped to the synthetic conversion chain; enabled iPad execution and speed remain unqualified. [Native checks](evidence/color-sample-pixel-owned-native-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json). |
+| 0063 | Default-off pixel-owned eight-sample color tiling with immutable per-owner variant and distinct specialization/cache keys | 99 paired compute and 60 paired raster chains match independent AMD bytes and seeded padding. Shader, cache, failure, descriptor and negative controls pass; full combined HLE and 25 host suites pass. An enabled M2 iPad run selects Golf and opens its full board. A fully decoded native cache contains the expected converted Metal variant; raw SPIR-V dumps remain absent. Speed, audio and complete gameplay remain unqualified. [Native checks](evidence/color-sample-pixel-owned-native-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json). |
 
 ## White selected-source comparison: patch0048
 
@@ -1516,3 +1516,17 @@ a single shader, execute the complete game Draw or qualify M2 iPad performance.
 The complete 63-patch/158-path rebuild and 25 host suites are a separate
 checkpoint. [Native record](evidence/color-sample-pixel-owned-native-20261009.json),
 [build record](evidence/pixel-owned-and-audio-ingress-build-20261009.json).
+
+Separate native48/source63 iPad runs enable this variant with normal tracking,
+unchanged resolution/interpolation, staging copy off and audio tracing off. The
+first remains on the selection menu; the second visibly selects Golf and opens
+its complete board. Both freshly generated native pipeline caches decode to 47
+complete entries with valid envelope checksums and a final EOF. The intended
+6,504-byte module key maps to a 7,110-byte converted Metal kernel containing XY
+pixel ownership, the nonzero-Z guard and the eight-sample loop. Raw SPIR-V dump
+files were not produced, so this is converted-cache/key evidence rather than
+collision-free raw-module identity or a dispatch/completion assertion. Each run
+restores all 56 runtime files, three metadata files, seven diagnostics and the
+93 original cache files. Capture and profiling remain enabled; no card move,
+audio repair, speed or displayed-FPS result is accepted. The gate stays
+default-off. [Enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json).

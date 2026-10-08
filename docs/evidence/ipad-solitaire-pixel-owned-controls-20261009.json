@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "status": "enabled_variant_converted_native_cache_and_visible_golf_board_verified_not_gameplay_or_performance_acceptance",
+  "sourcePatch": 63,
+  "nativeBuild": 48,
+  "platform": {
+    "gpu": "Apple M2",
+    "device": "iPad Air 13-inch M2",
+    "os": "iPadOS 27.0.1"
+  },
+  "candidateManifestSha256": "f3635f84d8bd42bcebf5b8ce167afbcdf5fbe1e18fb8344a0d87c2a5ee7148e9",
+  "controlledSettings": {
+    "pixelOwnedVariant": true,
+    "colorSampleGroups": 8,
+    "normalMemoryTracking": true,
+    "zeroStencilInvariant": true,
+    "stagingCopy": false,
+    "audioIngressTrace": false,
+    "nativeAudioPostmixCapture": false,
+    "nativeAudioReleaseTrace": false,
+    "legacyPresenceGatedAudioTracesAbsent": true,
+    "resolutionAndInterpolationUnchanged": true,
+    "native48AppUnchanged": true,
+    "freshPrivateShaderCaches": true,
+    "captureAndProfilingEnabled": true
+  },
+  "runs": [
+    {
+      "targetSeconds": 300,
+      "lastScreenshotActualSeconds": 301.130148042,
+      "state": "correct Canfield menu",
+      "inputsSent": 0,
+      "scope": "menu diagnosis only; planned input window expired before any request"
+    },
+    {
+      "targetSeconds": 240,
+      "lastScreenshotActualSeconds": 241.062236209,
+      "state": "full Golf board",
+      "inputsSent": 2,
+      "scope": "selection and board start; no card move"
+    }
+  ],
+  "visibleControls": {
+    "right": {
+      "holdMs": 250,
+      "xctestExit": 0,
+      "mainProcessContinuous": true,
+      "observed": "Golf moved to the selected center position"
+    },
+    "a": {
+      "holdMs": 500,
+      "xctestExit": 0,
+      "mainProcessContinuous": true,
+      "observed": "seven five-card columns, stock, waste and selection highlight visible"
+    },
+    "lastBoardStillVisible": true,
+    "legalMoveOrUndoTestedInTheseRuns": false
+  },
+  "nativeShaderEvidence": {
+    "rawSpirvDump": "not_observed_despite_native_launch_environment_and_fresh_directory",
+    "pipelineCacheBytes": 435726,
+    "completeEntries": 47,
+    "envelopeChecksumValid": true,
+    "allEntriesAndFinalEofConsumed": true,
+    "cachesFromBothRunsByteIdentical": true,
+    "expectedShaderCodeBytes": 6504,
+    "expectedLocalSpirvSha256": "b8bd4c6d95ebd36448c126b61a9b83abd375d3cbfeac75216a7ad0f2834929e0",
+    "nativeModuleWordDjb2a64": "bc5be06110c40caa",
+    "convertedMetalBytes": 7110,
+    "convertedMetalSha256": "872f4449cc10f01aad182de8d1dd20bb51912758b1c50ebc9825747163f8c631",
+    "observedMetalSemantics": {
+      "xyPixelOwnership": true,
+      "nonzeroZGuard": true,
+      "allEightSamplesLoop": true,
+      "workgroup": [
+        8,
+        8,
+        1
+      ]
+    },
+    "legacyModuleKeyEntries": 0,
+    "scope": "Structurally parsed native converted-shader cache entry and Metal semantics; the size/hash key is not collision-free raw SPIR-V identity or a GPU dispatch/completion record."
+  },
+  "controlsRunLog": {
+    "lines": 43030,
+    "graphicsRejectionFatalOrVkErrorMarkers": 0,
+    "nativeTelemetryRows": 222,
+    "malformedNativeTelemetryRows": 0,
+    "drawProfileRows": 23,
+    "audioPacingRows": 46,
+    "audioPacingShortageMarkers": 0
+  },
+  "restorationEachRun": {
+    "runtimeFilesIndependentlyRehashed": 56,
+    "metadataFilesByteEqual": 3,
+    "diagnosticFilesIndependentlyRehashed": 7,
+    "originalCacheFilesIndependentlyRehashed": 93,
+    "originalCachePresenceAndBytesUnchanged": true,
+    "ownProcessesClosed": true,
+    "native48StillInstalledUnchanged": true,
+    "rollbackErrors": 0
+  },
+  "limits": [
+    "No GPU-completion or exact game Draw assertion follows from the converted-shader cache.",
+    "These are fresh-cache capture/profiling runs, not matched off/on performance comparisons.",
+    "No audio quality, clipping repair, legal move, undo, save/load, lifecycle, long-term resource or full-game acceptance.",
+    "The optional variant remains default-off; no speed or displayed-FPS improvement is accepted.",
+    "Temporary candidate runtime is restored to the original installation; this does not constitute a permanent playable deployment.",
+    "Raw captures, cache contents, shader text, device identifiers and game data remain private and local."
+  ],
+  "privateEvidenceSha256": {
+    "menu_run_receipt": "c21f1a3e850daf05180a93d06db6f220429faaca4dfee0751d11cf5d3380f414",
+    "menu_run_independent_review": "dbe10647686e60f77f9aca49f5b03749d91e7d81d734ee83798b64c4260ec0e8",
+    "menu_run_native_cache_structure": "c60c46572e72534a52b226aca15eec772bf29de1d6e02e0adf3444f4cb57de10",
+    "controls_run_receipt": "04720e25805289b2b7308bc3020b09f24a74791c1908153bb4fa4d2556ffaf15",
+    "controls_run_independent_review": "304c7b193e35098729fbe991a92ba874c76b149054a44acd08b7b75e536d45e6",
+    "controls_run_native_cache_structure": "bf87028770f7a1dbca316aac225e6e4a520bdc78db3a15c7d49eba3e784f0a39",
+    "controls_run_app_log": "b79b4b5192faec705024482b2ffa13b9baa0e3db6e3977ba278a4fc4540c683d",
+    "controls_run_rollback": "c45d207e39aba775255280e48ab084a4f9a4858ce429fe4277f83bd7fe741a67",
+    "controls_run_actions": "becf9c0e35623447dc1a11704c45fb8d6a2b66739b88d4df7382c6199042e151",
+    "right_selection_screenshot": "c66492deab11ae883206d6e5d1aa5a7e50a1056a456dfc7e33eda797af8f3e45",
+    "board_start_screenshot": "14a9e4e983f9d17cadbabc43803a2471726cdced9d2ab762960cb6873346ae7e",
+    "last_board_screenshot": "6b4b8f1672a2b6da11cc2a9b86cfddc5ffc3dc911d9be881334efc2c81f7d0c1",
+    "root_right_visible_review": "5744c50f4e0e5300d7eecf44487302f83fd1ea367452223310c7364fd9513728",
+    "root_board_start_visible_review": "9af5241ca4a777a6887b1441f51191376c60afc587bb065c90a4b2b50efc5619",
+    "root_last_board_visible_review": "7cc5ae0eb534587d54a6e2744445726ca1dd6e57d538a90835e72cd14980adea",
+    "controls_run_plan": "b23a441f6e23dde6d20b46274524c08ed9d83adca1ce3ee26726f7be3f250c40",
+    "controls_run_script": "48557d4b193f171a900e70857de1a548fda31d865d35515a4d11bb0edb0f9a38"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "protected_store_native_page_crossings",
+  "source_base_commit": "210c53fa7f0308f78cb338a2140dcc9e48349e91",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_SAFE_SELF_READ": true
+  },
+  "probe": {
+    "source": "tools/runtime-probes/protected_store_state_probe.c",
+    "argument": "--cross-page",
+    "cases": 153,
+    "faults": 153,
+    "errors": 0,
+    "avx": "verified",
+    "nested_faults": 0,
+    "rejected_requests": 459,
+    "query_errors": 0,
+    "wine_exit_code": 0,
+    "source_sha256": "736288abf9acecaec45bf20ef8c0374ca5a7790eac02914004925659000f8788",
+    "exe_sha256": "ac22f8a1e4cd5d04b14b8759f594d4c2447e15ec5892787f42b7c7f5569d86df",
+    "log_sha256": "da697b1416d4e4409d950e82ec6f002330031dd8a76f445f847a1f5845d8b55c",
+    "receipt_sha256": "4b057edca2ac8462de1da9d82d484ed5609a2e451efc185bd5b61982d25117a8"
+  },
+  "contract": {
+    "native_page_bytes": 16384,
+    "protected_page": "second; first remains writable",
+    "destination_bytes_before_boundary": [
+      1,
+      4,
+      7,
+      8,
+      15,
+      16,
+      24,
+      31
+    ],
+    "positions_used_only_when_transfer_crosses_boundary": true,
+    "general_registers": 15,
+    "ymm_registers": 16,
+    "arithmetic_and_direction_flags": 7,
+    "store_modes": [
+      "scalar_64",
+      "vmovdqu_xmm_128",
+      "vmovdqu_ymm_256",
+      "vmovupd_ymm_256",
+      "vmovups_ymm_256",
+      "vmovupd_ymm_rbx_destination",
+      "indexed_four_load_112_byte_overlapping_packet_copy"
+    ],
+    "bytes_checked_each_case": 32768,
+    "callback_df_zero_checked": true,
+    "handler_deliberately_zeroes_vector_state": true
+  },
+  "same_page_regression": {
+    "cases": 192,
+    "faults": 192,
+    "nested_faults": 96,
+    "errors": 0,
+    "rejected_requests": 864,
+    "query_errors": 0,
+    "wine_exit_code": 0,
+    "log_sha256": "7b117d771da8820e9b1582ac3e139dfc4c5b6de99035284a9337d8e0159c0bc4",
+    "receipt_sha256": "f729c7666277749e35ed71f6f99cdde4fb6fefcb790fe065def6db76936fb9d4"
+  },
+  "host_comparison": {
+    "cases": 9,
+    "errors": 0,
+    "avx": "skipped",
+    "native_bridge_qualified": false,
+    "log_sha256": "35c77c433efe75fa4df27f50077562497bf0ed361b5ab92ac2513829774ff41e"
+  },
+  "cleanup": {
+    "config_and_library_byte_restored": true,
+    "own_processes_closed_verified": true
+  },
+  "limits": [
+    "Crossing tests do not exercise nested faults or handler mutations; the separate same-page run does.",
+    "Aligned non-temporal stores, guest libc memcpy and arbitrary instruction/register-allocation patterns remain unqualified.",
+    "Passing these crossings does not explain the observed game packet corruption or establish rendered gameplay."
+  ],
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false
+}

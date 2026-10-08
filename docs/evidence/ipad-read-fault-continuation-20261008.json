@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "synthetic_read_fault_register_and_pc_continuation",
+  "source_base_commit": "210c53fa7f0308f78cb338a2140dcc9e48349e91",
+  "app_build": 42,
+  "cases": 12,
+  "faults": 12,
+  "errors": 0,
+  "avx": "verified",
+  "nested_faults": 0,
+  "rejected_requests": 36,
+  "query_errors": 0,
+  "wine_exit_code": 0,
+  "checks": {
+    "general_registers": 15,
+    "ymm_registers": 16,
+    "arithmetic_and_direction_flags": 7,
+    "fault_direction": "read",
+    "source_protection": "PAGE_NOACCESS",
+    "destination_register": "RAX replaced with source address",
+    "pc_advance_bytes": 3,
+    "callback_df_zero": true,
+    "source_page_unchanged": true,
+    "handler_deliberately_zeroes_vector_state": true
+  },
+  "hashes": {
+    "own_fixture_source_sha256": "0a2d57f5a94d38a55bf6400d3e1fa9721bf092a40c5427e8afc3f56a50366a24",
+    "own_fixture_exe_sha256": "260d63aacd6defd3cbfadf7f86c7c9da6954e2d89e63d5538e55482f88073ffd",
+    "log_sha256": "d459664bf33fc246ae0768f0143c9389c43bcd951a868ce58ff6aafe8ac1c202",
+    "receipt_sha256": "f0de61f533fdf1a774654fb35c925ab2602f4c06aacb81366f5da41c2902e512"
+  },
+  "host_comparison": {
+    "cases": 6,
+    "errors": 0,
+    "avx": "skipped",
+    "native_bridge_qualified": false,
+    "log_sha256": "2dd7cedce6d3b6d7f2bfe2e51115b984777a974dd0ef50199cbf7cadb2a1c05f"
+  },
+  "cleanup": {
+    "config_and_library_byte_restored": true,
+    "own_processes_closed_verified": true
+  },
+  "limits": [
+    "One scalar three-byte read is skipped and an address calculation is emulated; this does not qualify arbitrary fault instruction emulation.",
+    "No nested read faults, game patches, rendering or gameplay are qualified by this probe."
+  ],
+  "raw_game_or_shader_data_published": false,
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false
+}

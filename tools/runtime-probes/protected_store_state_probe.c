@@ -1,4 +1,4 @@
-/* Private extended scalar/vector protected-store CPU-state probe; no game or HLE data. */
+/* Synthetic scalar/vector protected-store CPU-state probe; no game or HLE data. */
 #include <windows.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -6,7 +6,7 @@
 #include <string.h>
 #include "aps5_veh_state.h"
 static LONG (WINAPI *QueryState)(HANDLE,DWORD,void*,ULONG,ULONG*);
-static int BridgeActive;
+static int BridgeActive, CrossPage;
 void *Page, *NestedPage;
 static void *Allocation;
 int StoreMode;
@@ -24,14 +24,14 @@ static LONG CALLBACK repair_original(EXCEPTION_POINTERS *p) {
     __asm__ volatile("pushfq; popq %0; cld" : "=r"(CallbackFlags) : : "cc");
     EXCEPTION_RECORD *e=p->ExceptionRecord;
     if(e->ExceptionCode!=EXCEPTION_ACCESS_VIOLATION || e->NumberParameters<2 ||
-       e->ExceptionInformation[1]!=(ULONG_PTR)Page) return EXCEPTION_CONTINUE_SEARCH;
+       (CrossPage ? (e->ExceptionInformation[1]<(ULONG_PTR)Allocation+0x4000 || e->ExceptionInformation[1]>=(ULONG_PTR)Allocation+0x8000) : e->ExceptionInformation[1]!=(ULONG_PTR)Page)) return EXCEPTION_CONTINUE_SEARCH;
     if(e->ExceptionInformation[0]!=1) {++InvalidFaults; return EXCEPTION_CONTINUE_SEARCH;}
     CONTEXT *c=p->ContextRecord;
     const uint64_t g[]={c->Rax,c->Rcx,c->Rdx,c->Rbx,c->Rbp,c->Rsi,c->Rdi,c->R8,c->R9,c->R10,c->R11,c->R12,c->R13,c->R14,c->R15,c->EFlags};
     memcpy(ContextGprs,g,sizeof(g));
     memcpy(ContextVectors,&c->Xmm0,sizeof(ContextVectors));
     DWORD old;
-    if(!VirtualProtect(Allocation,0x4000,PAGE_READWRITE,&old))return EXCEPTION_CONTINUE_SEARCH;
+    if(!VirtualProtect(CrossPage?(char*)Allocation+0x4000:Allocation,0x4000,PAGE_READWRITE,&old))return EXCEPTION_CONTINUE_SEARCH;
     ++Faults;
     if(UseAvx) __asm__ volatile("vzeroall" : : : "xmm0","xmm1","xmm2","xmm3","xmm4","xmm5","xmm6","xmm7","xmm8","xmm9","xmm10","xmm11","xmm12","xmm13","xmm14","xmm15");
     return EXCEPTION_CONTINUE_EXECUTION;
@@ -234,7 +234,9 @@ __asm__(
     "popq %rbp\n"
     "ret\n"
 );
-int main(void) {
+int main(int argc, char **argv) {
+    if(argc>2 || (argc==2 && strcmp(argv[1],"--cross-page")))return 64;
+    CrossPage=argc==2;
     __builtin_cpu_init();
     const int avx=__builtin_cpu_supports("avx")!=0;
     Allocation=VirtualAlloc((void*)UINT64_C(0x7400000000),0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
@@ -248,12 +250,16 @@ int main(void) {
     for(unsigned i=0;i<64;i++)InputVectors[i]=UINT64_C(0xa1b2c3d4e5f60718) ^ ((uint64_t)(i+1)*UINT64_C(0x0101010101010101));
     unsigned errors=0,cases=0;
     const uint64_t flags[]={0x202,0xad7,0xed7};
-    for(Nest=0;Nest<=BridgeActive;Nest++)for(Mutate=0;Mutate<=BridgeActive;Mutate++)for(UseAvx=0;UseAvx<=avx;UseAvx++)
-      for(StoreMode=0;StoreMode<=(UseAvx?6:0);StoreMode++)for(unsigned offset=0;offset<=16;offset+=16)for(unsigned f=0;f<3;f++){
+    const unsigned crossings[]={1,4,7,8,15,16,24,31};
+    for(Nest=0;Nest<=(BridgeActive && !CrossPage);Nest++)for(Mutate=0;Mutate<=(BridgeActive && !CrossPage);Mutate++)for(UseAvx=0;UseAvx<=avx;UseAvx++)
+      for(StoreMode=0;StoreMode<=(UseAvx?6:0);StoreMode++)for(unsigned position=0;position<(CrossPage?8:2);position++)for(unsigned f=0;f<3;f++){
+        const unsigned writtenBytes=StoreMode==0?8:StoreMode==1?16:StoreMode==6?112:32;
+        if(CrossPage && crossings[position]>=writtenBytes)continue;
+        const unsigned offset=CrossPage?0x4000-crossings[position]:position*16;
         Page=(char*)Allocation+offset;
         InputFlags=flags[f];memset(OutputGprs,0,sizeof(OutputGprs));memset(OutputVectors,0,sizeof(OutputVectors));
-        memset(Allocation,0xa5,0x4000);
-        DWORD old; if(!VirtualProtect(Allocation,0x4000,PAGE_READONLY,&old))return 12;
+        memset(Allocation,0xa5,CrossPage?0x8000:0x4000);
+        DWORD old; if(!VirtualProtect(CrossPage?(char*)Allocation+0x4000:Allocation,0x4000,PAGE_READONLY,&old))return 12;
         FaultState();
         unsigned gprErrors=0,vectorErrors=0,contextVectorErrors=0;
         for(unsigned i=0;i<15;i++){
@@ -271,11 +277,10 @@ int main(void) {
         unsigned flagErrors=(ContextGprs[15]&0xcd5)!=(InputFlags&0xcd5) || (OutputGprs[15]&0xcd5)!=((InputFlags^(Mutate?0xcd5:0))&0xcd5);
         unsigned callbackError=(CallbackFlags&0x400)!=0;
         unsigned dataError=0;
-        const unsigned writtenBytes=StoreMode==0?8:StoreMode==1?16:StoreMode==6?112:32;
         uint64_t written[14]={UINT64_C(0x123457789abcdef0)};
         if(StoreMode)for(unsigned i=0;i<writtenBytes/8;i++)written[i]=InputVectors[i]^(Mutate?Mutation:0);
         const unsigned char* expectedBytes=(const unsigned char*)written;
-        for(unsigned i=0;i<0x4000;i++){
+        for(unsigned i=0;i<(CrossPage?0x8000:0x4000);i++){
             const unsigned char expectedByte=i>=offset && i<offset+writtenBytes ? expectedBytes[i-offset] : 0xa5;
             if(((const unsigned char*)Allocation)[i]!=expectedByte)++dataError;
         }
@@ -284,7 +289,8 @@ int main(void) {
         printf("[fault-state] case=%u avx=%d store_mode=%d offset=%u gpr_errors=%u vector_errors=%u saved_xmm_errors=%u flags=%llx/%llx/%llx callback_df=%u data_error=%u faults=%u\n",cases,UseAvx,StoreMode,offset,gprErrors,vectorErrors,contextVectorErrors,(unsigned long long)(InputFlags&0xcd5),(unsigned long long)(ContextGprs[15]&0xcd5),(unsigned long long)(OutputGprs[15]&0xcd5),callbackError,dataError,Faults);fflush(stdout);
     }
     RemoveVectoredExceptionHandler(h);VirtualFree(Allocation,0,MEM_RELEASE);
+    printf("[fault-state] mode=%s\n",CrossPage?"cross-page":"same-page");
     printf("[fault-state] cases=%u faults=%u errors=%u AVX=%s\n",cases,Faults,errors,avx?"verified":"skipped");fflush(stdout);
     printf("[fault-state] nested_faults=%u rejected_requests=%u query_errors=%u\n",NestedFaults,RejectedRequests,QueryErrors);fflush(stdout);
-    return errors || InvalidFaults || Faults!=cases || NestedFaults!=(BridgeActive?cases/2:0) || QueryErrors || (BridgeActive && RejectedRequests!=3*(Faults+NestedFaults));
+    return errors || InvalidFaults || Faults!=cases || NestedFaults!=(BridgeActive && !CrossPage?cases/2:0) || QueryErrors || (BridgeActive && RejectedRequests!=3*(Faults+NestedFaults));
 }

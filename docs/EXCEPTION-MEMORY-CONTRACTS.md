@@ -70,8 +70,18 @@ requests. Stores cover scalar, 128-bit and 256-bit `vmovdqu`, `vmovupd` and
 `vmovups`, an RBX destination, and an indexed four-load 112-byte packet copy
 with overlapping vector loads. Both zero and sixteen-byte destination offsets
 are checked; all untouched bytes in the 16-KiB destination page must retain
-their guard pattern. Arbitrary page crossings are not qualified.
+their guard pattern. Page crossings require the separate mode below.
 A host without AVX or the native bridge does not qualify those cases.
+
+Run `protected-store-state-probe.exe --cross-page` to leave the first native
+16-KiB page writable and protect the second. This mode places the destination
+1, 4, 7, 8, 15, 16, 24 or 31 bytes before the boundary, using a position only
+when the selected transfer crosses it. It checks all 32 KiB, including bytes
+outside the transfer. Build 42 passes 153 cases with zero errors, 459 rejected
+queries and Wine exit 0. The same binary's default mode also passes the original
+192 cases and 96 nested faults. Crossing tests do not enable nesting or handler
+mutations. Aligned non-temporal stores and arbitrary instruction sequences remain
+unqualified. See the [page-crossing evidence](evidence/ipad-cross-page-protected-stores-20261008.json).
 
 `GuestMemory.cpp` separately exercises the real libc handler with native CRT
 `memcpy` and `memset`, using nine transfer sizes across protected 16-KiB pages,
@@ -127,6 +137,13 @@ Invalid or racing destination buffers are not qualified or repaired by this
 source-read change. It does not enable cross-process writes or change source
 permissions, and it does not qualify gameplay.
 
+A separate synthetic read-fault continuation checks a handler that changes RAX
+and advances PC by three bytes rather than retrying the inaccessible load. Build
+42 passes twelve scalar/AVX cases, preserving the other general registers,
+all sixteen vector registers and seven flags. It rejects 36 malformed requests
+and exits Wine with code 0. This qualifies that bounded continuation only, not
+arbitrary instruction emulation. See the [read-continuation evidence](evidence/ipad-read-fault-continuation-20261008.json).
+
 ## Graphics qualification remains separate
 
 The fixed-function interpolation path retains validation of supported RDNA I/J
@@ -149,6 +166,15 @@ RVA `0x1426827`: the non-null shader object has a null function table at the
 fatal call. This narrows the next investigation to object creation/lifetime or
 other writes, but does not identify their cause or qualify every packet copy.
 See the [packet checkpoint](evidence/solitaire-build42-shader-packet-checkpoint.json).
+An additional private observer records six shader constructions and 78 program
+packets. The first 77 packets reference the captured objects; the final packet
+contains another pointer, already present in its source buffer. All six observed
+shader objects still have their expected function tables at the fatal call.
+The full 112-byte copy matches again. This identifies a bad source packet,
+without proving which writer introduced it. The private instruction observers
+can change timing and are not production fixes. A separate observer of existing
+write faults also finds guest libc non-temporal copies, a path the synthetic
+store suite does not qualify. See the [constructor/call checkpoint](evidence/solitaire-build42-shader-call-checkpoint.json).
 Earlier runs rejected an 8-sample draw on the
 M2, whose queried Vulkan attachment counts are 1, 2 and 4. The CPU test repair
 therefore does not establish rendered or playable Solitaire.

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+  "kind": "production_color_render_target_sample_group_resource",
+  "goal_completed": false,
+  "implementation": {
+    "actual_renderer_class": "RenderTarget",
+    "logical_sample_counts": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "native_sample_count_maximum": 4,
+    "eight_samples": "two image layers, distinct attachment views and a sampled array view",
+    "ordinary_single_sample_path_retained": true,
+    "guest_draws_enabled": false,
+    "cpu_color_transfers_connected_by_patch0035": true,
+    "vulkan_device_feature_changes": "query/enable portability multisampleArrayImage when enumerated; enable sample-locations extension and keep its properties",
+    "feature_selection_source_only_syntax_checked": true
+  },
+  "build": {
+    "windows_x64_probe": "built with actual production ColorRenderTarget.cpp, Context.hpp, Resources.hpp, State.hpp",
+    "probe_sha256": "471864f16fa739cff78e31f760edb9508e569c92c94803043ca3edd4b944c161",
+    "source_hashes": {
+      "tools/gpu-probe/msaa_split_read.comp": "45caa697b33f33b15c3fbecbd0cbe7614887d0893b758edaad1b5ee93edd8d79",
+      "tools/gpu-probe/msaa_split.vert": "568918e8c80214ca5769d2e0c684990c22a815bfe600a30da12230fd4f0c7286",
+      "tools/gpu-probe/msaa_split.frag": "29d0105c14a753707221c3c7eeb6b6a98a7399d0777627339f567babb5a360ed",
+      "tools/gpu-probe/msaa_split_probe.c": "d4fc49f05721f5809bb53e2948d101a707c1adf012fa345bf205d9ecb3eaa2f1",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp": "da5afe953af0c57ef2b3e149d310fa1154eae8607b87015f5f0a8e1306e921d2",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "48307b59ed87cffa5492ce9c5916712ec3afc297446947913072a74257d7813b",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "eca20ecb1c77002da64ac5d686b4bf305806ea6dabedc9cbf2b95a4647a56774",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "25295a0cb96fa47afdab7d84ee1920c5d2dab23242485bd4d5b307120fd44c91",
+      "tools/gpu-probe/render_target_fixture.cpp": "f1b2680d39b36cee8f607bfe3bb942cbb95cbd909fdafbcb37f72875b6f21c44",
+      "tools/gpu-probe/render_target_fixture.h": "f3800120996295e9aed5783cb43874e4a8469005feb74271cd2f216181b12d4b"
+    },
+    "manifest_sha256": "e4f9551aaa8a8592f3a7bcd1bf478c4f11384dcb70212a3f2e72e103a16bcdf7",
+    "native_contract": {
+      "sanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "layouts": 4,
+      "rejected_or_unwound": 31,
+      "leaked_handles": 0,
+      "errors": 0
+    },
+    "device_initialization_source": "Mingw C++20 syntax check passes; full HLE library not rebuilt"
+  },
+  "device_runs": {
+    "default": {
+      "app_build": "47",
+      "guest_exit": 0,
+      "logical_samples": 8,
+      "native_samples": 4,
+      "groups": 2,
+      "coverage_values": 512,
+      "group_values": 1024,
+      "sample_values": 4096,
+      "gpu_mean_values": 512,
+      "errors": 0,
+      "log_sha256": "367329907adbc167a75ab139cf476c7824e09f06f516403819c1e5a550ee5de1",
+      "configuration_and_library_restored": true,
+      "own_processes_verified_closed": true,
+      "shutdown_note": "StikDebug detach breakpoint and process-already-exited cleanup race recorded; no game tested"
+    },
+    "captured": {
+      "app_build": "47",
+      "guest_exit": 0,
+      "logical_samples": 8,
+      "native_samples": 4,
+      "groups": 2,
+      "coverage_values": 512,
+      "group_values": 1024,
+      "sample_values": 4096,
+      "gpu_mean_values": 512,
+      "errors": 0,
+      "log_sha256": "f288ebfd9eb5843be384db83aab96dcdf450e1ca03f3689bd7b79fa3ffc4ed24",
+      "configuration_and_library_restored": true,
+      "own_processes_verified_closed": true,
+      "shutdown_note": "StikDebug detach breakpoint and process-already-exited cleanup race recorded; no game tested"
+    }
+  },
+  "qualification_limits": [
+    "Synthetic own shader fixture uses R32_SFLOAT; actual game RGBA8 format/rounding and depth/stencil remain unqualified.",
+    "Probe instantiates production image owner, but uses its own render pass/pipelines and descriptor bindings.",
+    "Guest resource residency/cache, logical-sample image reads, input/output transfers, safe repeated draws, depth/stencil and final game path remain to be connected.",
+    "No actual Solitaire rendering, audio, controls, saves or FPS qualified by these probes."
+  ],
+  "github_actions_used": false
+}

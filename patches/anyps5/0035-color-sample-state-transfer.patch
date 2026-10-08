@@ -1,0 +1,333 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp
+@@ -53,6 +53,10 @@
+     std::uint32_t depth = 1;
+     std::uint32_t depthSlice = 0;
+     std::uint32_t exportIndex = 0;
++    // Coverage samples and stored color fragments, decoded from CB_COLOR_ATTRIB.
++    // EQAA (different counts) is rejected until its FMASK mapping is implemented.
++    std::uint32_t samples = 1;
++    std::uint32_t fragments = 1;
+ };
+ 
+ struct DepthTarget {
+@@ -62,6 +66,7 @@
+     VkFormat format;
+     float clearDepth;
+     std::uint8_t clearStencil;
++    std::uint32_t samples = 1;
+ };
+ 
+ struct State {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/State.cpp
+@@ -572,6 +572,7 @@
+         const auto slotExport = (exportFormat >> (4u * index)) & 0xfu;
+         if (slotExport == 0 || slotExport == 7 || slotExport == 8 || slotExport > 9) throw std::runtime_error("AGC graphics: color export format " + std::to_string(slotExport) + " is unsupported");
+         auto color = DecodeColorBuffer(cx, slot);
++        Require(color.samples == 1, "multisampled color rendering requires a sample-aware renderer");
+         color.exportIndex = index;
+         APS5_LOG_OUT_DEBUG("Color %u address=0x%llx extent=%ux%u bytes=%llu VkFormat=%u", slot, static_cast<unsigned long long>(color.address), color.extent.width, color.extent.height, static_cast<unsigned long long>(color.bytes), static_cast<unsigned>(color.format));
+         if (result.colors.empty()) {
+@@ -669,6 +670,7 @@
+ }
+ 
+ ColorTarget DecodeColorBuffer(const Registers& cx, std::uint32_t slot) {
++    Require(slot < 8, "color buffer slot exceeds the register bank");
+     const auto stride = slot * 0xfu;
+     ColorTarget color{};
+     color.slot = slot;
+@@ -678,6 +680,7 @@
+     APS5_LOG_OUT_DEBUG("Color %u info=0x%x number=%u swap=%u", slot, info, number, swap);
+     const auto format = (info >> 2u) & 0x1fu;
+     const auto decoded = DecodeColorFormat(format, number, swap);
++    Require((info & 0x0c004000u) == 0, "FMASK color compression or configuration is unsupported (CB_COLOR_INFO)");
+     // ROUND_MODE (bit 18) only affects unorm rounding. With DCC_ENABLE (bit 28) the target is written
+     if ((info & ~(0x00039f7cu | 0x00040000u | 0x10000000u | 0x00002000u)) != 0) throw std::runtime_error("AGC graphics: color compression, DCC, endian conversion, nonstandard rounding or color optimization is unsupported (CB_COLOR_INFO 0x" + [&] { char text[16]; std::snprintf(text, sizeof(text), "%08x", info); return std::string(text); }() + ")");
+     Require((info & 0x8000u) != 0 || number == 7 || number == 4 || number == 5, "unclamped normalized color is unsupported");
+@@ -686,13 +689,26 @@
+     const auto slice = view & 0x1fffu;
+     Require(slice == ((view >> 13u) & 0x1fffu), "color views of several array slices are unsupported");
+     const auto viewMip = (view >> 26u) & 0xfu;
+-    zero(cx, 0x31d + stride, ~0u, "color samples, fragments or destination alpha override");
++    // GC 10.1 CB_COLOR_ATTRIB: NUM_SAMPLES[14:12], NUM_FRAGMENTS[16:15], both log2.
++    // Preserve the old rejection of destination alpha, FMASK tiling and reserved bits.
++    const auto attrib = read(cx, 0x31d + stride);
++    zero(cx, 0x31d + stride, ~0x0001f000u, "color FMASK layout, destination alpha override or reserved attributes");
++    color.samples = 1u << ((attrib >> 12u) & 7u);
++    color.fragments = 1u << ((attrib >> 15u) & 3u);
++    Require(color.samples <= 8, "color coverage sample count above eight is unsupported");
++    Require(color.samples == color.fragments, "EQAA color targets require FMASK sample mapping");
+     const auto attrib2 = read(cx, 0x3b0 + slot);
+     const auto maxMip = attrib2 >> 28u;
+     Require(viewMip <= maxMip, "color view mip exceeds the surface");
+     const auto attrib3 = read(cx, 0x3b8 + slot);
+     color.tileMode = DecodeColorTileMode(attrib3);
+     const bool volume = ((attrib3 >> 24u) & 3u) == 2u;
++    if (color.samples != 1) {
++        Require(color.tileMode == ColorTileMode::RenderTarget, "multisampled color targets require R64KB_X tiling");
++        Require(maxMip == 0 && !volume && slice == 0, "multisampled mipmapped, 3D or array color targets are unsupported");
++        Require((info & 0x10000000u) == 0, "multisampled DCC color targets are unsupported");
++        Require((info & 0x2000u) == 0, "multisampled CMASK fast clears are unsupported");
++    }
+     if (volume) {
+         color.depth = (attrib3 & 0x1fffu) + 1u;
+         Require(maxMip == 0 && (info & 0x10000000u) == 0, "mipmapped or DCC 3D color targets are unsupported");
+@@ -713,7 +729,7 @@
+         color.mipTail = mip.tail;
+         color.extent = {mip.width, mip.height};
+     }
+-    const ColorTargetLayout colorLayout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes);
++    const ColorTargetLayout colorLayout(color.extent.width, color.extent.height, color.tileMode, color.elementBytes, color.fragments);
+     const auto high = read(cx, 0x390 + slot);
+     Require((high & ~0xffu) == 0, "invalid color address extension");
+     color.surfaceAddress = (static_cast<std::uint64_t>(high) << 40u) | (static_cast<std::uint64_t>(read(cx, 0x318 + stride)) << 8u);
+@@ -776,6 +792,7 @@
+     for (std::uint32_t slot = 0; slot < 8; ++slot) {
+         if (((targetMask >> (4u * slot)) & 0xfu) == 0 || ((read(cx, 0x31c + slot * 0xfu) >> 2u) & 0x1fu) == 0) continue;
+         const auto target = DecodeColorBuffer(cx, slot);
++        Require(target.samples == 1, "CB metadata passes over multisampled color targets are unsupported");
+         Require((read(cx, 0x31c + slot * 0xfu) & 0x10000000u) == 0 || target.dccAddress != 0, "CB metadata pass over a mipmapped DCC color target, whose keys are not modeled");
+         const auto width = static_cast<float>(target.extent.width);
+         const auto height = static_cast<float>(target.extent.height);
+@@ -835,6 +852,10 @@
+     if (auto reason = nonzero(cx, 0x204, ClipControlMask, "unsupported PA_CL_CLIP_CNTL flags"); !reason.empty()) return reason;
+     std::uint32_t targetMask = 0, shaderMask = 0;
+     if (value(cx, 0x8e, targetMask) && value(cx, 0x8f, shaderMask) && value(cx, 0x202, word) && !colorControlSupported(word, (targetMask & shaderMask) != 0)) return colorControlMessage(word);
++    for (std::uint32_t slot = 0; slot < 8; ++slot) {
++        if (((targetMask & shaderMask) >> (4u * slot) & 0xfu) == 0) continue;
++        if (value(cx, 0x31d + slot * 0xfu, word) && (word & 0x0001f000u) != 0) return zeroMessage(0x31d + slot * 0xfu, word, "multisampled color rendering without a sample-aware renderer");
++    }
+     if (auto reason = nonzero(cx, 0x1c4, zFormatSupported(zFormat) ? 0u : ~0u, "depth or sample-mask export"); !reason.empty()) return reason;
+     if (PixelProgramSkipped(queue)) return NullPixelProgramRejection(queue);
+     for (const auto offset : {0x1b3u, 0x1b4u, 0x1c5u}) {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetTransfer.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetTransfer.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetTransfer.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetTransfer.cpp
+@@ -7,7 +7,8 @@
+ 
+ void ReadColorTarget(const ColorTarget& target, std::span<std::byte> destination) {
+     PerformanceTimer timing("ColorTarget.Read");
+-    const ColorTargetLayout layout(target.extent.width, target.extent.height, target.tileMode, target.elementBytes);
++    Require(target.samples == target.fragments, "EQAA color target transfer requires FMASK sample mapping");
++    const ColorTargetLayout layout(target.extent.width, target.extent.height, target.tileMode, target.elementBytes, target.fragments);
+     Require(target.bytes == layout.Bytes() && destination.size() == layout.LinearBytes(), "color target transfer size mismatch");
+     if (target.tileMode == ColorTileMode::Linear && layout.Bytes() == layout.LinearBytes()) {
+         GuestMemory::Read(target.address, destination, layout.Alignment());
+@@ -23,7 +24,8 @@
+ 
+ void WriteColorTarget(const ColorTarget& target, std::span<const std::byte> source) {
+     PerformanceTimer timing("ColorTarget.Write");
+-    const ColorTargetLayout layout(target.extent.width, target.extent.height, target.tileMode, target.elementBytes);
++    Require(target.samples == target.fragments, "EQAA color target transfer requires FMASK sample mapping");
++    const ColorTargetLayout layout(target.extent.width, target.extent.height, target.tileMode, target.elementBytes, target.fragments);
+     Require(target.bytes == layout.Bytes() && source.size() == layout.LinearBytes(), "color target transfer size mismatch");
+     if (target.tileMode == ColorTileMode::Linear && layout.Bytes() == layout.LinearBytes()) {
+         GuestMemory::Write(target.address, source, layout.Alignment());
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -2552,6 +2552,7 @@
+         }
+         UnobservedViewportDepthTests();
+         stateTests();
++        RunColorTargetSampleTests();
+         shaderEnginePartitionTests();
+         equivalentStencilClearTests();
+         hardwareScreenOffsetTests();
+diff --git a/core/libs/prx/libSceAgcDriver/tests/GraphicsTests.hpp b/core/libs/prx/libSceAgcDriver/tests/GraphicsTests.hpp
+--- a/core/libs/prx/libSceAgcDriver/tests/GraphicsTests.hpp
++++ b/core/libs/prx/libSceAgcDriver/tests/GraphicsTests.hpp
+@@ -30,6 +30,7 @@
+ };
+ 
+ void RunTextureFormatTests();
++void RunColorTargetSampleTests();
+ void RunTextureTilingTests();
+ void RunGuestTextureResourceTests();
+ void RunGuestSamplerResourceTests();
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -436,6 +436,7 @@
+ add_test_executable(agc_driver_graphics_tests EXCLUDE_FROM_ALL
+         tests/Graphics.cpp
+         tests/ColorTargetLayout.cpp
++        tests/ColorTargetSamples.cpp
+         tests/BdaResources.cpp
+         tests/GuestAllocations.cpp
+         tests/LiveStack.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/tests/ColorTargetSamples.cpp b/core/libs/prx/libSceAgcDriver/tests/ColorTargetSamples.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/tests/ColorTargetSamples.cpp
+@@ -0,0 +1,167 @@
++#include "prx/libSceAgcDriver/Graphics/include/ColorTargetTransfer.hpp"
++#include <algorithm>
++#include <bit>
++#include <cstring>
++#include <memory>
++#include <new>
++#include <string_view>
++
++namespace {
++using namespace AgcDriver::Graphics;
++
++template<class Action>
++void rejected(Action action, std::string_view reason) {
++    try { action(); }
++    catch (const std::runtime_error& error) {
++        Require(std::string_view(error.what()).find(reason) != std::string_view::npos,
++                std::string("unexpected color sample rejection: ") + error.what());
++        return;
++    }
++    throw std::runtime_error("expected color sample rejection: " + std::string(reason));
++}
++
++AgcDriver::QueueState colorState(std::uint64_t address, std::uint32_t samples,
++                                std::uint32_t slot = 0) {
++    AgcDriver::QueueState queue;
++    const auto stride = slot * 15u;
++    queue.context[0x318 + stride] = static_cast<std::uint32_t>(address >> 8u);
++    queue.context[0x390 + slot] = static_cast<std::uint32_t>(address >> 40u);
++    queue.context[0x31b + stride] = 0;
++    queue.context[0x31c + stride] = 0x28028u; // RGBA8 UNORM, no metadata compression.
++    const auto exponent = std::countr_zero(samples);
++    queue.context[0x31d + stride] = (exponent << 12u) | (exponent << 15u);
++    queue.context[0x3b0 + slot] = (256u << 14u) | 128u; // Odd extent crosses macroblocks.
++    queue.context[0x3b8 + slot] = 0x09000000u | (0x1bu << 14u); // 2D R64KB_X.
++    queue.context[0x2d5] = 0x2000;
++    queue.context[0x2f8] = 0;
++    queue.context[0x8e] = 0xfu << (4u * slot);
++    queue.context[0x8f] = 0xfu << (4u * slot);
++    queue.context[0x202] = 0xcc0010u;
++    queue.context[0x1c5] = 9u;
++    queue.context[0x1c3] = 4u;
++    queue.userConfig[0x242] = 4;
++    return queue;
++}
++}
++
++void RunColorTargetSampleTests() {
++    constexpr auto allocationSize = 2u * 1024u * 1024u;
++    constexpr auto alignment = std::align_val_t(65536);
++    const auto freeAligned = [](std::byte* p) { ::operator delete(p, alignment); };
++    const std::unique_ptr<std::byte, decltype(freeAligned)> memory(
++        static_cast<std::byte*>(::operator new(allocationSize, alignment)), freeAligned);
++    const auto address = reinterpret_cast<std::uintptr_t>(memory.get());
++    std::size_t transferred = 0;
++    for (const auto samples : {1u, 2u, 4u, 8u}) {
++        for (const auto slot : {0u, 7u}) {
++            auto queue = colorState(address, samples, slot);
++            const auto target = DecodeColorBuffer(queue.context, slot);
++            const ColorTargetLayout layout(257, 129, ColorTileMode::RenderTarget, 4, samples);
++            Require(target.samples == samples && target.fragments == samples && target.slot == slot,
++                    "color sample counts or slot were decoded incorrectly");
++            Require(target.bytes == layout.Bytes() && target.address == address &&
++                    target.extent.width == 257 && target.extent.height == 129,
++                    "color sample decode lost the complete guest allocation");
++            Require(target.bytes <= allocationSize, "color sample test allocation is too small");
++            std::fill_n(memory.get(), allocationSize, std::byte{0xa5});
++            std::vector<std::byte> linear(layout.LinearBytes());
++            std::vector<bool> used(target.bytes);
++            for (std::uint32_t y = 0; y < 129; ++y) {
++                for (std::uint32_t x = 0; x < 257; ++x) {
++                    for (std::uint32_t s = 0; s < samples; ++s) {
++                        const std::uint32_t value = 0x6e000000u | (y << 12u) | (x << 3u) | s;
++                        const auto linearOffset = ((static_cast<std::size_t>(y) * 257 + x) * samples + s) * 4;
++                        std::memcpy(linear.data() + linearOffset, &value, 4);
++                        const auto tiledOffset = layout.Offset(x, y, s);
++                        for (std::uint32_t b = 0; b < 4; ++b) used.at(tiledOffset + b) = true;
++                    }
++                }
++            }
++            WriteColorTarget(target, linear);
++            for (std::uint32_t y = 0; y < 129; ++y) {
++                for (std::uint32_t x = 0; x < 257; ++x) {
++                    for (std::uint32_t s = 0; s < samples; ++s) {
++                        std::uint32_t value;
++                        std::memcpy(&value, memory.get() + layout.Offset(x, y, s), 4);
++                        Require(value == (0x6e000000u | (y << 12u) | (x << 3u) | s),
++                                "a color sample was aliased, skipped or reordered on guest write");
++                    }
++                }
++            }
++            for (std::size_t b = 0; b < target.bytes; ++b) {
++                Require(used[b] || memory.get()[b] == std::byte{0xa5}, "color sample transfer changed tiled padding");
++            }
++            Require(std::ranges::all_of(std::span(memory.get() + target.bytes, allocationSize - target.bytes),
++                                       [](std::byte b) { return b == std::byte{0xa5}; }),
++                    "color sample transfer wrote beyond the decoded guest allocation");
++            std::vector<std::byte> returned(linear.size());
++            ReadColorTarget(target, returned);
++            Require(returned == linear, "color sample transfer failed its complete round trip");
++            auto shortBuffer = std::span(returned).first(returned.size() - 4);
++            rejected([&] { ReadColorTarget(target, shortBuffer); }, "transfer size mismatch");
++            rejected([&] { WriteColorTarget(target, shortBuffer); }, "transfer size mismatch");
++            auto eqaa = target;
++            eqaa.fragments = samples == 1 ? 2 : 1;
++            rejected([&] { ReadColorTarget(eqaa, returned); }, "FMASK sample mapping");
++            rejected([&] { WriteColorTarget(eqaa, returned); }, "FMASK sample mapping");
++            if (samples != 1) {
++                Require(DrawRejection(queue, false).find("sample-aware renderer") != std::string::npos,
++                        "a multisample color target bypassed the draw rejection with PA_SC_AA_CONFIG zero");
++                rejected([&] { DecodeState(queue); }, "sample-aware renderer");
++                queue.context[0x202] = 0xcc0020u;
++                rejected([&] { DecodeColorMetadataPass(queue); }, "multisampled color targets");
++            }
++            transferred += linear.size();
++        }
++    }
++    auto queue = colorState(address, 8);
++    const auto original = queue;
++    queue.context[0x31d] = (3u << 12u) | (2u << 15u);
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "EQAA");
++    queue = original;
++    queue.context[0x31d] = (4u << 12u) | (3u << 15u);
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "above eight");
++    for (const auto bit : {0x20u, 0x400u, 0x20000u, 0x80000000u}) {
++        queue = original;
++        queue.context[0x31d] |= bit;
++        rejected([&] { DecodeColorBuffer(queue.context, 0); }, "reserved attributes");
++    }
++    for (const auto bit : {0x4000u, 0x04000000u, 0x08000000u}) {
++        queue = original;
++        queue.context[0x31c] |= bit;
++        rejected([&] { DecodeColorBuffer(queue.context, 0); }, "FMASK color compression");
++    }
++    queue = original;
++    queue.context[0x31c] |= 0x10000000u;
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "multisampled DCC");
++    queue = original;
++    queue.context[0x31c] |= 0x2000u;
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "multisampled CMASK");
++    queue = original;
++    queue.context[0x3b8] = 0x09000000u;
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "R64KB_X");
++    queue = original;
++    queue.context[0x3b0] |= 1u << 28u;
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "multisampled mipmapped");
++    queue = original;
++    queue.context[0x31b] = 1u | (1u << 13u);
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "multisampled mipmapped");
++    queue = original;
++    queue.context[0x3b8] = 0x0a000001u | (0x1bu << 14u);
++    rejected([&] { DecodeColorBuffer(queue.context, 0); }, "multisampled mipmapped");
++    rejected([&] { DecodeColorBuffer(original.context, 8); }, "slot exceeds");
++    Require(transferred == 257u * 129u * 4u * 15u * 2u, "color sample transfer coverage changed");
++}
++
++#ifdef APS5_COLOR_SAMPLES_TEST_STANDALONE
++#include <iostream>
++int main() {
++    try {
++        RunColorTargetSampleTests();
++        std::cout << "Color sample state and transfer tests passed: 8 target/slot combinations, all samples preserved\n";
++    } catch (const std::exception& error) {
++        std::cerr << error.what() << '\n';
++        return 1;
++    }
++}
++#endif

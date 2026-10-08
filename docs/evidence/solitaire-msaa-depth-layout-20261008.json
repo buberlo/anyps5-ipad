@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "component": "uncompressed 2D depth/stencil guest sample memory layout",
+  "gameplayQualified": false,
+  "rendererIntegrationComplete": false,
+  "deviceTestPerformedForThisChange": false,
+  "supported": {
+    "planes": [
+      "D16 raw 2-byte depth",
+      "D32 raw 4-byte depth",
+      "S8 separate 1-byte stencil"
+    ],
+    "samplesAndFragments": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "samplesEqualFragments": true,
+    "swizzleMode": "SW_64KB_Z_X (24)",
+    "extentMaximum": [
+      16384,
+      16384
+    ],
+    "mips": 1,
+    "arraySlice": 0,
+    "pipeBankXor": 0,
+    "pitch": "canonical alignment-derived pitch; explicit canonical pitch accepted",
+    "linearSampleOrder": "((y * width + x) * samples + sample) * elementBytes",
+    "preservesUntouchedPadding": true
+  },
+  "refused": [
+    "compressed planes/HTILE interpretation",
+    "EQAA or unequal stored fragments",
+    "noncanonical pitches",
+    "nonzero pipe/bank XOR",
+    "other swizzle modes",
+    "unsupported plane formats or sample counts"
+  ],
+  "reference": {
+    "implementation": "original AMD AddrLib linked independently",
+    "repository": "https://github.com/GPUOpen-Drivers/pal",
+    "commit": "c5e800072a32f68b6ccc4422936d96167c6e0728",
+    "component": "src/core/imported/addrlib",
+    "chipEngine": 13,
+    "chipFamily": "0x8f",
+    "chipRevision": 1,
+    "gbAddrConfig": "4 | (3 << 6)",
+    "model": "Navi1x non-RB+, 16 pipes, 256-byte interleave",
+    "flags": "depth for D16/D32, stencil for S8",
+    "separatelyBuiltLibrarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc"
+  },
+  "validation": {
+    "sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "layouts": 60,
+    "coordinateSampleComparisons": 34817526,
+    "completeSampleBufferRoundTrips": 24,
+    "errors": 0,
+    "sizesAlignmentPitchAndBlockDimensionsCompared": true,
+    "addressBijectionAndPaddingChecked": true,
+    "invalidConfigurationsAndTransfersRefused": true,
+    "extentMatrix": [
+      [
+        1,
+        1
+      ],
+      [
+        257,
+        129
+      ],
+      [
+        1920,
+        1080
+      ],
+      [
+        3840,
+        2160
+      ],
+      [
+        16384,
+        16384
+      ]
+    ],
+    "targetExhaustive": [
+      "1920 x 1080 D32 at eight samples: every pixel and sample",
+      "1920 x 1080 S8 at eight samples: every pixel and sample"
+    ],
+    "maximumExtentAllocated": false,
+    "referenceModelIsNotExactCapturedGuestLayoutProof": true
+  },
+  "eightSample1920x1080": {
+    "D16": {
+      "pitch": 1920,
+      "paddedHeight": 1088,
+      "bytes": 33423360,
+      "alignment": 65536
+    },
+    "D32": {
+      "pitch": 1920,
+      "paddedHeight": 1088,
+      "bytes": 66846720,
+      "alignment": 65536
+    },
+    "S8": {
+      "pitch": 1920,
+      "paddedHeight": 1152,
+      "bytes": 17694720,
+      "alignment": 65536
+    }
+  },
+  "sourcePatch": {
+    "file": "patches/anyps5/0036-msaa-depth-stencil-layout.patch",
+    "sha256": "23b9aad906cbcee371b332bf28e61f1af956c0f6e07439cc4cd766c53c13aafa",
+    "productionFiles": {
+      "core/libs/prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp": "5116918930da970ddb5c8763c9492912ee5046e89fc9343622ec0791adbfd124",
+      "core/libs/prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp": "94acd8fa48729e4adb3fd855e0c4fe02aa3c7b6aee5152be34ed64dcc6574689",
+      "core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp": "65605a957c6514b1011fdbadd9159d44dd614f28007def967ed44a61e9dc3b9f"
+    }
+  },
+  "command": "python3 scripts/check-msaa-depth-layout.py --addrlib-source <local AMD AddrLib source> --addrlib-library <separately built native libaddrlib.a>",
+  "githubActionsUsed": false,
+  "remaining": [
+    "decode depth/stencil metadata and qualify captured pitches",
+    "connect GPU-resident depth/stencil sample layers and guest transfers",
+    "qualify HTILE, aliasing, cache and lifecycle",
+    "device rendering and actual Solitaire gameplay"
+  ]
+}

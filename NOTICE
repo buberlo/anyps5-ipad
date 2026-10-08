@@ -82,9 +82,11 @@ the licenses in those checkouts.
 
 ## AMD AddrLib reference data
 
-`patches/anyps5/0034-msaa-color-sample-layout.patch` adds address-equation data
-derived from AMD AddrLib at PAL `c5e800072a32f68b6ccc4422936d96167c6e0728`.
-The generated header retains AMD's copyright and permissive license notice.
+`patches/anyps5/0034-msaa-color-sample-layout.patch` and
+`patches/anyps5/0036-msaa-depth-stencil-layout.patch` add color and depth/stencil
+address-equation data derived from AMD AddrLib at PAL
+`c5e800072a32f68b6ccc4422936d96167c6e0728`.
+The generated headers retain AMD's copyright and permissive license notice.
 The AnyPS5 integration remains GPL-2.0-only. The reference source/library used
 by the local verifier is not vendored in this repository.
 

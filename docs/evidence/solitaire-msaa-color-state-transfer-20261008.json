@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "goal": "Playable 15in1 Solitaire on iPad",
+  "goal_completed": false,
+  "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+  "patch": {
+    "path": "patches/anyps5/0035-color-sample-state-transfer.patch",
+    "sha256": "13292c52d77a52ae04d2c0c6499086eef8c65a23ab5c0a504a2be790a0db411b",
+    "touched_paths": 7,
+    "forward_apply": true,
+    "reverse_apply": true,
+    "original_bytes_restored": true
+  },
+  "implementation": {
+    "color_target_coverage_and_stored_fragment_counts": true,
+    "samples_supported": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "requires_equal_sample_and_fragment_counts": true,
+    "multisample_layout": "2D R64KB_X, first array slice, one mip, uncompressed color",
+    "cpu_transfer": "Every stored fragment is tiled/detiled in ((y * width + x) * fragments + fragment) order",
+    "depth_target_samples_field_only": true,
+    "depth_decoder_changed": false,
+    "existing_global_msaa_draw_rejection_retained": true,
+    "additional_color_draw_guard": "Multisample CB_COLOR_ATTRIB is refused even when PA_SC_AA_CONFIG is zero",
+    "metadata_passes_over_multisample_color_targets_rejected": true,
+    "unsupported": [
+      "EQAA/FMASK mapping",
+      "FMASK compression/configuration",
+      "multisample DCC",
+      "multisample CMASK fast clear",
+      "multisample mip/volume/array views"
+    ]
+  },
+  "register_reference": {
+    "url": "https://raw.githubusercontent.com/torvalds/linux/master/drivers/gpu/drm/amd/include/asic_reg/gc/gc_10_1_0_sh_mask.h",
+    "download_sha256": "cba20414ecf02e91bafdcfbff7d4ba686326f0bdaf236d1a883364f08410c167",
+    "num_samples_shift": 12,
+    "num_samples_mask": "0x00007000",
+    "num_fragments_shift": 15,
+    "num_fragments_mask": "0x00018000"
+  },
+  "native_mac_sanitizer_test": {
+    "command": "python3 scripts/check-msaa-color-state.py",
+    "actual_production_state_layout_transfer_sources": true,
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "result": "passed",
+    "log_sha256": "cc7c980071bee72b7d1fc9cbe971550932c5f9b2cb2fdc3848573080eba49146",
+    "memory_boundary": "Test-only adapter checks actual macOS mapped ranges; does not replace production color decoder/transfer code"
+  },
+  "regression_coverage": {
+    "slots": [
+      0,
+      7
+    ],
+    "sample_counts": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "target_slot_combinations": 8,
+    "extent": [
+      257,
+      129
+    ],
+    "unique_color_samples_written_and_verified": 994590,
+    "transferred_bytes_each_direction": 3978360,
+    "padding_and_allocation_tail_preserved": true,
+    "short_transfer_buffers_rejected": true,
+    "unsupported_cases_rejected": true
+  },
+  "negative_controls": [
+    {
+      "production_transfer": "previous implementation",
+      "result": "failed as expected",
+      "reason": "missing EQAA transfer guard"
+    },
+    {
+      "production_transfer": "previous implementation",
+      "test_variant": "same focused tests with EQAA-transfer assertions omitted solely to reach the next multi-sample transfer",
+      "result": "failed as expected",
+      "reason": "color target transfer size mismatch at two samples"
+    }
+  ],
+  "windows_pe_under_desktop_wine": {
+    "exit_code": 0,
+    "elapsed_seconds": 0.991,
+    "production_guest_memory": true,
+    "runtime_build_source_pin": "df16c4c256be3c44e03eb9149a6ce5f8e8a038b2",
+    "runtime_local_patches_present": true,
+    "standalone_code_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "windows_pc_gpu": false,
+    "ipad": false,
+    "files": {
+      "libwinpthread-1.dll": "a9230c9b3590af438066c18afa2185ac6c74b544f58606a0d20d80039b102179",
+      "libstdc++-6.dll": "d1aebaa36202db736b96a7e4f491eb457256ff6e3cac8e225dae05790bacd147",
+      "libc.prx": "5bd2966eff22d99d4bdbfe8274d3d825f6bbb46eab9f72349f847c3bdd81f06e",
+      "libgcc_s_seh-1.dll": "0e41bb41c8d5d5a1c16150cf860225e835ff8fdbb351073835bf45eaa8fe831d",
+      "libkernel.prx": "50009415bf0d2449db8f13f89e90b45583699b44915b5cf6eefa8effb589d4c7",
+      "color-target-samples.exe": "ad8f603d52691780114d276af41d660697d38434d75a9eff458a69deb33f9fe3"
+    },
+    "log_sha256": "273c1987cecfcd4020026f6143d3de1d26034b7ab23ee5fb2d36e3621374fb71",
+    "compile_flags": [
+      "-std=c++20",
+      "-O1",
+      "-g",
+      "-flto",
+      "-fno-asynchronous-unwind-tables",
+      "-D_WIN32_WINNT=0x0A00",
+      "-DWINVER=0x0A00"
+    ],
+    "production_unwind_postprocess": ".eh_frame renamed .ehfram",
+    "result": "passed",
+    "scope": "CPU state and transfer regressions with production GuestMemory; older runtime dependencies, outside guest arena; GPU/watched-memory/device qualification not claimed"
+  },
+  "not_proven": [
+    "MSAA GPU draws",
+    "shader logical sample addressing",
+    "depth/stencil GPU sample preservation",
+    "Wine write watch for multi-sample surfaces",
+    "Solitaire visible gameplay",
+    "audio/controls/FPS acceptance"
+  ],
+  "game_hle_feature_deployed": false,
+  "github_actions_used": false
+}

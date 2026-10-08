@@ -1,0 +1,271 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp
+new file mode 100644
+index 00000000..ab4eb390
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp
+@@ -0,0 +1,68 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DEPTHTARGETLAYOUT_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DEPTHTARGETLAYOUT_HPP
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <span>
++
++namespace AgcDriver::Graphics {
++
++// The guest stores depth and stencil in separate planes, not a packed host D/S texel.
++enum class DepthPlane : std::uint32_t {
++    Stencil8 = 1,
++    Depth16 = 2,
++    Depth32 = 4
++};
++
++struct DepthLayoutParameters {
++    std::uint32_t samples = 1;
++    std::uint32_t fragments = 1;
++    std::uint32_t swizzleMode = 24; // SW_64KB_Z_X
++    std::uint32_t pitchInElements = 0; // 0 selects the canonical padded pitch.
++    std::uint32_t pipeBankXor = 0;
++    bool compressionEnabled = false;
++};
++
++// Uncompressed, single-mip 2D plane at slice 0. Other slice/mip addressing and
++// HTILE interpretation must be qualified separately before using these bytes.
++class DepthTargetLayout {
++public:
++    DepthTargetLayout(std::uint32_t width, std::uint32_t height, DepthPlane plane, DepthLayoutParameters parameters = {});
++    std::size_t Bytes() const { return bytes; }
++    std::size_t LinearBytes() const { return static_cast<std::size_t>(width) * height * elementBytes * samples; }
++    std::size_t Alignment() const { return 65536u; }
++    std::uint32_t Pitch() const { return pitch; }
++    std::uint32_t PaddedHeight() const { return paddedHeight; }
++    std::uint32_t BlockWidth() const { return blockWidth; }
++    std::uint32_t BlockHeight() const { return blockHeight; }
++    std::uint32_t BlocksPerRow() const { return pitch / blockWidth; }
++    std::uint32_t Samples() const { return samples; }
++    std::uint32_t ElementBytes() const { return elementBytes; }
++    std::size_t Offset(std::uint32_t x, std::uint32_t y, std::uint32_t sample = 0) const;
++    // Linear buffers preserve every stored sample: ((y * width + x) * samples
++    // + sample) * elementBytes. Tile changes logical samples only, not padding.
++    void Detile(std::span<const std::byte> source, std::span<std::byte> destination) const;
++    void Tile(std::span<const std::byte> source, std::span<std::byte> destination) const;
++
++private:
++    std::size_t offset(std::uint32_t x, std::uint32_t y, std::uint32_t sample) const;
++    std::uint32_t width;
++    std::uint32_t height;
++    std::uint32_t pitch;
++    std::uint32_t paddedHeight;
++    std::uint32_t blockWidth;
++    std::uint32_t blockHeight;
++    std::uint32_t elementBytes;
++    std::uint32_t samples;
++    std::size_t bytes;
++    std::uint32_t xMask;
++    std::uint32_t yMask;
++    std::array<std::uint32_t, 8> sampleOffsets{};
++    const std::uint32_t* xOffsets;
++    const std::uint32_t* yOffsets;
++};
++
++}
++
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp
+new file mode 100644
+index 00000000..82b7f484
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp
+@@ -0,0 +1,67 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DEPTHSAMPLESWIZZLEEQUATIONS_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DEPTHSAMPLESWIZZLEEQUATIONS_HPP
++
++// Address-equation data derived from AMD AddrLib.
++// Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All Rights Reserved.
++//
++// Permission is hereby granted, free of charge, to any person obtaining a copy
++// of this software and associated documentation files (the "Software"), to deal
++// in the Software without restriction, including without limitation the rights
++// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++// copies of the Software, and to permit persons to whom the Software is
++// furnished to do so, subject to the following conditions:
++//
++// The above copyright notice and this permission notice shall be included in all
++// copies or substantial portions of the Software.
++//
++// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++// SOFTWARE.
++
++#include <array>
++#include <cstdint>
++
++namespace AgcDriver::Graphics {
++
++// Uncompressed SW_64KB_Z_X planes, Navi1x non-RB+, 16 pipes, 256-byte interleave.
++// Generated by querying AMD AddrLib at PAL c5e800072a32f68b6ccc4422936d96167c6e0728.
++// The independent reference uses depth flags for 16/32-bit planes and stencil
++// flags for 8-bit planes. Each has samples == fragments, 1 slice, 1 mip and
++// pipeBankXor == 0. Coordinate masks: x bits 0..11, y bits 12..23, sample bits
++// 24..26. Full-surface coordinates retain pipe XOR above macroblock dimensions.
++struct DepthSampleSwizzleEquation {
++    std::uint32_t elementBytes;
++    std::uint32_t samples;
++    std::uint32_t blockWidth;
++    std::uint32_t blockHeight;
++    std::array<std::uint32_t, 16> bits;
++};
++
++inline constexpr DepthSampleSwizzleEquation kDepthSampleSwizzleEquations[] = {
++    {1u, 1u, 256u, 256u, {0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00000008u, 0x00010000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00040000u, 0x00000040u, 0x00080000u, 0x00000080u}},
++    {1u, 2u, 128u, 256u, {0x01000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00000008u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00010000u, 0x00040000u, 0x00000040u, 0x00080000u}},
++    {1u, 4u, 128u, 128u, {0x01000000u, 0x02000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00040000u, 0x00000040u}},
++    {1u, 8u, 64u, 128u, {0x01000000u, 0x02000000u, 0x04000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00040000u, 0x00084000u}},
++    {2u, 1u, 256u, 128u, {0x00000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00000008u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00010000u, 0x00000040u, 0x00040000u, 0x00000080u}},
++    {2u, 2u, 128u, 128u, {0x00000000u, 0x01000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00040000u, 0x00000040u}},
++    {2u, 4u, 128u, 64u, {0x00000000u, 0x01000000u, 0x02000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00000008u, 0x00010000u, 0x00000040u, 0x00044000u}},
++    {2u, 8u, 64u, 64u, {0x00000000u, 0x01000000u, 0x02000000u, 0x04000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00044000u, 0x00080004u}},
++    {4u, 1u, 128u, 128u, {0x00000000u, 0x00000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00004000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00040000u, 0x00000040u}},
++    {4u, 2u, 64u, 128u, {0x00000000u, 0x00000000u, 0x01000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00000004u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00040000u, 0x00084000u}},
++    {4u, 4u, 64u, 64u, {0x00000000u, 0x00000000u, 0x01000000u, 0x02000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00002000u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00040020u, 0x00008000u, 0x00000010u, 0x00044000u, 0x00080004u}},
++    {4u, 8u, 32u, 64u, {0x00000000u, 0x00000000u, 0x01000000u, 0x02000000u, 0x04000000u, 0x00000001u, 0x00001000u, 0x00000002u, 0x00008008u, 0x00010010u, 0x00020040u, 0x00044020u, 0x00000008u, 0x00010000u, 0x00040004u, 0x00082000u}},
++};
++
++inline constexpr const DepthSampleSwizzleEquation* FindDepthSampleSwizzleEquation(std::uint32_t bytes, std::uint32_t samples) {
++    for (const auto& equation : kDepthSampleSwizzleEquations) {
++        if (equation.elementBytes == bytes && equation.samples == samples) return &equation;
++    }
++    return nullptr;
++}
++
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp
+new file mode 100644
+index 00000000..64995459
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp
+@@ -0,0 +1,118 @@
++#include "prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/DepthSampleSwizzleEquations.hpp"
++#include <bit>
++#include <cstring>
++#include <limits>
++#include <mutex>
++#include <stdexcept>
++#include <vector>
++
++namespace AgcDriver::Graphics {
++namespace {
++
++void require(bool condition, const char* reason) {
++    if (!condition) throw std::runtime_error(reason);
++}
++
++std::uint32_t parity(std::uint32_t value) {
++    return static_cast<std::uint32_t>(std::popcount(value)) & 1u;
++}
++
++struct SwizzleTables {
++    std::vector<std::uint32_t> x;
++    std::vector<std::uint32_t> y;
++};
++
++const SwizzleTables& tablesFor(const DepthSampleSwizzleEquation& equation) {
++    static std::once_flag once[4][3];
++    static SwizzleTables tables[4][3];
++    const auto sampleIndex = std::countr_zero(equation.samples);
++    const auto elementIndex = std::countr_zero(equation.elementBytes);
++    std::call_once(once[sampleIndex][elementIndex], [&] {
++        auto& table = tables[sampleIndex][elementIndex];
++        std::uint32_t used = 0;
++        for (const auto bit : equation.bits) used |= bit;
++        // Pipe XOR retains coordinate bits above a macroblock's dimensions.
++        // Cache the equation period rather than an entire surface-sized table.
++        table.x.resize(std::bit_ceil((used & 0xfffu) + 1u));
++        table.y.resize(std::bit_ceil(((used >> 12u) & 0xfffu) + 1u));
++        for (std::uint32_t x = 0; x < table.x.size(); ++x) {
++            std::uint32_t offset = 0;
++            for (std::uint32_t bit = 0; bit < 16u; ++bit) offset |= parity(x & equation.bits[bit] & 0xfffu) << bit;
++            table.x[x] = offset;
++        }
++        for (std::uint32_t y = 0; y < table.y.size(); ++y) {
++            std::uint32_t offset = 0;
++            for (std::uint32_t bit = 0; bit < 16u; ++bit) offset |= parity((y << 12u) & equation.bits[bit] & 0xfff000u) << bit;
++            table.y[y] = offset;
++        }
++    });
++    return tables[sampleIndex][elementIndex];
++}
++
++}
++
++DepthTargetLayout::DepthTargetLayout(std::uint32_t width, std::uint32_t height, DepthPlane plane, DepthLayoutParameters parameters)
++    : width(width), height(height), elementBytes(static_cast<std::uint32_t>(plane)), samples(parameters.samples) {
++    require(width != 0 && height != 0 && width <= 16384u && height <= 16384u, "AGC graphics: invalid depth/stencil surface extent");
++    require(plane == DepthPlane::Stencil8 || plane == DepthPlane::Depth16 || plane == DepthPlane::Depth32, "AGC graphics: unsupported depth/stencil plane format");
++    require(std::has_single_bit(samples) && samples <= 8u, "AGC graphics: unsupported depth/stencil sample count");
++    require(parameters.fragments == samples, "AGC graphics: depth/stencil coverage and stored samples differ");
++    require(parameters.swizzleMode == 24u, "AGC graphics: depth/stencil layout requires SW_64KB_Z_X");
++    require(parameters.pipeBankXor == 0u, "AGC graphics: nonzero depth/stencil pipe/bank XOR is unsupported");
++    require(!parameters.compressionEnabled, "AGC graphics: compressed depth/stencil plane requires HTILE interpretation");
++    const auto* equation = FindDepthSampleSwizzleEquation(elementBytes, samples);
++    require(equation != nullptr, "AGC graphics: no depth/stencil sample swizzle equation");
++    blockWidth = equation->blockWidth;
++    blockHeight = equation->blockHeight;
++    pitch = (width + blockWidth - 1u) / blockWidth * blockWidth;
++    paddedHeight = (height + blockHeight - 1u) / blockHeight * blockHeight;
++    require(parameters.pitchInElements == 0u || parameters.pitchInElements == pitch, "AGC graphics: noncanonical depth/stencil pitch is unsupported");
++    const auto size = static_cast<std::uint64_t>(pitch) * paddedHeight * elementBytes * samples;
++    require(size <= std::numeric_limits<std::size_t>::max(), "AGC graphics: depth/stencil surface size overflow");
++    bytes = static_cast<std::size_t>(size);
++    const auto& tables = tablesFor(*equation);
++    xOffsets = tables.x.data();
++    yOffsets = tables.y.data();
++    xMask = static_cast<std::uint32_t>(tables.x.size() - 1u);
++    yMask = static_cast<std::uint32_t>(tables.y.size() - 1u);
++    for (std::uint32_t sample = 0; sample < samples; ++sample) {
++        for (std::uint32_t bit = 0; bit < 16u; ++bit) sampleOffsets[sample] |= parity((sample << 24u) & equation->bits[bit]) << bit;
++    }
++}
++
++std::size_t DepthTargetLayout::offset(std::uint32_t x, std::uint32_t y, std::uint32_t sample) const {
++    const auto block = static_cast<std::size_t>(y / blockHeight) * BlocksPerRow() + x / blockWidth;
++    return block * Alignment() + (xOffsets[x & xMask] ^ yOffsets[y & yMask] ^ sampleOffsets[sample]);
++}
++
++std::size_t DepthTargetLayout::Offset(std::uint32_t x, std::uint32_t y, std::uint32_t sample) const {
++    require(x < width && y < height && sample < samples, "AGC graphics: depth/stencil surface coordinate out of range");
++    return offset(x, y, sample);
++}
++
++void DepthTargetLayout::Detile(std::span<const std::byte> source, std::span<std::byte> destination) const {
++    require(source.size() == Bytes() && destination.size() == LinearBytes(), "AGC graphics: depth/stencil detile buffer size mismatch");
++    for (std::uint32_t y = 0; y < height; ++y) {
++        auto* row = destination.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
++        for (std::uint32_t x = 0; x < width; ++x) {
++            for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                std::memcpy(row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, source.data() + offset(x, y, sample), elementBytes);
++            }
++        }
++    }
++}
++
++void DepthTargetLayout::Tile(std::span<const std::byte> source, std::span<std::byte> destination) const {
++    require(source.size() == LinearBytes() && destination.size() == Bytes(), "AGC graphics: depth/stencil tile buffer size mismatch");
++    for (std::uint32_t y = 0; y < height; ++y) {
++        const auto* row = source.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
++        for (std::uint32_t x = 0; x < width; ++x) {
++            for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                std::memcpy(destination.data() + offset(x, y, sample), row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, elementBytes);
++            }
++        }
++    }
++}
++
++}

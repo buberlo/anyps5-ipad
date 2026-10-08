@@ -1,0 +1,311 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Resources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Resources.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Resources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Resources.cpp
+@@ -178,66 +178,6 @@
+     functions.getFenceStatus = context.Function<PFN_vkGetFenceStatus>("vkGetFenceStatus");
+ }
+ 
+-RenderTarget::RenderTarget(const Context& context, const ColorTarget& target, bool blending) : context(context) {
+-    VkFormatProperties properties{};
+-    context.formatProperties(context.physical, target.format, &properties);
+-    const VkFormatFeatureFlags required = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT | (blending ? VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT : 0u);
+-    Require((properties.optimalTilingFeatures & required) == required, "render-target format does not support required operations");
+-    constexpr auto usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+-    VkImageFormatProperties supported{};
+-    Check(context.imageFormatProperties(context.physical, target.format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0, &supported), "vkGetPhysicalDeviceImageFormatProperties");
+-    Require(target.extent.width <= supported.maxExtent.width && target.extent.height <= supported.maxExtent.height && (supported.sampleCounts & VK_SAMPLE_COUNT_1_BIT) != 0 && target.bytes <= supported.maxResourceSize, "render target exceeds device image limits");
+-    Require(target.extent.width <= context.limits.maxFramebufferWidth && target.extent.height <= context.limits.maxFramebufferHeight, "render target exceeds framebuffer limits");
+-    try {
+-        VkImageCreateInfo info{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+-        info.imageType = VK_IMAGE_TYPE_2D;
+-        info.format = target.format;
+-        info.extent = {target.extent.width, target.extent.height, 1};
+-        info.mipLevels = 1;
+-        info.arrayLayers = 1;
+-        info.samples = VK_SAMPLE_COUNT_1_BIT;
+-        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+-        info.usage = usage;
+-        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+-        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+-        Check(context.Function<PFN_vkCreateImage>("vkCreateImage")(context.device, &info, nullptr, &image), "vkCreateImage");
+-        VkMemoryRequirements requirements{};
+-        context.Function<PFN_vkGetImageMemoryRequirements>("vkGetImageMemoryRequirements")(context.device, image, &requirements);
+-        VkMemoryAllocateInfo allocation{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+-        allocation.allocationSize = requirements.size;
+-        allocation.memoryTypeIndex = context.MemoryType(requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+-        Check(context.Function<PFN_vkAllocateMemory>("vkAllocateMemory")(context.device, &allocation, nullptr, &memory), "vkAllocateMemory render target");
+-        Check(context.Function<PFN_vkBindImageMemory>("vkBindImageMemory")(context.device, image, memory, 0), "vkBindImageMemory");
+-        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+-        viewInfo.image = image;
+-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+-        viewInfo.format = target.format;
+-        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+-        Check(context.Function<PFN_vkCreateImageView>("vkCreateImageView")(context.device, &viewInfo, nullptr, &view), "vkCreateImageView");
+-    } catch (...) {
+-        release();
+-        throw;
+-    }
+-}
+-
+-RenderTarget::~RenderTarget() {
+-    release();
+-}
+-
+-void RenderTarget::release() noexcept {
+-    if (view) context.Function<PFN_vkDestroyImageView>("vkDestroyImageView")(context.device, view, nullptr);
+-    if (image) context.Function<PFN_vkDestroyImage>("vkDestroyImage")(context.device, image, nullptr);
+-    if (memory) context.Function<PFN_vkFreeMemory>("vkFreeMemory")(context.device, memory, nullptr);
+-}
+-
+-VkImage RenderTarget::Image() const {
+-    return image;
+-}
+-
+-VkImageView RenderTarget::View() const {
+-    return view;
+-}
+-
+ CommandBatch::CommandBatch(const Context& context) : context(context) {
+     // Records into the device's one command pool and submits to its queue: device-lock work only.
+     GuestMemory::AssertGpuLockHeld("CommandBatch");
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp
+@@ -80,13 +80,20 @@
+     RenderTarget(const RenderTarget&) = delete;
+     RenderTarget& operator=(const RenderTarget&) = delete;
+     VkImage Image() const;
+-    VkImageView View() const;
++    // Every group is a distinct framebuffer attachment; none is a resolve image.
++    VkImageView View(std::uint32_t group = 0) const;
++    VkImageView SampledView() const { return sampledView; }
++    VkSampleCountFlagBits NativeSamples() const { return nativeSamples; }
++    std::uint32_t Groups() const { return layers; }
+ 
+ private:
+     void release() noexcept;
+     Context context;
+     VkImage image = VK_NULL_HANDLE;
+-    VkImageView view = VK_NULL_HANDLE;
++    std::array<VkImageView, 2> views{};
++    VkImageView sampledView = VK_NULL_HANDLE;
++    VkSampleCountFlagBits nativeSamples = VK_SAMPLE_COUNT_1_BIT;
++    std::uint32_t layers = 1;
+     VkDeviceMemory memory = VK_NULL_HANDLE;
+ };
+ 
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+@@ -138,6 +138,10 @@
+     bool imageInt64Atomics = false;
+     bool geometryShader = false;
+     bool sampleRateShading = false;
++    // Core Vulkan supports this; portability-subset devices must query and explicitly enable it.
++    bool multisampleArrayImage = true;
++    bool sampleLocations = false;
++    VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
+     bool primitiveListRestart = false;
+     bool imageViewMinLod = false;
+     bool pipelineExecutableInfo = false;
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -1,3 +1,6 @@
++#ifndef VK_ENABLE_BETA_EXTENSIONS
++#define VK_ENABLE_BETA_EXTENSIONS
++#endif
+ #include "prx/libSceAgcDriver/Execution/include/ProfileOutput.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/CaptureTrace.hpp"
+ #include "BdaAbi.hpp"
+@@ -199,6 +202,9 @@
+     bool fragmentShaderBarycentric = false;
+     bool geometryShader = false;
+     bool sampleRateShading = false;
++    bool multisampleArrayImage = true;
++    bool sampleLocations = false;
++    VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
+     bool shaderClock = false;
+     // VK_EXT_descriptor_indexing with non-uniform image array indexing (bindless image tables in
+     // graphics stages, and compute workgroups wider than a wave).
+@@ -1123,10 +1129,27 @@
+     }
+     bdaFeatures.pNext = &byteFeatures;
+     deviceInfo.pNext = &bdaFeatures;
+-    // The name lives in vulkan_beta.h behind VK_ENABLE_BETA_EXTENSIONS. MoltenVK
+-    // requires the extension whenever the device advertises it.
++    // Portability devices require both the extension and the explicitly enabled
++    // array-image feature; image creation succeeding alone cannot replace this.
++    VkPhysicalDevicePortabilitySubsetFeaturesKHR portable{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR};
+     if (hasExtension("VK_KHR_portability_subset")) {
++        VkPhysicalDeviceFeatures2 query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &portable};
++        state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &query);
++        state->multisampleArrayImage = portable.multisampleArrayImage == VK_TRUE;
++        // Request only the new operation; retain the previous feature settings.
++        portable = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR};
++        portable.multisampleArrayImage = state->multisampleArrayImage ? VK_TRUE : VK_FALSE;
++        portable.pNext = byteFeatures.pNext;
++        byteFeatures.pNext = &portable;
+         deviceExtensions.push_back("VK_KHR_portability_subset");
++        deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
++        deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
++    }
++    if (hasExtension(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)) {
++        VkPhysicalDeviceProperties2 query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &state->sampleLocationProperties};
++        state->InstanceFunction<PFN_vkGetPhysicalDeviceProperties2>("vkGetPhysicalDeviceProperties2")(selected, &query);
++        state->sampleLocations = true;
++        deviceExtensions.push_back(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
+         deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
+         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+     }
+@@ -2539,6 +2562,9 @@
+     context.imageInt64Atomics = state->imageInt64Atomics;
+     context.geometryShader = state->geometryShader;
+     context.sampleRateShading = state->sampleRateShading;
++    context.multisampleArrayImage = state->multisampleArrayImage;
++    context.sampleLocations = state->sampleLocations;
++    context.sampleLocationProperties = state->sampleLocationProperties;
+     context.primitiveListRestart = state->primitiveListRestart;
+     context.imageViewMinLod = state->imageViewMinLod;
+     context.pipelineExecutableInfo = state->pipelineExecutableInfo;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp
+@@ -0,0 +1,88 @@
++#include "prx/libSceAgcDriver/Graphics/include/Resources.hpp"
++#include <bit>
++
++namespace AgcDriver::Graphics {
++
++RenderTarget::RenderTarget(const Context& context, const ColorTarget& target, bool blending) : context(context) {
++    Require(std::has_single_bit(target.samples) && target.samples <= 8u && target.fragments == target.samples, "unsupported render-target sample/fragment count");
++    nativeSamples = static_cast<VkSampleCountFlagBits>(target.samples > 4u ? 4u : target.samples);
++    layers = target.samples / static_cast<std::uint32_t>(nativeSamples);
++    Require(layers == 1u || context.multisampleArrayImage, "device does not enable multisample array images");
++    Require(target.extent.width != 0 && target.extent.height != 0, "zero-sized render target");
++    Require(context.formatProperties != nullptr && context.imageFormatProperties != nullptr, "missing render-target format queries");
++    VkFormatProperties properties{};
++    context.formatProperties(context.physical, target.format, &properties);
++    VkFormatFeatureFlags required = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
++    if (target.samples > 1u) required |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
++    if (blending) required |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
++    Require((properties.optimalTilingFeatures & required) == required, "render-target format does not support required operations");
++    VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
++    if (target.samples > 1u) usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
++    VkImageFormatProperties supported{};
++    Check(context.imageFormatProperties(context.physical, target.format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0, &supported), "vkGetPhysicalDeviceImageFormatProperties");
++    Require(target.extent.width <= supported.maxExtent.width && target.extent.height <= supported.maxExtent.height && (supported.sampleCounts & nativeSamples) != 0 && layers <= supported.maxArrayLayers && target.bytes <= supported.maxResourceSize, "render target exceeds device image limits");
++    Require(target.extent.width <= context.limits.maxFramebufferWidth && target.extent.height <= context.limits.maxFramebufferHeight, "render target exceeds framebuffer limits");
++    try {
++        VkImageCreateInfo info{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
++        info.imageType = VK_IMAGE_TYPE_2D;
++        info.format = target.format;
++        info.extent = {target.extent.width, target.extent.height, 1};
++        info.mipLevels = 1;
++        info.arrayLayers = layers;
++        info.samples = nativeSamples;
++        info.tiling = VK_IMAGE_TILING_OPTIMAL;
++        info.usage = usage;
++        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
++        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
++        Check(context.Function<PFN_vkCreateImage>("vkCreateImage")(context.device, &info, nullptr, &image), "vkCreateImage");
++        VkMemoryRequirements requirements{};
++        context.Function<PFN_vkGetImageMemoryRequirements>("vkGetImageMemoryRequirements")(context.device, image, &requirements);
++        VkMemoryAllocateInfo allocation{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
++        allocation.allocationSize = requirements.size;
++        allocation.memoryTypeIndex = context.MemoryType(requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
++        Check(context.Function<PFN_vkAllocateMemory>("vkAllocateMemory")(context.device, &allocation, nullptr, &memory), "vkAllocateMemory render target");
++        Check(context.Function<PFN_vkBindImageMemory>("vkBindImageMemory")(context.device, image, memory, 0), "vkBindImageMemory");
++        VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
++        viewInfo.image = image;
++        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
++        viewInfo.format = target.format;
++        viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
++        for (std::uint32_t layer = 0; layer < layers; ++layer) {
++            viewInfo.subresourceRange.baseArrayLayer = layer;
++            Check(context.Function<PFN_vkCreateImageView>("vkCreateImageView")(context.device, &viewInfo, nullptr, &views[layer]), "vkCreateImageView color sample group");
++        }
++        if (target.samples > 1u) {
++            // A logical sample i lives in layer i/nativeSamples, native sample i%nativeSamples.
++            // Even a one-group image exposes a 2D-array view so shader routing has one shape.
++            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
++            viewInfo.subresourceRange.baseArrayLayer = 0;
++            viewInfo.subresourceRange.layerCount = layers;
++            Check(context.Function<PFN_vkCreateImageView>("vkCreateImageView")(context.device, &viewInfo, nullptr, &sampledView), "vkCreateImageView color samples");
++        }
++    } catch (...) {
++        release();
++        throw;
++    }
++}
++
++RenderTarget::~RenderTarget() {
++    release();
++}
++
++void RenderTarget::release() noexcept {
++    if (sampledView) context.Function<PFN_vkDestroyImageView>("vkDestroyImageView")(context.device, sampledView, nullptr);
++    for (const auto view : views) if (view) context.Function<PFN_vkDestroyImageView>("vkDestroyImageView")(context.device, view, nullptr);
++    if (image) context.Function<PFN_vkDestroyImage>("vkDestroyImage")(context.device, image, nullptr);
++    if (memory) context.Function<PFN_vkFreeMemory>("vkFreeMemory")(context.device, memory, nullptr);
++}
++
++VkImage RenderTarget::Image() const {
++    return image;
++}
++
++VkImageView RenderTarget::View(std::uint32_t group) const {
++    Require(group < layers, "render-target sample group out of range");
++    return views[group];
++}
++
++}
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -133,10 +133,12 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Draw.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/DepthSurface.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorTargetLayout.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/DepthTargetLayout.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorTargetTransfer.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Pipeline.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/PipelineCache.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Resources.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorRenderTarget.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Recorder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderInputState.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ShaderResources.cpp
+@@ -449,8 +451,10 @@
+         Graphics/src/Pipeline.cpp
+         Graphics/src/State.cpp
+         Graphics/src/ColorTargetLayout.cpp
++        Graphics/src/DepthTargetLayout.cpp
+         Graphics/src/ColorTargetTransfer.cpp
+         Graphics/src/Resources.cpp
++        Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/ShaderResources.cpp
+         Graphics/src/ShaderAddressResources.cpp
+         Graphics/src/GuestBufferMemory.cpp
+@@ -502,6 +506,7 @@
+         tests/BdaContracts.cpp
+         Execution/src/BdaFeatures.cpp
+         Graphics/src/Resources.cpp
++        Graphics/src/ColorRenderTarget.cpp
+         Graphics/src/BufferAddress.cpp
+ )
+ 
+@@ -603,10 +608,12 @@
+             Graphics/src/Draw.cpp
+             Graphics/src/DepthSurface.cpp
+             Graphics/src/ColorTargetLayout.cpp
++            Graphics/src/DepthTargetLayout.cpp
+             Graphics/src/ColorTargetTransfer.cpp
+             Graphics/src/Pipeline.cpp
+             Graphics/src/PipelineCache.cpp
+             Graphics/src/Resources.cpp
++            Graphics/src/ColorRenderTarget.cpp
+             Graphics/src/ShaderResources.cpp
+             Graphics/src/ShaderAddressResources.cpp
+             Graphics/src/GuestBufferMemory.cpp

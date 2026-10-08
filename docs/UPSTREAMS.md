@@ -89,3 +89,12 @@ source and reverse back to the pin. The production CPU layout passes an
 independent AMD AddrLib comparison, including retained pipe XOR above
 macroblock boundaries. Multisampled guest draws still require renderer
 integration; this patch is not in the installed game package.
+
+The following [renderer component checkpoint](evidence/solitaire-msaa-renderer-integration-20261008.json)
+adds patches0035–0039. All 39 patches reproduce the checked source and reverse
+cleanly. CPU color transfers and depth/stencil layout comparisons pass focused
+tests; the actual production color image owner preserves eight sample values
+on the iPad as two four-sample layers. Depth allocation and repeated-shader
+eligibility have source-level tests. Full guest draws, GPU transfers and
+depth/stencil rendering are still pending, and the installed game's HLE package
+has not been rebuilt with these components.

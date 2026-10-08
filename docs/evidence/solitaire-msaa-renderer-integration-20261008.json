@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "goal": "Playable 15in1 Solitaire on iPad",
+  "goal_completed": false,
+  "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+  "patch_series": {
+    "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "patches": 39,
+    "paths_checked": 88,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true,
+    "hashes": {
+      "0001-guest-arena-lazy.patch": "0031ba7a04d5bbdf41e343f26f084a3fee3487988b2ed7e8b312f76f6f954152",
+      "0002-vulkan-portability.patch": "5ff1c1d06e03f30c1d09f21b25be0d65829d0678b6c77aa42c9690647c9dc197",
+      "0003-mingw11-getthreaddescription.patch": "2193cc29db009114f4088972a2c453cb4855fed303a83d38bd64096405396934",
+      "0004-slim-vulkan-loader.patch": "4072658a96942ce53899ab6a1bd822cf43d1f2eb3c8918a6cd53b692fa067a80",
+      "0006-invariant-masked-shift.patch": "f77fe3f1382364370771936f8a959def66ccf0e7fc76232470efc0f104db5a40",
+      "0007-validated-fixed-function-interpolation.patch": "5822aef71868e01a5b365c973263d522d29b5f0fc239aa4859f7d3b21fecee0a",
+      "0008-capture-draw-before-source-validation.patch": "2b6597e59596c4057ed7d29f8f77c90bbd88e1f32f0a44bb965ef57b4ba4c409",
+      "0009-bundled-unity-modules.patch": "dd496b4de61af02455f288280ac2d9437835f7a0df82a3f99411a1d44bf486fb",
+      "0010-optional-frame-timing.patch": "9c63cec42ba1f4510ba46963e074f784bb9e176a8e95c5995a8193e087681a65",
+      "0011-local-and-offline-service-apis.patch": "2ee2b6fa311411474dca8bfb4004941abffab6e450a14f1a07f7c71556b348fd",
+      "0012-unsigned-conversion-overflow.patch": "7b833c941c684d3f77c4a97485fb8abf304494b194e96d46192cf3563a9ee14a",
+      "0013-windows-descriptor-lifetime.patch": "cc7e328fba9ce1ba0ef47282b13bb0ad4c50c1fc736d813868535d167bb2cab6",
+      "0014-three-swapchain-images.patch": "9635aa9fbb43cd1a4ae680d7623792f7ee9e7f605f1fe4b856df36d27685bfb6",
+      "0015-native-thread-stack-guards.patch": "fab52adcc92d9c7d8f3ba82bcd5c0a47c041bdb5e7bc160088b3c59f0ff817c8",
+      "0016-buffer-int64-atomics-diagnostic.patch": "03f2e346afe27da5c2591827e58026399e55ec9e2d9313d46d7aaa91b6d33b53",
+      "0017-pipeline-cache-hit-miss.patch": "7a2134b63aae8734fee1eee6f4c0eb320d91e3cdf78ef06f6c856338fdec854a",
+      "0018-flip-rate-frame-counters.patch": "13b4c375e857e9ddcb05811ed3b70119feab608a99a789dc0161ebbd5d2f55f3",
+      "0019-vblank-hz-60.patch": "876f46027a6147728857e60710e1e475928802ad853d686fa2aa31837ce273d8",
+      "0020-texture-cache-mib.patch": "87fc20ac922c408e94aeb90141eb155f9bd75f1dd2781c18d7bc9dc5295ff789",
+      "0021-log-flip-inflight.patch": "20d4338ced36045be8488e03e3109295d04f1bc0b736e6de7361eb0eb023adf5",
+      "0022-dword-aligned-shader-headers.patch": "0791a313a4c4cce0ebc88950dbd3e0f57cb41c9ac7b103a52417dfbd723a9b36",
+      "0023-shader-engine-partition-state.patch": "64156fcf3e973344899f24a277a6e861ba5b83b3cf2143a4db7b79a126b805e4",
+      "0024-equivalent-single-sample-stencil-clear.patch": "730b615101d411199d8159918399ccd04e00ae8c74628562d94d24eafaddce5e",
+      "0025-independent-texture-sample-interpolation.patch": "20958770b26632c61bf0797d3934d5a46e85b19dee473a00529805b9791a4d27",
+      "0026-fixed-function-discard-continuations.patch": "2be9b8d65e1a0b69d64dd0b01f32880c529cafd8514c4d4c6f3e4db95964622d",
+      "0027-equivalent-stencil-z-order.patch": "2dba5e12626d668aa8a72f48ba9efade3501119e35260bce4e7ce7087da0cb2b",
+      "0027-uniform-wave-branches.patch": "574726ac84b40303bba0190a3f1695468637cd1f062ad952d134c962ff6ebebb",
+      "0028-unobserved-viewport-depth.patch": "d079390ca5d13cfe052e34b090e204bad09dadd981cb89ca6e4d39fd18005380",
+      "0029-safe-wait-delivery-and-validation.patch": "fa0199fb24e5fd757987cc5ea198de59bb5eb12423423fd0fb3d74c2c9ce542e",
+      "0030-native-wait-exception-contracts.patch": "4d070b189c05fa805cf504c91e54c95ba8d214bec095501e569680da9fadb0f0",
+      "0031-preserve-async-avx-state.patch": "2ecce98796e3f1437f7fa0af86c75f031865663d7ce6735cd01f4e15d29a3f66",
+      "0032-preserve-async-integer-flags.patch": "6b720c8de5142ebc5286d13a565c9d39bf583cd21f910d532d91f973c21520d4",
+      "0033-protected-store-exception-state.patch": "352e9143eb47819a21e2d72792a038e22d5cde4074b4c58fdbdb0ecaae49b00c",
+      "0034-msaa-color-sample-layout.patch": "d4a79ea86984bff5a3843b095fd55d9620a51e89ea8272e41068a5493402e8f1",
+      "0035-color-sample-state-transfer.patch": "13292c52d77a52ae04d2c0c6499086eef8c65a23ab5c0a504a2be790a0db411b",
+      "0036-msaa-depth-stencil-layout.patch": "23b9aad906cbcee371b332bf28e61f1af956c0f6e07439cc4cd766c53c13aafa",
+      "0037-color-sample-gpu-resources.patch": "c83e9cc45b3f8342ad6924dc964d8f687e03cfe162e6f93ce2e2867e43440831",
+      "0038-split-draw-shader-eligibility.patch": "dbec48d479a9823e883926e988fdac7c50efcf70c848c75c493b97f666878fb2",
+      "0039-depth-msaa-sample-groups.patch": "25c6c1376b4ee3e7349557625d833858dd3df5cb065d01f825feecb43be7f58e"
+    }
+  },
+  "shader_eligibility": {
+    "function": "SplitDrawShaderRejection",
+    "draw_enabled": false,
+    "dynamic_alias_safety_proven": false,
+    "synthetic_cases": 31,
+    "independently_validated_synthetic_shaders": 24,
+    "malformed_modules_rejected": 7,
+    "asan": true,
+    "ubsan": true,
+    "private_first_clear_pair_static_eligibility": true,
+    "private_first_clear_pair_spirv_vulkan12_validated": true,
+    "actual_game_rendering_verified": false,
+    "limitations": [
+      "Requires ordinary pipeline/SPIR-V validation before this shader-only prerequisite.",
+      "Conservative rejection of unsupported shader operations and unresolved typed pointer origins.",
+      "Alias feedback, sample positions, depth/stencil, resource lifetimes and query counting require independent draw-path qualification.",
+      "No graphics renderer or device execution enabled by this change."
+    ],
+    "files": {
+      "patches/anyps5/0038-split-draw-shader-eligibility.patch": "dbec48d479a9823e883926e988fdac7c50efcf70c848c75c493b97f666878fb2",
+      "scripts/check-split-draw-shaders.py": "6527b9e9e19cb34b184fa6602f19280a3e5bbbd69cf59edac777de87a7ad3e78",
+      "tools/checks/split_draw_shader_validation.cpp": "58aabacbd1fdbaea645bda70d667c1be6460ad258d7b17aa2bcda929a38449c2",
+      "upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp": "6bd1bf9b4d603a0962da48902950d2974db22cbf085ce0dc7f67ad69aa799a67"
+    }
+  },
+  "components": {
+    "color_state_cpu_transfers": "connected to production decoding and CPU tile/detile transfers; GPU transfers remain pending",
+    "color_gpu_resource": "actual production image owner passes two bounded synthetic shader runs on physical iPad; complete renderer not exercised",
+    "depth_stencil_memory": "independent AMD AddrLib model comparison under sanitizers; not connected to guest decoder or GPU transfers",
+    "depth_gpu_resource": "production command capture and rollback tests with explicit Vulkan/scheduling mocks; no GPU qualification",
+    "repeated_draw_shader_check": "static prerequisite tested; ordinary SPIR-V validation and dynamic alias proof required separately; draw path not enabled",
+    "device_feature_initialization": "production C++20 syntax check passes; full HLE rebuild and device selection qualification pending"
+  },
+  "evidence": [
+    "solitaire-msaa-color-state-transfer-20261008.json",
+    "solitaire-msaa-depth-layout-20261008.json",
+    "ipad-production-color-sample-groups-20261008.json",
+    "solitaire-msaa-depth-surfaces-20261008.json"
+  ],
+  "current_installation": {
+    "app_build": 47,
+    "full_new_hle_package_built": false,
+    "game_path_changed_on_device": false,
+    "last_game_output": "white",
+    "gameplay_audio_controls_saves_fps_qualified": false
+  },
+  "remaining": [
+    "connect grouped targets to render pass, pipeline and actual guest sample positions/masks",
+    "preserve depth/stencil per-sample state and sample-location render-pass transitions",
+    "connect GPU upload/readback, residency and cache/alias lifetimes",
+    "implement logical sample routing for multisample guest descriptors and resolve shaders",
+    "prove static and dynamic repeated-draw safety and preserve query counts",
+    "rebuild HLE, run actual game, then qualify gameplay/audio/controls/save/lifecycle/performance"
+  ],
+  "private_data_published": false,
+  "github_actions_used": false,
+  "evidence_sha256": {
+    "solitaire-msaa-color-state-transfer-20261008.json": "f67ee6f3c24b16606b8e7a8b32dd2d3dbf477bdb3425f37bb4ab0092fd04849f",
+    "solitaire-msaa-depth-layout-20261008.json": "8ad00cd2ff7e2651e629302c6c6f8c6dc47f720525ef709caed14c7935cc0902",
+    "ipad-production-color-sample-groups-20261008.json": "1f3b9d8ce91bf1dbfa33168527e4e652447fc4c92bf6ec0221057b3906f8487b",
+    "solitaire-msaa-depth-surfaces-20261008.json": "31a8d17716440d405b47a82e59b554f6cdfc42ed0acc27f76ed72b58451e224c"
+  }
+}

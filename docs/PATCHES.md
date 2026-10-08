@@ -5,11 +5,28 @@ The current FEX stack is consolidated into two release-based patches:
 FEX-2610. Historical patch numbers/results below describe their original builds.
 Madeira0046 adapts the native bridge to FEX's new API; Madeira0047 preserves the
 native process-name lifetime after an embedded Wine session. The latest AnyPS5
-pin retains all 33 reconciled local patches, followed by patch0034 for color
-MSAA memory addressing and full-coordinate pipe XOR. The latter passes an
-independent AMD-reference comparison but does not enable multisampled draws. See the
+pin retains all 33 reconciled local patches, followed by patches0034–0039 for
+multisample layouts, transfers, resource allocation and shader eligibility.
+All 39 patches apply from the pin, match the checked source and reverse cleanly.
+Multisampled game draws remain rejected. See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
+
+## Current MSAA integration checkpoint: 2026-10-08
+
+| Patch | Implemented behavior | Qualification |
+|---|---|---|
+| 0034 | Stored color sample coordinates and full-coordinate pipe XOR | Independent AMD layout comparison under sanitizers. |
+| 0035 | Color sample/fragment decoding and CPU transfers | Sanitizer tests with mapped-memory adapter; focused real GuestMemory PE under desktop Wine. |
+| 0036 | Raw D16/D32/S8 sample memory layouts | Independent AMD comparison: 60 layouts and 34,817,526 addresses; depth decoder/transfer connection pending. |
+| 0037 | Production color image owner with grouped sample layers/views; device feature selection | Actual owner passes both synthetic/captured position patterns on iPad. Probe pipelines/descriptors are synthetic; new device initialization is syntax-checked source only. |
+| 0038 | Conservative static eligibility prerequisite for repeated VS/PS draws | 31 sanitizer cases, including independently validated shaders; dynamic alias safety and draw-path integration pending. |
+| 0039 | Grouped depth/stencil allocation, clear, cache identity and rollback | Production command tests with explicit Vulkan/scheduling mocks; device depth/stencil execution pending. |
+
+The latest resource-source changes are not a rebuilt/deployed game HLE package.
+Solitaire's last bounded game run still shows white output. See
+[implementation and remaining work](MSAA-EMULATION.md) and
+[checkpoint evidence](evidence/solitaire-msaa-renderer-integration-20261008.json).
 
 
 The implementation follow-ups are documented in

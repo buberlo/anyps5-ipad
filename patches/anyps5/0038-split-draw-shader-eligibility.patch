@@ -1,0 +1,299 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp
+@@ -1,8 +1,11 @@
+ #include "BdaAbi.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Pipeline.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/VertexInput.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include <spirv/unified1/spirv.hpp>
++#include <spirv/unified1/GLSL.std.450.h>
+ #include <algorithm>
++#include <bit>
+ #include <map>
+ #include <optional>
+ #include <set>
+@@ -541,4 +544,258 @@
+     ValidateShaders(shaders, state, VkPhysicalDeviceSubgroupProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES}, false);
+ }
+ 
+-}
++namespace {
++
++// This allow-list deliberately covers a smaller language than the recompiler.
++// Unknown instructions, decorations, pointer origins, or external functions do
++// not acquire split-draw eligibility by being absent from a deny-list.
++bool splitBodyShape(spv::Op op, std::size_t count) {
++    if ((op >= spv::OpIAdd && op <= spv::OpSMulExtended) ||
++        (op >= spv::OpLessOrGreater && op <= spv::OpLogicalAnd) ||
++        (op >= spv::OpIEqual && op <= spv::OpFUnordGreaterThanEqual) ||
++        (op >= spv::OpShiftRightLogical && op <= spv::OpBitwiseAnd)) return count == 5;
++    if ((op >= spv::OpConvertFToU && op <= spv::OpQuantizeToF16) ||
++        (op >= spv::OpAny && op <= spv::OpSignBitSet) ||
++        (op >= spv::OpDPdx && op <= spv::OpFwidthCoarse)) return count == 4;
++    switch (op) {
++        case spv::OpNop: case spv::OpReturn: case spv::OpKill:
++        case spv::OpUnreachable: case spv::OpFunctionEnd: return count == 1;
++        case spv::OpLabel: case spv::OpBranch: case spv::OpReturnValue: return count == 2;
++        case spv::OpSelectionMerge: case spv::OpStore: case spv::OpCopyMemory: return count == 3;
++        case spv::OpLoopMerge: case spv::OpFunctionParameter: return count == (op == spv::OpLoopMerge ? 4u : 3u);
++        case spv::OpLoad: case spv::OpCopyObject: case spv::OpTranspose:
++        case spv::OpConvertPtrToU: case spv::OpConvertUToPtr: case spv::OpBitcast:
++        case spv::OpSatConvertSToU: case spv::OpSatConvertUToS:
++        case spv::OpSNegate: case spv::OpFNegate: case spv::OpLogicalNot:
++        case spv::OpNot: case spv::OpBitReverse: case spv::OpBitCount:
++        case spv::OpImage: case spv::OpImageQueryFormat: case spv::OpImageQueryOrder:
++        case spv::OpImageQuerySize: case spv::OpImageQueryLevels: case spv::OpImageQuerySamples: return count == 4;
++        case spv::OpVariable: return count == 4 || count == 5;
++        case spv::OpBranchConditional: return count == 4 || count == 6;
++        case spv::OpPhi: return count >= 5 && (count & 1u) != 0;
++        case spv::OpFunctionCall: case spv::OpCompositeConstruct: return count >= 4;
++        case spv::OpCompositeExtract: case spv::OpAccessChain:
++        case spv::OpInBoundsAccessChain: return count >= 5;
++        case spv::OpCompositeInsert: case spv::OpPtrAccessChain:
++        case spv::OpInBoundsPtrAccessChain: case spv::OpVectorShuffle: return count >= 6;
++        case spv::OpVectorExtractDynamic: case spv::OpArrayLength: case spv::OpSampledImage:
++        case spv::OpImageQuerySizeLod: case spv::OpImageQueryLod: return count == 5;
++        case spv::OpVectorInsertDynamic: case spv::OpSelect:
++        case spv::OpBitFieldSExtract: case spv::OpBitFieldUExtract: return count == 6;
++        case spv::OpBitFieldInsert: return count == 7;
++        case spv::OpImageFetch: case spv::OpImageRead: case spv::OpImageGather:
++        case spv::OpImageDrefGather: case spv::OpImageSampleImplicitLod:
++        case spv::OpImageSampleExplicitLod: case spv::OpImageSampleDrefImplicitLod:
++        case spv::OpImageSampleDrefExplicitLod: return count >= 5;
++        case spv::OpExtInst: return count >= 6;
++        default: return false;
++    }
++}
++
++bool splitBuiltin(std::uint32_t builtin) {
++    switch (builtin) {
++        case spv::BuiltInPosition: case spv::BuiltInVertexIndex: case spv::BuiltInInstanceIndex:
++        case spv::BuiltInFragCoord: case spv::BuiltInFrontFacing: case spv::BuiltInFragDepth:
++        case spv::BuiltInHelperInvocation: case spv::BuiltInBaryCoordKHR:
++        case spv::BuiltInBaryCoordNoPerspKHR: return true;
++        default: return false;
++    }
++}
++
++bool splitImageShape(std::span<const std::uint32_t> instruction) {
++    const auto op = static_cast<spv::Op>(instruction[0] & 0xffffu);
++    const bool reference = op == spv::OpImageSampleDrefImplicitLod || op == spv::OpImageSampleDrefExplicitLod || op == spv::OpImageGather || op == spv::OpImageDrefGather;
++    const auto base = reference ? 6u : 5u;
++    if (instruction.size() < base) return false;
++    const bool explicitLod = op == spv::OpImageSampleExplicitLod || op == spv::OpImageSampleDrefExplicitLod;
++    if (instruction.size() == base) return !explicitLod;
++    const auto mask = instruction[base];
++    // Memory visibility/volatile image operands need additional ordering proofs.
++    const std::uint32_t known = spv::ImageOperandsBiasMask | spv::ImageOperandsLodMask | spv::ImageOperandsGradMask |
++        spv::ImageOperandsConstOffsetMask | spv::ImageOperandsOffsetMask | spv::ImageOperandsConstOffsetsMask |
++        spv::ImageOperandsSampleMask | spv::ImageOperandsMinLodMask | spv::ImageOperandsSignExtendMask | spv::ImageOperandsZeroExtendMask;
++    const std::uint32_t withOperand = known & ~(spv::ImageOperandsSignExtendMask | spv::ImageOperandsZeroExtendMask);
++    if ((mask & ~known) != 0 || (explicitLod && (mask & (spv::ImageOperandsLodMask | spv::ImageOperandsGradMask)) == 0)) return false;
++    const auto operands = std::popcount(mask & withOperand) + ((mask & spv::ImageOperandsGradMask) != 0 ? 1u : 0u);
++    return instruction.size() == base + 1u + operands;
++}
++
++std::string splitModuleRejection(const ShaderRecompiler::RecompileResult& program, ShaderRecompiler::ShaderStage stage) {
++    const auto bad = [](const std::string& reason) { throw std::runtime_error(reason); };
++    const auto check = [&](bool condition, const char* reason) { if (!condition) bad(reason); };
++    for (const auto& binding : program.bindings) {
++        for (const auto* flags : {&binding.imageWritten, &binding.imageAtomic, &binding.imageAtomic64, &binding.bufferWritten, &binding.bufferAtomic})
++            if (std::any_of(flags->begin(), flags->end(), [](bool value) { return value; })) return "resource metadata permits guest writes or atomics";
++    }
++    const auto& words = program.spirv;
++    check(words.size() >= 5 && words[0] == spv::MagicNumber && words[3] > 0 && words[4] == 0, "malformed SPIR-V header");
++    std::vector<std::span<const std::uint32_t>> instructions;
++    for (std::size_t cursor = 5; cursor < words.size();) {
++        const auto count = words[cursor] >> 16u;
++        check(count > 0 && count <= words.size() - cursor, "truncated SPIR-V instruction");
++        instructions.emplace_back(std::span(words).subspan(cursor, count)); cursor += count;
++    }
++    std::map<std::uint32_t, std::uint32_t> pointerStorage, valueType;
++    std::set<std::uint32_t> functions, calls, glslImports, labels;
++    std::uint32_t function = 0, entry = 0;
++    bool helper = false, derivatives = false, functionLabel = false;
++    std::size_t entries = 0;
++    const auto literalString = [&](std::span<const std::uint32_t> data) {
++        const auto bytes = std::as_bytes(data);
++        const auto* start = reinterpret_cast<const char*>(bytes.data());
++        const auto* end = std::find(start, start + bytes.size(), '\0');
++        check(end != start + bytes.size(), "unterminated SPIR-V literal string");
++        return std::string(start, end);
++    };
++    for (const auto instruction : instructions) {
++        const auto op = static_cast<spv::Op>(instruction[0] & 0xffffu);
++        if (op == spv::OpTypePointer) {
++            check(instruction.size() == 4 && instruction[1] > 0 && instruction[1] < words[3], "malformed pointer type");
++            check(pointerStorage.emplace(instruction[1], instruction[2]).second, "duplicate pointer type");
++        }
++    }
++    for (const auto instruction : instructions) {
++        const auto op = static_cast<spv::Op>(instruction[0] & 0xffffu);
++        const auto count = instruction.size();
++        if (op == spv::OpFunction) {
++            check(count == 5 && function == 0 && instruction[2] > 0 && instruction[2] < words[3], "malformed or nested function");
++            function = instruction[2]; functionLabel = false; check(functions.insert(function).second, "duplicate function");
++        } else if (function != 0) {
++            if (op == spv::OpReadClockKHR) return "shader clock changes between sample groups";
++            if ((op >= spv::OpAtomicLoad && op <= spv::OpAtomicXor) || op == spv::OpAtomicFlagTestAndSet || op == spv::OpAtomicFlagClear || op == spv::OpAtomicFMinEXT || op == spv::OpAtomicFMaxEXT || op == spv::OpAtomicFAddEXT) return "atomic access, including atomic loads, cannot be repeated";
++            if (op == spv::OpImageWrite) return "image writes cannot be repeated";
++            if (op == spv::OpBeginInvocationInterlockEXT || op == spv::OpEndInvocationInterlockEXT) return "shader interlock cannot be split";
++            if (op == spv::OpControlBarrier || op == spv::OpMemoryBarrier || op == spv::OpMemoryNamedBarrier || op == spv::OpControlBarrierArriveINTEL || op == spv::OpControlBarrierWaitINTEL) return "shader barrier cannot be repeated";
++            if ((op >= spv::OpGroupNonUniformElect && op <= spv::OpGroupNonUniformQuadSwap) || (op >= spv::OpGroupAll && op <= spv::OpGroupSMax)) return "subgroup execution depends on native invocation grouping";
++            if (!splitBodyShape(op, count)) return "unsupported or malformed split-draw SPIR-V operation " + std::to_string(static_cast<std::uint32_t>(op));
++            if (op == spv::OpLabel) {
++                check(instruction[1] > 0 && instruction[1] < words[3] && labels.insert(instruction[1]).second, "invalid or duplicate function label");
++                functionLabel = true;
++            }
++            if (op == spv::OpFunctionEnd) {
++                check(functionLabel, "external or empty shader function"); function = 0;
++            }
++            if (op == spv::OpFunctionCall) calls.insert(instruction[3]);
++            if ((op >= spv::OpDPdx && op <= spv::OpFwidthCoarse) || op == spv::OpImageSampleImplicitLod || op == spv::OpImageSampleDrefImplicitLod || op == spv::OpImageQueryLod || op == spv::OpImageGather || op == spv::OpImageDrefGather) derivatives = true;
++            if (op == spv::OpExtInst) {
++                check(glslImports.contains(instruction[3]), "unresolved or unsupported extended instruction set");
++                const auto ext = instruction[4];
++                check(ext > GLSLstd450Bad && ext < GLSLstd450Count, "unknown GLSL extended instruction");
++                if (ext == GLSLstd450Modf || ext == GLSLstd450Frexp) return "extended instruction has an additional pointer write";
++                if (ext >= GLSLstd450InterpolateAtCentroid && ext <= GLSLstd450InterpolateAtOffset) return "explicit interpolation needs sample-group remapping";
++                // GLSL.std.450's non-pointer arithmetic instructions have one,
++                // two or three operands. Reject reserved IMix and arity drift.
++                const auto operands = ext == GLSLstd450IMix ? 0u :
++                    ext == GLSLstd450Atan2 || ext == GLSLstd450Pow || (ext >= GLSLstd450FMin && ext <= GLSLstd450SMax) || ext == GLSLstd450Step || ext == GLSLstd450Ldexp || ext == GLSLstd450Distance || ext == GLSLstd450Cross || ext == GLSLstd450Reflect || ext == GLSLstd450NMin || ext == GLSLstd450NMax ? 2u :
++                    (ext >= GLSLstd450FClamp && ext <= GLSLstd450FMix) || ext == GLSLstd450SmoothStep || ext == GLSLstd450Fma || ext == GLSLstd450FaceForward || ext == GLSLstd450Refract || ext == GLSLstd450NClamp ? 3u : 1u;
++                check(operands != 0 && count == 5u + operands, "malformed or reserved GLSL extended instruction");
++            }
++            if (op >= spv::OpImageSampleImplicitLod && op <= spv::OpImageRead) check(splitImageShape(instruction), "unsupported or malformed image operands");
++        } else {
++            switch (op) {
++                case spv::OpCapability: check(count == 2, "malformed capability"); break;
++                case spv::OpMemoryModel: check(count == 3, "malformed memory model"); break;
++                case spv::OpExtension: case spv::OpSourceExtension:
++                    check(count >= 2, "malformed extension"); static_cast<void>(literalString(instruction.subspan(1))); break;
++                case spv::OpExtInstImport:
++                    check(count >= 3, "malformed extended instruction import");
++                    check(literalString(instruction.subspan(2)) == "GLSL.std.450", "unsupported extended instruction import");
++                    check(glslImports.insert(instruction[1]).second, "duplicate extended instruction import"); break;
++                case spv::OpEntryPoint:
++                    check(count >= 5 && ++entries == 1, "missing or multiple shader entry points");
++                    check(instruction[1] == (stage == ShaderRecompiler::ShaderStage::Vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment), "entry point stage disagrees");
++                    entry = instruction[2]; static_cast<void>(literalString(instruction.subspan(3))); break;
++                case spv::OpExecutionMode:
++                    check(count >= 3, "malformed execution mode");
++                    if (instruction[2] == spv::ExecutionModePixelInterlockOrderedEXT || instruction[2] == spv::ExecutionModePixelInterlockUnorderedEXT || instruction[2] == spv::ExecutionModeSampleInterlockOrderedEXT || instruction[2] == spv::ExecutionModeSampleInterlockUnorderedEXT) return "shader interlock execution mode cannot be split";
++                    break;
++                case spv::OpName: check(count >= 3, "malformed name"); static_cast<void>(literalString(instruction.subspan(2))); break;
++                case spv::OpMemberName: check(count >= 4, "malformed member name"); static_cast<void>(literalString(instruction.subspan(3))); break;
++                case spv::OpSource: check(count >= 3, "malformed source declaration"); break;
++                case spv::OpString: check(count >= 3, "malformed string"); static_cast<void>(literalString(instruction.subspan(2))); break;
++                case spv::OpDecorate: case spv::OpMemberDecorate: {
++                    const auto index = op == spv::OpDecorate ? 2u : 3u;
++                    check(count > index, "malformed decoration");
++                    const auto decoration = instruction[index];
++                    if (decoration == spv::DecorationSample || decoration == spv::DecorationCentroid) return "sample or centroid interpolation needs sample-group remapping";
++                    if (decoration == spv::DecorationBuiltIn) {
++                        check(count == index + 2, "malformed builtin decoration");
++                        const auto builtin = instruction[index + 1];
++                        if (!splitBuiltin(builtin)) return "native sample-dependent or invocation-dependent builtin " + std::to_string(builtin) + " needs remapping";
++                        helper |= builtin == spv::BuiltInHelperInvocation;
++                    }
++                    break;
++                }
++                case spv::OpTypeVoid: case spv::OpTypeBool: case spv::OpTypeSampler: check(count == 2, "malformed scalar type"); break;
++                case spv::OpTypeFloat: case spv::OpTypeRuntimeArray: case spv::OpTypeSampledImage: check(count == 3, "malformed type"); break;
++                case spv::OpTypeInt: case spv::OpTypeVector: case spv::OpTypeMatrix: case spv::OpTypeArray: case spv::OpTypePointer: check(count == 4, "malformed aggregate type"); break;
++                case spv::OpTypeImage: check(count == 9 || count == 10, "malformed image type"); break;
++                case spv::OpTypeStruct: check(count >= 2, "malformed struct type"); break;
++                case spv::OpTypeFunction: check(count >= 3, "malformed function type"); break;
++                case spv::OpConstantTrue: case spv::OpConstantFalse: case spv::OpConstantNull: check(count == 3, "malformed constant"); break;
++                case spv::OpConstant: case spv::OpConstantComposite: check(count >= 4, "malformed constant"); break;
++                case spv::OpVariable: check(count == 4 || count == 5, "malformed variable"); break;
++                default: return "unsupported split-draw module operation " + std::to_string(static_cast<std::uint32_t>(op));
++            }
++        }
++        // Every accepted pointer-producing instruction starts with Result Type,
++        // Result ID. SPIR-V's typed pointer storage class is invariant through
++        // access chains, phi/select, parameters and returns; casts to physical
++        // storage pointers retain the external storage class and are rejected.
++        const bool pointerResult = op == spv::OpVariable || op == spv::OpLoad || op == spv::OpAccessChain || op == spv::OpInBoundsAccessChain ||
++            op == spv::OpPtrAccessChain || op == spv::OpInBoundsPtrAccessChain || op == spv::OpPhi || op == spv::OpSelect ||
++            op == spv::OpCopyObject || op == spv::OpBitcast || op == spv::OpConvertUToPtr || op == spv::OpFunctionParameter || op == spv::OpFunctionCall || op == spv::OpConstantNull;
++        if (pointerResult && count >= 3 && pointerStorage.contains(instruction[1])) {
++            check(instruction[2] > 0 && instruction[2] < words[3], "pointer result ID exceeds the module bound");
++            check(valueType.emplace(instruction[2], instruction[1]).second, "duplicate pointer result ID");
++        }
++    }
++    check(function == 0 && entries == 1 && functions.contains(entry), "incomplete shader function or unresolved entry point");
++    for (const auto call : calls) check(functions.contains(call), "unresolved external shader function");
++    if (helper && derivatives) return "helper coverage combined with derivatives or implicit LOD is not proved invariant across sample groups";
++    const auto storage = [&](std::uint32_t id) {
++        const auto value = valueType.find(id);
++        check(value != valueType.end(), "unresolved pointer origin");
++        return pointerStorage.at(value->second);
++    };
++    for (const auto instruction : instructions) {
++        const auto op = static_cast<spv::Op>(instruction[0] & 0xffffu);
++        if (op == spv::OpLoad) static_cast<void>(storage(instruction[3]));
++        if (op == spv::OpAccessChain || op == spv::OpInBoundsAccessChain || op == spv::OpPtrAccessChain || op == spv::OpInBoundsPtrAccessChain) {
++            const auto origin = storage(instruction[3]);
++            check(storage(instruction[2]) == origin, "access chain changes pointer storage class");
++        }
++        if (valueType.contains(instruction.size() >= 3 ? instruction[2] : 0u)) {
++            if (op == spv::OpCopyObject || op == spv::OpBitcast) check(storage(instruction[2]) == storage(instruction[3]), "pointer copy or cast changes storage class");
++            if (op == spv::OpSelect) check(storage(instruction[2]) == storage(instruction[4]) && storage(instruction[2]) == storage(instruction[5]), "pointer select has unresolved or inconsistent origins");
++            if (op == spv::OpPhi)
++                for (std::size_t i = 3; i < instruction.size(); i += 2) check(storage(instruction[2]) == storage(instruction[i]), "pointer phi has unresolved or inconsistent origins");
++            if (op == spv::OpConvertUToPtr) check(storage(instruction[2]) == spv::StorageClassPhysicalStorageBuffer, "integer pointer conversion cannot manufacture local storage");
++        }
++        if (op != spv::OpStore && op != spv::OpCopyMemory) continue;
++        const auto destination = storage(instruction[1]);
++        if (destination != spv::StorageClassOutput && destination != spv::StorageClassPrivate && destination != spv::StorageClassFunction) return "write to nonlocal storage class " + std::to_string(destination) + " cannot be repeated";
++        if (op == spv::OpCopyMemory) static_cast<void>(storage(instruction[2]));
++    }
++    return {};
++}
++
++}
++
++std::string SplitDrawShaderRejection(std::span<const CompiledShader> shaders) {
++    using Stage = ShaderRecompiler::ShaderStage;
++    if (shaders.size() != 2 || shaders[0].stage != Stage::Vertex || shaders[1].stage != Stage::Fragment) return "split draw currently requires exactly a vertex/fragment shader pair";
++    for (const auto& shader : shaders) {
++        const auto stage = shader.stage == Stage::Vertex ? "vertex: " : "fragment: ";
++        if (shader.program == nullptr) return std::string(stage) + "missing compiled shader";
++        try {
++            const auto reason = splitModuleRejection(*shader.program, shader.stage);
++            if (!reason.empty()) return stage + reason;
++        } catch (const std::exception& error) {
++            return std::string(stage) + error.what();
++        }
++    }
++    return {};
++}
++
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp
+@@ -0,0 +1,19 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_SPLITDRAWSHADERVALIDATION_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_SPLITDRAWSHADERVALIDATION_HPP
++
++#include "prx/libSceAgcDriver/Graphics/include/Shaders.hpp"
++#include <string>
++
++namespace AgcDriver::Graphics {
++
++// Conservative shader-only prerequisite for repeating one vertex/fragment draw
++// into disjoint native sample groups. Empty means this static prerequisite passed.
++// Run ordinary pipeline/SPIR-V validation first. A pass DOES NOT prove that
++// resource reads cannot alias the attachments or writes of another pass; the draw
++// path must separately prove dynamic alias/feedback freedom, preserve sample
++// locations, depth/stencil, queries, and target lifetime before enabling a split.
++// This is not called for ordinary single-sample rendering.
++std::string SplitDrawShaderRejection(std::span<const CompiledShader> shaders);
++
++}
++#endif

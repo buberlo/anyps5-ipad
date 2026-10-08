@@ -1,12 +1,14 @@
-# Eight-sample rendering: tested building block, integration still pending
+# Eight-sample rendering: resource tests pass, game integration still pending
 
 Solitaire's captured state requests eight raster, exposed and color-fragment
 samples. The M2 iPad exposes native attachment sample counts of 1, 2 and 4.
-The current AnyPS5 decoder rejects multisampling, and its render targets,
-pipeline attachments and descriptor/transfer routing are single-sample. The
-CPU color layout now supports separate stored samples; it is not yet connected
-to those renderer paths. Increasing the
-pipeline sample count alone cannot repair this path.
+The current draw path rejects multisampling. Color metadata decoding and CPU
+transfers now preserve individual samples; the production color image owner can
+allocate grouped native attachments. Depth/stencil layouts, grouped allocation
+and a shader eligibility check are also implemented, with different levels of
+qualification below. Pipelines, sampled guest descriptors and renderer cache
+handoffs still need to connect these components. Increasing the pipeline sample
+count alone cannot repair this path.
 
 ## Physical iPad result
 
@@ -51,9 +53,27 @@ process cleanup is verified. See the
 [sample-preservation evidence](evidence/ipad-msaa-array-preservation-20261008.json).
 
 This qualifies GPU-resident sample preservation and shader read ordering for
-the synthetic triangle. It does **not** integrate AnyPS5, render game shaders,
-implement guest layouts or qualify game performance. The floating-point
+the synthetic triangle in the independent probe. It does **not** render game
+shaders, exercise guest transfers or qualify game performance. The floating-point
 mean does not qualify guest-format rounding or sRGB.
+
+An additional build now uses the actual production `RenderTarget` class from
+`ColorRenderTarget.cpp` to own that multisample image and its views. Logical
+eight-sample color is represented by two layers of a native four-sample image,
+two 2D attachment views and one sampled 2D-array view. Single-sample targets
+retain their ordinary image/view representation. Allocation checks format,
+sample-count, extent, layer and resource-size limits and unwinds partial failure.
+
+Both position patterns pass on the physical iPad again with this production
+owner: 4,096 individual sample checks, 512 GPU-mean checks and all coverage/group
+checks per run, with zero differences and Wine exit 0. This establishes the
+production resource representation on that device. The probe still supplies its
+own render pass, pipeline and descriptors and uses `R32_SFLOAT`, rather than the
+game's RGBA8 target. It does not execute the renderer's residency, guest
+upload/readback, depth/stencil or actual draw path. Device initialization changes
+that query and enable optional Vulkan features are syntax-checked source;
+they are not yet part of a rebuilt game HLE package. See the
+[production resource evidence](evidence/ipad-production-color-sample-groups-20261008.json).
 
 The capability query additionally returns support for sample-rate interpolation
 functions, although Wine does not enumerate `VK_KHR_portability_subset`. That
@@ -80,8 +100,8 @@ and offsets: 80 layouts, 2,650,990 coordinate/sample comparisons and 40 complete
 sample-buffer round trips pass with ASan/UBSan. The matrix covers element sizes
 1/2/4/8/16 bytes, counts 1/2/4/8, odd extents, 4K and the maximum 16384-pixel
 extent. No large surface is allocated for the maximum-size address checks.
-This validates that AMD reference model; captured guest resources and actual
-renderer transfers still require independent qualification.
+This validates that AMD reference model; captured guest resource layouts and
+GPU transfers still require independent qualification.
 
 The comparison also found an existing single-sample bug: for 8- and 16-byte
 color elements, discarding coordinate bits at a macroblock boundary discarded
@@ -105,6 +125,57 @@ Current draw validation still rejects multisampling. The layout tests do not
 justify enabling a draw without its remaining render-target, shader, depth,
 metadata and synchronization semantics.
 
+Patch0035 connects stored color fragment counts to `DecodeColorBuffer` and the
+production CPU tile/detile transfer functions. The focused regression checks
+994,590 distinguishable samples across slots 0 and 7 and sample counts 1/2/4/8,
+including padding preservation, short buffers and unsupported metadata. It passes
+ASan/UBSan using an explicit native mapped-memory adapter, and the same test
+passes as a Windows PE under desktop Wine with the real `GuestMemory.cpp`.
+The latter uses the recorded earlier libc/kernel build; it does not qualify
+the iPad's guest-memory tracking. Two negative controls fail the previous
+transfer implementation. EQAA, FMASK compression, multisample DCC/CMASK and
+multisample mip/array transfers remain rejected. See the
+[color transfer record](evidence/solitaire-msaa-color-state-transfer-20261008.json).
+
+## Depth/stencil and safe repeated draws
+
+Patch0036 adds raw D16, D32 and separate S8 sample layouts for SW_64KB_Z_X.
+They require equal sample/fragment counts, canonical pitch, one mip/slice,
+zero pipe/bank XOR and no HTILE interpretation. The independently linked AMD
+reference passes 60 layouts, 34,817,526 address/sample comparisons and 24
+complete round trips under ASan/UBSan. This includes every sample of 1920×1080
+eight-sample D32 and S8 surfaces. It proves the selected AMD reference model;
+the guest depth decoder and GPU transfers are not connected to it yet. See the
+[depth layout record](evidence/solitaire-msaa-depth-layout-20261008.json).
+
+Patch0039 extends the production depth resource owner with separate four-sample
+layer views for eight-sample targets, full-layer initial depth/stencil clearing,
+sample-count/device cache identity and failure rollback. Multisample depth
+requires enabled programmable sample locations and the compatible-depth image
+flag. ASan/UBSan tests capture the production commands with explicit Vulkan and
+scheduling mocks: four configurations and 21 failure/rejection cases pass.
+This is not a device depth/stencil test. Matching attachment/subpass sample
+locations and transitions, sampled multisample depth descriptors and guest
+upload/readback remain pending. See the
+[depth allocation record](evidence/solitaire-msaa-depth-surfaces-20261008.json).
+
+The first captured rejected draw writes all four RGBA components and clears
+stencil through replacement operations over its geometry. A stencil-only or
+unconditional full-target clear would change its behavior. Its shaders use
+center interpolation, but repeating arbitrary shaders can duplicate writes,
+atomics or other observable operations.
+
+Patch0038 adds a conservative static prerequisite for repeating a VS/PS pair.
+It refuses external writes, atomics, clocks, barriers, interlocks, subgroup
+operations, sample built-ins and extended interpolation, and fails closed on
+unsupported or unresolved operations. Thirty-one sanitizer cases pass,
+including 24 independently compiled and validated synthetic shaders and seven
+malformed modules. The captured first pair passes ordinary Vulkan SPIR-V
+validation and this static check; that does not establish dynamic attachment
+feedback safety, query counting or correct full draws. The check is not yet
+enabled in the draw path. See the
+[integration checkpoint](evidence/solitaire-msaa-renderer-integration-20261008.json).
+
 On Build47, the same private Solitaire CPU candidate runs for 60 seconds with
 normal memory tracking, multiblock enabled and MAXINST5000. Its three captures
 remain white and both logged render targets reject eight-sample draws. The
@@ -118,22 +189,20 @@ See [source and device evidence](evidence/solitaire-msaa-color-layout-20261008.j
 
 The following work remains before this can replace a rejected game draw:
 
-1. Integrate the tested two-layer native four-sample image and logical sample
-   routing into render-target residency and shader image loads. Individual
-   sample preservation has passed the independent device probe; it has not
-   passed the guest renderer or guest resolve operations.
-2. Decode sample and fragment counts consistently in `State`, `ColorTarget`
-   and `GuestTextureResource`. The standalone production color layout is checked
-   against AddrLib; connect it to metadata and transfer routing, add depth byte
-   sizes/swizzles, and extend import/export and alias tracking. Validate
-   against an independent AMD address-layout reference.
+1. Connect the tested production two-layer color image and logical sample
+   routing to render-target residency and shader image loads. Individual
+   sample preservation passes the production-owner device probe, but guest
+   renderer and guest resolve operations remain unqualified.
+2. Extend sample/fragment decoding to depth and `GuestTextureResource`, connect
+   the tested depth byte layouts and CPU color transfers to GPU import/export,
+   and preserve cache/alias tracking. The independent AMD layout comparisons
+   already pass; actual captured resource layouts require a separate check.
 3. Apply the guest positions and sample masks to each subset. Preserve
    depth/stencil, blending, discard and center interpolation independently for
    each sample. Captured stencil testing makes color-only success insufficient.
-4. Handle shader side effects explicitly. Repeating vertex or fragment storage
-   writes/atomics twice can change game behavior. Prove eligible shaders have
-   no such effects or execute those effects once through an appropriate path.
-   Occlusion/sample counters must retain the guest's counts.
+4. Apply the static shader eligibility prerequisite and prove dynamic alias
+   feedback freedom before repeating draws. Storage writes/atomics cannot be
+   repeated arbitrarily. Occlusion/sample counters must retain guest counts.
 5. Preserve full frame and cache lifetime: GPU work must finish before a sample
    target is reused, dirty pages and aliases must agree, and single-sample
    titles must keep their existing path.
@@ -170,6 +239,32 @@ is enumerated, its `multisampleArrayImage` feature must be supported and is
 explicitly enabled at device creation. Wine on the tested iPad filters the
 extension name; the device execution proves this resource path independently
 of the queried feature bit.
+
+To build the same fixture with the actual production color image owner:
+
+```sh
+APS5_MSAA_PRODUCTION_TARGET=1 \
+  APS5_MSAA_PROBE_BUILD="$PWD/build/msaa-production-color/windows" \
+  scripts/build-msaa-split-probe.sh windows
+```
+
+Use `--array` when running this version. The image owner is production code;
+the synthetic shaders and render passes remain the probe's own code. Native
+contract checks run separately:
+
+```sh
+python3 scripts/check-msaa-color-state.py      # macOS mapped-memory adapter
+python3 scripts/check-msaa-render-target.py    # explicit Vulkan adapter
+python3 scripts/check-msaa-depth-surfaces.py   # command/scheduling mocks
+python3 scripts/check-split-draw-shaders.py    # glslangValidator + spirv-val
+python3 scripts/check-msaa-depth-layout.py \
+  --addrlib-source /path/to/pal/src/core/imported/addrlib \
+  --addrlib-library /path/to/build/libaddrlib.a
+```
+
+These scripts download nothing. The compiler, shader tools and independently
+built reference library must already be available. All 39 AnyPS5 patches apply
+from the pin, match the checked source bytes and reverse back to the pin.
 
 The macOS build requires `MOLTENVK_LIB` pointing to a pinned built dylib and
 `scripts/build-msaa-split-probe.sh macos`. A macOS result does not qualify iPad

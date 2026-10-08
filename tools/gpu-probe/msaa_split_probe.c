@@ -5,6 +5,9 @@
 #define VK_ENABLE_BETA_EXTENSIONS
 #endif
 #include <vulkan/vulkan.h>
+#ifdef APS5_PRODUCTION_RENDER_TARGET
+#include "render_target_fixture.h"
+#endif
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -70,6 +73,9 @@ int main(int argc, char **argv) {
     int result=1;
     VkInstance instance=VK_NULL_HANDLE; VkPhysicalDevice physical=VK_NULL_HANDLE;
     VkDevice device=VK_NULL_HANDLE; VkQueue queue=VK_NULL_HANDLE;
+#ifdef APS5_PRODUCTION_RENDER_TARGET
+    void *production_target=NULL;
+#endif
     VkImage images[2]={0}; VkDeviceMemory image_memory[2]={0}; VkImageView views[2]={0};
     VkImageView second_view=VK_NULL_HANDLE, sample_view=VK_NULL_HANDLE;
     VkBuffer readback=VK_NULL_HANDLE; VkDeviceMemory readback_memory=VK_NULL_HANDLE; void *mapped=NULL;
@@ -129,7 +135,15 @@ int main(int argc, char **argv) {
         .pNext=array && portability_present?&portable:NULL,
         .enabledExtensionCount=portability_present?2:1,.ppEnabledExtensionNames=extensions};
     CHECK(vkCreateDevice(physical,&dci,NULL,&device)); vkGetDeviceQueue(device,family,0,&queue);
+#ifdef APS5_PRODUCTION_RENDER_TARGET
+    CHECK(aps5_create_color_target(physical,device,SIDE,SIDE,array?8u:4u,
+        !portability_present || portable.multisampleArrayImage?VK_TRUE:VK_FALSE,
+        &production_target,&images[0],&views[0],&second_view,&sample_view));
+#endif
     for (unsigned i=0;i<2;++i) {
+#ifdef APS5_PRODUCTION_RENDER_TARGET
+        if(i==0) continue;
+#endif
         VkImageCreateInfo ci={.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,.imageType=VK_IMAGE_TYPE_2D,.format=VK_FORMAT_R32_SFLOAT,
             .extent={SIDE,SIDE,1},.mipLevels=1,.arrayLayers=array && i==0?2:1,.samples=i==0?VK_SAMPLE_COUNT_4_BIT:VK_SAMPLE_COUNT_1_BIT,
             .tiling=VK_IMAGE_TILING_OPTIMAL,.usage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|(i==1?VK_IMAGE_USAGE_TRANSFER_SRC_BIT:0)|(array && i==0?VK_IMAGE_USAGE_SAMPLED_BIT:0)};
@@ -143,6 +157,7 @@ int main(int argc, char **argv) {
             .format=VK_FORMAT_R32_SFLOAT,.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
         CHECK(vkCreateImageView(device,&vi,NULL,&views[i]));
     }
+#ifndef APS5_PRODUCTION_RENDER_TARGET
     if (array) {
         VkImageViewCreateInfo vi={.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,.image=images[0],.viewType=VK_IMAGE_VIEW_TYPE_2D,
             .format=VK_FORMAT_R32_SFLOAT,.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,1,1}};
@@ -150,6 +165,7 @@ int main(int argc, char **argv) {
         vi.viewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY; vi.subresourceRange.baseArrayLayer=0; vi.subresourceRange.layerCount=2;
         CHECK(vkCreateImageView(device,&vi,NULL,&sample_view));
     }
+#endif
     VkBufferCreateInfo bci={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=(4*PIXELS+(array?2*PIXELS*9:0))*sizeof(float),
         .usage=VK_BUFFER_USAGE_TRANSFER_DST_BIT|(array?VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:0)};
     CHECK(vkCreateBuffer(device,&bci,NULL,&readback));
@@ -312,6 +328,11 @@ cleanup:
     if (pass) vkDestroyRenderPass(device,pass,NULL);
     if (readback) vkDestroyBuffer(device,readback,NULL);
     if (readback_memory) vkFreeMemory(device,readback_memory,NULL);
+#ifdef APS5_PRODUCTION_RENDER_TARGET
+    if(production_target) aps5_destroy_color_target(production_target);
+    sample_view=second_view=views[0]=VK_NULL_HANDLE;
+    images[0]=VK_NULL_HANDLE;
+#endif
     if (sample_view) vkDestroyImageView(device,sample_view,NULL);
     if (second_view) vkDestroyImageView(device,second_view,NULL);
     for(unsigned i=0;i<2;++i) {if(views[i])vkDestroyImageView(device,views[i],NULL);if(images[i])vkDestroyImage(device,images[i],NULL);if(image_memory[i])vkFreeMemory(device,image_memory[i],NULL);}

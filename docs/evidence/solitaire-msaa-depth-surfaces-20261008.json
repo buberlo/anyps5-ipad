@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "component": "production DepthSurface multisample allocation and grouped views",
+  "rendererIntegrationComplete": false,
+  "gameplayQualified": false,
+  "deviceGpuQualified": false,
+  "allocation": {
+    "guestSamples": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "nativeSampleMaximum": 4,
+    "eightSampleRepresentation": "one four-sample image with two array layers",
+    "attachmentViews": "one 2D view per sample group",
+    "initialization": "depth/stencil clear and initial layout barrier cover every native sample in every layer",
+    "sampleLocationsCompatibleDepthFlag": "VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT for samples > 1",
+    "cacheIdentityIncludesSampleCount": true,
+    "keptUntil": "ClearDepthSurfaces(device)"
+  },
+  "guards": [
+    "powers-of-two counts 1/2/4/8",
+    "enabled VK_EXT_sample_locations for multisample depth/stencil",
+    "enabled multisample array images for eight samples",
+    "attachment/sampling/transfer format features",
+    "actual image query includes creation flags and usage",
+    "image sample count, extent, mip, layer and resource-size bounds",
+    "framebuffer bounds and nonzero extent",
+    "group coordinate bounds"
+  ],
+  "unsupportedSampling": "MSAA depth/stencil texture views and descriptor types 14/15 rejected before the existing single-layer Texture path",
+  "validation": {
+    "script": "scripts/check-msaa-depth-surfaces.py",
+    "productionCompiled": "core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp",
+    "sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "configurations": 4,
+    "capabilityAndConstructionRejections": 21,
+    "cacheReusesBothGroups": true,
+    "differentSampleCountsAndDevicesRemainSeparate": true,
+    "partialConstructionRollback": true,
+    "rollbackAfterSecondViewFailure": true,
+    "otherDeviceCachePreservedOnFailure": true,
+    "missingClearResolverRecordsNoBarrierBeforeRollback": true,
+    "singleSampleWorksWithoutSampleLocationsOrMultisampleArrayFeature": true,
+    "errors": 0
+  },
+  "testBoundaries": {
+    "Vulkan": "explicit command-capture mock; no GPU execution",
+    "RecorderAndCommandBatch": "explicit scheduling mocks; no queue/fence qualification",
+    "Texture": "unreachable-path mocks for negative MSAA sampling tests; no valid texture sampling qualification",
+    "depthDescriptorBits": "actual RdnaDescriptorFormat.cpp linked"
+  },
+  "patch": {
+    "path": "patches/anyps5/0039-depth-msaa-sample-groups.patch",
+    "sha256": "25c6c1376b4ee3e7349557625d833858dd3df5cb065d01f825feecb43be7f58e",
+    "forwardApplyMatchesSource": true,
+    "reverseRestoresBaseline": true,
+    "files": {
+      "core/libs/prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp": "b6e46126be4a530ee7d03a2ad9dbe91074c74c22cec63bcd2660c0d8208106af",
+      "core/libs/prx/libSceAgcDriver/Graphics/src/DepthSurface.cpp": "b324ea6bf4f4e74d3f44cf17925e936526914ba2b496f9b34115daf6aa77d1ba"
+    }
+  },
+  "specificationSources": [
+    "https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdClearDepthStencilImage.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkImageCreateFlagBits.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkSampleLocationsInfoEXT.html"
+  ],
+  "remaining": [
+    "matching render-pass attachment/subpass sample-location state and depth transitions",
+    "depth/stencil guest upload/readback and HTILE interpretation",
+    "MSAA sampled descriptor and shader routing",
+    "real GPU depth/stencil sample preservation and Solitaire gameplay"
+  ],
+  "githubActionsUsed": false
+}

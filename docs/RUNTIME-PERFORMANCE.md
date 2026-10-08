@@ -48,6 +48,23 @@ finds an exact repeating 1,024-frame period with continuous callback timing.
 This is a diagnostic observation, not an audio fix or quality acceptance.
 Captured audio and raw metadata stay local, outside the repository.
 
+Madeira0050 adds a separate source diagnostic at native WASAPI `ReleaseBuffer`,
+after existing silent-buffer zeroing and frame clamping, before the scratch-to-ring
+copy. Exact `MADEIRA_AUDIO_TRACE_RELEASE=1` enables it;
+`MADEIRA_AUDIO_TRACE_RELEASE_SKIP_FRAMES` has the same strict numeric bounds,
+but counts source frames independently for each stream. At most 16 unrecycled
+stream generations retain 480,000 source frames as canonical 1,024-frame
+fingerprints and bounded submission metadata. Unsupported formats, lifecycle
+interruptions, limits and deadline expiry remain explicit incomplete results.
+
+This trace exports private JSON only, with no PCM. The native real-time callback
+is unchanged from Madeira0049. Hashing, timestamp sampling and a metadata mutex
+occur on the non-real-time source path only when enabled; their overhead remains
+unmeasured. Equal fingerprints do not establish byte identity. Equal source and
+postmix skip values do not align windows, because their ordinals and callback
+epochs describe different events. See the separate
+[source and signed-host checkpoint](evidence/audio-release-trace-host-build-20261009.json).
+
 ## Three swapchain images
 
 The HLE now requests three images on initial creation and resize. Set

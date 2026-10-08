@@ -705,6 +705,37 @@ are restored and verified. See the separate
 [device/audio record](evidence/ipad-solitaire-audio-period-replay-20261009.json).
 Captured media and raw diagnostics remain private and outside Git.
 
+## Bounded source audio fingerprints: Madeira0050, 2026-10-09
+
+Madeira0050 adds an exact, default-off `MADEIRA_AUDIO_TRACE_RELEASE=1`
+diagnostic to native WASAPI `ReleaseBuffer`, after existing silent zeroing and
+frame clamping, before the ring copy. It collects bounded metadata for at most
+16 unrecycled stream generations in a fixed 6,557,000-byte process-owned pool.
+Each supported 48-kHz stream records at most 480,000 source frames on a canonical
+1,024-frame fingerprint grid, with partial phases and bounded submission records.
+The strict source skip accepts zero through 28,800,000 frames. A process deadline
+includes that skip; late streams share the deadline, and stop/reset/teardown,
+format, gap and limit failures remain explicit incomplete results.
+
+The worker exports private JSON without PCM. It never dereferences a destroyed
+stream or caller buffer. Export and logging occur outside the metadata lock.
+The existing real-time mixer/render callback is byte-identical to Madeira0049;
+the optional non-real-time hashing, clock and mutex overhead is unmeasured.
+Fingerprints alone cannot prove source-byte identity, replay origin or audio
+quality. Source ordinals, raw ring positions and last-completed postmix epochs
+are distinct observations; equal skip numbers do not prove aligned captures.
+
+Six gate configurations pass ASan/UBSan checks over the production helper and
+extracted original/current release functions, including variable submissions,
+partial phases, multiple streams, lifecycle, limits and file collisions. A
+matched source-hook removal negative control fails. The actual iPhoneOS audio
+translation unit compiles, and the isolated Build50 app links and passes strict
+signing checks. Only the native audio object changes; the other 36 objects and
+FEX, PE, MoltenVK, profiles and native48 win32u inputs remain preserved. See the
+[source and signed-host checkpoint](evidence/audio-release-trace-host-build-20261009.json).
+This build record excludes later device outcomes, audible quality, diagnostic
+cost and performance acceptance.
+
 ## Native x64 suspension and wait results: 2026-10-08
 
 Madeira `0037-target-published-x64-suspend.patch` and Wine

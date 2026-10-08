@@ -1,0 +1,581 @@
+diff --git a/build/ntdll-unix/audio_null_ios.c b/build/ntdll-unix/audio_null_ios.c
+--- a/build/ntdll-unix/audio_null_ios.c
++++ b/build/ntdll-unix/audio_null_ios.c
+@@ -498,7 +498,64 @@
+ #include <stdatomic.h>
+ #include "aps5_audio_period.h"
+ #include "aps5_audio_postmix_capture.h"
++#include "aps5_audio_release_trace.h"
+ static struct aps5_postmix_capture g_audio_postmix_capture;
++static pthread_once_t g_audio_release_once = PTHREAD_ONCE_INIT;
++static _Atomic(struct aps5_release_trace *) g_audio_release_trace;
++
++static void ios_release_trace_initialize(void)
++{
++    struct aps5_release_trace *trace = aps5_release_begin(
++        getenv("MADEIRA_AUDIO_TRACE_RELEASE"), getenv("MADEIRA_AUDIO_TRACE_RELEASE_SKIP_FRAMES"),
++        getenv("MADEIRA_DOCS_DIR"));
++    atomic_store_explicit(&g_audio_release_trace, trace, memory_order_release);
++}
++static struct aps5_release_format ios_release_trace_format(const struct ios_stream *s)
++{
++    struct aps5_release_format f = {s->sample_rate, s->channels, s->frame_bytes,
++        (uint32_t)s->sample_bits, (uint32_t)s->is_float, s->channel_mask,
++        s->buffer_frames, s->scratch_frames, -1};
++    for (int i = 0; i < IOS_MAX_STREAMS; i++)
++        if (atomic_load_explicit(&g_mix[i], memory_order_acquire) == s) { f.mixer_slot = i; break; }
++    return f;
++}
++static void ios_release_trace_register(struct ios_stream *s)
++{
++    const char *flag = getenv("MADEIRA_AUDIO_TRACE_RELEASE");
++    if (flag && !strcmp(flag, "1")) {
++        struct aps5_release_trace *trace;
++        struct aps5_release_format format;
++        pthread_once(&g_audio_release_once, ios_release_trace_initialize);
++        trace = atomic_load_explicit(&g_audio_release_trace, memory_order_acquire);
++        format = ios_release_trace_format(s);
++        aps5_release_register(trace, (uintptr_t)s, &format, aps5_release_now_ns());
++    }
++}
++static void ios_release_trace_close(struct ios_stream *s, enum aps5_release_reason reason)
++{
++    aps5_release_close(atomic_load_explicit(&g_audio_release_trace, memory_order_acquire),
++                       (uintptr_t)s, reason);
++}
++static void ios_release_trace_record(struct ios_stream *s, UINT32 requested,
++                                     UINT32 actual, UINT32 flags, uint64_t wr)
++{
++    struct aps5_release_trace *trace = atomic_load_explicit(&g_audio_release_trace, memory_order_acquire);
++    struct aps5_release_format format;
++    struct aps5_release_stamp stamp;
++    size_t available;
++    if (!trace) return;
++    format = ios_release_trace_format(s);
++    stamp.monotonic_ns = aps5_release_now_ns();
++    stamp.postmix_epoch = atomic_load_explicit(&g_dev.cb_epoch, memory_order_acquire);
++    stamp.raw_write_pos = wr;
++    stamp.raw_play_pos = atomic_load_explicit(&s->play_pos, memory_order_acquire);
++    stamp.requested_frames = requested;
++    stamp.actual_frames = actual;
++    stamp.flags = flags;
++    available = s->frame_bytes && s->scratch_frames <= SIZE_MAX / s->frame_bytes
++                ? (size_t)s->scratch_frames * s->frame_bytes : 0;
++    aps5_release_record(trace, (uintptr_t)s, s->render_scratch, available, &format, &stamp);
++}
+ 
+ static _Atomic int64_t aps5_device_period = APS5_AUDIO_FALLBACK_PERIOD;
+ 
+@@ -1094,6 +1151,7 @@
+              * handle to join, and freeing while that thread may still be
+              * looping is a use-after-free. The process is going away, so
+              * leaving the memory is the safe trade. */
++            ios_release_trace_close(s, APS5_RELEASE_TEARDOWN);
+             s->valid = 0;
+             s->started = 0;
+             ios_dev_detach(s);
+@@ -1214,6 +1272,7 @@
+         p->result = E_OUTOFMEMORY;
+         return STATUS_SUCCESS;
+     }
++    if (p->flow == eRender) ios_release_trace_register(s);
+     p->result = S_OK;
+     return STATUS_SUCCESS;
+ }
+@@ -1228,6 +1287,7 @@
+      * leaves its loop, join that thread, and only then dispose the AudioUnit
+      * so the render callback cannot still be running against memory we are
+      * about to free. Nothing here touches another client's stream. */
++    ios_release_trace_close(s, APS5_RELEASE_TEARDOWN);
+     s->valid = 0;
+     s->started = 0;
+     if (p->timer_thread) {
+@@ -1265,6 +1325,7 @@
+     struct ios_stream *s = stream_from_handle(p->stream);
+     if (!s) { p->result = AUDCLNT_E_NOT_INITIALIZED; return STATUS_SUCCESS; }
+     if (s->started) {
++        ios_release_trace_close(s, APS5_RELEASE_STOPPED);
+         s->accumulated_frames = elapsed_frames(s);
+         s->started = 0;
+         ios_dev_stop_if_idle();
+@@ -1277,6 +1338,7 @@
+     struct stream_handle_params *p = args;
+     struct ios_stream *s = stream_from_handle(p->stream);
+     if (!s) { p->result = AUDCLNT_E_NOT_INITIALIZED; return STATUS_SUCCESS; }
++    ios_release_trace_close(s, APS5_RELEASE_RESET);
+     s->started = 0;
+     s->accumulated_frames = 0;
+     s->start_mach = 0;
+@@ -1502,6 +1564,7 @@
+         if (n > s->pending_frames) n = s->pending_frames;
+         if (p->flags & 0x2 /* AUDCLNT_BUFFERFLAGS_SILENT */)
+             memset(s->render_scratch, 0, (size_t)n * fb);
++        ios_release_trace_record(s, p->written_frames, n, p->flags, wr);
+         while (i < n) {
+             UINT32 idx = (UINT32)((wr + i) % cap);
+             UINT32 chunk = cap - idx;
+@@ -1550,6 +1613,9 @@
+         /* release-store AFTER the copy so the RT callback never reads
+          * frames that aren't fully written */
+         atomic_store_explicit(&s->write_pos, wr + n, memory_order_release);
++    } else if (ios_stream_is_live(s) && !p->written_frames) {
++        ios_release_trace_record(s, 0, 0, p->flags,
++            atomic_load_explicit(&s->write_pos, memory_order_relaxed));
+     }
+     s->pending_frames = 0;
+     p->result = S_OK;
+diff --git a/build/ntdll-unix/aps5_audio_release_trace.h b/build/ntdll-unix/aps5_audio_release_trace.h
+new file mode 100644
+--- /dev/null
++++ b/build/ntdll-unix/aps5_audio_release_trace.h
+@@ -0,0 +1,450 @@
++#ifndef APS5_AUDIO_RELEASE_TRACE_H
++#define APS5_AUDIO_RELEASE_TRACE_H
++
++/* Non-RT, one-shot source-byte fingerprints. No PCM is retained or exported.
++ * The mixer/render callback never calls this helper. Immutable stream metadata
++ * and mutex-owned records outlive the stream; the worker never dereferences it.
++ * Equal FNV64 values are fingerprints, not proof of byte identity. */
++#include <errno.h>
++#include <fcntl.h>
++#include <pthread.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <time.h>
++#include <unistd.h>
++
++#define APS5_RELEASE_STREAMS 16u
++#define APS5_RELEASE_FRAMES 480000u
++#define APS5_RELEASE_BLOCK_FRAMES 1024u
++#define APS5_RELEASE_BLOCKS 512u
++#define APS5_RELEASE_SUBMISSIONS 4096u
++#define APS5_RELEASE_MAX_SKIP 28800000u
++#define APS5_RELEASE_FNV_OFFSET UINT64_C(14695981039346656037)
++#define APS5_RELEASE_FNV_PRIME UINT64_C(1099511628211)
++
++enum aps5_release_state { APS5_RELEASE_ACTIVE, APS5_RELEASE_DONE,
++                         APS5_RELEASE_EXPORTING, APS5_RELEASE_EXPORTED,
++                         APS5_RELEASE_EXPORT_FAILED };
++enum aps5_release_reason { APS5_RELEASE_COMPLETE, APS5_RELEASE_TIMEOUT,
++    APS5_RELEASE_STOPPED, APS5_RELEASE_RESET, APS5_RELEASE_TEARDOWN,
++    APS5_RELEASE_UNSUPPORTED, APS5_RELEASE_DISCONTINUITY,
++    APS5_RELEASE_SUBMISSION_LIMIT, APS5_RELEASE_BLOCK_LIMIT };
++struct aps5_release_format {
++    uint32_t rate, channels, frame_bytes, sample_bits, is_float, channel_mask;
++    uint32_t ring_capacity, scratch_capacity;
++    int mixer_slot;
++};
++struct aps5_release_stamp {
++    uint64_t monotonic_ns, postmix_epoch, raw_write_pos, raw_play_pos;
++    uint32_t requested_frames, actual_frames, flags;
++};
++struct aps5_release_submission {
++    struct aps5_release_stamp stamp;
++    uint64_t ordinal, source_frame_start, window_frame_start;
++    uint32_t skipped_frames, traced_frames, first_source_block_phase;
++};
++struct aps5_release_block {
++    uint64_t source_frame_start, window_frame_start, raw_write_start;
++    uint64_t first_submission, last_submission, first_ns, last_ns;
++    uint64_t first_postmix_epoch, last_postmix_epoch, fnv64;
++    uint32_t source_block_phase, frames, bytes;
++};
++struct aps5_release_stream {
++    uintptr_t identity;
++    uint64_t generation, created_ns, seen_frames, submission_ordinal;
++    struct aps5_release_format format;
++    enum aps5_release_state state;
++    enum aps5_release_reason reason;
++    uint32_t captured_frames, skip_remaining, zero_submissions;
++    uint32_t submission_count, block_count;
++    struct aps5_release_block partial;
++    struct aps5_release_submission submissions[APS5_RELEASE_SUBMISSIONS];
++    struct aps5_release_block blocks[APS5_RELEASE_BLOCKS];
++};
++struct aps5_release_trace {
++    pthread_mutex_t lock;
++    uint32_t stream_count, rejected_creations, requested_skip;
++    uint64_t start_ns, deadline_ns;
++    int directory_fd, expired;
++    char stem[96];
++    struct aps5_release_stream streams[APS5_RELEASE_STREAMS];
++};
++
++static uint64_t aps5_release_now_ns(void)
++{
++    struct timespec t;
++    if (clock_gettime(CLOCK_MONOTONIC, &t)) return 0;
++    return (uint64_t)t.tv_sec * UINT64_C(1000000000) + (uint64_t)t.tv_nsec;
++}
++static int aps5_release_parse_skip(const char *text, uint32_t *skip)
++{
++    uint32_t n = 0;
++    *skip = 0;
++    if (!text) return 1;
++    if (!*text) return 0;
++    for (; *text; text++) {
++        if (*text < '0' || *text > '9' ||
++            n > (APS5_RELEASE_MAX_SKIP - (uint32_t)(*text - '0')) / 10u)
++            return 0;
++        n = n * 10u + (uint32_t)(*text - '0');
++    }
++    *skip = n;
++    return 1;
++}
++static const char *aps5_release_reason_name(enum aps5_release_reason reason)
++{
++    switch (reason) {
++        case APS5_RELEASE_COMPLETE: return "complete";
++        case APS5_RELEASE_TIMEOUT: return "timeout";
++        case APS5_RELEASE_STOPPED: return "stopped";
++        case APS5_RELEASE_RESET: return "reset";
++        case APS5_RELEASE_TEARDOWN: return "teardown";
++        case APS5_RELEASE_UNSUPPORTED: return "unsupported_metadata";
++        case APS5_RELEASE_DISCONTINUITY: return "write_position_discontinuity";
++        case APS5_RELEASE_SUBMISSION_LIMIT: return "submission_limit";
++        case APS5_RELEASE_BLOCK_LIMIT: return "block_limit";
++    }
++    return "invalid_reason";
++}
++static int aps5_release_format_supported(const struct aps5_release_format *f)
++{
++    return f && f->rate == 48000 && f->channels > 0 && f->channels <= 12 &&
++        (f->sample_bits == 16 || f->sample_bits == 32) &&
++        (!f->is_float || f->sample_bits == 32) && f->is_float <= 1 &&
++        f->frame_bytes == f->channels * (f->sample_bits / 8) &&
++        f->ring_capacity > 0 && f->scratch_capacity > 0;
++}
++static struct aps5_release_stream *aps5_release_find(struct aps5_release_trace *t,
++                                                   uintptr_t identity)
++{
++    uint32_t i = t->stream_count;
++    while (i) if (t->streams[--i].identity == identity) return &t->streams[i];
++    return NULL;
++}
++/* Caller owns trace.lock. Incomplete final blocks have explicit frame/byte
++ * lengths; they are never represented as complete 1024-frame fingerprints. */
++static int aps5_release_finish_block(struct aps5_release_stream *s)
++{
++    if (!s->partial.frames) return 1;
++    if (s->block_count >= APS5_RELEASE_BLOCKS) return 0;
++    s->blocks[s->block_count++] = s->partial;
++    memset(&s->partial, 0, sizeof(s->partial));
++    return 1;
++}
++static void aps5_release_finish(struct aps5_release_stream *s,
++                                enum aps5_release_reason reason)
++{
++    if (s->state != APS5_RELEASE_ACTIVE) return;
++    s->reason = aps5_release_finish_block(s) ? reason : APS5_RELEASE_BLOCK_LIMIT;
++    s->state = APS5_RELEASE_DONE;
++}
++static int aps5_release_register(struct aps5_release_trace *t, uintptr_t identity,
++                                const struct aps5_release_format *format,
++                                uint64_t now)
++{
++    struct aps5_release_stream *s;
++    if (!t) return -1;
++    pthread_mutex_lock(&t->lock);
++    if (!identity || !format || !now || t->expired || now >= t->deadline_ns ||
++        t->stream_count >= APS5_RELEASE_STREAMS) {
++        if (t->rejected_creations != UINT32_MAX) t->rejected_creations++;
++        pthread_mutex_unlock(&t->lock);
++        return -1;
++    }
++    /* Every accepted creation gets a fresh bounded generation, even when a
++     * malloc address or mixer slot is reused. Never recycle a recorded slot. */
++    s = &t->streams[t->stream_count++];
++    s->identity = identity;
++    s->generation = t->stream_count;
++    s->created_ns = now;
++    s->format = *format;
++    s->skip_remaining = t->requested_skip;
++    s->state = APS5_RELEASE_ACTIVE;
++    if (!aps5_release_format_supported(format))
++        aps5_release_finish(s, APS5_RELEASE_UNSUPPORTED);
++    pthread_mutex_unlock(&t->lock);
++    return 0;
++}
++static void aps5_release_close(struct aps5_release_trace *t, uintptr_t identity,
++                               enum aps5_release_reason reason)
++{
++    struct aps5_release_stream *s;
++    if (!t) return;
++    pthread_mutex_lock(&t->lock);
++    s = aps5_release_find(t, identity);
++    if (s) aps5_release_finish(s, reason);
++    pthread_mutex_unlock(&t->lock);
++}
++/* Called ONLY from ReleaseBuffer's non-RT thread, after existing silent-zero
++ * and frame clamp, before copying scratch into the ring. No allocations or I/O.
++ * The hash walks exactly the selected source bytes; it never modifies them. */
++static void aps5_release_record(struct aps5_release_trace *t, uintptr_t identity,
++    const void *bytes, size_t available_bytes, const struct aps5_release_format *f,
++    const struct aps5_release_stamp *stamp)
++{
++    struct aps5_release_stream *s;
++    uint32_t n, skip, take, done = 0;
++    uint64_t source_start, ordinal;
++    if (!t) return;
++    pthread_mutex_lock(&t->lock);
++    s = aps5_release_find(t, identity);
++    if (!s || s->state != APS5_RELEASE_ACTIVE) goto unlock;
++    if (!stamp || !f || !aps5_release_format_supported(f) ||
++        f->rate != s->format.rate || f->channels != s->format.channels ||
++        f->frame_bytes != s->format.frame_bytes || f->is_float != s->format.is_float ||
++        f->sample_bits != s->format.sample_bits || f->channel_mask != s->format.channel_mask) {
++        aps5_release_finish(s, APS5_RELEASE_UNSUPPORTED);
++        goto unlock;
++    }
++    if (!stamp->monotonic_ns || stamp->monotonic_ns < s->created_ns) {
++        aps5_release_finish(s, APS5_RELEASE_UNSUPPORTED);
++        goto unlock;
++    }
++    if (stamp->monotonic_ns >= t->deadline_ns) {
++        aps5_release_finish(s, APS5_RELEASE_TIMEOUT);
++        goto unlock;
++    }
++    n = stamp->actual_frames;
++    if (stamp->raw_write_pos != s->seen_frames ||
++        n > stamp->requested_frames || n > f->scratch_capacity ||
++        n > f->ring_capacity || n > UINT64_MAX - s->seen_frames ||
++        (n && (!bytes || (size_t)n > SIZE_MAX / f->frame_bytes ||
++         (size_t)n * f->frame_bytes > available_bytes))) {
++        aps5_release_finish(s, APS5_RELEASE_DISCONTINUITY);
++        goto unlock;
++    }
++    if (!n) {
++        if (s->zero_submissions != UINT32_MAX) s->zero_submissions++;
++        goto unlock;
++    }
++    source_start = s->seen_frames;
++    s->seen_frames += n;
++    ordinal = ++s->submission_ordinal;
++    skip = n < s->skip_remaining ? n : s->skip_remaining;
++    s->skip_remaining -= skip;
++    if (skip == n) goto unlock;
++    if (s->submission_count >= APS5_RELEASE_SUBMISSIONS) {
++        aps5_release_finish(s, APS5_RELEASE_SUBMISSION_LIMIT);
++        goto unlock;
++    }
++    take = n - skip;
++    if (take > APS5_RELEASE_FRAMES - s->captured_frames)
++        take = APS5_RELEASE_FRAMES - s->captured_frames;
++    {
++        struct aps5_release_submission *r = &s->submissions[s->submission_count++];
++        r->stamp = *stamp;
++        r->ordinal = ordinal;
++        r->source_frame_start = source_start;
++        r->window_frame_start = s->captured_frames;
++        r->skipped_frames = skip;
++        r->traced_frames = take;
++        r->first_source_block_phase = (uint32_t)((source_start + skip) % APS5_RELEASE_BLOCK_FRAMES);
++    }
++    while (done < take) {
++        struct aps5_release_block *b = &s->partial;
++        uint32_t count, phase;
++        const unsigned char *p;
++        size_t count_bytes;
++        if (!b->frames) {
++            b->source_frame_start = source_start + skip + done;
++            b->window_frame_start = s->captured_frames;
++            b->raw_write_start = stamp->raw_write_pos + skip + done;
++            b->source_block_phase = (uint32_t)(b->source_frame_start % APS5_RELEASE_BLOCK_FRAMES);
++            b->first_submission = ordinal;
++            b->first_ns = stamp->monotonic_ns;
++            b->first_postmix_epoch = stamp->postmix_epoch;
++            b->fnv64 = APS5_RELEASE_FNV_OFFSET;
++        }
++        phase = b->source_block_phase + b->frames;
++        count = APS5_RELEASE_BLOCK_FRAMES - phase;
++        if (count > take - done) count = take - done;
++        count_bytes = (size_t)count * f->frame_bytes;
++        p = (const unsigned char *)bytes + (size_t)(skip + done) * f->frame_bytes;
++        for (size_t i = 0; i < count_bytes; i++) {
++            b->fnv64 ^= p[i];
++            b->fnv64 *= APS5_RELEASE_FNV_PRIME;
++        }
++        b->frames += count;
++        b->bytes += (uint32_t)count_bytes;
++        b->last_submission = ordinal;
++        b->last_ns = stamp->monotonic_ns;
++        b->last_postmix_epoch = stamp->postmix_epoch;
++        done += count;
++        s->captured_frames += count;
++        if (b->source_block_phase + b->frames == APS5_RELEASE_BLOCK_FRAMES &&
++            !aps5_release_finish_block(s)) {
++            aps5_release_finish(s, APS5_RELEASE_BLOCK_LIMIT);
++            goto unlock;
++        }
++    }
++    if (s->captured_frames == APS5_RELEASE_FRAMES)
++        aps5_release_finish(s, APS5_RELEASE_COMPLETE);
++unlock:
++    pthread_mutex_unlock(&t->lock);
++}
++
++/* Worker-only export. DONE records are immutable; no ios_stream pointer or
++ * source audio is accessed here. Exclusive private file creation, failed
++ * writes unlink their incomplete file instead of leaving a success artifact. */
++static int aps5_release_export(struct aps5_release_trace *t,
++                               const struct aps5_release_stream *s)
++{
++    char name[128];
++    FILE *file;
++    int fd, failed = 0;
++    snprintf(name, sizeof(name), "%s-stream%llu.json", t->stem,
++             (unsigned long long)s->generation);
++    fd = openat(t->directory_fd, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
++    if (fd < 0) return -1;
++    file = fdopen(fd, "w");
++    if (!file) { close(fd); unlinkat(t->directory_fd, name, 0); return -1; }
++    fprintf(file, "{\"schema\":1,\"source\":\"native_ReleaseBuffer_postsilent_pre_ring\","
++        "\"hash\":\"fnv1a64\",\"hash_equality_proves_byte_identity\":false,"
++        "\"raw_pcm_retained\":false,\"microphone_used\":false,"
++        "\"source_sample_byte_phase\":0,\"source_frame_sample_phase\":0,"
++        "\"result\":\"%s\",\"generation\":%llu,\"stream_identity\":\"%llx\","
++        "\"mixer_slot\":%d,\"rate\":%u,\"channels\":%u,\"frame_bytes\":%u,"
++        "\"sample_bits\":%u,\"is_float\":%u,\"channel_mask\":%u,"
++        "\"ring_capacity\":%u,\"scratch_capacity\":%u,\"created_ns\":%llu,"
++        "\"process_start_ns\":%llu,\"process_deadline_ns\":%llu,"
++        "\"requested_skip_frames\":%u,\"source_seen_frames\":%llu,"
++        "\"requested_trace_frames\":%u,\"traced_frames\":%u,"
++        "\"zero_submissions\":%u,\"submission_count\":%u,\"block_count\":%u,\"submissions\":[",
++        aps5_release_reason_name(s->reason), (unsigned long long)s->generation,
++        (unsigned long long)s->identity, s->format.mixer_slot, s->format.rate,
++        s->format.channels, s->format.frame_bytes, s->format.sample_bits,
++        s->format.is_float, s->format.channel_mask, s->format.ring_capacity,
++        s->format.scratch_capacity, (unsigned long long)s->created_ns,
++        (unsigned long long)t->start_ns, (unsigned long long)t->deadline_ns,
++        t->requested_skip, (unsigned long long)s->seen_frames, APS5_RELEASE_FRAMES,
++        s->captured_frames, s->zero_submissions, s->submission_count, s->block_count);
++    for (uint32_t i = 0; i < s->submission_count; i++) {
++        const struct aps5_release_submission *r = &s->submissions[i];
++        fprintf(file, "%s{\"ordinal\":%llu,\"source_frame_start\":%llu,"
++            "\"window_frame_start\":%llu,\"requested_frames\":%u,\"actual_frames\":%u,"
++            "\"skipped_frames\":%u,\"traced_frames\":%u,\"byte_start\":%llu,\"byte_count\":%llu,"
++            "\"source_block_phase\":%u,\"raw_write_pos\":%llu,\"raw_play_pos\":%llu,"
++            "\"postmix_epoch\":%llu,\"monotonic_ns\":%llu,\"flags\":%u}",
++            i ? "," : "", (unsigned long long)r->ordinal,
++            (unsigned long long)r->source_frame_start, (unsigned long long)r->window_frame_start,
++            r->stamp.requested_frames, r->stamp.actual_frames, r->skipped_frames, r->traced_frames,
++            (unsigned long long)(r->source_frame_start + r->skipped_frames) * s->format.frame_bytes,
++            (unsigned long long)r->traced_frames * s->format.frame_bytes,
++            r->first_source_block_phase, (unsigned long long)r->stamp.raw_write_pos,
++            (unsigned long long)r->stamp.raw_play_pos, (unsigned long long)r->stamp.postmix_epoch,
++            (unsigned long long)r->stamp.monotonic_ns, r->stamp.flags);
++    }
++    fprintf(file, "],\"blocks\":[");
++    for (uint32_t i = 0; i < s->block_count; i++) {
++        const struct aps5_release_block *b = &s->blocks[i];
++        fprintf(file, "%s{\"source_frame_start\":%llu,\"window_frame_start\":%llu,"
++            "\"source_block_phase\":%u,\"frames\":%u,\"bytes\":%u,\"raw_write_start\":%llu,"
++            "\"source_byte_start\":%llu,\"source_sample_start\":%llu,"
++            "\"first_submission\":%llu,\"last_submission\":%llu,\"first_ns\":%llu,\"last_ns\":%llu,"
++            "\"first_postmix_epoch\":%llu,\"last_postmix_epoch\":%llu,\"fnv64\":\"%016llx\"}",
++            i ? "," : "", (unsigned long long)b->source_frame_start,
++            (unsigned long long)b->window_frame_start, b->source_block_phase, b->frames, b->bytes,
++            (unsigned long long)b->raw_write_start,
++            (unsigned long long)b->source_frame_start * s->format.frame_bytes,
++            (unsigned long long)b->source_frame_start * s->format.channels,
++            (unsigned long long)b->first_submission,
++            (unsigned long long)b->last_submission, (unsigned long long)b->first_ns,
++            (unsigned long long)b->last_ns, (unsigned long long)b->first_postmix_epoch,
++            (unsigned long long)b->last_postmix_epoch, (unsigned long long)b->fnv64);
++    }
++    fprintf(file, "]}\n");
++    if (ferror(file)) failed = 1;
++    if (fclose(file)) failed = 1;
++    if (failed) unlinkat(t->directory_fd, name, 0);
++    return failed ? -1 : 0;
++}
++static void *aps5_release_worker(void *arg)
++{
++    struct aps5_release_trace *t = arg;
++    for (;;) {
++        struct aps5_release_stream *ready = NULL;
++        int expired;
++        pthread_mutex_lock(&t->lock);
++        if (aps5_release_now_ns() >= t->deadline_ns) {
++            t->expired = 1;
++            for (uint32_t i = 0; i < t->stream_count; i++)
++                aps5_release_finish(&t->streams[i], APS5_RELEASE_TIMEOUT);
++        }
++        for (uint32_t i = 0; i < t->stream_count; i++)
++            if (t->streams[i].state == APS5_RELEASE_DONE) {
++                ready = &t->streams[i];
++                ready->state = APS5_RELEASE_EXPORTING;
++                break;
++            }
++        expired = t->expired;
++        pthread_mutex_unlock(&t->lock);
++        if (ready) {
++            int result = aps5_release_export(t, ready);
++            pthread_mutex_lock(&t->lock);
++            ready->state = result ? APS5_RELEASE_EXPORT_FAILED : APS5_RELEASE_EXPORTED;
++            pthread_mutex_unlock(&t->lock);
++            fprintf(stderr, "[audio-release-trace] export stream=%llu frames=%u submissions=%u blocks=%u result=%s io=%s\n",
++                (unsigned long long)ready->generation, ready->captured_frames,
++                ready->submission_count, ready->block_count,
++                aps5_release_reason_name(ready->reason), result ? "failed" : "ok");
++            continue;
++        }
++        if (expired) break;
++        { const struct timespec pause = {0, 20000000}; nanosleep(&pause, NULL); }
++    }
++    {
++        uint32_t streams, rejected;
++        pthread_mutex_lock(&t->lock);
++        streams = t->stream_count;
++        rejected = t->rejected_creations;
++        pthread_mutex_unlock(&t->lock);
++        fprintf(stderr, "[audio-release-trace] closed streams=%u rejected_creations=%u\n",
++                streams, rejected);
++    }
++    close(t->directory_fd);
++    /* Fixed process-owned metadata remains valid for late closes/registrations.
++     * There is no ios_stream reference or PCM allocation to release. */
++    return NULL;
++}
++static struct aps5_release_trace *aps5_release_begin(const char *flag,
++        const char *skip_text, const char *documents)
++{
++    struct aps5_release_trace *t;
++    uint32_t skip;
++    int parent, dir;
++    pthread_t worker;
++    if (!flag || strcmp(flag, "1")) return NULL;
++    if (!aps5_release_parse_skip(skip_text, &skip) || !documents || !*documents) return NULL;
++    parent = open(documents, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
++    if (parent < 0) return NULL;
++    if (mkdirat(parent, "anyps5-audio-captures", 0700) && errno != EEXIST) {
++        close(parent); return NULL;
++    }
++    dir = openat(parent, "anyps5-audio-captures", O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
++    close(parent);
++    if (dir < 0) return NULL;
++    t = calloc(1, sizeof(*t));
++    if (!t) { close(dir); return NULL; }
++    /* Allocate and touch the single fixed pool before any ReleaseBuffer hook. */
++    for (size_t i = 0; i < sizeof(*t); i += 4096) ((volatile unsigned char *)t)[i] = 0;
++    if (pthread_mutex_init(&t->lock, NULL)) { free(t); close(dir); return NULL; }
++    t->directory_fd = dir;
++    t->requested_skip = skip;
++    t->start_ns = aps5_release_now_ns();
++    if (!t->start_ns || t->start_ns > UINT64_MAX - UINT64_C(645000000000)) {
++        pthread_mutex_destroy(&t->lock); free(t); close(dir); return NULL;
++    }
++    t->deadline_ns = t->start_ns + ((uint64_t)skip * UINT64_C(1000000000) / 48000) + UINT64_C(45000000000);
++    snprintf(t->stem, sizeof(t->stem), "release-%ld-%llu", (long)getpid(), (unsigned long long)t->start_ns);
++    if (pthread_create(&worker, NULL, aps5_release_worker, t)) {
++        pthread_mutex_destroy(&t->lock); free(t); close(dir); return NULL;
++    }
++    pthread_detach(worker);
++    fprintf(stderr, "[audio-release-trace] armed max_frames=%u skip_frames=%u streams=%u pool_bytes=%zu\n",
++            APS5_RELEASE_FRAMES, skip, APS5_RELEASE_STREAMS, sizeof(*t));
++    return t;
++}
++#endif

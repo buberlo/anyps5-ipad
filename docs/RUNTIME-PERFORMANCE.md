@@ -563,3 +563,55 @@ All 56 actual original runtime files, configuration/library/manifest bytes and
 seven prior diagnostic hashes restore; the own app processes are absent and the
 lease is released. The candidate remains temporary. See the [separate source60
 controls/device record](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json).
+
+## Legacy AudioOut ingress and pixel-owned color transfer
+
+AnyPS5 patch0062 is a bounded diagnostic, enabled only by exact
+`env.APS5_TRACE_AUDIOOUT_INGRESS = 1`. Optional
+`env.APS5_AUDIOOUT_INGRESS_SKIP_FRAMES` accepts strict decimal 0 through
+28,800,000; the default is zero. `env.APS5_AUDIOOUT_INGRESS_DIRECTORY` chooses
+the private Wine export parent; the default is `C:/anyps5-audio-captures`.
+Each run creates a unique directory with completed port-generation JSON files.
+Raw-before-processing and queued-after-wait fingerprints have separate formats,
+frame phases and ordinals. They retain no PCM and cannot prove byte identity,
+clock alignment or the origin of an audio defect.
+
+The capture cap is 480,000 frames per side, ten rendered seconds only at 48 kHz.
+The common worker deadline is initialization plus `floor(skip/48000) + 45`
+wall seconds. The reviewed long diagnostic requires successful completed exports
+and the actual `[audioout-ingress] closed` marker before forced process cleanup.
+General DLL unload remains unqualified because detach must not join a live
+worker under the loader lock. Disable this diagnostic for benchmarks.
+[Source checks](evidence/audioout-ingress-trace-focused-20261009.json).
+
+A bounded twelve-minute native50/source63 device run completes both exports
+and logs worker closure before cleanup. The main legacy port captures 1,875
+256-frame calls on each side. Incoming fingerprints already recur every four
+calls; four same-call input/queued fingerprints differ without conversion or
+an intermediate copy. The native postmix has five byte-distinct 1,024-frame
+patterns, including 7.808 rendered seconds of exact consecutive repetition.
+The whole ten-second window is not byte-periodic. The separately opened
+background port makes no calls before its deadline. These observations narrow
+the investigation to the producer and mutable input but do not identify the
+cause or align the three clocks. Later clipping remains visible outside the
+captured window. Stock draws and selection respond; this run verifies no legal
+move or undo. All original runtime files and metadata restore, and native48 is
+reinstalled. A brief own-process suspension obtains the growing log; this is
+diagnostic evidence, not a performance/lifecycle comparison.
+[Separate device result](evidence/ipad-solitaire-audioout-ingress-20261009.json).
+
+Patch0063 is enabled only by exact
+`env.APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED = 1`, together with the admitted GPU color
+tiling path. The variant is immutable per tiler owner; start a fresh app process
+for each off/on comparison. The new shader transfers all eight sample words
+from one XY invocation with Z=1. Disabled eight-sample and all two/four-sample
+paths use the original shader. It changes no resolution, interpolation, sample
+count, synchronization or guest-memory tracking.
+
+Global configuration can be overridden by per-game configuration and the
+Windows environment. A generic sample-tiling marker proves neither the new
+module nor Z=1. Record actual variant selection in a separate diagnostic, then
+compare matched scenes with capture/profiling disabled. The native Mac byte
+checks and timestamp chain are not iPad FPS evidence.
+[Native qualification](evidence/color-sample-pixel-owned-native-20261009.json),
+[combined host build](evidence/pixel-owned-and-audio-ingress-build-20261009.json).

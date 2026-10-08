@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "bounded-physical-ipad-legacy-audio-ingress-diagnostic",
+  "status": "diagnostic-evidence-and-restoration-verified",
+  "scope": {
+    "game": "15in1 Solitaire Golf",
+    "nativeHostBuild": 50,
+    "restoredNativeHostBuild": 48,
+    "anyps5PatchSeries": 63,
+    "durationTargetSeconds": 720,
+    "sampleGroups": 8,
+    "normalMemoryTracking": true,
+    "gpuPixelOwnedVariantEnabled": false,
+    "gpuStagingCopyVariantEnabled": false,
+    "legacyIngressDiagnosticEnabled": true,
+    "nativeReleaseTraceEnabled": true,
+    "postmixCaptureEnabled": true,
+    "skipFramesEachIndependentBoundary": 10560000
+  },
+  "device": {
+    "model": "iPad Air 13 M2",
+    "os": "iPadOS 27.0.1",
+    "builtInJitReached": true
+  },
+  "controls": {
+    "actualXctestPasses": 9,
+    "mainProcessContinuity": true,
+    "visibleResponses": [
+      "menu selection",
+      "Golf board start",
+      "three stock draws",
+      "held Right to last column",
+      "Left to neighboring column"
+    ],
+    "noVisibleResponse": [
+      "A attempt on selected king against queen",
+      "Left at first column"
+    ],
+    "legalMoveQualified": false,
+    "undoQualified": false
+  },
+  "legacyIngress": {
+    "main": {
+      "format": "interleaved float32 stereo",
+      "rateHz": 48000,
+      "requestedFrames": 256,
+      "rawCapturedFrames": 480000,
+      "queuedCapturedFrames": 480000,
+      "recordedCalls": 1875,
+      "successfulSdlQueueResults": 1875,
+      "failedOrUnknownSdlQueueResults": 0,
+      "nullDrains": 0,
+      "timeoutClears": 0,
+      "full256RawLag4": {
+        "pairs": 1871,
+        "matchingFingerprintAndShape": 1857
+      },
+      "full256RawLag1AndLag2MatchingPairs": 0,
+      "full1024RawDistinctFingerprints": 7,
+      "full1024QueuedDistinctFingerprints": 6,
+      "sameCallRawQueuedMatching": 1871,
+      "sameCallRawQueuedDifferent": 4,
+      "differentCallsHadNoCvtOrPreparedCopy": true,
+      "sourcePointerAliasedUntilEnqueue": true
+    },
+    "background": {
+      "result": "deadline",
+      "recordedCalls": 0,
+      "capturedFrames": 0
+    },
+    "exportsCompleted": true,
+    "actualWorkerClosedMarkerObserved": true,
+    "rejectedGenerations": 0,
+    "scope": "Recurring input fingerprints exist before SDL. Equal fingerprints are not source byte-identity, clock-alignment or causal proof; mutable input changed between four same-call hooks."
+  },
+  "nativeAudio": {
+    "selectedFreshProcessWindows": {
+      "nativeReleaseStreams": 2,
+      "postmixWindows": 1
+    },
+    "captureFrames": 480000,
+    "rateHz": 48000,
+    "full1024PostmixBlocks": 468,
+    "byteDistinctFull1024PostmixBlocks": 5,
+    "exactConsecutiveFullBlockRuns": [
+      23,
+      366,
+      1,
+      3,
+      75
+    ],
+    "longestExactConsecutiveRunRenderedSeconds": 7.808,
+    "entireWindowExact1024FramePeriod": false,
+    "sourceAndWritePositionsAdvance": true,
+    "nativeFlagsAllZero": true,
+    "capturedPostmixHasNonfiniteOrUnitMagnitudeSamples": false,
+    "laterClippingObservedOutsideCapturedWindow": true,
+    "duplicatedGlobalClippingCountersSummed": false,
+    "hleNativePostmixClocksAligned": false,
+    "speakerQualityAccepted": false
+  },
+  "extraDiagnostic": {
+    "twoGrowingLiveLogCopiesFailed": true,
+    "ownProcessBrieflySuspendedForStableLogCopy": true,
+    "suspendCopyResumeTotalSeconds": 1.497928209,
+    "resumedBeforeTestCleanup": true,
+    "performanceAndLifecycleComparison": false
+  },
+  "restoration": {
+    "originalRuntimeFilesRehashed": 56,
+    "originalMetadataFilesBytePreserved": 3,
+    "priorDiagnosticsHashPreserved": 7,
+    "native48Restored": true,
+    "ownAppProcessesAbsent": true,
+    "sharedLeaseReleased": true,
+    "independentReviewPassed": true
+  },
+  "qualification": {
+    "enabledPixelOwnedGpuExecution": false,
+    "speedGain": false,
+    "constant60Fps": false,
+    "soundQuality": false,
+    "completeGameplay": false,
+    "saveLoad": false,
+    "lifecycle": false,
+    "generalDllUnload": false,
+    "permanentWorkingGameInstall": false
+  },
+  "localArtifactReferences": [
+    {
+      "label": "bounded-runtime-restore-receipt",
+      "sha256": "0b07d0a7db7ccfd36086f54501c5f4890de6a201a16a83362ca819f37380908f"
+    },
+    {
+      "label": "native-install-restore-receipt",
+      "sha256": "e4893d6dd82c90a655a434b458f81285909b501fd5a292c4b1bcdf995c44b4f3"
+    },
+    {
+      "label": "independent-device-review",
+      "sha256": "437c0c33afae5976bcfddabd43699b2c30afd6dfada7bd5c9d7d7acc72a348a4"
+    },
+    {
+      "label": "independent-audio-review",
+      "sha256": "cb1174e5486e0a17579c2a6c6c4244baad0eeb5e9ba7b7ffa09b75aac0506889"
+    },
+    {
+      "label": "bounded-audio-analysis",
+      "sha256": "7fa317b6dafecf98d8a0a97c510c66270e88623c61957e03ddeb6bcad0750650"
+    },
+    {
+      "label": "worker-closure-diagnostic-receipt",
+      "sha256": "bd8232a037ac688a13b661298f4792ed216c8942613b48f2ab29d758b679ab11"
+    },
+    {
+      "label": "complete-device-log",
+      "sha256": "03592a6c777052ec7a5de56a248a1c75c26eb73d82cbddf386d8237e0eb31ed7"
+    },
+    {
+      "label": "legacy-ingress-window-1",
+      "sha256": "7aced6310be5e73bd60a887fc29a29d5357d8d15a790d0249fa974e34ff8bdf9"
+    },
+    {
+      "label": "legacy-ingress-window-2",
+      "sha256": "aafd78f74ca4d0002e0e7e8663ec2d5f6e13ae66f5000c5ae2d1e07b629f815c"
+    },
+    {
+      "label": "native-release-window-1",
+      "sha256": "fa736cae95ef009e0bd0104fc30f6ddaef1b1783605f565a66e57c032192a116"
+    },
+    {
+      "label": "native-release-window-2",
+      "sha256": "ca8fa92eb8c4678719e3225b487dad11bb04db6553ef12dd57d9fd91f2b40537"
+    },
+    {
+      "label": "postmix-window-1",
+      "sha256": "e6f2e191679cf1acc59704e3d3e6c2f48a3039ac3800f81a65626de61ae83d35"
+    },
+    {
+      "label": "postmix-pcm-1",
+      "sha256": "b8a812ba0644da6725889081ec26b054449ab79a5240af5007f21671b09b3a9a"
+    },
+    {
+      "label": "control-visible-review-1",
+      "sha256": "33bc2d530af22797ecdc53b40b18364e0f158204f880514df63a292446aa157c"
+    },
+    {
+      "label": "control-visible-review-2",
+      "sha256": "28ac6514a13938a700ebf5b01efabc9a7fc42734e865dc401d46d4002c76b0f2"
+    },
+    {
+      "label": "control-visible-review-3",
+      "sha256": "4bb82330d3e4611a9f06b2cb04cedb1071113ef039cad34039edafb846b9b749"
+    },
+    {
+      "label": "control-visible-review-4",
+      "sha256": "26f14e67222b8164a1b41ab1cc2d99d2a684d4029c53682a40a966d2b21188b5"
+    },
+    {
+      "label": "control-visible-review-5",
+      "sha256": "8c8bba6ff6073cd470ada5f1375d1d88fcc075147761b59ada5c04d3c3939038"
+    },
+    {
+      "label": "control-visible-review-6",
+      "sha256": "3693160904a7e2b392d4c718a98fa853acf75fd454b1c17fe43ad168905cf636"
+    },
+    {
+      "label": "control-visible-review-7",
+      "sha256": "18d008ae557c29a6de2dd6b75c0c73e6a11edd8896b39b38ff0a37f7a4e5fcd6"
+    },
+    {
+      "label": "control-visible-review-8",
+      "sha256": "fca0f8d42da6f11fba7cadcbac5d174b2d246890e4483fedf9c328899606a5e7"
+    },
+    {
+      "label": "control-visible-review-9",
+      "sha256": "1b6f5e4741ae3eef34eea9ce00d955644b7546a5ca70f0a7d249dac7ec6560dd"
+    }
+  ],
+  "publication": {
+    "rawGameDataMediaPcmFingerprintsAddressesAndDeviceIdentifiersIncluded": false,
+    "privateArtifactsRemainLocal": true
+  },
+  "githubActionsUsed": false
+}

@@ -114,6 +114,8 @@ source, build, device and unqualified-path states.
 | 0059 | Opt-in per-device immutable stencil transfer program cache, keyed by format/counts and full ordered bit-exact sample positions | Four-path source comparison, cache/legacy contracts and six native D32S8 chains pass. The full 59-patch HLE, 22 CPU/API and three additional runtime suites pass; 137 private preparation files are verified. A bounded iPad run logs real program reuse and renders the full Golf board; cache hit rate, speed and gameplay/FPS remain unqualified. [Source/native evidence](evidence/stencil-transfer-program-cache-native-20261009.json), [build checkpoint](evidence/stencil-transfer-program-cache-build-20261009.json), [device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json). |
 | 0060 | Opt-in zero-invariant D32S8 path: per-draw stencil-only clear replaces transfers when the entire eight-sample S8 snapshot remains provably zero | Source/native contracts and independent review pass. The complete 60-patch/152-path series, full HLE with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; 137 private preparation files and dependency closure are independently verified. A bounded iPad run exercises the real clear and visibly verifies a legal Golf move and undo. Speed, audio and complete gameplay remain unqualified. [Source/native evidence](evidence/zero-stencil-invariant-native-20261009.json), [build checkpoint](evidence/zero-stencil-invariant-build-20261009.json), [device controls](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json). |
 | 0061 | Opt-in immutable coherent color baseline and full GPU output seed, removing one CPU snapshot copy while preserving padding/fence/alias commits | Helper contracts, 60 native raster comparisons, 15 omitted-copy negatives and four Windows guest-memory modes pass. Full 61-patch/154-path HLE and 25 host suites pass. iPad stock draw, undo and selection respond; two A attempts produce no visible tableau change. No legal move or speed/audio acceptance in this run. [Focused qualification](evidence/color-sample-staging-copy-native-20261009.json), [build checkpoint](evidence/color-sample-staging-copy-build-20261009.json), [device result](evidence/ipad-solitaire-color-sample-staging-copy-controls-20261009.json). |
+| 0062 | Default-off bounded fingerprints before legacy AudioOut preparation and immediately before SDL enqueue, preserving original queue behavior | Actual old/new queue, format, pacing and error contracts pass sanitizer checks; exclusive exports and a missing-hook negative pass. Full combined 63-patch rebuild passes. A bounded iPad run completes exports and worker closure; recurring input fingerprints are already present before SDL. Audio cause/quality and general DLL detach remain unqualified. [Focused checks](evidence/audioout-ingress-trace-focused-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [device result](evidence/ipad-solitaire-audioout-ingress-20261009.json). |
+| 0063 | Default-off pixel-owned eight-sample color tiling with immutable per-owner variant and distinct specialization/cache keys | 99 paired compute and 60 paired raster chains match independent AMD bytes and seeded padding. Shader, cache, failure, descriptor and negative controls pass; full combined HLE and 25 host suites pass. Mac timestamp results are scoped to the synthetic conversion chain; enabled iPad execution and speed remain unqualified. [Native checks](evidence/color-sample-pixel-owned-native-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json). |
 
 ## White selected-source comparison: patch0048
 
@@ -183,7 +185,7 @@ record remains an independent checkpoint.
 At producer event 1, all 8,192 inspected sample texels are initially black with
 zero alpha. After the existing completed GPU transfer, their statistics report
 one non-black, non-white RGB value with zero alpha. Every logical sample has the
-same per-sample FNV64, `1fb732bb8622a325`. Events 2, 3, 8 and 16 have matching
+same per-sample fingerprint. Events 2, 3, 8 and 16 have matching
 before/after subset statistics; the resolve source matches the producer output
 at each of the five sampled events. This establishes an observed change and
 matching source values at the inspected positions. It does not establish the
@@ -1464,3 +1466,53 @@ The full graphics suite still fails an interpolation contract at PC 0; an earlie
 full run also failed interpolation there. This does not qualify the whole renderer.
 The candidate driver and dependency audit pass, with device testing still blocked
 by the locked iPad. See the [record](evidence/solitaire-unobserved-stencil-depth.json).
+
+## Legacy AudioOut ingress fingerprints: patch0062
+
+Exact `APS5_TRACE_AUDIOOUT_INGRESS=1` records two distinct boundaries in the
+legacy `sceAudioOut` implementation: guest bytes before `prepareBuffer`, and
+actual converted/direct bytes after the existing pacing wait, immediately before
+`SDL_QueueAudio`. It records the SDL result and null-drain, conversion, timeout
+and port-close events. Original volume/channel handling, conversion, queued
+bytes, waits, exceptions and API return behavior remain in place.
+
+The opt-in fixed pool retains metadata and fingerprints only: 16 unrecycled
+port generations, 4,096 calls and 512 canonical 1,024-frame blocks per side,
+with a 480,000-frame cap on each side and per-channel fingerprints for up to
+eight channels. No PCM or source pointers survive a hook. Raw/queued formats,
+ordinals and phases are independent; equal hashes do not prove byte identity
+or align HLE, native source and postmix clocks. The frame window is ten rendered
+seconds only at 48 kHz. The worker deadline is initialization plus
+`floor(skip/48000) + 45` wall seconds; the chosen 10,560,000-frame skip gives
+265 seconds. Late ports share this deadline.
+
+Worker exports use exclusive temporary files and completed, no-clobber
+publication outside the metadata lock. General DLL unload is unqualified:
+joining a live worker from DLL detach can conflict with the Wine loader lock.
+The reviewed device diagnostic must finish its exports and report worker
+closure before forced cleanup of its own process. This is not an audio fix or
+a measured low-overhead mode. [Focused checks and limits](evidence/audioout-ingress-trace-focused-20261009.json).
+
+## Pixel-owned eight-sample color tiling: patch0063
+
+Exact `APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED=1` is captured once when a tiler owner
+is created. Only qualified eight-sample RGBA8 R64KB_X transfers select the new
+shader. One XY invocation computes sample-zero coordinate parity once, then
+uses three sample XOR masks derived from the same AMD equation to transfer all
+eight complete words. The masks stay below the aligned 64-KiB macroblock base.
+The dispatch becomes `ceil(W/8) x ceil(H/8) x 1`; the previous path uses Z=8.
+
+The original GLSL/SPIR-V and two/four-sample paths remain unchanged. Legacy
+20-value and new 23-value specialization schemas have separate pipeline keys;
+the owner selects at most six immutable programs. Existing admission, storage
+bounds, seeded padding, descriptors, barriers, sample upload/readback, draw,
+fence and changed-byte guest commit are retained. No additional staging image
+or data buffer is introduced.
+
+The native paired compute/raster chains and negative controls pass. Five
+paired M3 Pro timestamp samples measure the entire detile, poison-fill/barrier
+and retile chain at 11.723166 ms versus 2.877459 ms median. They do not isolate
+a single shader, execute the complete game Draw or qualify M2 iPad performance.
+The complete 63-patch/158-path rebuild and 25 host suites are a separate
+checkpoint. [Native record](evidence/color-sample-pixel-owned-native-20261009.json),
+[build record](evidence/pixel-owned-and-audio-ingress-build-20261009.json).

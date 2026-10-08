@@ -1,0 +1,263 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "pixel_owned_eight_sample_color_tiling_focused_native_qualification",
+  "status": "focused_source_contract_native_gpu_pairs_and_independent_review_passed",
+  "scope": "Historical focused source63 checkpoint. Native macOS synthetic GPU and source evidence; combined HLE build and physical iPad results are excluded.",
+  "patch": {
+    "path": "patches/anyps5/0063-pixel-owned-eight-sample-color-tiling.patch",
+    "sha256": "89e3c0c990f99f8deb1cb42c0bd25e4aa630970ac5f124369cd30333e3016bb3",
+    "productionPaths": 4,
+    "isolatedForwardReverseByteExact": true,
+    "reverseRemovesNewShaderFiles": true
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp": {
+      "candidateSha256": "a55d65d407c69e0ce2d82eb09f3edfd76d89ec4d2c8f789ac32e914b02369e30"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp": {
+      "candidateSha256": "568ea7c9a562d0f07ccbdc05c3995a2f08fa5266eea4bbed809e82661df2e457"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSamplePixelOwnedTiling.comp": {
+      "candidateSha256": "27cc56a9d956c72c346dcdf7a62a0ebd76a6b3df49c1b306a8ddd189a47277e0"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSamplePixelOwnedTiling_spv.h": {
+      "candidateSha256": "82d86bf3eb517eed729ab78903d33b53e7a50f3bba731c6a949f0a5e4571ab65"
+    }
+  },
+  "retainedShaderSha256": {
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp": "4fca473726eba13b9cf6e0dcdcfb00e9f50e5ace0c4a3a2cfba37c79c33e5296",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h": "a71714341ded2010786bdaa267ecaf0c485900c4653a4c17a4ca329bc4efde89"
+  },
+  "workflowSha256": {
+    "tools/checks/gpu_color_sample_pixel_owned_contract.cpp": "b89b4e290ad62ac899a35a7356ae22934e208f74befdd723703ab6690eb2a556",
+    "scripts/check-gpu-color-sample-pixel-owned.py": "329af19017c79c73d5efdcf5067d0a1c27bd5ebc553b08dca4c324af0191d165",
+    "tools/gpu-probe/gpu_color_sample_pixel_owned_probe.cpp": "a4c5a23232ac00ae0ae45450affd87aff6d2ae223ba107d4e45de9024e6df196",
+    "scripts/build-gpu-color-sample-pixel-owned-probe.py": "62f101b46c5a9d89d770b91d8ae6cc66cee4ebfcadba174c025f35da46de88af"
+  },
+  "implementation": {
+    "enableVariable": "APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED",
+    "enabledOnlyByExactValue": "1",
+    "defaultEnabled": false,
+    "capture": "Immutable once per GpuColorSampleTiler owner; only eight logical samples select the new shader.",
+    "admission": "Unchanged qualified uncompressed RGBA8 UNORM R64KB_X full single-mip 2D surface with equal samples/fragments and validated alignment, declared range, storage/index and compute limits. Unsupported metadata keeps its existing admission/fallback behavior.",
+    "pixelOwnedEight": "One XY invocation computes full-surface coordinate parity for sample zero once and loops all eight logical sample words. Sample XOR masks derived from the same AMD equation stay below the aligned 64 KiB macroblock boundary.",
+    "pixelDispatch": "ceil(width/8), ceil(height/8), Z1; local size8x8x1. Shader also rejects Z!=0, while an independent host-call contract rejects accidental Z8.",
+    "legacy": "The original GLSL and embedded SPIR-V are byte-identical. Two/four samples retain sample-owned execution, and disabled eight-sample owners retain the original Z8 path.",
+    "programIdentity": "Legacy schema has20 specialization values; pixel-owned eight has23. Eight distinct cache slots cover both schemas and directions; each immutable owner selects at most six programs, and devices/owners keep separate modules and pipelines.",
+    "failureAndLifetime": "Lazy alternative module/pipeline creation is mutex-protected; partial failure handles are released and creation can retry. Each transfer call retains distinct descriptors until its existing GPU fence; resolve/create work precedes recorded commands.",
+    "synchronization": "The original producer/consumer barriers, buffer bounds, overlap/device checks and transfer lifetime remain unchanged. Logical writes preserve all seeded tiled padding.",
+    "quality": "No resolution, sample-count or interpolation setting is changed by this patch. Complete output bytes and raster coverage match in the focused pairs; actual game interpolation is not separately qualified. No frame skipping, quality reduction or generated frames.",
+    "unchangedIntegrationPaths": "Full sample upload, actual Draw, sample readback, retile fence, fault handling, resource writeback and dirty-tracking source are untouched by this patch.",
+    "allocation": "No additional data-staging buffer or sample image. Alternative shader module and cache schema only; actual iPad RSS remains unmeasured."
+  },
+  "focusedContracts": {
+    "status": "PASS",
+    "script": "scripts/check-gpu-color-sample-pixel-owned.py",
+    "fixture": "tools/checks/gpu_color_sample_pixel_owned_contract.cpp",
+    "sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "capturedOptionCases": 12,
+    "metadataFallbacksPerCase": 22,
+    "schemas": [
+      20,
+      23
+    ],
+    "pixelOwnedSamples": 8,
+    "pixelDispatchZ": 1,
+    "retainedLegacySamples": [
+      2,
+      4,
+      8
+    ],
+    "checked": "Exact/nonexact gates and environment changes after capture, both schemas/directions, warm owner/device cache identity, retained unique descriptors and barriers, invalid metadata/buffers and missing calls, partial lazy module/pipeline failures and successful retry.",
+    "matchedSourceNegativeControls": [
+      "duplicate-z8",
+      "wrong-xor",
+      "gate-always-on"
+    ],
+    "allNamedMutationsFailedTheirSpecificAssertions": true,
+    "rootFreshIndependentContractRunPassed": true,
+    "glslEmbeddedSpirvByteEquality": true
+  },
+  "nativeGpu": {
+    "status": "PASS",
+    "exitCode": 0,
+    "deviceClass": "Apple M3 Pro",
+    "platform": "Native macOS Vulkan through MoltenVK",
+    "script": "scripts/build-gpu-color-sample-pixel-owned-probe.py",
+    "fixture": "tools/gpu-probe/gpu_color_sample_pixel_owned_probe.cpp",
+    "cpuSanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "dependencyHashEntries": 1125,
+    "flatArtifactsHashed": 12,
+    "dependencyClosureStableBeforeAndAfterCompilation": true,
+    "computePairs": 99,
+    "rasterPairs": 60,
+    "amdCoordinates": 36639764,
+    "logicalWordsChecked": 238083272,
+    "paddingBytesChecked": 427896192,
+    "rasterChangedSamples": 3991022,
+    "legacyDispatches": 431,
+    "pixelDispatches": 98,
+    "descriptorFenceChecks": 769,
+    "errors": 0,
+    "sampleCounts": [
+      2,
+      4,
+      8
+    ],
+    "eightSampleNativeGroups": "Two native four-sample groups; actual ColorSampleTransfer unchanged.",
+    "computeExtents": [
+      {
+        "width": 1,
+        "height": 1
+      },
+      {
+        "width": 17,
+        "height": 19
+      },
+      {
+        "width": 31,
+        "height": 63
+      },
+      {
+        "width": 33,
+        "height": 65
+      },
+      {
+        "width": 257,
+        "height": 129
+      },
+      {
+        "width": 2049,
+        "height": 19
+      },
+      {
+        "width": 4097,
+        "height": 19
+      },
+      {
+        "width": 19,
+        "height": 4097
+      },
+      {
+        "width": 8193,
+        "height": 19
+      },
+      {
+        "width": 19,
+        "height": 8193
+      },
+      {
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "computeModes": [
+      "Detile",
+      "Changed linear samples retiled into a seeded destination",
+      "Detile, poison source with fill, then retile"
+    ],
+    "rasterModes": [
+      "Unchanged/no draw",
+      "Partial triangle",
+      "Partial triangle with fragment discard",
+      "Full coverage triangle"
+    ],
+    "comparison": "Actual frozen production tiler, retained ColorTargetLayout/RenderTarget/ColorSampleTransfer and synthetic raster pipeline. Every output must match both the legacy variant and independent AMD AddrLib coordinate byte goldens; modified raster words match an independent RGBA8 color, padding and buffer guards retain their seeds.",
+    "negativeControls": {
+      "gpuWrongSampleXorDirections": 2,
+      "gpuMissingSamplePlaneDirections": 2,
+      "hostDuplicateZ8Rejections": 1,
+      "duplicateZ8ForwardedToGpu": false,
+      "duplicateZ8InferredFromEqualBytes": false
+    },
+    "boundary": "Coherent native buffer allocation and synthetic raster use fixture adapters. This does not execute actual production Draw, pooled buffers, guest memory, translated guest shaders or the Wine/FEX/iPad chain."
+  },
+  "macTimestampExperiment": {
+    "supported": true,
+    "deviceClass": "Apple M3 Pro",
+    "extent": {
+      "width": 1920,
+      "height": 1080
+    },
+    "logicalSamples": 8,
+    "pairedRepetitions": 5,
+    "order": "Legacy then pixel-owned within each pair",
+    "baselineMedianNanoseconds": 11723166,
+    "pixelOwnedMedianNanoseconds": 2877459,
+    "baselineMedianMilliseconds": 11.723166,
+    "pixelOwnedMedianMilliseconds": 2.877459,
+    "timestampPeriodNanoseconds": 1.0,
+    "timestampValidBits": 64,
+    "measurement": "GPU timestamp interval encloses detile, poison fill and their barriers, then retile. CPU allocations and submit/fence wall time are not the timestamp interval.",
+    "limits": "Mac-only five-pair synthetic chain; not an isolated shader, production Draw, translated execution, iPad performance gain or gameplay FPS result. Fixed legacy-first order is not a randomized sustained benchmark.",
+    "ipadSpeedClaim": false
+  },
+  "independentReview": {
+    "status": "PASS_for_default_off_integration_and_controlled_subsequent_qualification",
+    "blockingFindings": [],
+    "verifiedHashReferences": 1238,
+    "nativeGpuMatrixRepeatedByCriticalReviewer": false,
+    "scope": "Independent source correctness, frozen hash closure and actual recorded paired/negative evidence review; root independently reran focused contracts."
+  },
+  "localArtifactReferences": [
+    {
+      "label": "frozenCandidate",
+      "sha256": "f14fca90e65cd5fd3482e9eea02e2a7366519c0d6baad79eb656c955fa7d7db4"
+    },
+    {
+      "label": "sourceFreeze",
+      "sha256": "f487d0a14c991e7313a8e1f09a15f6862c04cd3ea38ff77eaef78e0d2a6427a2"
+    },
+    {
+      "label": "patchRoundtrip",
+      "sha256": "f59055e129760a9c3521d9a1c28dcbdfa808fd3924ef25ff6479c053d8f3e8c4"
+    },
+    {
+      "label": "authorFocusedContracts",
+      "sha256": "489e7164430f8fd1fdbec750ee5d3d0f9a90c1d7226187dfdf2ca33b2509571b"
+    },
+    {
+      "label": "rootFreshIndependentContracts",
+      "sha256": "e81bb0ac4624f3ba5c9d56bcada7daf1d07cf41873cea151c7ad210f3d41c355"
+    },
+    {
+      "label": "nativeManifestAnd1125DependencyClosure",
+      "sha256": "6e3896a1ebf4110a7f30fc8fc9dd8fce7c550a5a792514c505afdea9708dc9be"
+    },
+    {
+      "label": "nativeRunLog",
+      "sha256": "9b3d08923abbf923f19cc2a065c185bd25bfd2fc33a4c61dbf18897839fd6a0d"
+    },
+    {
+      "label": "nativeProbeExecutable",
+      "sha256": "ad61ef0ca935a8e93118bdc4f9951cfe68aedb9033d492262212d23346ca451e"
+    },
+    {
+      "label": "independentCriticalReview",
+      "sha256": "3762d3ceb450e4fce99f8d2cfc17395ccb1f86a99346901d8b2c33225f16394d"
+    }
+  ],
+  "qualification": {
+    "frozenSourceAndPatchRoundtrip": true,
+    "focusedGateCacheLifetimeAndNegativeContracts": true,
+    "nativeSyntheticComputeRasterPaddingAndGpuNegatives": true,
+    "fixedByteQualityInFocusedPairs": true,
+    "fullWindowsHleBuildOrLink": false,
+    "actualProductionDrawGuestMemoryAndPooledBufferRuntime": false,
+    "wineFexExecution": false,
+    "physicalIpadGpuOrRuntime": false,
+    "actualIpadRss": false,
+    "matchedGamePerformanceGain": false,
+    "audioOrFullGameAcceptance": false,
+    "stable60FpsAcceptance": false
+  },
+  "publication": "Sanitized source metadata, aggregate counts and anonymous artifact hashes only; no private artifact paths, raw shader diagnostics or game data.",
+  "githubActionsUsed": false
+}

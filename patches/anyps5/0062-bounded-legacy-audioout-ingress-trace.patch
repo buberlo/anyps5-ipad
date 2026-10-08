@@ -1,0 +1,523 @@
+diff --git a/core/libs/prx/libSceAudioOut/src/AudioOut.cpp b/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
+index a6697a1..af84500 100644
+--- a/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
++++ b/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
+@@ -12,6 +12,7 @@
+ #include <prx/libc/include/General.hpp>
+ 
+ #include "SDL.h"
++#include "AudioOutIngressTrace.hpp"
+ #include "SceTypes.hpp"
+ #include "prx/libkernel/Time/include/Time.hpp"
+ 
+@@ -92,6 +93,7 @@ struct Port {
+     std::uint64_t virtualQueueEnd = 0;
+     SDL_AudioDeviceID device = 0;
+     SDL_AudioSpec spec = {};
++    AudioOutIngressTrace::Stream* ingressTrace = nullptr;
+ };
+ 
+ static std::mutex g_mutex;
+@@ -130,6 +132,7 @@ static bool openDevice(Port& port) {
+ }
+ 
+ static void closeDevice(Port& port) {
++    AudioOutIngressTrace::Event(port.ingressTrace, "port-close");
+     if (port.device != 0 && SDL_WasInit(SDL_INIT_AUDIO) != 0) {
+         SDL_ClearQueuedAudio(port.device);
+         SDL_CloseAudioDevice(port.device);
+@@ -192,10 +195,12 @@ static const void* prepareBuffer(const Port& port, const void* data, std::vector
+ 
+ static void queueAudio(Port& port, const void* data) {
+     if (data == nullptr) {
++        bool cleared = false;
+         const std::uint64_t waitStart = sceKernelGetProcessTime();
+         while (SDL_GetQueuedAudioSize(port.device) > 0) {
+             if (sceKernelGetProcessTime() - waitStart > DRAIN_TIMEOUT_US) {
+                 SDL_ClearQueuedAudio(port.device);
++                cleared = true;
+                 break;
+             }
+             struct timespec req{};
+@@ -203,9 +208,11 @@ static void queueAudio(Port& port, const void* data) {
+             req.tv_nsec = static_cast<long>(DRAIN_SLEEP_US * 1000ULL);
+             nanosleep(&req, nullptr);
+         }
++        AudioOutIngressTrace::Event(port.ingressTrace, cleared ? "null-drain-clear" : "null-drain", true, cleared);
+         return;
+     }
+ 
++    auto ingress = AudioOutIngressTrace::Raw(port.ingressTrace, data, port.samplesNum);
+     std::vector<std::uint8_t> prepareBuf;
+     const void* prepared = prepareBuffer(port, data, prepareBuf);
+     const std::uint32_t preparedSize = port.samplesNum *
+@@ -218,6 +225,7 @@ static void queueAudio(Port& port, const void* data) {
+         port.spec.format, port.spec.channels, port.spec.freq);
+ 
+     if (cvtResult < 0) {
++        AudioOutIngressTrace::Event(port.ingressTrace, "cvt-build-failure", false, false, true);
+         throw std::runtime_error(std::string("SDL_BuildAudioCVT: ") + SDL_GetError());
+     }
+ 
+@@ -231,6 +239,7 @@ static void queueAudio(Port& port, const void* data) {
+         cvt.buf = convertBuf.data();
+         cvt.len = static_cast<int>(preparedSize);
+         if (SDL_ConvertAudio(&cvt) < 0) {
++            AudioOutIngressTrace::Event(port.ingressTrace, "cvt-convert-failure", false, false, true);
+             throw std::runtime_error(std::string("SDL_ConvertAudio: ") + SDL_GetError());
+         }
+         queueData = cvt.buf;
+@@ -249,6 +258,7 @@ static void queueAudio(Port& port, const void* data) {
+     while (SDL_GetQueuedAudioSize(port.device) > minQueued) {
+         if (sceKernelGetProcessTime() - waitStart > DRAIN_TIMEOUT_US) {
+             SDL_ClearQueuedAudio(port.device);
++            AudioOutIngressTrace::Event(port.ingressTrace, "pacing-timeout-clear", false, true);
+             break;
+         }
+         struct timespec req{};
+@@ -257,7 +267,10 @@ static void queueAudio(Port& port, const void* data) {
+         nanosleep(&req, nullptr);
+     }
+ 
+-    if (SDL_QueueAudio(port.device, queueData, queueSize) < 0) {
++    AudioOutIngressTrace::Queued(ingress, queueData, queueSize, cvtResult, !prepareBuf.empty(), queueData == data);
++    const int queueResult = SDL_QueueAudio(port.device, queueData, queueSize);
++    AudioOutIngressTrace::Result(ingress, queueResult);
++    if (queueResult < 0) {
+         throw std::runtime_error(std::string("SDL_QueueAudio: ") + SDL_GetError());
+     }
+     // APS5_LOG_OUT("device=%u type=%d bytes=%u queued=%u", port.device, port.type, queueSize, SDL_GetQueuedAudioSize(port.device));
+@@ -352,6 +365,14 @@ int APS5_VABI sceAudioOutOpen(int userId, int type, int index, std::uint32_t len
+             if (type != PORT_TYPE_VIBRATION) {
+                 openDevice(port);
+             }
++            if (AudioOutIngressTrace::Enabled()) {
++                AudioOutIngressTrace::Metadata metadata;
++                metadata.port = i + 1; metadata.type = type; metadata.gameFormat = static_cast<int>(format);
++                metadata.requestedFrames = len; metadata.device = port.device; metadata.obtainedSamples = port.spec.samples;
++                metadata.raw = {freq, static_cast<std::uint32_t>(port.channels), bytesPerSample(format) * 8, sdlFormat(format), formatIsFloat(format)};
++                metadata.queued = {static_cast<std::uint32_t>(port.spec.freq), port.spec.channels, static_cast<std::uint32_t>(SDL_AUDIO_BITSIZE(port.spec.format)), port.spec.format, SDL_AUDIO_ISFLOAT(port.spec.format) != 0};
++                port.ingressTrace = AudioOutIngressTrace::Register(metadata);
++            }
+             static const bool trace = std::getenv("APS5_TRACE_AUDIOOUT") != nullptr;
+             if (trace) std::fprintf(stderr, "[audioout] port %d: type %d, %u samples at %u Hz, format %d, device %u\n", i + 1, type, len, freq, static_cast<int>(format), static_cast<unsigned>(port.device));
+             return i + 1;
+diff --git a/core/libs/prx/libSceAudioOut/src/AudioOutIngressTrace.hpp b/core/libs/prx/libSceAudioOut/src/AudioOutIngressTrace.hpp
+new file mode 100644
+index 0000000..c369f74
+--- /dev/null
++++ b/core/libs/prx/libSceAudioOut/src/AudioOutIngressTrace.hpp
+@@ -0,0 +1,413 @@
++#pragma once
++
++// Non-RT diagnostic only. Retains metadata/fingerprints, never source bytes
++// or guest pointers. Raw/queued ordinals and native clocks remain independent.
++#include <algorithm>
++#include <array>
++#include <chrono>
++#include <condition_variable>
++#include <cstdint>
++#include <cerrno>
++#include <cstdio>
++#include <cstdlib>
++#include <filesystem>
++#include <fcntl.h>
++#include <limits>
++#include <memory>
++#include <mutex>
++#include <string>
++#include <sstream>
++#include <sys/stat.h>
++#include <thread>
++#ifdef _WIN32
++#include <io.h>
++#include <process.h>
++#else
++#include <unistd.h>
++#endif
++
++namespace AudioOutIngressTrace {
++constexpr std::size_t MaxStreams = 16, MaxCalls = 4096, MaxBlocks = 512;
++constexpr std::uint64_t WindowFrames = 480000, MaxSkipFrames = 28800000;
++constexpr std::uint64_t BlockFrames = 1024, MaxCallBytes = 2 * 1024 * 1024;
++constexpr std::uint64_t FnvBasis = 14695981039346656037ULL, FnvPrime = 1099511628211ULL;
++constexpr std::size_t MaxExportBytes = 8 * 1024 * 1024;
++
++// Worker-only exclusive temporary file, complete-before-publication and no
++// replacement of a pre-existing final file/link. Windows CRT rename rejects
++// existing destinations; POSIX hard-link publication is likewise no-clobber.
++inline bool WritePrivateJson(const std::filesystem::path& final, const std::string& data) {
++    if (data.size() > MaxExportBytes) return false;
++    auto temporary = final; temporary += ".partial";
++#ifdef _WIN32
++    const int fd = _wopen(temporary.c_str(), _O_WRONLY | _O_CREAT | _O_EXCL | _O_BINARY, _S_IREAD | _S_IWRITE);
++#else
++    const int fd = open(temporary.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
++#endif
++    if (fd < 0) return false; // never remove somebody else's existing file/link
++    bool ok = true;
++    std::size_t offset = 0;
++    while (offset < data.size()) {
++#ifdef _WIN32
++        const auto written = _write(fd, data.data() + offset, static_cast<unsigned>(data.size() - offset));
++#else
++        const auto written = write(fd, data.data() + offset, data.size() - offset);
++#endif
++        if (written < 0 && errno == EINTR) continue;
++        if (written <= 0) { ok = false; break; }
++        offset += static_cast<std::size_t>(written);
++    }
++#ifdef _WIN32
++    if (ok && _commit(fd) < 0) ok = false;
++    if (_close(fd) < 0) ok = false;
++    if (ok && _wrename(temporary.c_str(), final.c_str()) < 0) ok = false;
++    if (!ok) _wunlink(temporary.c_str());
++#else
++    if (ok && fsync(fd) < 0) ok = false;
++    if (close(fd) < 0) ok = false;
++    if (ok && link(temporary.c_str(), final.c_str()) < 0) ok = false;
++    if (unlink(temporary.c_str()) < 0) ok = false;
++#endif
++    return ok;
++}
++
++inline bool Enabled() {
++    const char* value = std::getenv("APS5_TRACE_AUDIOOUT_INGRESS");
++    return value && value[0] == '1' && value[1] == '\0';
++}
++inline bool ParseSkip(const char* value, std::uint64_t& result) {
++    result = 0;
++    if (!value) return true;
++    if (!*value) return false;
++    for (const char* p = value; *p; ++p) {
++        if (*p < '0' || *p > '9' || result > (MaxSkipFrames - (*p - '0')) / 10) return false;
++        result = result * 10 + (*p - '0');
++    }
++    return result <= MaxSkipFrames;
++}
++inline std::uint64_t Now() {
++    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
++        std::chrono::steady_clock::now().time_since_epoch()).count());
++}
++struct Format {
++    std::uint32_t rate = 0, channels = 0, bits = 0, code = 0;
++    bool floating = false;
++    std::uint64_t FrameBytes() const { return static_cast<std::uint64_t>(channels) * (bits / 8); }
++    bool Valid() const {
++        return rate >= 1000 && rate <= 384000 && channels >= 1 && channels <= 8 &&
++            (bits == 8 || bits == 16 || bits == 32) && (!floating || bits == 32);
++    }
++};
++struct Metadata {
++    int port = 0, type = 0, gameFormat = 0;
++    std::uint32_t requestedFrames = 0, device = 0, obtainedSamples = 0;
++    Format raw, queued;
++};
++struct Block {
++    std::uint64_t sourceFrame = 0, windowFrame = 0, frames = 0, fnv = FnvBasis;
++    std::array<std::uint64_t, 8> channels{};
++};
++struct Span {
++    std::uint64_t frame = 0, frames = 0, tracedFrame = 0, tracedFrames = 0, fnv = FnvBasis;
++};
++struct Side {
++    Format format;
++    std::uint64_t frames = 0, captured = 0;
++    std::size_t count = 0;
++    std::array<Block, MaxBlocks> blocks{};
++};
++struct Call {
++    std::uint64_t ordinal = 0, rawNs = 0, queueNs = 0, returnNs = 0;
++    Span raw, queued;
++    std::uint32_t queueBytes = 0;
++    int cvt = 0, result = 0;
++    bool preparedCopy = false, aliasesRaw = false, queueAttempt = false, resultKnown = false;
++};
++enum class Status { Active, Closed, Exporting, Exported };
++struct Stream {
++    Metadata metadata;
++    std::uint64_t generation = 0, calls = 0, eventOrdinal = 0, eventNs = 0;
++    std::uint32_t nullDrains = 0, timeoutClears = 0, failures = 0;
++    Status status = Status::Active;
++    const char* reason = "active";
++    Side raw, queued;
++    std::size_t count = 0;
++    std::array<Call, MaxCalls> records{};
++};
++struct Token {
++    Stream* stream = nullptr;
++    std::uint64_t ordinal = 0;
++    Span raw;
++    std::size_t index = MaxCalls;
++};
++
++class Pool {
++    std::mutex lock;
++    std::condition_variable wake;
++    std::array<Stream, MaxStreams> streams{};
++    std::size_t count = 0;
++    std::uint64_t skipped, origin, deadline;
++    std::uint32_t rejected = 0, rejectionMask = 0;
++    bool stopping = false, directoryReady = false;
++    std::filesystem::path directory;
++    std::thread worker;
++
++    void Close(Stream& stream, const char* reason) {
++        if (stream.status != Status::Active) return;
++        stream.reason = reason;
++        stream.status = Status::Closed;
++        wake.notify_one();
++    }
++    bool Capture(Stream& stream, Side& side, const void* data, std::uint64_t frames, Span& span) {
++        span.frame = side.frames; span.frames = frames;
++        const auto frameBytes = side.format.FrameBytes();
++        if ((frames != 0 && !data) || frames > MaxCallBytes / frameBytes ||
++            frames > std::numeric_limits<std::uint64_t>::max() - side.frames) {
++            ++stream.failures; Close(stream, "shape-or-byte-limit"); return false;
++        }
++        const auto end = side.frames + frames;
++        const auto first = std::max(side.frames, skipped);
++        const auto last = std::min(end, skipped + WindowFrames);
++        side.frames = end;
++        if (last <= first) return true;
++        span.tracedFrame = first; span.tracedFrames = last - first;
++        const auto* bytes = static_cast<const unsigned char*>(data);
++        const auto sampleBytes = side.format.bits / 8;
++        for (auto frame = first; frame < last; ++frame) {
++            if (side.count == 0 || frame % BlockFrames == 0) {
++                if (side.count == MaxBlocks) { ++stream.failures; Close(stream, "block-limit"); return false; }
++                auto& block = side.blocks[side.count++];
++                block.sourceFrame = frame; block.windowFrame = frame - skipped; block.channels.fill(FnvBasis);
++            }
++            auto& block = side.blocks[side.count - 1];
++            for (std::uint32_t channel = 0; channel < side.format.channels; ++channel) {
++                for (std::uint32_t byte = 0; byte < sampleBytes; ++byte) {
++                    const auto value = bytes[(frame - span.frame) * frameBytes + channel * sampleBytes + byte];
++                    span.fnv = (span.fnv ^ value) * FnvPrime;
++                    block.fnv = (block.fnv ^ value) * FnvPrime;
++                    block.channels[channel] = (block.channels[channel] ^ value) * FnvPrime;
++                }
++            }
++            ++block.frames; ++side.captured;
++        }
++        return true;
++    }
++    Call* Record(Token& token) {
++        auto& stream = *token.stream;
++        if (token.index == MaxCalls) {
++            if (stream.count == MaxCalls) { ++stream.failures; Close(stream, "call-limit"); return nullptr; }
++            token.index = stream.count++;
++            auto& call = stream.records[token.index]; call.ordinal = token.ordinal; call.raw = token.raw;
++        }
++        return &stream.records[token.index];
++    }
++    static void WriteFormat(std::ostream& out, const Format& format) {
++        out << "{\"rate\":" << format.rate << ",\"channels\":" << format.channels
++            << ",\"bits\":" << format.bits << ",\"format_code\":" << format.code
++            << ",\"floating\":" << (format.floating ? "true" : "false") << '}';
++    }
++    static void WriteSpan(std::ostream& out, const Span& span, const Format& format) {
++        out << "{\"frame_start\":" << span.frame << ",\"frames\":" << span.frames
++            << ",\"traced_frame_start\":" << span.tracedFrame << ",\"traced_frames\":" << span.tracedFrames
++            << ",\"byte_start\":" << span.tracedFrame * format.FrameBytes()
++            << ",\"sample_start\":" << span.tracedFrame * format.channels
++            << ",\"phase\":" << span.tracedFrame % BlockFrames << ",\"fnv64\":\"";
++        char hash[17]; std::snprintf(hash, sizeof hash, "%016llx", static_cast<unsigned long long>(span.fnv));
++        out << hash << "\"}";
++    }
++    static void WriteSide(std::ostream& out, const Side& side) {
++        out << "{\"format\":"; WriteFormat(out, side.format);
++        out << ",\"frames_seen\":" << side.frames << ",\"captured_frames\":" << side.captured << ",\"blocks\":[";
++        for (std::size_t index = 0; index < side.count; ++index) {
++            const auto& block = side.blocks[index];
++            if (index) out << ',';
++            out << "{\"frame_start\":" << block.sourceFrame << ",\"window_frame_start\":" << block.windowFrame
++                << ",\"byte_start\":" << block.sourceFrame * side.format.FrameBytes()
++                << ",\"sample_start\":" << block.sourceFrame * side.format.channels
++                << ",\"phase\":" << block.sourceFrame % BlockFrames << ",\"frames\":" << block.frames << ",\"fnv64\":\"";
++            char hash[17]; std::snprintf(hash, sizeof hash, "%016llx", static_cast<unsigned long long>(block.fnv));
++            out << hash << "\",\"channel_fnv64\":[";
++            for (std::uint32_t c = 0; c < side.format.channels; ++c) {
++                if (c) out << ',';
++                std::snprintf(hash, sizeof hash, "%016llx", static_cast<unsigned long long>(block.channels[c]));
++                out << '"' << hash << '"';
++            }
++            out << "]}";
++        }
++        out << "]}";
++    }
++    bool Export(const Stream& stream) {
++        try {
++            if (!directoryReady) {
++                std::filesystem::create_directories(directory.parent_path());
++                if (!std::filesystem::create_directory(directory)) return false; // never overwrite an old run
++#ifndef _WIN32
++                std::filesystem::permissions(directory, std::filesystem::perms::owner_all);
++#endif
++                directoryReady = true;
++            }
++            std::ostringstream out;
++            const auto& meta = stream.metadata;
++            out << "{\"schema\":1,\"result\":\"" << stream.reason << "\",\"generation\":" << stream.generation
++                << ",\"port\":" << meta.port << ",\"type\":" << meta.type << ",\"game_format\":" << meta.gameFormat
++                << ",\"requested_frames\":" << meta.requestedFrames << ",\"sdl_device\":" << meta.device
++                << ",\"obtained_samples\":" << meta.obtainedSamples << ",\"skip_frames_per_side\":" << skipped
++                << ",\"window_frames_per_side\":" << WindowFrames << ",\"calls_seen\":" << stream.calls
++                << ",\"null_drains\":" << stream.nullDrains << ",\"timeout_clears\":" << stream.timeoutClears
++                << ",\"failures\":" << stream.failures << ",\"event_ordinal\":" << stream.eventOrdinal
++                << ",\"event_ns\":" << stream.eventNs << ",\"clock_origin_ns\":" << origin
++                << ",\"clock\":\"HLE steady_clock; no native/postmix alignment asserted\""
++                << ",\"window_scope\":\"480000 frames per side, ten rendered seconds only at48000Hz; deadline uses skip/48000+45 wall seconds\""
++                << ",\"hash_equality_proves_byte_identity\":false,\"raw_pcm_retained\":false"
++                << ",\"ordinals\":\"raw requested frames and queue whole frames advance independently\""
++                << ",\"return_scope\":\"SDL_QueueAudio only; HLE return semantics unchanged\",\"raw\":";
++            WriteSide(out, stream.raw); out << ",\"queued\":"; WriteSide(out, stream.queued);
++            out << ",\"calls\":[";
++            for (std::size_t index = 0; index < stream.count; ++index) {
++                const auto& call = stream.records[index];
++                if (index) out << ',';
++                out << "{\"ordinal\":" << call.ordinal << ",\"raw_ns\":" << call.rawNs
++                    << ",\"queue_ns\":" << call.queueNs << ",\"return_ns\":" << call.returnNs << ",\"raw\":";
++                WriteSpan(out, call.raw, meta.raw); out << ",\"queued\":"; WriteSpan(out, call.queued, meta.queued);
++                out << ",\"queue_bytes\":" << call.queueBytes << ",\"cvt_result\":" << call.cvt
++                    << ",\"prepared_copy\":" << (call.preparedCopy ? "true" : "false")
++                    << ",\"queue_aliases_raw\":" << (call.aliasesRaw ? "true" : "false")
++                    << ",\"queue_attempt\":" << (call.queueAttempt ? "true" : "false")
++                    << ",\"sdl_result_known\":" << (call.resultKnown ? "true" : "false")
++                    << ",\"sdl_result\":" << call.result << '}';
++            }
++            out << "]}\n";
++            return WritePrivateJson(directory / ("port-" + std::to_string(stream.generation) + ".json"), out.str());
++        } catch (...) { return false; }
++    }
++    void Worker() {
++        std::fprintf(stderr, "[audioout-ingress] armed max_frames=%llu skip_frames=%llu streams=%zu pool_bytes=%zu\n",
++            static_cast<unsigned long long>(WindowFrames), static_cast<unsigned long long>(skipped), MaxStreams, sizeof(Pool));
++        for (;;) {
++            Stream* selected = nullptr;
++            {
++                std::unique_lock guard(lock);
++                for (std::size_t index = 0; index < count; ++index) {
++                    auto& stream = streams[index];
++                    if (stream.status == Status::Active && (stopping || Now() >= deadline))
++                        Close(stream, stopping ? "shutdown" : "deadline");
++                    if (stream.status == Status::Closed && !selected) {
++                        selected = &stream; stream.status = Status::Exporting;
++                    }
++                }
++                if (!selected) {
++                    if (stopping || Now() >= deadline) break;
++                    wake.wait_for(guard, std::chrono::milliseconds(100));
++                    continue;
++                }
++            }
++            // All hooks reject Closed/Exporting streams. No worker I/O/logging
++            // holds the tracing lock or accesses a Port/SDL/native object.
++            const bool ok = Export(*selected);
++            std::fprintf(stderr, "[audioout-ingress] export generation=%llu raw=%llu queued=%llu calls=%zu result=%s io=%s\n",
++                static_cast<unsigned long long>(selected->generation), static_cast<unsigned long long>(selected->raw.captured),
++                static_cast<unsigned long long>(selected->queued.captured), selected->count, selected->reason, ok ? "ok" : "failed");
++            { std::lock_guard guard(lock); selected->status = Status::Exported; }
++        }
++        std::size_t finalCount;
++        std::uint32_t finalRejected, finalMask;
++        { std::lock_guard guard(lock); finalCount = count; finalRejected = rejected; finalMask = rejectionMask; }
++        std::fprintf(stderr, "[audioout-ingress] closed generations=%zu rejected=%u reasons=0x%x\n",
++            finalCount, finalRejected, finalMask);
++    }
++public:
++    Pool(std::uint64_t skip, std::filesystem::path parent) : skipped(skip), origin(Now()),
++        deadline(origin + (skip / 48000 + 45) * 1000000000ULL) {
++#ifdef _WIN32
++        const auto pid = _getpid();
++#else
++        const auto pid = getpid();
++#endif
++        directory = parent / ("ingress-" + std::to_string(pid) + "-" + std::to_string(origin));
++        worker = std::thread([this] { Worker(); });
++    }
++    ~Pool() {
++        { std::lock_guard guard(lock); stopping = true; wake.notify_one(); }
++        worker.join();
++    }
++    Stream* Register(const Metadata& meta) {
++        std::lock_guard guard(lock);
++        if (stopping || Now() >= deadline || count == MaxStreams || !meta.raw.Valid() || !meta.queued.Valid() ||
++            !meta.device || !meta.requestedFrames || meta.requestedFrames > MaxCallBytes / meta.raw.FrameBytes()) {
++            ++rejected;
++            rejectionMask |= (stopping || Now() >= deadline) ? 1u : count == MaxStreams ? 2u : 4u;
++            return nullptr;
++        }
++        auto& stream = streams[count++];
++        stream.metadata = meta; stream.generation = count;
++        stream.raw.format = meta.raw; stream.queued.format = meta.queued;
++        return &stream;
++    }
++    Token Raw(Stream* stream, const void* data, std::uint64_t frames) {
++        Token token;
++        if (!stream) return token;
++        std::lock_guard guard(lock);
++        if (stream->status != Status::Active) return token;
++        token.stream = stream; token.ordinal = ++stream->calls;
++        if (!Capture(*stream, stream->raw, data, frames, token.raw)) return token;
++        if (token.raw.tracedFrames) if (auto* call = Record(token)) call->rawNs = Now();
++        return token;
++    }
++    void Queued(Token& token, const void* data, std::uint32_t bytes, int cvt, bool preparedCopy, bool aliasesRaw) {
++        if (!token.stream) return;
++        std::lock_guard guard(lock);
++        auto& stream = *token.stream;
++        if (stream.status != Status::Active) return;
++        const auto frameBytes = stream.queued.format.FrameBytes();
++        if (bytes % frameBytes) { ++stream.failures; Close(stream, "queue-partial-frame"); return; }
++        Span queued;
++        if (!Capture(stream, stream.queued, data, bytes / frameBytes, queued)) return;
++        if (token.raw.tracedFrames || queued.tracedFrames) {
++            if (auto* call = Record(token)) {
++                call->queued = queued; call->queueNs = Now(); call->queueBytes = bytes;
++                call->cvt = cvt; call->preparedCopy = preparedCopy; call->aliasesRaw = aliasesRaw; call->queueAttempt = true;
++            }
++        }
++    }
++    void Result(Token& token, int result) {
++        if (!token.stream) return;
++        std::lock_guard guard(lock);
++        auto& stream = *token.stream;
++        if (stream.status != Status::Active) return;
++        if (token.index != MaxCalls) {
++            auto& call = stream.records[token.index];
++            call.resultKnown = true; call.result = result; call.returnNs = Now();
++        }
++        if (result < 0) { ++stream.failures; Close(stream, "sdl-queue-failure"); }
++        else if (stream.raw.captured == WindowFrames && stream.queued.captured == WindowFrames) Close(stream, "complete");
++    }
++    void Event(Stream* stream, const char* reason, bool drain = false, bool clear = false, bool failure = false) {
++        if (!stream) return;
++        std::lock_guard guard(lock);
++        if (stream->status != Status::Active) return;
++        stream->nullDrains += drain; stream->timeoutClears += clear; stream->failures += failure;
++        stream->eventOrdinal = stream->calls; stream->eventNs = Now(); Close(*stream, reason);
++    }
++    std::size_t Rejected() { std::lock_guard guard(lock); return rejected; }
++};
++inline Pool* Instance() {
++    static std::unique_ptr<Pool> pool = []() -> std::unique_ptr<Pool> {
++        if (!Enabled()) return nullptr;
++        std::uint64_t skipped = 0;
++        if (!ParseSkip(std::getenv("APS5_AUDIOOUT_INGRESS_SKIP_FRAMES"), skipped)) return nullptr;
++        const char* parent = std::getenv("APS5_AUDIOOUT_INGRESS_DIRECTORY");
++        try { return std::make_unique<Pool>(skipped, parent && *parent ? parent : "C:/anyps5-audio-captures"); }
++        catch (...) { return nullptr; }
++    }();
++    return pool.get();
++}
++inline Stream* Register(const Metadata& meta) { auto* pool = Instance(); return pool ? pool->Register(meta) : nullptr; }
++inline Token Raw(Stream* stream, const void* data, std::uint64_t frames) { return stream ? Instance()->Raw(stream, data, frames) : Token{}; }
++inline void Queued(Token& token, const void* data, std::uint32_t bytes, int cvt, bool copied, bool aliases) {
++    if (token.stream) Instance()->Queued(token, data, bytes, cvt, copied, aliases);
++}
++inline void Result(Token& token, int result) { if (token.stream) Instance()->Result(token, result); }
++inline void Event(Stream* stream, const char* reason, bool drain = false, bool clear = false, bool failure = false) {
++    if (stream) Instance()->Event(stream, reason, drain, clear, failure);
++}
++} // namespace AudioOutIngressTrace

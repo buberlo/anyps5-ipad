@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "combined_pixel_owned_and_legacy_audio_ingress_local_hle_build_private_preparation",
+  "status": "local_hle_package_25_host_suites_and_private_dependency_preparation_independently_verified",
+  "scope": "Historical source63 local host build and private preparation checkpoint. It does not record a new native app build, physical iPad execution, audio correction or performance acceptance.",
+  "source": {
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "numberedPatches": 63,
+    "coveredSourcePaths": 158,
+    "vendorPins": 11,
+    "patchSeriesForwardMatchesSnapshot": true,
+    "patchSeriesReverseRestoresPin": true,
+    "asBuiltBeforeAfterHashesMatch": true,
+    "source62Patch": {
+      "path": "patches/anyps5/0062-bounded-legacy-audioout-ingress-trace.patch",
+      "sha256": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370"
+    },
+    "source63Patch": {
+      "path": "patches/anyps5/0063-pixel-owned-eight-sample-color-tiling.patch",
+      "sha256": "89e3c0c990f99f8deb1cb42c0bd25e4aa630970ac5f124369cd30333e3016bb3"
+    }
+  },
+  "localBuild": {
+    "packageSha256": "5291c104ee11bc342c2d4cf9c886397b1bb48a56b314dfc0029720cd0175d7b5",
+    "binaryFiles": 53,
+    "hlePrxFiles": 50,
+    "compilerRuntimeDllFiles": 3,
+    "peMachine": "x86_64 Windows, 0x8664",
+    "buildType": "Release",
+    "slimBuild": true,
+    "timingLogsCompiledEnabled": false,
+    "agcCreateLogsCompiledEnabled": false,
+    "compiler": "Pinned MinGW GCC15.2 toolchain, local build and tests through Wine on macOS; no device FEX execution in this record.",
+    "toolchainClosure": "Independent review rehashed three pinned toolchain archives, nine compiler files and seven FFmpeg libraries, plus actual cached build outputs. Provenance and source closure are retained as anonymous artifact hashes.",
+    "buildMethod": "Existing verified local build tree and source61 inputs reused; source63/source62 changed translation units and four affected HLE libraries rebuilt. This is a complete hash-verified package, not a claimed from-scratch rebuild."
+  },
+  "hostValidation": {
+    "status": "PASS",
+    "totalSuiteRuns": 25,
+    "cpuApiSuiteRuns": 22,
+    "additionalSuiteRuns": [
+      "Actual write tracking",
+      "Actual resource snapshot",
+      "Complete Graphics test suite with MockDevice"
+    ],
+    "actualLogHashesVerified": 25,
+    "actualCommandHashesVerified": 25,
+    "buildAndTestExitReceiptsPassed": true,
+    "cpuApiScope": "Exceptions, formatting, thread-local state, environment, files, math/JSON, compatibility APIs, guest memory, shader alignment/waves and audio API layout/timing tests.",
+    "guestRaiseException": {
+      "deliveriesVerified": 451,
+      "integerStateVerified": true,
+      "asynchronousAvxChecks": "skipped",
+      "skipReason": "CPU feature or opt-in unavailable on this local Mac Wine host run. No AVX-state pass is claimed."
+    },
+    "ownWindowsExceptions": "Separate typed catch, base catch, catch-all, rethrow, destructors and cross-DLL exception test passed.",
+    "graphicsBoundary": "The complete Graphics host suite uses MockDevice. Its pass is not actual GPU rendering; actual native synthetic source63 GPU evidence is a separate focused record.",
+    "source62TraceDuringHostSuites": "Unset/default-off; bounded helper and deterministic SDL/CVT proof are separate.",
+    "additionalHostQualifierOptions": {
+      "APS5_GPU_COLOR_SAMPLE_STAGING_COPY": "1",
+      "APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED": "1",
+      "APS5_ZERO_STENCIL_INVARIANT": "1"
+    },
+    "deviceOrGameplayAccepted": false
+  },
+  "privatePreparation": {
+    "status": "prepared_and_dependency_audited_unexecuted",
+    "manifestSha256": "f3635f84d8bd42bcebf5b8ce167afbcdf5fbe1e18fb8344a0d87c2a5ee7148e9",
+    "manifestFiles": 137,
+    "physicalFilesIncludingManifest": 138,
+    "loadedHleRoots": 47,
+    "packagedLibraries": 51,
+    "selectedElfInputs": 6,
+    "guestNids": 3225,
+    "missingLibraries": 0,
+    "unresolvedGuestImports": 0,
+    "unresolvedGuestNids": 0,
+    "unresolvedNativeImports": 0,
+    "dependencyAuditPassed": true,
+    "sameGameExecutableAndFiveGuestModulesAsSource61": true,
+    "sameOriginalDumpAndLifecycleTools": true,
+    "changedFromSource61": "Only four HLE libraries and two preparation logs differ; game data, relinked game executable and five guest modules retain their bytes.",
+    "boundary": "PE imports/exports/ordinals/forwarders and local package closure were recomputed. A zero-unresolved audit does not establish implementation correctness or external Wine/system API runtime support."
+  },
+  "corrections": [
+    {
+      "kind": "source_path_count",
+      "initialExpectedPaths": 157,
+      "measuredAndVerifiedPaths": 158,
+      "correctedBeforeBuildExecution": true,
+      "reason": "AudioOut.cpp enters the union of patched source paths for the first time, alongside the three newly created source62/source63 paths."
+    },
+    {
+      "kind": "private_output_directory_label",
+      "reason": "The source-count replacement accidentally also changed a private output-parent label. The root atomically published an independently verified byte-identical copy at the intended location before any device execution.",
+      "allManifestAndPhysicalFilesByteExact": true,
+      "originalPackageDriverCommandAndReportsPreserved": true,
+      "reviewedDeviceWrapperUnchanged": true,
+      "titleDataAndPackageBytesChanged": false
+    },
+    {
+      "kind": "reviewer_evidence_lookup",
+      "reason": "Initial old source61 command-map count and command/log directory assumptions were corrected during the independent audit. The final review verified the retained 22 CPU command entries plus three separately recorded qualifier suites and their build command; those lookup assertions changed no artifacts."
+    }
+  ],
+  "plannedDeviceDiagnostic": {
+    "preparedNotExecutedInThisRecord": true,
+    "nativeBuildVersion": 50,
+    "hleSourceSeries": 63,
+    "featureDefaults": {
+      "APS5_TRACE_AUDIOOUT_INGRESS": "off unless exact1",
+      "APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED": "off unless exact1",
+      "APS5_GPU_COLOR_SAMPLE_STAGING_COPY": "off unless exact1"
+    },
+    "plannedOptions": {
+      "APS5_TRACE_AUDIOOUT_INGRESS": "1",
+      "APS5_GPU_COLOR_SAMPLE_PIXEL_OWNED": "0",
+      "APS5_GPU_COLOR_SAMPLE_STAGING_COPY": "0"
+    },
+    "rawAndQueuedSkipFrames": 10560000,
+    "rateHz": 48000,
+    "workerDeadlineSecondsAfterPoolInitialization": 265,
+    "maximumPlannedRunSeconds": 720,
+    "requireActualHleCompletedExportsAndWorkerClosedBeforeForcedOwnedProcessCleanup": true,
+    "scopeRestriction": "Source62 is a bounded metadata diagnostic, not an audio fix. Active-worker DLL detach can encounter a loader-lock join hazard; graceful/dynamic unload is not qualified. Completed exports/worker closure and forced owned-process cleanup are required by this planned diagnostic contract.",
+    "clockLimit": "Equal raw, queued, native and postmix numeric skip values do not prove cross-layer time or sample-phase alignment."
+  },
+  "separateFocusedRecords": [
+    {
+      "path": "docs/evidence/audioout-ingress-trace-focused-20261009.json",
+      "sha256": "2f3468d90ca045439b84be501d2adef6b695109cf4094649dded912f98f5a4e2"
+    },
+    {
+      "path": "docs/evidence/color-sample-pixel-owned-native-20261009.json",
+      "sha256": "3c34b04b068e1b4ed35dd2c122599d6ccf82c9462e5bd82db36305ce828abccd"
+    }
+  ],
+  "localArtifactReferences": [
+    {
+      "label": "sourceSeriesClosure",
+      "sha256": "23b51ccfde79d5ed154c43e316a450547a4be300f09d452044df86e70df032d8"
+    },
+    {
+      "label": "sourceSnapshotManifest",
+      "sha256": "ae1ca14c89a99a3a020fd1392024eebead95c17659ebebccc6f1aa48233451a0"
+    },
+    {
+      "label": "asBuiltSourceVerification",
+      "sha256": "95bdc248fcc66907054dff1e42da14e7ea36bc3d6334667b0001ad8e92df4131"
+    },
+    {
+      "label": "hleBuildProvenance",
+      "sha256": "ef5aa1abc8b68f3d45a6f6cd7d5e846200304de09d8c75d138bd6deb75d45e53"
+    },
+    {
+      "label": "verifiedLocalPackage",
+      "sha256": "25a71594841e6f9034bba4bbaa3cfb92195ae5e7afc1b4cd222bdbfbb943f01b"
+    },
+    {
+      "label": "host25LogMap",
+      "sha256": "acf3e7a2f720a20207f83ed1c41ce9292263e66398f180fb91a08a47ce1a05a9"
+    },
+    {
+      "label": "host25CommandMap",
+      "sha256": "ff27ddaa681f1f64537fa26194876640229a5cf2daaf0b3dcc839747a77f51af"
+    },
+    {
+      "label": "additionalHostQualifier",
+      "sha256": "d725162d446a291fbe75d8e5a9e4e954f8cc234f8fd5ae84fbe4a07c670b3705"
+    },
+    {
+      "label": "privatePreparationVerified",
+      "sha256": "7a84e9542aead89f24076fa1e834bf2c301ff425eeeb044f23cf606120a0ce16"
+    },
+    {
+      "label": "rootArchiveHostAndCorrectedInputVerification",
+      "sha256": "c08b49c249edbfd28e0e8ed2d4da9a04c16393178e938b9882b7c0e01d7abf47"
+    },
+    {
+      "label": "preflightCountCorrection",
+      "sha256": "34a827d92604559dd956cc43879224ae993b699cecbe85c2f6e046847b6fc1c5"
+    },
+    {
+      "label": "atomicPrivateDestinationCorrection",
+      "sha256": "60c5b24e42b9f1cbb2eddfcd972cf98b0b863439aada2bf354b2a4d08eb8bcc5"
+    },
+    {
+      "label": "privateManifest",
+      "sha256": "f3635f84d8bd42bcebf5b8ce167afbcdf5fbe1e18fb8344a0d87c2a5ee7148e9"
+    },
+    {
+      "label": "guestRaiseExceptionLog",
+      "sha256": "38cc7780b1d79e3cc605aff6bf913cb7e224ac4f2e84afcfa1d4bf0afe3798f0"
+    },
+    {
+      "label": "ownWindowsExceptionLog",
+      "sha256": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    {
+      "label": "independentBuildAndPrivatePreparationReview",
+      "sha256": "2fb179f3c380b0ccce0131b0a24bae94d627b28f025a7cbef8d2df2b087fecfc"
+    }
+  ],
+  "qualification": {
+    "sourceSeriesAndAsBuiltClosure": true,
+    "localHleLinkAndPePackage": true,
+    "host25Suites": true,
+    "privateDependencyPreparationAndCorrectedInput": true,
+    "nativeIpadAppBuildOrSigningInThisRecord": false,
+    "physicalIpadExecution": false,
+    "actualGpuExecutionInHostGraphicsSuite": false,
+    "generalDllUnloadOrGracefulTeardown": false,
+    "audibleAudioCorrection": false,
+    "ipadMemoryRssOrLifecycleAcceptance": false,
+    "matchedPerformanceGain": false,
+    "fullGameOrStable60FpsAcceptance": false
+  },
+  "publication": "Sanitized metadata, aggregate counts, public source/document paths and anonymous local artifact hashes only. Private game files, paths, captures and logs remain local.",
+  "githubActionsUsed": false
+}

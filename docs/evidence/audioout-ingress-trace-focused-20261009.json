@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "kind": "bounded_legacy_audioout_ingress_diagnostic_focused_source_qualification",
+  "status": "focused_source_checks_and_independent_review_passed_restricted_diagnostic_only",
+  "scope": "Historical focused source62 checkpoint; no full HLE/DLL linking, hardware execution, audible correction or performance qualification.",
+  "patch": {
+    "path": "patches/anyps5/0062-bounded-legacy-audioout-ingress-trace.patch",
+    "sha256": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+    "productionPaths": 2,
+    "isolatedForwardReverseByteExact": true
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAudioOut/src/AudioOut.cpp": {
+      "candidateSha256": "2b5e22662f2740663e068055bbbd89a3ca7ea0d641c33b02a7b200ed4e22982c"
+    },
+    "core/libs/prx/libSceAudioOut/src/AudioOutIngressTrace.hpp": {
+      "candidateSha256": "5ec79d0a7cf5888875f870cdab891a7fbcb71823917d9223c45b759b45389361"
+    }
+  },
+  "baselineAudioOutSha256": "31bd2a3b896ba8334455aaaf994fbb9bfd3d525089e896274abcafcf75d62945",
+  "workflowSha256": {
+    "scripts/check-audioout-ingress-trace.py": "3d7716fee2ef3c94b032ecb3961c0d563464cb13e5ee70ef750b16c096f85a52",
+    "tools/checks/audioout_ingress_trace.cpp": "6933296abd6b68a3bac66f2c3e892aac136a164d413453e8bb21776ab38f53ed"
+  },
+  "implementation": {
+    "enableVariable": "APS5_TRACE_AUDIOOUT_INGRESS",
+    "enabledOnlyByExactValue": "1",
+    "defaultEnabled": false,
+    "skipVariable": "APS5_AUDIOOUT_INGRESS_SKIP_FRAMES",
+    "skipDefaultFrames": 0,
+    "skipMaximumFrames": 28800000,
+    "skipParsing": "Strict ASCII unsigned decimal; invalid or out-of-range input prevents tracer setup.",
+    "directoryVariable": "APS5_AUDIOOUT_INGRESS_DIRECTORY",
+    "rawPlacement": "Immediately before the existing prepareBuffer call, before volume and channel mapping or SDL conversion.",
+    "queuedPlacement": "After the existing pacing wait, immediately before SDL_QueueAudio; records the actual converted or directly queued byte span and subsequent SDL return.",
+    "ordinals": "Raw and queued rate, channel format, frame/byte/sample ordinals, canonical block phase and clocks are independent. Equal skip values do not align them with native WASAPI or postmix.",
+    "metadata": "Port-generation and format metadata, SDL conversion result/size, null drains, queue timeout clears, conversion/queue failures, acceptance results and per-channel FNV fingerprints for up to eight channels.",
+    "canonicalBlockFrames": 1024,
+    "maximumFramesPerRawSide": 480000,
+    "maximumFramesPerQueuedSide": 480000,
+    "maximumCallsPerGeneration": 4096,
+    "maximumBlocksPerSide": 512,
+    "maximumUnrecycledGenerations": 16,
+    "maximumBytesPerCall": 2097152,
+    "maximumExportBytes": 8388608,
+    "hostObservedFixedPoolBytes": 9965248,
+    "poolAllocation": "Fixed metadata pool and worker created only with the exact opt-in; no retained PCM or PCM pointers.",
+    "admittedMetadata": "1000 through 384000 Hz, one through eight channels, 8/16/32-bit integer or 32-bit float; raw and queued formats are recorded separately.",
+    "duration": "480000 frames represent ten rendered seconds only at 48000 Hz. Other rates require rate-qualified interpretation and can end at the shared process deadline.",
+    "deadline": "Pool initialization plus floor(skip frames / 48000) and 45 wall-clock seconds; late-created ports share that deadline.",
+    "ownership": "Port-to-tracer lock ordering is one-way. The worker never enters Port, SDL or the game mutex. Closed, exporting and exported generations reject hooks; exports serialize immutable fixed-pool metadata outside the tracing lock.",
+    "privateExport": "Exclusive temporary creation, completed publication without clobbering existing files, and cleanup of owned partial writes. POSIX mode0600, existing-file and symlink controls passed; actual Windows/Wine filesystem behavior remains unqualified.",
+    "behavior": "Existing mapping, conversion, queued bytes, pacing waits/timeouts, errors and HLE return paths remain unchanged in the inspected source and deterministic fixture scope.",
+    "fingerprintLimit": "FNV equality is not source-byte identity, defect cause or source/native/postmix phase alignment.",
+    "audioFix": false,
+    "rawPcmRetainedOrExported": false,
+    "microphoneUsed": false,
+    "networkUsed": false,
+    "diagnosticCostMeasured": false
+  },
+  "focusedValidation": {
+    "status": "PASS",
+    "sanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "exactOptionCases": [
+      {
+        "value": null,
+        "enabled": false,
+        "checks": 1927
+      },
+      {
+        "value": "0",
+        "enabled": false,
+        "checks": 1927
+      },
+      {
+        "value": "yes",
+        "enabled": false,
+        "checks": 1927
+      },
+      {
+        "value": "01",
+        "enabled": false,
+        "checks": 1927
+      },
+      {
+        "value": "true",
+        "enabled": false,
+        "checks": 1927
+      },
+      {
+        "value": "1",
+        "enabled": true,
+        "checks": 3030
+      }
+    ],
+    "freshIndependentCheckCountsMatch": true,
+    "checked": "Actual old/new legacy prepareBuffer, queueAudio and Open registration use deterministic SDL, CVT and guest-clock adapters. Checks cover independent aggregate/per-channel byte oracles, canonical blocks across variable calls, unaligned guards, silent/volume/channel paths, limits and concurrent independent streams.",
+    "exportControls": {
+      "exclusiveExistingFileAndSymlinkChecks": 13,
+      "partialWriteFailureChecks": 4
+    },
+    "matchedNegative": {
+      "removed": "Actual raw-ingress hook only",
+      "exitCode": -6,
+      "detected": true
+    },
+    "actualOptimizedX86_64WindowsProductionTuSyntaxExit": 0,
+    "fullDllLinkOrExecution": false,
+    "independentReview": "Passed only for restricted bounded diagnostic; conditional unload hazard remains."
+  },
+  "restrictedRunContract": {
+    "plannedNotExecutedInThisRecord": true,
+    "rateHz": 48000,
+    "rawAndQueuedSkipFrames": 10560000,
+    "workerDeadlineSecondsAfterPoolInitialization": 265,
+    "workerWakeMilliseconds": 100,
+    "maximumPlannedRunSeconds": 720,
+    "requireActualCompletedExportAndWorkerClosedMarkersBeforeCleanup": true,
+    "cleanup": "Force termination of the owned test process after confirmed completed exports and worker closure; no graceful or dynamic DLL-unload acceptance.",
+    "rendererGates0061And0063Enabled": false,
+    "conditionalDllDetachHazard": "Function-static pool destruction joins its worker during DLL CRT teardown. If the worker is still active under the Windows/Wine loader lock, DLL unload or process detach can hang. General unload and teardown are unqualified; the exact disabled state creates no pool or worker."
+  },
+  "localArtifactReferences": [
+    {
+      "label": "frozenCandidate",
+      "sha256": "0f4b393dd8c1683e7d0a0ee5b6c01bbb099a18f2cc71e5150f8ae8da6930de19"
+    },
+    {
+      "label": "authorFocusedChecks",
+      "sha256": "1198427af77266e4af963617bdff6372723d12f687417e8e609d4d5891c75ff9"
+    },
+    {
+      "label": "authorWindowsTuSyntax",
+      "sha256": "f29e375512f1448f53e2a19e17707a28f50a2696712124263d2465fce3aeb46a"
+    },
+    {
+      "label": "authorPatchRoundtrip",
+      "sha256": "ef146b7e27a7736544aa5b73535a9a90b2f0beb0f91d05f9adac4ecb1d50fc9c"
+    },
+    {
+      "label": "independentCriticalReview",
+      "sha256": "1bc6dd4f57ad0a2bccf063230cfad7a48edb0e9fdab457a8818f4256fdeadd28"
+    },
+    {
+      "label": "freshIndependentFocusedChecks",
+      "sha256": "7bbc35aa8ab51bdd3913141c4ee8c8d92855185c308c4ef6cf9c26ecbcfecb90"
+    },
+    {
+      "label": "freshIndependentWindowsTuSyntax",
+      "sha256": "230be33c40c56719aa57ce36ab824baf05d1db74bfb55c0f05c6f4ae91b3f001"
+    },
+    {
+      "label": "freshIndependentPatchRoundtrip",
+      "sha256": "3fd448fa42f5200b4de3b3d82d1625bc84d34f7cecbfa590238d1d38988f99ac"
+    }
+  ],
+  "qualification": {
+    "focusedSourceAndParityFixture": true,
+    "exclusiveExportFailureControls": true,
+    "actualSdlResamplerOrGuestSourceOwnership": false,
+    "fullHleBuildOrDllLink": false,
+    "generalDllUnloadOrGracefulTeardown": false,
+    "physicalIpadExecution": false,
+    "audibleAudioCorrection": false,
+    "diagnosticOverheadOrPerformanceGain": false,
+    "fullGameOr60FpsAcceptance": false
+  },
+  "publication": "Sanitized source metadata, aggregate counts and anonymous artifact hashes only; no captured audio, raw fingerprints, private artifact paths or game data.",
+  "githubActionsUsed": false
+}

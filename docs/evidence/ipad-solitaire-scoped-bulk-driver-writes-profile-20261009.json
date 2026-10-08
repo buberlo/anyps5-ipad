@@ -1,0 +1,400 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "terminal_ipad53_diagnostic_profile_recorded_not_fps_qualified",
+  "candidate": {
+    "hostBuild": 47,
+    "patches": 53,
+    "buildEvidence": {
+      "path": "docs/evidence/scoped-bulk-driver-writes-build-20261008.json",
+      "sha256": "fe461a7003fad1fdfac1bde8cbef650968d49adc0f8ff6264ca3f9e7536c51a0"
+    },
+    "sourceSeriesSha256": "88186b4ae45654d14910232302d527ddfb2a6ca03adb4be6078469a38deead40",
+    "hleArchiveSha256": "053da53d38e4dd4cec9131d97e8e9150657dbe6533ad1897ab0b901d226f0d21",
+    "privateInstallationManifestSha256": "4e336b84b0a33d84a506f818de6eaa9b289734761946b54c4d10bb4a971723f5"
+  },
+  "run": {
+    "nominalRuntimeSeconds": 180,
+    "operationDurationSeconds": 197.138531917,
+    "normalMemoryTracking": true,
+    "exactOptions": {
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_FRAME_PIXEL_DIAGNOSTICS": "1",
+      "APS5_DRAW_TRANSITIONS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_PROFILE_DRAW": "1"
+    },
+    "selectedSourceGpuCaptures": {
+      "enabled": true,
+      "limit": 6,
+      "every": 16,
+      "scale": 4,
+      "finalSwapchainPixels": false
+    },
+    "frameGeneration": false,
+    "forcedTerminationAfterBoundedRun": true,
+    "guestExitCode": null,
+    "displayedFps": null
+  },
+  "rawEvidence": {
+    "logSha256": "9e603d1c152158032fda13cd82bad9761b6c6d4ceb19dc007637727fa8ee8bbc",
+    "receiptSha256": "9d4a4f1924360205a971073483b3e58f1918607264e212c5325e42cef9db3cbd",
+    "temporaryConfigurationSha256": "45a29e493f1e6091ec776215214d4d99022513b27ce6176f417e70f616e0c090",
+    "decodedLogLines": 35616,
+    "allDrawProfileRows": 17,
+    "scopedBulkMarker": {
+      "count": 1,
+      "logLine": 13113,
+      "bytes": 66846720,
+      "registeredMappings": 1
+    },
+    "SkippedDrawStringOccurrences": 0,
+    "AGCGraphicsErrorPrefixOccurrences": 0
+  },
+  "steadyProfile": {
+    "selectedRows": [
+      {
+        "logLine": 34475,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 731885,
+        "phaseTotalsMs": {
+          "validate": 2.2,
+          "vertex": 6.3,
+          "setup": 0.3,
+          "readTarget": 1168.8,
+          "prepare": 2259.7,
+          "lookup": 5.3,
+          "resources": 46.0,
+          "pipeline": 20.2,
+          "record": 25.3,
+          "keep": 4.2,
+          "sync": 175.2,
+          "writeBack": 3684.6
+        }
+      },
+      {
+        "logLine": 34611,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 734337,
+        "phaseTotalsMs": {
+          "validate": 2.1,
+          "vertex": 3.7,
+          "setup": 0.3,
+          "readTarget": 1169.1,
+          "prepare": 2259.3,
+          "lookup": 5.0,
+          "resources": 41.0,
+          "pipeline": 19.2,
+          "record": 25.0,
+          "keep": 4.1,
+          "sync": 194.9,
+          "writeBack": 3689.7
+        }
+      },
+      {
+        "logLine": 34736,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 732705,
+        "phaseTotalsMs": {
+          "validate": 2.1,
+          "vertex": 3.7,
+          "setup": 0.3,
+          "readTarget": 1160.0,
+          "prepare": 2261.2,
+          "lookup": 5.1,
+          "resources": 40.8,
+          "pipeline": 20.7,
+          "record": 25.1,
+          "keep": 4.1,
+          "sync": 178.1,
+          "writeBack": 3697.1
+        }
+      },
+      {
+        "logLine": 34915,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 734168,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.7,
+          "setup": 0.3,
+          "readTarget": 1165.3,
+          "prepare": 2256.4,
+          "lookup": 5.1,
+          "resources": 41.7,
+          "pipeline": 19.8,
+          "record": 24.5,
+          "keep": 4.1,
+          "sync": 194.5,
+          "writeBack": 3695.5
+        }
+      },
+      {
+        "logLine": 35042,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 731762,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.6,
+          "setup": 0.3,
+          "readTarget": 1161.7,
+          "prepare": 2256.3,
+          "lookup": 5.0,
+          "resources": 41.3,
+          "pipeline": 19.1,
+          "record": 24.2,
+          "keep": 4.1,
+          "sync": 177.8,
+          "writeBack": 3692.5
+        }
+      },
+      {
+        "logLine": 35169,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 732437,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.6,
+          "setup": 0.2,
+          "readTarget": 1169.0,
+          "prepare": 2257.9,
+          "lookup": 5.1,
+          "resources": 41.5,
+          "pipeline": 19.5,
+          "record": 25.7,
+          "keep": 4.1,
+          "sync": 171.7,
+          "writeBack": 3694.7
+        }
+      },
+      {
+        "logLine": 35343,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 732236,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.7,
+          "setup": 0.2,
+          "readTarget": 1165.3,
+          "prepare": 2262.1,
+          "lookup": 5.1,
+          "resources": 40.2,
+          "pipeline": 19.7,
+          "record": 24.9,
+          "keep": 4.1,
+          "sync": 183.3,
+          "writeBack": 3681.4
+        }
+      },
+      {
+        "logLine": 35469,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 731712,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.7,
+          "setup": 0.3,
+          "readTarget": 1158.7,
+          "prepare": 2261.9,
+          "lookup": 5.0,
+          "resources": 41.8,
+          "pipeline": 19.3,
+          "record": 24.6,
+          "keep": 4.1,
+          "sync": 180.8,
+          "writeBack": 3686.0
+        }
+      },
+      {
+        "logLine": 35592,
+        "draws": 250,
+        "recorded": 240,
+        "recordedWithCompletion": 30,
+        "synchronous": 10,
+        "residentLookups": 210,
+        "reportedSynchronousMeanUs": 731142,
+        "phaseTotalsMs": {
+          "validate": 2.0,
+          "vertex": 3.6,
+          "setup": 0.2,
+          "readTarget": 1158.9,
+          "prepare": 2259.5,
+          "lookup": 5.1,
+          "resources": 41.0,
+          "pipeline": 19.6,
+          "record": 24.4,
+          "keep": 4.0,
+          "sync": 184.7,
+          "writeBack": 3678.7
+        }
+      }
+    ],
+    "selection": "All nine late rows with 250 draws, 240 recorded and 10 synchronous draws, following the startup reports. Logger labels each report as over 10 s; no external wall-clock window qualification is implied.",
+    "phaseTotalsScope": "These totals include all 250 draws in each report, not just the 10 synchronous draws.",
+    "normalizedMedianPhaseTotalsMs": {
+      "validate": 0.2,
+      "vertex": 0.37,
+      "setup": 0.03,
+      "readTarget": 116.53,
+      "prepare": 225.95,
+      "lookup": 0.51,
+      "resources": 4.13,
+      "pipeline": 1.96,
+      "record": 2.49,
+      "keep": 0.41,
+      "sync": 18.08,
+      "writeBack": 368.97
+    },
+    "normalizationDenominator": "Phase totals divided by the 10 synchronous draws in each selected report; approximate workload attribution only, not directly measured per-frame or per-synchronous-draw phase costs.",
+    "medianReportedSynchronousMeanUs": 732236,
+    "pipelineCacheRows": [
+      {
+        "logLine": 34491,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 34626,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 34755,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 34930,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 35055,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 35188,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 35358,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 35487,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      },
+      {
+        "logLine": 35612,
+        "lookups": 260,
+        "hits": 250,
+        "misses": 0,
+        "privateNoVariantId": 10,
+        "evicted": 0,
+        "cached": 15
+      }
+    ]
+  },
+  "interpretation": {
+    "observed": "The selected aggregate phase totals are dominated by writeBack, prepare and readTarget. General pipeline timing is much smaller in this diagnostic run.",
+    "cacheObservation": "Each selected late cache report records 10 private lookups without variant IDs. Their association with the known factory path is a source-based explanation, not per-lookup runtime attribution.",
+    "qualification": "These measurements prioritize further investigation; they do not establish an optimization speedup, actual presentation FPS or gameplay acceptance."
+  },
+  "cleanup": {
+    "runtimeFilesRestoredAndHashCompared": 56,
+    "configuration": {
+      "byteExact": true,
+      "originalAndRestoredSha256": "521569085a121106b44b8319c1e61319de7e1ead3f45a86a56e5e14bfc89aa56"
+    },
+    "library": {
+      "byteExact": true,
+      "originalAndRestoredSha256": "2a6e98cbde2a0a7267c32093e1826474a798b92438233fe3c01be5508bc3961f"
+    },
+    "manifest": {
+      "byteExact": true,
+      "originalAndRestoredSha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714"
+    },
+    "ownHostTermination": "Confirmed successful SIGKILL after the bounded run; not a guest exit0.",
+    "ownChildTermination": "Termination request reported No such process.",
+    "bothOwnProcessesAbsentInSubsequentSuccessfulProcessList": true,
+    "processListSha256": "df7acb6d4265096b39f20c295a76b55c8b39556144fdd7a878c97c84e4e70a5c",
+    "hostTerminationReceiptSha256": "ade533c6decd948df919e8131e2f12b2ff340b8d19afe2d186de2a3361b00c7c",
+    "childTerminationReceiptSha256": "e107321321603a5b19f47e8ea7197f6ad25bb4aea6ef4a5b67588b8920660222"
+  },
+  "limits": [
+    "This is a diagnostic run with profiling, transitions and bounded source captures enabled; it is not the final benchmark configuration.",
+    "The phase normalization does not count displayed frames and cannot be converted into FPS. Nested phases must not be blindly added to other driver/presentation counters.",
+    "No matched scene, thermal state, presentation intervals or input/playability acceptance is established by this record.",
+    "No physical speed improvement for pipeline cache candidate54 or subsequent candidates is proven here.",
+    "Restoration and provenance refer to this closed historical run, not the current device installation or later source changes.",
+    "Private game files, source pixels, shaders, guest addresses, pairing, device identifiers and absolute private paths remain local."
+  ]
+}

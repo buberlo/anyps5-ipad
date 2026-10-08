@@ -18,9 +18,9 @@ device startup evidence. Patch0046's canonical rectangle guard is checked
 statically. Patch0047 adds restricted fixed-function color resolve; its production
 fragment and rectangle stages pass an isolated iPad GPU probe. Patch0048 fixes
 opaque descriptor inspection. Patch0049 adds bounded, default-off pixel statistics.
-All 53 patches are in a rebuilt 50-PRX package with 22 selected host suites passing;
-resource/full graphics host suites also pass. Freshly
-prepared baseline and control runs have no logged draw/AGC error. Their differing
+All 56 patches are in a rebuilt 50-PRX package with three runtime DLLs and 22
+selected host suites passing; resource/full graphics host suites also pass.
+Separate earlier baseline and control runs have no logged draw/AGC error. Their differing
 output narrows the recorded resident/synchronization path. The longer run has
 separate menu-frame evidence; its original input attempt remains unqualified.
 Patch0050's separate explicit-descriptor control stays white through the long
@@ -34,6 +34,20 @@ device run exercises a scope and shows a stock action changing Golf's waste card
 bulk-specific speed improvement and full gameplay remain unqualified. The bulk
 option stays default-off. Its HostWrite failure/identity repairs also apply to
 existing callers when that option is off.
+
+The latest source/build checkpoint adds patches0054–0056. The complete series
+applies and reverses across 142 paths. Exact
+`APS5_CACHE_COLOR_RESOLVE_PIPELINES=1` enables pipeline-only reuse keyed by the
+internal factory's complete generated resolve/rectangle SPIR-V; ordinary unknown
+shader and resource/recipe cache gates are unchanged. Exact
+`APS5_RAW_RESOLVE_SNAPSHOT=1` replaces the qualified source's detile/retile cycle
+with owned tiled backing, retaining complete range checks, pending-write flushes,
+post-copy stamps and recorder ownership. Both remain default-off. Patch0056
+always dispatches supported depth/stencil layouts to fixed-size raw texel copies;
+the existing AMD address equations and padding behavior remain unchanged.
+Native adapter/oracle and optimized-object checks pass, as do the full HLE and
+host suites. Their [source/build record](evidence/resolve-snapshot-depth-copy-build-20261009.json)
+does not qualify new device frames, tracking races, gameplay or a speed gain.
 
 Independent x86-64 programs through the installed Wine/FEX/MoltenVK stack pass
 exact production-code RGBA8 and S8 transfer tests on the M2 iPad. These establish

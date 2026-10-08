@@ -67,11 +67,16 @@ to existing HostWrite failure/identity handling. Its focused Windows fixtures,
 controlled iPad run exercises a bulk scope and shows Golf's waste changing after
 Y. Bulk-specific speed improvement, full gameplay and concurrent foreign CPU-write
 attribution remain unqualified.
+Patches0054–0056 add an opt-in exact-SPIR-V pipeline identity for internal resolve
+shaders, an opt-in owned raw tiled resolve snapshot, and fixed-size depth/stencil
+texel copies. The complete 56-patch series matches 142 paths; the full HLE rebuild
+and 22 host plus two graphics suites pass. Native correctness and object-code
+checks have separate scopes. Device behavior and speed require separate evidence.
 See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
 
-## Current MSAA integration checkpoint: 2026-10-08
+## Current MSAA integration checkpoint: 2026-10-09
 
 | Patch | Implemented behavior | Qualification |
 |---|---|---|
@@ -95,6 +100,9 @@ source, build, device and unqualified-path states.
 | 0051 | Default-off close-after-draw control, retaining GENERAL layouts, read-only snapshots and asynchronous batches | Production Windows syntax, 51-patch/139-path series, full HLE and host/graphics checks pass. One device marker proves exercise; five source captures and nominal 180-second physical image stay white. Negative experiment, default remains off. |
 | 0052 | Dispatch once per color Tile/Detile surface to literal-size 1/2/4/8/16-byte texel copies | Independent AMD layout/address oracle, original layout suite, ASan/UBSan and optimized MinGW negative-control checks pass. Full 52-patch/139-path series, 53 binary hashes and 22 host plus two graphics suites pass. Controlled device run visibly responds to Right/A, enters Golf and deals its board; card actions/full gameplay/FPS remain unqualified. |
 | 0053 | Opt-in full-copy HostWrite scopes retained by registered RW mapping leases; unconditional transactional HostWrite failure and identity repairs | Real shared mappings/tracker/native-copy fixture passes four exact-option runs and seven scope controls each; eligible copy faults fall from four to zero. Full 53-patch/141-path series, 53 binary hashes, 22 host plus two graphics suites pass. Device marker confirms exercise; Golf's waste changes after Y. Bulk remains default-off; bulk-specific speed, full gameplay and concurrent foreign CPU attribution unqualified. |
+| 0054 | Opt-in pipeline-only identity for internal fixed-function resolve shaders, keyed by exact generated fragment and canonical rectangle SPIR-V | Four sanitizer configurations pass; exact-one run checks 3,273 assertions with counted Vulkan mocks. Ordinary unknown shaders and resource/recipe cache gates remain unchanged. Full combined 56-patch HLE/host build passes; no measured device speed gain. |
+| 0055 | Opt-in owned raw tiled RGBA8 resolve-source snapshot, retaining pending flushes, complete range checks and post-copy write stamps | Four sanitizer configurations pass 12 cases each; exact-one run checks 198 assertions. Actual snapshot/layout code is tested with explicit flush/stamp mocks, not actual GPU alias or recycled-address tracking. Full combined HLE/host build passes; default remains off. |
+| 0056 | Dispatch once per depth/stencil Tile/Detile surface to literal-size raw 1/2/4-byte copies | Candidate and prior source pass 84 independent AMD layouts, 35,028,036 address comparisons and 48 guarded misaligned round trips. Optimized actual MinGW TU has zero hot CRT copy calls versus two prior calls. Full 56-patch/142-path series, 53 binary hashes and 22 host plus two graphics suites pass; no additional depth feature or accepted speed gain. |
 
 ## White selected-source comparison: patch0048
 
@@ -327,6 +335,49 @@ menu arrival/trace progress does not establish a speed gain, particularly becaus
 the unconditional API repairs also differ from 52. A matched 53 bulk-off control
 is needed for bulk-specific attribution. See the
 [physical stock-action checkpoint](evidence/ipad-solitaire-scoped-bulk-driver-writes-20261008.json).
+
+## Resolve snapshots and depth copies: patches0054–0056
+
+Patch0054 enables pipeline reuse only for the explicitly tagged internal resolve
+fragment on the canonical rectangle path and only for exact
+`APS5_CACHE_COLOR_RESOLVE_PIPELINES=1`. The key retains the complete generated
+fragment and TCS/TES words, with separate stage domains, alongside the existing
+pipeline/device/layout/state identity. It does not assign guessed variant IDs to
+ordinary shaders or admit zero-variant resource/recipe caches. Four sanitizer
+configurations use the actual production pipeline cache with counted Vulkan
+handles and a resource-layout adapter. Exact-one reuse, unknown-stage/tag
+rejections, held-on-clear lifetime and unowned eviction are tested; execution on
+the GPU and fence-bound resource lifetime are separate qualifications.
+
+Patch0055 enables `APS5_RAW_RESOLVE_SNAPSHOT=1` only for the existing strict RGBA8,
+R64KB_X, 2/4/8-sample source contract. `GuestMemory::Read` first flushes pending
+work and copies the complete checked source into owned aligned backing; the
+write stamp follows the successful copy. The resolve then uses that immutable
+tiled snapshot. Selected pixel diagnostics may detile the captured backing;
+the default path retains its detile/retile cycle. Existing validation, fault
+checks, rectangle coverage and recorder ownership remain active. Twelve native
+cases pass for each of unset, `0`, `1` and `yes`, with 198 assertions in the
+exact-one run. Flush and generation effects are counted mocks, so these checks
+do not prove actual GPU aliasing or tracker behavior at recycled host addresses.
+
+Patch0056 specializes the existing depth/stencil Tile/Detile loops by raw texel
+size once per surface. Literal-size 1/2/4-byte copies preserve alignment,
+address equations, sample indexing and untouched tiled padding. Candidate and
+prior source both pass the independent AMD AddrLib oracle under ASan/UBSan:
+84 layouts, 35,028,036 address comparisons and 48 guarded misaligned round trips.
+Optimized production MinGW object code removes the two hot imported `memcpy`
+calls. This adds no guest depth consumption, sampled depth or HTILE support.
+
+The combined 56-patch source applies and reverses across 142 paths. All 53 rebuilt
+binary hashes match the archive, and 22 selected host suites plus resource and
+full graphics validation pass. The first build's guest-memory test stops at an
+arena reservation conflict using the inherited `0x200000000` default. Repeating
+the identical source with the already qualified 53-checkpoint base
+`0x7400000000` passes; no code repair or test disablement is counted as a fix.
+Both new options remain default-off, while supported fixed-size depth copies
+are always used. No device or performance acceptance follows from this build.
+See the [combined source/build record](evidence/resolve-snapshot-depth-copy-build-20261009.json)
+and [focused pipeline-cache record](evidence/color-resolve-pipeline-cache-native-20261009.json).
 
 The exact RGBA8 and S8 device probes run original synthetic fixtures through
 Wine/FEX/MoltenVK, using the production transfer code. Their buffer-alias cases

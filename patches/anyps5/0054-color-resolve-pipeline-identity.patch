@@ -1,0 +1,104 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp
+@@ -11,10 +11,15 @@
+ 
+ inline constexpr std::uint32_t PipelinePushConstantBytes = 128;
+ 
++// Driver-owned factories can identify immutable compiled code for a pipeline
++// without admitting transient guest resources to the resource/recipe caches.
++enum class PipelineShaderIdentity : std::uint8_t { None, ColorResolveFragment };
++
+ struct CompiledShader {
+     ShaderRecompiler::ShaderStage stage;
+     const ShaderRecompiler::RecompileResult* program;
+     std::uint32_t pushConstantOffset;
++    PipelineShaderIdentity pipelineIdentity = PipelineShaderIdentity::None;
+ };
+ 
+ inline VkShaderStageFlagBits VulkanStage(ShaderRecompiler::ShaderStage stage) {
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp
+@@ -9,6 +9,7 @@
+ #include <cmath>
+ #include <cstdio>
+ #include <cstdlib>
++#include <cstring>
+ #include <list>
+ #include <mutex>
+ #include <type_traits>
+@@ -467,11 +468,29 @@
+ }
+ 
+ // Everything the Pipeline objects are built from, or empty when a stage's result has no variant id
+-// (the recompiler could not identify it, so nothing else may share its pipeline). The rect-list
++// (the recompiler could not identify it, so nothing else may share its pipeline). An explicitly
++// identified driver resolve factory may instead key its complete compiled words, under the
++// exact opt-in below; this identifies pipelines only, never descriptors or guest data. The rect-list
+ // control and evaluation stages are generated from the vertex and fragment results, which the key
+ // already names, so they carry no id of their own.
+ std::vector<std::byte> pipelineKey(const Context& context, const State& state, const VertexInputLayout& input, const ShaderResources& resources, std::span<const CompiledShader> shaders, VkImageLayout attachmentLayout, std::uint32_t sampleGroup) {
+     using Stage = ShaderRecompiler::ShaderStage;
++    const bool factory = std::any_of(shaders.begin(), shaders.end(), [](const CompiledShader& shader) {
++        return shader.pipelineIdentity != PipelineShaderIdentity::None;
++    });
++    if (factory) {
++        static const bool enabled = [] {
++            const auto* value = std::getenv("APS5_CACHE_COLOR_RESOLVE_PIPELINES");
++            return value != nullptr && std::strcmp(value, "1") == 0;
++        }();
++        if (!enabled || !state.rectList) return {};
++        unsigned fragments = 0;
++        for (const auto& shader : shaders) {
++            if (shader.pipelineIdentity == PipelineShaderIdentity::None) continue;
++            if (shader.pipelineIdentity != PipelineShaderIdentity::ColorResolveFragment ||
++                shader.stage != Stage::Fragment || ++fragments != 1u) return {};
++        }
++    }
+     std::vector<std::byte> key;
+     append(key, context.device);
+     append(key, attachmentLayout);
+@@ -485,12 +504,27 @@
+         append(key, state.samples.positions[sample].y);
+     }
+     append(key, shaders.size());
++    append(key, factory);
+     for (const auto& shader : shaders) {
+         Require(shader.program != nullptr, "missing compiled shader");
+         const bool generated = state.rectList && (shader.stage == Stage::TessellationControl || shader.stage == Stage::TessellationEvaluation);
+-        if (!generated && shader.program->variantId == 0) return {};
++        const bool content = factory && (generated || shader.pipelineIdentity == PipelineShaderIdentity::ColorResolveFragment);
++        if (!generated && !content && shader.program->variantId == 0) return {};
+         append(key, shader.stage);
+-        append(key, generated ? std::uint64_t{0} : shader.program->variantId);
++        append(key, content);
++        if (content) {
++            // The words actually consumed by vkCreateShaderModule, including
++            // patched image/fault bindings and generated rectangle interfaces.
++            // Exact key equality resolves hash collisions; addresses in the
++            // current descriptor metadata are deliberately absent.
++            const auto& words = shader.program->spirv.Words();
++            if (words.size() < 5u || words[0] != 0x07230203u) return {};
++            append(key, words.size());
++            const auto bytes = std::as_bytes(std::span(words));
++            key.insert(key.end(), bytes.begin(), bytes.end());
++        } else {
++            append(key, generated ? std::uint64_t{0} : shader.program->variantId);
++        }
+         // Where the stage's push constants sit in the block (AssemblePushConstants).
+         append(key, shader.pushConstantOffset);
+     }
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+@@ -103,7 +103,8 @@
+     using Stage = ShaderRecompiler::ShaderStage;
+     const std::array<CompiledShader, 4> shaders{{
+         {Stage::Vertex, &vertex, 0}, {Stage::TessellationControl, &rectangle.control, 0},
+-        {Stage::TessellationEvaluation, &rectangle.evaluation, 0}, {Stage::Fragment, &fragment, 0}
++        {Stage::TessellationEvaluation, &rectangle.evaluation, 0},
++        {Stage::Fragment, &fragment, 0, PipelineShaderIdentity::ColorResolveFragment}
+     }};
+     const auto reason = SplitRectListShaderRejection(shaders, target);
+     Require(reason.empty(), reason);

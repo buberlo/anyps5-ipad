@@ -1,10 +1,12 @@
 // Verify the production depth/stencil layout against the independently linked AMD AddrLib.
 #include "prx/libSceAgcDriver/Graphics/include/DepthTargetLayout.hpp"
 #include <addrinterface.h>
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 #include <stdexcept>
 #include <vector>
 
@@ -41,7 +43,8 @@ int main() {
     std::size_t addresses = 0, layouts = 0, roundTrips = 0;
     for (const auto bytes : {1u, 2u, 4u}) {
         for (const auto samples : {1u, 2u, 4u, 8u}) {
-            for (const auto extent : {std::array{1u, 1u}, std::array{257u, 129u},
+            for (const auto extent : {std::array{1u, 1u}, std::array{17u, 19u},
+                                     std::array{65u, 67u}, std::array{257u, 129u},
                                      std::array{1920u, 1080u}, std::array{3840u, 2160u}, std::array{16384u, 16384u}}) {
                 const auto width = extent[0], height = extent[1];
                 const auto plane = static_cast<DepthPlane>(bytes);
@@ -108,9 +111,17 @@ int main() {
                     ++addresses;
                 };
                 if (width <= 257u) {
-                    std::vector<std::byte> linear(actual.LinearBytes());
-                    std::vector<std::byte> tiled(actual.Bytes(), std::byte{0x5a});
-                    std::vector<std::byte> result(linear.size());
+                    // Odd prefix lengths deliberately misalign D16/D32 spans.
+                    // The copier must retain memcpy's byte alignment contract.
+                    constexpr std::size_t prefix = 31u, suffix = 33u;
+                    constexpr auto guard = std::byte{0xc7};
+                    std::vector<std::byte> linearStorage(prefix + actual.LinearBytes() + suffix, guard);
+                    std::vector<std::byte> tiledStorage(prefix + actual.Bytes() + suffix, guard);
+                    std::vector<std::byte> resultStorage(prefix + actual.LinearBytes() + suffix, guard);
+                    auto linear = std::span(linearStorage).subspan(prefix, actual.LinearBytes());
+                    auto tiled = std::span(tiledStorage).subspan(prefix, actual.Bytes());
+                    auto result = std::span(resultStorage).subspan(prefix, actual.LinearBytes());
+                    std::fill(tiled.begin(), tiled.end(), std::byte{0x5a});
                     std::vector<bool> visited(tiled.size() / bytes);
                     for (unsigned y = 0; y < height; ++y) {
                         for (unsigned x = 0; x < width; ++x) {
@@ -127,13 +138,27 @@ int main() {
                         }
                     }
                     actual.Tile(linear, tiled);
+                    // Independent logical sample indexing checks Tile directly;
+                    // a paired Tile/Detile ordering mistake cannot pass a round trip.
+                    for (unsigned y = 0; y < height; ++y) {
+                        for (unsigned x = 0; x < width; ++x) {
+                            for (unsigned sample = 0; sample < samples; ++sample) {
+                                const auto index = ((static_cast<std::size_t>(y) * width + x) * samples + sample) * bytes;
+                                assert(std::memcmp(tiled.data() + actual.Offset(x, y, sample), linear.data() + index, bytes) == 0);
+                            }
+                        }
+                    }
                     actual.Detile(tiled, result);
-                    assert(result == linear);
+                    assert(std::equal(result.begin(), result.end(), linear.begin()));
                     for (std::size_t i = 0; i < tiled.size(); ++i) {
                         if (!visited[i / bytes]) assert(tiled[i] == std::byte{0x5a});
                     }
                     rejects([&] { actual.Tile(std::span(linear).first(linear.size() - 1), tiled); });
                     rejects([&] { actual.Detile(std::span(tiled).first(tiled.size() - 1), result); });
+                    for (const auto* storage : {&linearStorage, &tiledStorage, &resultStorage}) {
+                        assert(std::all_of(storage->begin(), storage->begin() + prefix, [](auto value) { return value == guard; }));
+                        assert(std::all_of(storage->end() - suffix, storage->end(), [](auto value) { return value == guard; }));
+                    }
                     ++roundTrips;
                 } else {
                     // Check every pixel/sample of the actual required Z32/S8 target.

@@ -1,0 +1,58 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp
+@@ -93,25 +93,44 @@
+ 
+ void DepthTargetLayout::Detile(std::span<const std::byte> source, std::span<std::byte> destination) const {
+     require(source.size() == Bytes() && destination.size() == LinearBytes(), "AGC graphics: depth/stencil detile buffer size mismatch");
+-    for (std::uint32_t y = 0; y < height; ++y) {
+-        auto* row = destination.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
+-        for (std::uint32_t x = 0; x < width; ++x) {
+-            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+-                std::memcpy(row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, source.data() + offset(x, y, sample), elementBytes);
++    // Select the raw-plane copy size once per surface. Literal-size memcpy
++    // keeps byte alignment valid and avoids a CRT call for every sample.
++    const auto copy = [&]<std::size_t CopyBytes>() {
++        for (std::uint32_t y = 0; y < height; ++y) {
++            auto* row = destination.data() + static_cast<std::size_t>(y) * width * CopyBytes * samples;
++            for (std::uint32_t x = 0; x < width; ++x) {
++                for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                    std::memcpy(row + (static_cast<std::size_t>(x) * samples + sample) * CopyBytes, source.data() + offset(x, y, sample), CopyBytes);
++                }
+             }
+         }
++    };
++    switch (elementBytes) {
++        case 1u: return copy.template operator()<1u>();
++        case 2u: return copy.template operator()<2u>();
++        case 4u: return copy.template operator()<4u>();
++        default: throw std::runtime_error("AGC graphics: unsupported depth/stencil plane format");
+     }
+ }
+ 
+ void DepthTargetLayout::Tile(std::span<const std::byte> source, std::span<std::byte> destination) const {
+     require(source.size() == LinearBytes() && destination.size() == Bytes(), "AGC graphics: depth/stencil tile buffer size mismatch");
+-    for (std::uint32_t y = 0; y < height; ++y) {
+-        const auto* row = source.data() + static_cast<std::size_t>(y) * width * elementBytes * samples;
+-        for (std::uint32_t x = 0; x < width; ++x) {
+-            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+-                std::memcpy(destination.data() + offset(x, y, sample), row + (static_cast<std::size_t>(x) * samples + sample) * elementBytes, elementBytes);
++    // Leave tiled padding untouched, using the same raw-plane copies as Detile.
++    const auto copy = [&]<std::size_t CopyBytes>() {
++        for (std::uint32_t y = 0; y < height; ++y) {
++            const auto* row = source.data() + static_cast<std::size_t>(y) * width * CopyBytes * samples;
++            for (std::uint32_t x = 0; x < width; ++x) {
++                for (std::uint32_t sample = 0; sample < samples; ++sample) {
++                    std::memcpy(destination.data() + offset(x, y, sample), row + (static_cast<std::size_t>(x) * samples + sample) * CopyBytes, CopyBytes);
++                }
+             }
+         }
++    };
++    switch (elementBytes) {
++        case 1u: return copy.template operator()<1u>();
++        case 2u: return copy.template operator()<2u>();
++        case 4u: return copy.template operator()<4u>();
++        default: throw std::runtime_error("AGC graphics: unsupported depth/stencil plane format");
+     }
+ }
+ 

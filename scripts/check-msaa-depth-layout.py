@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--addrlib-source", type=Path, required=True)
 parser.add_argument("--addrlib-library", type=Path, required=True)
 parser.add_argument("--anyps5-source", type=Path, default=root / "upstreams/AnyPS5")
+parser.add_argument("--source-file", type=Path, help="Optional prior production layout TU for a guarded baseline run")
 args = parser.parse_args()
 source = args.anyps5_source.resolve()
 with tempfile.TemporaryDirectory(prefix="anyps5-depth-samples-") as scratch:
@@ -26,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix="anyps5-depth-samples-") as scratch:
         "-I" + str(source / "core/libs"), "-I" + str(source / "core/shader/recompiler"),
         "-I" + str(args.addrlib_source.resolve() / "inc"),
         str(root / "tools/checks/msaa_depth_layout_reference.cpp"),
-        str(source / "core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp"),
+        str((args.source_file or source / "core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp").resolve()),
         str(args.addrlib_library.resolve()), "-o", str(binary),
     ], check=True)
     subprocess.run([str(binary)], check=True, timeout=240)

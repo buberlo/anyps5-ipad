@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "focused_native_production_cache_and_windows_syntax_checks_passed_not_device_benchmarked",
+  "patch": {
+    "path": "patches/anyps5/0054-color-resolve-pipeline-identity.patch",
+    "sha256": "484e985e45c0df8edac49b22a0b8d02f99293cc5f29926a5f22d75883c8401ae",
+    "baseline": "Preserved source snapshot after patch53; no earlier patch rewritten",
+    "forwardReverseByteExact": true
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp": {
+      "beforeSha256": "5e4cad5b413421d28c038ec531dd70ec0b3f512a473077917114f656a77a44ec",
+      "afterSha256": "700a85177397b54079bbf7a1790f7dcd6fab6aec5321f52aa20265a7c7f68d0a"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp": {
+      "beforeSha256": "eae2a6107e43ce9b1ba259ffbe95e0ff160a13ce3597e39bb1484f8e25baa830",
+      "afterSha256": "0e3d95868023945b99fb24506b12e452b889f454505bb55a91621d0045003751"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": {
+      "beforeSha256": "897113e27a7eb751a7d6f0712f9e4101a2a74c469df86fa655dae982a926e64d",
+      "afterSha256": "0d332a1a49b72abc2d2bc07f69a773a116e69cc26289e0e50154bb3f34379393"
+    }
+  },
+  "change": {
+    "option": "APS5_CACHE_COLOR_RESOLVE_PIPELINES",
+    "enabledOnlyByExactValue": "1",
+    "default": "Off; unset, 0 and yes preserve private pipelines for the unknown factory variant and retain ordinary known-variant caching.",
+    "factoryTag": "Internal default-None CompiledShader identity, assigned only to the fragment emitted by RunColorResolve.",
+    "pipelineIdentity": "Distinct identity domain, exact post-binding-patch fragment SPIR-V and exact generated TCS/TES SPIR-V. Normal vertex variant, layout/state, sample configuration and device keys are retained.",
+    "resourceAdmission": "RecompileResult.variantId remains zero for the factory fragment and generated stages. Resource, recipe and validation cache gates are unchanged.",
+    "collisionHandling": "Existing exact byte-key equality remains mandatory; a hash mismatch/collision cannot reuse another compiled pipeline.",
+    "dynamicDescriptors": "Current image address and extent metadata are excluded from immutable pipeline identity; descriptor ownership and updates remain per draw."
+  },
+  "validation": {
+    "native": {
+      "productionTranslationUnits": 5,
+      "sanitizers": [
+        "AddressSanitizer",
+        "UndefinedBehaviorSanitizer"
+      ],
+      "realCacheImplementation": "Pipeline.cpp CachedPipeline and Pipeline constructor/destructor",
+      "boundary": "Vulkan object creation/destruction is counted by mocks; ShaderResources is an explicit immutable-layout adapter. No real GPU or resource build.",
+      "positiveShaderValidation": "The original VS, production 2/4/8-sample resolve factory and patched binding variant pass production ValidateShaders and canonical rectangle provenance.",
+      "cases": [
+        "identical actual factory and canonical rect tuple reuses one CachedPipeline",
+        "relocated source image address/width leaves same pipeline code and reuse",
+        "sample2/4/8 separation with actual ValidateShaders + canonical proof",
+        "patched image/fault binding separation with actual shader inspection",
+        "exact TCS and TES word mutation separation (cache-only negative controls)",
+        "unknown ordinary fragment and VS stay private",
+        "wrong stage, duplicate factory tag and nonrect state stay private (cache-policy controls)",
+        "all generated variant IDs stay zero",
+        "unowned LRU victim expires under bound pressure while held pipeline survives",
+        "cache removal retains caller-owned pipeline until its shared_ptr releases",
+        "cross-device and same-handle/new-buffer-pool identities do not reuse old objects",
+        "mock final Vulkan objects fully retired/destroyed",
+        "ordinary known variants still cache with the new option disabled"
+      ],
+      "exactOneAssertions": 3273,
+      "exactOneMockPipelineCreates": 280,
+      "runs": [
+        {
+          "option": null,
+          "exitCode": 0,
+          "logSha256": "8e8dc8f052f3e637a984767aa9d704c3e756edbdb981ef012ba2d5bcafe026b0"
+        },
+        {
+          "option": "0",
+          "exitCode": 0,
+          "logSha256": "53378c556fa61abca43ef848fdeb358dfcb2dc393b5be6524034fb6eecfea42b"
+        },
+        {
+          "option": "1",
+          "exitCode": 0,
+          "logSha256": "538b542bc6fc0d4cedd6d5088329db0509c4ec8ed1f6d9ce5e339600770b56ca"
+        },
+        {
+          "option": "yes",
+          "exitCode": 0,
+          "logSha256": "9dd8f58afd36dc4b9f9c1f414df333ccabcef5db5f42e8d24e1ced7c1c4e97c0"
+        }
+      ],
+      "sourceSha256": {
+        "core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp": "0e3d95868023945b99fb24506b12e452b889f454505bb55a91621d0045003751",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolveFragment.cpp": "3f46c40a73faba453443860c9718b3355a4659e0ff3a80b40ad79959e2f0a317",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ShaderValidation.cpp": "09725196d1ebfa6067f2ddec6d48f4c36929467bbbbd90099f2d47927d21ce0d",
+        "core/shader/recompiler/SpirvBackend/src/RectListShaders.cpp": "079909ce78b59ae696d5415ee3511dd59de0b6e2af3fbea3b9b4a26ec603c975",
+        "core/shader/recompiler/SpirvBackend/src/SpirvModule.cpp": "37708c30974f1d28465a88eb796f15d51b04d4c15917655cbb86e6935cdf1d1a",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp": "700a85177397b54079bbf7a1790f7dcd6fab6aec5321f52aa20265a7c7f68d0a",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Pipeline.hpp": "cc446637b029bf793d6c7c3f62c1ace5e36b2238c4ff5e4a56d672534b1c395c",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp": "756f3062aa3c9c5e15b2d732f06e8ac6f189e4a9bdac12fefd171385baba68b8",
+        "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorResolve_spv.h": "1c3ed53b162750eba76ffa0c399fac66bb25c215ddda32c2c60c84a29e985a17"
+      },
+      "fixture": {
+        "path": "tools/checks/color_resolve_pipeline_cache.cpp",
+        "sha256": "567fdbff8847c56800034acb6d026677807436e5900beab7a8e7c14146e1e5cb"
+      },
+      "script": {
+        "path": "scripts/check-color-resolve-pipeline-cache.py",
+        "sha256": "a164ce30bc6ef0b585b6647423bb0301cc0da77b84f09b6c5c4a85f2e49abcc9"
+      },
+      "executableSha256": "3f823be83f29d3adb07ccfdaab5a9d3b36544e965ea14b8765346ab5eedcf4cc",
+      "reportSha256": "af0389706f7d5a20e5d2f5bf129ea720d8e2635967cbe3676591ab4c6f831086"
+    },
+    "priorSourceNegativeControl": {
+      "source": "prior53 Pipeline.cpp with new header and identical fixture",
+      "exact1ExitCode": 1,
+      "reason": "exact opt-in pipeline reuse differs",
+      "logSha256": "8b88a9804195c0aaa18d4105f648e55cf8203a1f5afc9882ad4d4026e9d5de30",
+      "driverLogSha256": "b3014335d606db17394208e9c320bb48917c09554e1bfee765003cd3b6906bfc",
+      "pipelineSourceSha256": "eae2a6107e43ce9b1ba259ffbe95e0ff160a13ce3597e39bb1484f8e25baa830"
+    },
+    "windowsSyntax": {
+      "compiler": "Local MinGW g++",
+      "flags": [
+        "-std=c++20",
+        "-O2",
+        "-fsyntax-only"
+      ],
+      "productionTranslationUnits": [
+        "Pipeline.cpp",
+        "ColorResolve.cpp"
+      ],
+      "passed": true,
+      "sourceSha256": {
+        "core/libs/prx/libSceAgcDriver/Graphics/src/Pipeline.cpp": "0e3d95868023945b99fb24506b12e452b889f454505bb55a91621d0045003751",
+        "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": "0d332a1a49b72abc2d2bc07f69a773a116e69cc26289e0e50154bb3f34379393",
+        "core/libs/prx/libSceAgcDriver/Graphics/include/Shaders.hpp": "700a85177397b54079bbf7a1790f7dcd6fab6aec5321f52aa20265a7c7f68d0a"
+      },
+      "logSha256": "2e995ee1153f857ff35d2e327eb8c3eefcfe3b6d0dac8a8f46735409f1f06e0c",
+      "reportSha256": "cf81fa70ae559f4d1fff337da07d9f833e0758e0534c918c41a8c0fb3424f047"
+    },
+    "independentReadOnlyReview": "No blocking issue found; preserved snapshots and executable/fixture/script/production/run-log hashes independently matched."
+  },
+  "limits": [
+    "No iPad/GPU execution or measured speed improvement for candidate54 is established here.",
+    "The native fixture tests actual cache and mock Vulkan lifetimes with a layout boundary adapter, not full ShaderResources or Recorder fence behavior.",
+    "Altered header words and invalid stage/tag tuples test cache isolation directly; they do not claim production Draw accepts noncanonical or invalid geometry.",
+    "Production/source provenance refers to preserved patch54 snapshots; subsequent changes to ColorResolve.cpp do not establish current-source equivalence.",
+    "Runtime resource, alias, synchronization and visual qualification require separate device evidence."
+  ]
+}

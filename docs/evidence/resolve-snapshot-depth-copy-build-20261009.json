@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "combined54_56_source_build_and_private_preparation_verified_device_result_separate",
+  "source": {
+    "anyps5Pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "projectCommitAtBuild": "30f9118c73cde2db748beb0cb6e9c7ce48f252aa",
+    "checkedSourceDiffSha256": "a99149bc91f0a35e556a1f83c6d1945ebd4ee50da0a692811094cf0a0ad30bcf",
+    "patchCount": 56,
+    "checkedPaths": 142,
+    "forwardApply": true,
+    "matchesCheckedSource": true,
+    "reverseRestoresPin": true,
+    "seriesReportSha256": "c0d64cbd458f2ff3008de596da925d009d9e475009fba77cf1eddb2afc0f8b92",
+    "newPatches": {
+      "0054-color-resolve-pipeline-identity.patch": "484e985e45c0df8edac49b22a0b8d02f99293cc5f29926a5f22d75883c8401ae",
+      "0055-raw-tiled-resolve-snapshot.patch": "d441926685b714ecd71653402b93b863aa95818d7813868787c45efc2b44baa9",
+      "0056-inline-depth-texel-copies.patch": "ea599383cccda13a26c435876818f33d0256e559ed3ed878968ecf6f0fa59ced"
+    }
+  },
+  "changes": {
+    "0054": {
+      "option": "APS5_CACHE_COLOR_RESOLVE_PIPELINES",
+      "enabledOnlyByExactValue": "1",
+      "default": "Off",
+      "scope": "Pipeline-only internal factory identity; exact post-binding fragment and canonical TCS/TES SPIR-V keys. Unknown ordinary shaders and zero-variant resource/recipe cache gates remain unchanged.",
+      "focusedEvidence": "docs/evidence/color-resolve-pipeline-cache-native-20261009.json"
+    },
+    "0055": {
+      "option": "APS5_RAW_RESOLVE_SNAPSHOT",
+      "enabledOnlyByExactValue": "1",
+      "default": "Off",
+      "scope": "Strictly qualified RGBA8 R64KB_X 2/4/8-sample source copied as one owned immutable tiled snapshot through GuestMemory::Read, retaining pending flush, complete range checks and post-copy driver stamps. Default path retains detile/retile. Diagnostics detile captured backing only for selected events.",
+      "native": {
+        "status": "production_snapshot_native_adapter_checks_passed",
+        "options": [
+          null,
+          "0",
+          "1",
+          "yes"
+        ],
+        "allExitCodes": 0,
+        "casesPerOption": 12,
+        "exactOneAssertions": 198,
+        "sourceSha256": {
+          "core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp": "2863c45e090e39f91e447e454c86ab1dffaff951bb3534867113690d1e35a6d0",
+          "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetTransfer.cpp": "d3680251bfbea4728b214d89d0dace66e0295bc12cf067960d52087b7f8632bc",
+          "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83",
+          "core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp": "ab05beb4d3fc2f44816f394018246f53c68ea9030eb9dd6fb4594aa85a719225",
+          "core/libs/prx/libSceAgcDriver/Graphics/include/ColorTargetLayout.hpp": "f917553f9039b54063ed3d73aa224427a76d8401d6c822bd47c39b3af2b6237e"
+        },
+        "fixture": {
+          "path": "tools/checks/raw_color_resolve_snapshot.cpp",
+          "sha256": "75b1b4321d9d287f21db9908f6b6412c19378db517d6180832d008ea8d47700b"
+        },
+        "adapter": {
+          "path": "tools/checks/color_target_samples_memory_adapter.cpp",
+          "sha256": "0330f7d988c07f64ab4069df16dd4cd60667e930e2f2aedc31aed1841473224b"
+        },
+        "script": {
+          "path": "scripts/check-raw-color-resolve-snapshot.py",
+          "sha256": "0c32bf1ce49ea46ab0af8d70aa4bfbb89743bb0c0fbe200d6d9dc6d3c3694773"
+        },
+        "executableSha256": "b845fa0f2b450a93c5e5917eca868a8092f007782ac94ec7d4a5534d9d15d837",
+        "runs": [
+          {
+            "option": null,
+            "exitCode": 0,
+            "logSha256": "16169a920ad785f25b9f09a02d73695b3ebab4596da646297fa86d72c8729a06"
+          },
+          {
+            "option": "0",
+            "exitCode": 0,
+            "logSha256": "16169a920ad785f25b9f09a02d73695b3ebab4596da646297fa86d72c8729a06"
+          },
+          {
+            "option": "1",
+            "exitCode": 0,
+            "logSha256": "698f2d09c23056ea00d2080fd6bf6ce0411c9a8f29bccd81c02bddd6de12318d"
+          },
+          {
+            "option": "yes",
+            "exitCode": 0,
+            "logSha256": "16169a920ad785f25b9f09a02d73695b3ebab4596da646297fa86d72c8729a06"
+          }
+        ],
+        "reportSha256": "a0cd24e22e06963162ba4fb31d17430f03a05df5fd32ea836d6f25e4dcd49ec6",
+        "boundary": "Actual production snapshot/layout/transfer code and native mapped-range checks under ASan/UBSan; pending-GPU flush and generation stamps are explicit counted mocks. No actual GPU alias, tracker recycled-address or Recorder-fence proof."
+      }
+    },
+    "0056": {
+      "default": "Fixed-size copies are always used for supported planes",
+      "scope": "Dispatch once per depth/stencil Tile/Detile surface to literal-size raw1/2/4-byte memcpy; equations, sample indexing, pitch, byte alignment and untouched tiled padding remain unchanged.",
+      "production": {
+        "path": "core/libs/prx/libSceAgcDriver/Graphics/src/DepthTargetLayout.cpp",
+        "sha256": "06843a14809722b92a482294411f262aab90501c8b3231fda81807d2a6bdb8e9"
+      },
+      "native": {
+        "independentReference": "AMD AddrLib at PAL c5e800072a32f68b6ccc4422936d96167c6e0728",
+        "referenceLibrarySha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+        "candidateAndPriorSourcePassed": true,
+        "sanitizers": [
+          "ASan",
+          "UBSan"
+        ],
+        "layoutsPerRun": 84,
+        "coordinateSampleComparisonsPerRun": 35028036,
+        "guardedMisalignedRoundTripsPerRun": 48,
+        "errors": 0,
+        "scope": "All S8/D16/D32 plane and1/2/4/8 sample combinations; small surfaces have complete byte/guard/padding checks. Required1920x1080 S8/D32 at8 samples have exhaustive address comparisons; larger extents use metadata/boundary/random offsets."
+      },
+      "optimizedWindows": {
+        "compiler": "local MinGW GCC",
+        "flags": "-O3 -DNDEBUG",
+        "candidateHotCrtCopyMentions": 0,
+        "priorSourceHotMemcpyMentions": 2,
+        "candidateObjectSha256": "48242131160145a711583f7cf515c8647b9370721bcc88fa57d5899e500e4d3f",
+        "priorSourceObjectSha256": "2f6d43a4c615202d1bae4c85dfae6e7c3f459568f3dae79492c426939f2801aa",
+        "boundary": "Actual production TU object code, not execution or a measured speed gain."
+      },
+      "patchForwardReverseByteExact": true
+    }
+  },
+  "hleBuild": {
+    "archiveSha256": "05be830f8cc2e211d2d52d5d5a3364381169e9c3ce2e994fb307ff5b56d1b3c3",
+    "provenanceSha256": "30539b710ea4573ea4bfacf4e7be0c0c4e922a13da44d6e5b4685ccf3cb0104f",
+    "archiveBinaryHashesVerified": 53,
+    "prxImplementations": 50,
+    "runtimeDlls": 3,
+    "configuration": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "hostRuntime": "local desktop Wine",
+    "hostSuitesPassed": [
+      "windows_exception_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_compatibility_api_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "additionalGraphicsSuitesPassed": [
+      "guest-write resource classification",
+      "full graphics validation"
+    ],
+    "testLogHashesVerified": 24,
+    "testLogSha256": {
+      "test-audio_out2_latency_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out2_pad_mix_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-audio_out2_port_layouts_tests.log": "5c03f6d5e1d5e33306d7cc06575574343bb9f0f7179969cc954fcc4234a9466b",
+      "test-audio_out2_timing_tests.log": "075736bf1bfa27979b10de77a8bcae53d40e46810361fa8a936e52c003d90ca7",
+      "test-audio_out_last_output_time_tests.log": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104",
+      "test-audio_out_mix_level_pad_spk_tests.log": "8700e5776ac156d2e6887422435009a8444a415e227fa129bd03abb1b9a28446",
+      "test-file_position_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_compatibility_api_tests.log": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994",
+      "test-guest_environment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_filesystem_tests.log": "a0e2099e10db773cdb7c35145caf24f6b22648395b786331b856cdc1a970b52b",
+      "test-guest_formatting_tests.log": "5cfaa9635dc8c12ce026fad96a86291a724f4edb599dfbac3e683b16d8ecbbc4",
+      "test-guest_json2_initialization_tests.log": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57",
+      "test-guest_json_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_math_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-guest_memory_tests.log": "ca5a5f926bf2eff43a4d6ce319a434cd54ee4cce34380ce4fc80f57cc410498a",
+      "test-guest_pthread_attr_tests.log": "bac4165e384fa0796c66b1524decf4b85fc4da053291b9cd2a5c4ac2ff3ef297",
+      "test-guest_raise_exception_tests.log": "185c91e41a6f5c60f3a2449ad827adb2d303b39ea07c152adc832f070b095db8",
+      "test-guest_shader_alignment_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-host_thread_local_tests.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test-resolve-snapshot-depth-copy-full-graphics.log": "bcea643a8c656209f56442aa14175d8c33f24dfdeba24606ba02f9e24870dfd1",
+      "test-resolve-snapshot-depth-copy-resource.log": "cdaa9bdf72e01dee6a0731c964ccf9f0c9c05b540d2f98cf4f6fd0dcc02935e0",
+      "test-uniform_wave_branch_tests.log": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde",
+      "test-wave32_wide_subgroup_tests.log": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00",
+      "test-windows_exception_tests.log": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    "testArena": {
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000"
+    },
+    "initialAttempt": {
+      "status": "failed_before_archive_export",
+      "exitCode": 3,
+      "failingTest": "guest_memory_tests",
+      "cause": "Fixed guest arena reservation conflict at0x200000000",
+      "logsPreserved": true,
+      "diagnosisSha256": "6c166a27257929afac405327272638dac1e41478e32c3c397b053041787c292c",
+      "resolution": "Re-run identical source with the already-qualified53 baseline arena at0x7400000000; no source repair or test/validation disablement."
+    }
+  },
+  "privatePreparation": {
+    "fileHashesVerified": 137,
+    "explicitHleDependencies": 47,
+    "relinkedElfInputs": 6,
+    "importClosurePassed": true,
+    "missingLibraries": 0,
+    "unresolvedGuestImports": 0,
+    "unresolvedGuestNids": 0,
+    "unresolvedNativeImports": 0,
+    "gameDataPublished": false,
+    "status": "matched_tools_prepared_and_hash_verified_device_result_separate",
+    "manifestSha256": "ca5d6788f23f4e46cafbd79642dd294b06dfc6908999634b4377c303673e5b66",
+    "matchedPrior53HostToolHashes": {
+      "relinker": "df874acf32e9f1e017a89b43f00a26c4855effa4207acc16ea14d7b07c42ccfe",
+      "nidPatcher": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee"
+    },
+    "changedRuntimeBinariesFrom53": 3,
+    "gameAndFiveGuestModuleHashesUnchangedFrom53": true,
+    "priorPreparation": {
+      "status": "superseded_after_preflight_tool_difference",
+      "preflightStoppedBeforeRuntimeOrConfigurationSwap": true,
+      "changedGuestModuleHeaders": 5,
+      "difference": "Stale default native host tools changed DLLCharacteristics; preparation was repeated with exact prior53 tools."
+    }
+  },
+  "relatedHistoricalProfile": "docs/evidence/ipad-solitaire-scoped-bulk-driver-writes-profile-20261009.json",
+  "qualification": {
+    "fullHleBuilt": true,
+    "hostSuitesPassed": true,
+    "privatePackagePrepared": true,
+    "nativeAppRebuiltByThisCheckpoint": false,
+    "deviceResultAccepted": false,
+    "displayedFps": null,
+    "optimizationSpeedupAccepted": false,
+    "gameplayAccepted": false,
+    "githubActionsUsed": false
+  },
+  "limits": [
+    "This source/build record does not qualify the separate physical-device session using the matched-tools package; its terminal log, visible output, controls and restoration require a separate record.",
+    "The existing144-case factory regression was reported passing in tool output, but no fresh output artifact was preserved for this checkpoint; it is not presented as new GPU or archived-native evidence.",
+    "Candidate54 uses counted Vulkan mocks and a ShaderResources layout adapter; candidate55 mocks pending flush and write-generation effects; candidate56 is byte/layout plus optimized-object evidence.",
+    "The combined package is not a matched one-change performance experiment. No constant60FPS, audio/save/load/background or complete-game acceptance follows from these checks.",
+    "Private assets, shader captures, pairing information, device identifiers and raw runtime logs remain local."
+  ]
+}

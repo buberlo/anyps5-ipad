@@ -1,0 +1,127 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+index 8b9dea8..61db101 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorResolve.cpp
+@@ -4,6 +4,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/SplitDrawShaderValidation.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/GuestMemory.hpp"
+ #include <algorithm>
++#include <atomic>
+ #include <cstring>
+ #include <limits>
+ #include <new>
+@@ -59,6 +60,53 @@ void ColorResolveReference(const ColorResolvePass& pass,
+     }
+ }
+ 
++ColorResolveSnapshot CaptureColorResolveSource(const ColorTarget& source, bool diagnostics) {
++    // This helper has the same strict source qualification as RunColorResolve.
++    auto validation = ColorResolvePass{source, source};
++    validation.destination.samples = validation.destination.fragments = 1u;
++    validation.destination.bytes = ColorTargetLayout(source.extent.width, source.extent.height,
++        source.tileMode, source.elementBytes, 1u).Bytes();
++    ValidateColorResolve(validation);
++    const ColorTargetLayout layout(source.extent.width, source.extent.height,
++                                   source.tileMode, source.elementBytes, source.samples);
++    static const bool raw = [] {
++        const char* value = std::getenv("APS5_RAW_RESOLVE_SNAPSHOT");
++        return value != nullptr && std::strcmp(value, "1") == 0;
++    }();
++    ColorResolveSnapshot result;
++    result.source = source;
++    const auto alignment = std::align_val_t(65536);
++    result.backing = {static_cast<std::byte*>(::operator new(source.bytes, alignment)),
++        [alignment](std::byte* memory) { ::operator delete(memory, alignment); }};
++    result.source.address = result.source.surfaceAddress = reinterpret_cast<std::uintptr_t>(result.backing.get());
++    auto bytes = std::span<std::byte>(result.backing.get(), static_cast<std::size_t>(source.bytes));
++    if (raw) {
++        GuestMemory::CheckRange(bytes.data(), bytes.size(), layout.Alignment(), true);
++        // Read keeps the existing pending-GPU flush and complete mapped-range
++        // validation. Never flush from inside the guest write-tracker lock.
++        GuestMemory::Read(source.address, bytes, layout.Alignment());
++        // Host allocations can recycle an address the tracker has seen. Keep
++        // driver-generation invalidation after the complete successful copy.
++        GuestMemory::MarkWritten(result.source.address, bytes.size());
++        result.rawCopy = true;
++        if (diagnostics) {
++            result.diagnosticPixels.resize(layout.LinearBytes());
++            layout.Detile(bytes, result.diagnosticPixels);
++        }
++        static std::atomic<bool> reported{false};
++        if (!reported.exchange(true, std::memory_order_relaxed))
++            std::fprintf(stderr, "[resolve-snapshot] raw tiled snapshot executed bytes=%llu; pending flush, immutable backing and write stamps retained\n",
++                static_cast<unsigned long long>(source.bytes));
++    } else {
++        std::vector<std::byte> linear(layout.LinearBytes());
++        ReadColorTarget(source, linear);
++        std::memset(bytes.data(), 0, bytes.size());
++        WriteColorTarget(result.source, linear);
++        if (diagnostics) result.diagnosticPixels = std::move(linear);
++    }
++    return result;
++}
++
+ void RunColorResolve(const Context& context, const ColorResolvePass& pass,
+     const State& raster, const Pm4::DrawParameters& draw,
+     const ShaderRecompiler::RecompileResult& vertex,
+@@ -72,13 +120,10 @@ void RunColorResolve(const Context& context, const ColorResolvePass& pass,
+             "CB resolve requires one direct three-vertex rectangle");
+     // Read through the production flush hook before the destination can change:
+     // pending GPU writes land first, including when source and destination alias.
+-    const ColorTargetLayout layout(pass.source.extent.width, pass.source.extent.height,
+-                                   pass.source.tileMode, 4u, pass.source.samples);
+-    std::vector<std::byte> linear(layout.LinearBytes());
+-    ReadColorTarget(pass.source, linear);
+     const auto pixelEvent = FramePixelDiagnosticEvent(FramePixelDiagnosticStage::Resolve);
++    auto captured = CaptureColorResolveSource(pass.source, pixelEvent.has_value());
+     if (pixelEvent) {
+-        const auto stats = SampleFramePixels(linear, pass.source.extent.width,
++        const auto stats = SampleFramePixels(captured.diagnosticPixels, pass.source.extent.width,
+             pass.source.extent.height, pass.source.samples);
+         PrintFramePixelStatistics("resolve-source", *pixelEvent, pass.source.address,
+             pass.destination.address, pass.source.extent.width, pass.source.extent.height,
+@@ -91,14 +136,7 @@ void RunColorResolve(const Context& context, const ColorResolvePass& pass,
+             raster.scissor.extent.width, raster.scissor.extent.height, raster.cullMode,
+             static_cast<unsigned>(raster.frontFace), raster.blends.at(raster.color.exportIndex).colorWriteMask);
+     }
+-    const auto alignment = std::align_val_t(65536);
+-    auto snapshot = std::shared_ptr<std::byte>(static_cast<std::byte*>(::operator new(pass.source.bytes, alignment)),
+-        [alignment](std::byte* memory) { ::operator delete(memory, alignment); });
+-    std::memset(snapshot.get(), 0, pass.source.bytes);
+-    auto immutable = pass.source;
+-    immutable.address = immutable.surfaceAddress = reinterpret_cast<std::uintptr_t>(snapshot.get());
+-    WriteColorTarget(immutable, linear);
+-    auto fragment = BuildColorResolveFragment(immutable, vertex);
++    auto fragment = BuildColorResolveFragment(captured.source, vertex);
+     auto rectangle = ShaderRecompiler::BuildRectListShaders(vertex, fragment, target);
+     using Stage = ShaderRecompiler::ShaderStage;
+     const std::array<CompiledShader, 4> shaders{{
+@@ -121,7 +159,7 @@ void RunColorResolve(const Context& context, const ColorResolvePass& pass,
+     // Retain the guest-address backing at least through every recorded upload
+     // and read. A synchronous draw already finished; a later batch keeps it
+     // until all earlier work on this queue has completed.
+-    if (context.recorder != nullptr) context.recorder->Keep(snapshot, pass.source.bytes);
++    if (context.recorder != nullptr) context.recorder->Keep(captured.backing, pass.source.bytes);
+ }
+ 
+ }
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp
+index 7d0283e..5fed42a 100644
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorResolve.hpp
+@@ -14,6 +14,15 @@ ShaderRecompiler::RecompileResult BuildColorResolveFragment(
+     const ColorTarget& source, const ShaderRecompiler::RecompileResult& vertex);
+ void ColorResolveReference(const ColorResolvePass& pass,
+     std::span<const std::byte> source, std::span<std::byte> destination);
++// Private source backing survives source/destination aliasing and later queued
++// draws. Optional diagnostic pixels are taken from that same captured source.
++struct ColorResolveSnapshot {
++    ColorTarget source;
++    std::shared_ptr<std::byte> backing;
++    std::vector<std::byte> diagnosticPixels;
++    bool rawCopy = false;
++};
++ColorResolveSnapshot CaptureColorResolveSource(const ColorTarget& source, bool diagnostics);
+ // Uses the actual guest vertex program and canonical rectangle stages. The
+ // normal draw path loads destination contents, preserving uncovered pixels.
+ void RunColorResolve(const Context& context, const ColorResolvePass& pass,

@@ -162,3 +162,35 @@ per-game environment settings; host settings must be applied before Wine starts.
 The optional MoltenVK stability series and FEX VirtualProtect experiment are
 excluded from the default build. Neither a HUD value nor the selected three-image
 profile establishes sustained 60 unique game images per physical refresh.
+
+## Solitaire diagnostic profile and candidates0054–0056
+
+The separate 53-patch diagnostic run records nine late profile intervals with
+250 draws each: 240 recorded and ten synchronous. Dividing each interval's
+aggregate phase totals by its ten synchronous draws gives median diagnostic
+values of 116.53 ms for `readTarget`, 225.95 ms for `prepare`, 368.97 ms for
+`writeBack`, 1.96 ms for pipeline lookup/construction and 18.08 ms for `sync`.
+The totals include work across all 250 draws. These normalized aggregates are
+neither isolated per-frame measurements nor FPS; profiling, transition controls
+and captures are active. See the [bounded physical profile](evidence/ipad-solitaire-scoped-bulk-driver-writes-profile-20261009.json).
+
+The grouped CPU path makes the expensive work explicit: target reads detile
+guest color samples, preparation creates or acquires transfer resources, and
+writeback tiles color/stencil samples before guest-memory writes. The new
+candidates address narrower parts of that work. Patch0054's internal resolve
+pipeline cache avoids repeated construction for identical generated SPIR-V;
+the small pipeline total alone cannot justify a large speed prediction.
+Patch0055's owned tiled resolve-source snapshot avoids that resolve's CPU
+detile/retile cycle, but does not remove the producer Draw path's readTarget or
+writeBack transfers. Patch0056 replaces variable-size depth/stencil inner-loop
+copies with literal-size copies, removing imported CRT transitions while keeping
+every sample and padding rule.
+
+Only exact `APS5_CACHE_COLOR_RESOLVE_PIPELINES=1` and
+`APS5_RAW_RESOLVE_SNAPSHOT=1` enable the first two candidates; both default off.
+Supported fixed-size depth copies are always used. Focused native checks and
+the combined 56-patch HLE/host build pass, with separate mock/oracle boundaries.
+The package combines three changes and is not a matched one-change benchmark.
+No device speed improvement or constant-60-FPS acceptance is recorded here.
+[Pipeline-cache checks](evidence/color-resolve-pipeline-cache-native-20261009.json),
+[combined source/build qualification](evidence/resolve-snapshot-depth-copy-build-20261009.json).

@@ -1,0 +1,459 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "exception_memory_interpolation_contract_repairs",
+  "source_base_commit": "41215c56cae1d1deacc548ab2d36cd51f48fd935",
+  "upstream_pin": "df16c4c256be3c44e03eb9149a6ce5f8e8a038b2",
+  "patch_series": {
+    "schema": 1,
+    "pin": "df16c4c256be3c44e03eb9149a6ce5f8e8a038b2",
+    "patches": 29,
+    "touched_files": 69,
+    "forward_applied": true,
+    "matches_candidate_sources": true,
+    "reverse_restores_pin": true,
+    "hashes": {
+      "0001-guest-arena-lazy.patch": "69fb86c5b9f7bba0de4a7acf0976e83716c7605d92293cb89ff104a8fbe80d35",
+      "0002-vulkan-portability.patch": "eacc53733b9006f26ba68eb8df4fec3d56ad50dc5c91923bc6a1990de04e819d",
+      "0003-mingw11-getthreaddescription.patch": "5c81b691e5f95607cbb19784b7938c84d855fe17087781b44e06894130590f0e",
+      "0004-slim-vulkan-loader.patch": "97c56e33e16b784283b05243c2fe304ebcb833f1eab13549d1dd42b1a9c75370",
+      "0006-invariant-masked-shift.patch": "3a54ab0d3d7ff4a56eb96d763ec0bab70e16fbf99bad3848c2335f0e5a73197f",
+      "0007-validated-fixed-function-interpolation.patch": "d1f7f3ff862a605eeacb56461493c23d42c8a05af33f8dbef69c7c39518a301a",
+      "0008-capture-draw-before-source-validation.patch": "391b7714a0b40d05b7ecbfe6ff0722995b7f54ec5871bbdc82b661d9dd9d00c8",
+      "0009-bundled-unity-modules.patch": "567f560b8066ec3ec95b669caae0e492ce09964800d7022f4622158b1141608e",
+      "0010-optional-frame-timing.patch": "991d78187e0ec7a338dcb33f4d9350b80e6e95f006a140442442cd0b1b044ed9",
+      "0011-local-and-offline-service-apis.patch": "e3ae0f31341843d393f70ae77e517a081f1c2032622558c37105fd9371e528eb",
+      "0012-unsigned-conversion-overflow.patch": "bf3d46551ef6f506c8fcc40dc3ff53b4f90ca5f6fde1efc37bb69de2e696010e",
+      "0013-windows-descriptor-lifetime.patch": "e4e2d9ac4fa9317102e1966830afdc4186cd8246440b2db5e8897d5ba1e84cc6",
+      "0014-three-swapchain-images.patch": "1f3973c170b36ed696c8763f4d21103869d5e9a7ab443fa8c1b2484f5e9f4fdf",
+      "0015-native-thread-stack-guards.patch": "b5f6c0ca6837c3fe6ba232b5f78ce925291c6a619f732a440bc26ad6c2ba9011",
+      "0016-buffer-int64-atomics-diagnostic.patch": "03d112e1799a8ea53409b40255338b295667e2af59ef0d3f82dab0cbfb0d4af1",
+      "0017-pipeline-cache-hit-miss.patch": "42676398b17b4a10c21e0fd3c443f17b74f4a536cd11b1fc9b601ab23d3a8eb0",
+      "0018-flip-rate-frame-counters.patch": "696989d2f0018df8cc6ff8575a1555b531e1eb45d2481ae90f5cbc5dc9b0d2c2",
+      "0019-vblank-hz-60.patch": "d546ba9ad7c4664abe167af159b422ccf3dd417dd11c4062957fd95a395e97c9",
+      "0020-texture-cache-mib.patch": "3b9b50580350a05ad7bb9ed2d4d3a10bb8a58fda276b804cc7fddc3faa1252b0",
+      "0021-log-flip-inflight.patch": "e5e6e3e2a8e6700b4cf690777a8c5d82b7a35b53ba2678006b8e76816a361e31",
+      "0022-dword-aligned-shader-headers.patch": "7df0768e7cb5038ea20c8b6266b538f477e37e5ecca00913f385bba07254792e",
+      "0023-shader-engine-partition-state.patch": "44b9a7b36eba5ecc19e80b0b2176cd4e0d279afc258eabdcaf2b86b048db4300",
+      "0024-equivalent-single-sample-stencil-clear.patch": "3ce732d16411b03b3bb8ebbea151abb9b687357450fe3a07e635015310ace4d6",
+      "0025-independent-texture-sample-interpolation.patch": "4c71b38540db9673d745bbe59e22553c7a2aa2c5212179ebe3b0d6b9c84a62c0",
+      "0026-fixed-function-discard-continuations.patch": "3d10b0225caed41799941b690c9a8d0397ad496723aacebc6c3d62fc410e6130",
+      "0027-equivalent-stencil-z-order.patch": "4e1c6bddaee1ad2985eb61fa005b3daa9570b1369fa9d4a25bac2bea3cbb36d3",
+      "0027-uniform-wave-branches.patch": "c84263a524381ac75c624ca3f0c3c02ceb04b50ad100aa765d8854da54c89ac2",
+      "0028-unobserved-viewport-depth.patch": "85e9042637feb1f7295af55b6147e030ffb045872a3980b2e45367ed61fcdf62",
+      "0029-safe-wait-delivery-and-validation.patch": "9daee9e8a56588c25f6cc5ce5939cfba70afe801f1da6c28b1531ec341607867"
+    }
+  },
+  "local_build": {
+    "compiler": "WinLibs GCC15.2.0 posix-SEH UCRT r7 via macOS Wine",
+    "configuration": "Release",
+    "exit_code": 0,
+    "updated_targets": [
+      "libkernel",
+      "libSceAgcDriver",
+      "agc_shader_replay",
+      "guest_raise_exception_tests",
+      "guest_memory_tests",
+      "agc_driver_graphics_tests",
+      "guest_semaphore_tests",
+      "guest_nanosleep_tests",
+      "guest_cond_timedwait_tests",
+      "guest_sync_on_address_tests"
+    ],
+    "prx_sha256": {
+      "libSceAgc.prx": "11aa8c802b0fd7186cd911c1f4ba42ef77e195c62f5c193fa2562bad825b597e",
+      "libSceAgcDriver.prx": "9c36f0097aeb0040d72eba253eff8c1c86a6a7d0479ec47a2731ced311ad4d27",
+      "libSceAjm.native.prx": "d3865dd85e4a7a52507e819b9549d3f789aaa3a0880a71d4e0663e268d405397",
+      "libSceAmpr.prx": "df07e962789ebb5b0793e47ee42b4bd1e4c8002c12ee1b4c06c23c73e59a8903",
+      "libSceAppContent.prx": "063fc89bae2c27b46a8ea4ce71f93f1619937efae0e2322c71bc01bacb14aceb",
+      "libSceAudio3d.prx": "ab8f9e4e20909dff40cc27edcd0582a7647d872e4a4ff7459bd0e54a5f728b9d",
+      "libSceAudioIn.prx": "252305387d9f52b4a728e9d50f87a202a9161be1ec54d526e25ab510f2c0bbb5",
+      "libSceAudioOut.prx": "124a38714fb2536ddbb828a5ec5406ac6d59b0a3bbfb62c6fc36b0cc2be6cede",
+      "libSceAvPlayer.native.prx": "8c198bc481bdaf1fe4d9af65f8141db7d8101b4c410906abd01ed3841d3d4582",
+      "libSceCommonDialog.prx": "fa7e48e6b51adddeb43cd6887863f78af2ede0ee6f02eb3ca6b3a3692dd6ffc5",
+      "libSceGameUpdate.prx": "8014154cdb9d8dac5e2282aa6839071fc820c5c083b6a2df18fcdd193743c874",
+      "libSceHttp.prx": "88b893ec160d88cd10e397dea360ac7ffb2dc814f564333740340f3f7a94aac4",
+      "libSceHttp2.prx": "516f1e7a54c3545c8a066a909b89431744bc7bf464d54819e46ed00263f275d0",
+      "libSceIme.prx": "cea8d8517a66ebda9f7fe533f74a75e6ef88c914d20ddbf7b2615233b4b120cd",
+      "libSceImeBackend.prx": "991266c760d02ba6b7a8c135bf77d6fe84d0f8b01d0d26c040257560a0c9f486",
+      "libSceImeDialog.prx": "5d5fdf27d8e39355616197a1b331ef83026375c3f791e8f4487428cecac6c10b",
+      "libSceJson2.prx": "b58e8d65d420c4ab254bc1cad82bd070c1e942275d963df86c41132bd6e0cfb5",
+      "libSceKeyboard.prx": "090ac63d38ed96cb1c8e75e4a88abb7e6eb2c3519fab07d65626542ccc0c17e0",
+      "libSceLibcInternal.prx": "36e668720908f55c5a7848ba951a63f55a62bd43d0de6529439fb15318a41c8d",
+      "libSceMouse.prx": "41dd7d38d2eb7b6c0ebbe670713231ebf34c0bb57fbf1fe74eea8986274530eb",
+      "libSceMsgDialog.native.prx": "13d8e0af39f4ab82579bd10996073dc9bc72b104c5b57cdf43924ac2c94ea079",
+      "libSceNet.prx": "bc45d6178bbf0d72f8a6162a6af4ed2e6e2973f5ca557a5608f3906bf6ecdf3a",
+      "libSceNetCtl.prx": "db697186cd83a90a613b8ceeaa4aed5e6645b1243d4ce46599a0e1a9067b97eb",
+      "libSceNpAuth.prx": "bc9b1367ef8ac409036fe1495c267e58dda354d7c32fa090f07e35b54a00f585",
+      "libSceNpCommerce.prx": "74fd0f68faae0d3696e880f46413c95352a5259b16520f4d10e4e912beddd399",
+      "libSceNpEntitlementAccess.prx": "e77cb60dc2794bf06c090b66d5089bad030a28e13fe65704022d639b597c1f50",
+      "libSceNpGameIntent.prx": "6171de8b403bae699ea8332cbfd56471b5471850a6cfc0178368391667afa963",
+      "libSceNpManager.prx": "dfd3e0865541cd2b78ed94c76529035ec600b3dc12300b08b20151e12896d4aa",
+      "libSceNpSessionSignaling.prx": "c92267b0d56596f4bd2f78e67baa79287aa2cad975f9783ea738d9b4723b3419",
+      "libSceNpTrophy2.prx": "607032cd1e22d474d489350f07e4b43df9be6723302822152d904a1d6944405a",
+      "libSceNpUniversalDataSystem.prx": "23ed9ca23ba46cbe6c2cfe666b1cf4f32a7d5be0f3719c1524a8192ce386e103",
+      "libSceNpUtility.prx": "a7aa928876859ce86d869678d45a3044cd2ed104dc91d54cc3a143af211f4738",
+      "libSceNpWebApi2.prx": "f334fcf816627a69ad57ef2b473626df41ede1bd9d91f755a5ae30b9eb2e35a8",
+      "libScePad.prx": "7951bac157a1f361f76650639b3f8264430238e73f9a38070c2afc11c3dce0ed",
+      "libScePlayerInvitationDialog.prx": "acb08aca17db14f43ce740981fc13162ec2ecfdf45b931310376a3ff22a9af14",
+      "libSceRandom.prx": "7026d61111c2451a537c8088178f6d89baec3a5a72e86ac80d9231ccb0d949e0",
+      "libSceRazorCpu.prx": "62202a6e1a6b032fde8b133c8313861b98c04595288eae7d66b59c22b8d59a79",
+      "libSceRemoteplay.prx": "9b1bba8f94de17cef22465a09fc643cb8dc834e5d1ff835a92d192189e55cdf8",
+      "libSceRtc.prx": "6998e702b1f8f34819deab14bdb05e454d3e58b62a5ea0e152d1631e7158a481",
+      "libSceSaveData.native.prx": "c64a3998eb6b684811bf8012a768416e5ee330e6fd393ec1c5088ced0a9c6376",
+      "libSceSaveDataDialog.native.prx": "5f0d90fcb42febc14c1dd81b7ed3bea8f5477a551a4523bdd47ec2b86f21d3fa",
+      "libSceSsl.prx": "76bda0e19e01dfda79549e626099dc98e69ad67ae66300bcc5026dd5d683a5d3",
+      "libSceSysmodule.prx": "f2b37afb3ba860d396cd1fc3bbcc90c85846dbc4eddc463b2e8b75614afa4fda",
+      "libSceSystemService.prx": "c242859625d18bfd22157b37328cf73ab5b58d6cc9f26df681f90b0f617d5d9f",
+      "libSceUlt.prx": "3e2cc2b3d5a35b9cda8054c390d9704574869d92fde7b250f701e9f8d3d6369e",
+      "libSceUserService.prx": "7321ea190ef0f33e9e32c79fe2fbfb98af6c57a459fe0e253fb9b1addede47e2",
+      "libSceVideoOut.prx": "5a24446b9a15f36ecdb0c4d2ed11ff2f9c226f06f6d38993869706aa04a54c60",
+      "libSceWebBrowserDialog.prx": "ed933e8abc3f528edc7a07427de7c0aa20c94ff95770c43ddfa670e8f12cd957",
+      "libc.prx": "e6a4e07ea5e26cdeb78d80f512688f19cc735bcde1ca18a00c6478a8dd3ea9a1",
+      "libkernel.prx": "827e2933c33d2bd30b660a42ff6f50db13e8dd6e5f3ae15fc6cabcc1c2c20625"
+    }
+  },
+  "original_failed_evidence": "upstream-refresh-20261008.json",
+  "host_execution": {
+    "scope": "x86-64 Windows tests under macOS Wine; no iPad or Windows GPU qualification",
+    "results": [
+      {
+        "test": "windows_exception_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 1.042
+      },
+      {
+        "test": "guest_formatting_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.292
+      },
+      {
+        "test": "host_thread_local_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.129
+      },
+      {
+        "test": "guest_environment_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.078
+      },
+      {
+        "test": "file_position_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.073
+      },
+      {
+        "test": "guest_shader_alignment_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.125
+      },
+      {
+        "test": "guest_raise_exception_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 1.19
+      },
+      {
+        "test": "guest_memory_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.129
+      },
+      {
+        "test": "guest_filesystem_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.129
+      },
+      {
+        "test": "guest_pthread_attr_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.128
+      },
+      {
+        "test": "guest_compatibility_api_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.125
+      },
+      {
+        "test": "guest_json_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.129
+      },
+      {
+        "test": "guest_json2_initialization_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.122
+      },
+      {
+        "test": "guest_math_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.074
+      },
+      {
+        "test": "uniform_wave_branch_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.127
+      },
+      {
+        "test": "wave32_wide_subgroup_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.126
+      },
+      {
+        "test": "agc_driver_graphics_tests",
+        "arguments": [
+          "--depth-state-only"
+        ],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.13
+      },
+      {
+        "test": "agc_driver_graphics_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 6.591
+      },
+      {
+        "test": "guest_ajm_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.129
+      },
+      {
+        "test": "audio_out2_pad_mix_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.076
+      },
+      {
+        "test": "audio_out_mix_level_pad_spk_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.446
+      },
+      {
+        "test": "audio_out_last_output_time_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.349
+      },
+      {
+        "test": "audio_out2_latency_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.179
+      },
+      {
+        "test": "audio_out2_port_layouts_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 2.399
+      },
+      {
+        "test": "audio_out2_timing_tests",
+        "arguments": [],
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 1.133
+      }
+    ]
+  },
+  "all_host_tests_passed": true,
+  "additional_wait_contracts": [
+    {
+      "test": "guest_semaphore_tests",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "test": "guest_nanosleep_tests",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "test": "guest_cond_timedwait_tests",
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "test": "guest_sync_on_address_tests",
+      "exit_code": 0,
+      "status": "passed"
+    }
+  ],
+  "exception_stress": {
+    "full_runs": 20,
+    "per_run_timeout_seconds": 30,
+    "deliveries_per_run": 421,
+    "total_verified_deliveries": 8420,
+    "wait_exit_transitions": 4000,
+    "results": [
+      {
+        "iteration": 1,
+        "exit_code": 0
+      },
+      {
+        "iteration": 2,
+        "exit_code": 0
+      },
+      {
+        "iteration": 3,
+        "exit_code": 0
+      },
+      {
+        "iteration": 4,
+        "exit_code": 0
+      },
+      {
+        "iteration": 5,
+        "exit_code": 0
+      },
+      {
+        "iteration": 6,
+        "exit_code": 0
+      },
+      {
+        "iteration": 7,
+        "exit_code": 0
+      },
+      {
+        "iteration": 8,
+        "exit_code": 0
+      },
+      {
+        "iteration": 9,
+        "exit_code": 0
+      },
+      {
+        "iteration": 10,
+        "exit_code": 0
+      },
+      {
+        "iteration": 11,
+        "exit_code": 0
+      },
+      {
+        "iteration": 12,
+        "exit_code": 0
+      },
+      {
+        "iteration": 13,
+        "exit_code": 0
+      },
+      {
+        "iteration": 14,
+        "exit_code": 0
+      },
+      {
+        "iteration": 15,
+        "exit_code": 0
+      },
+      {
+        "iteration": 16,
+        "exit_code": 0
+      },
+      {
+        "iteration": 17,
+        "exit_code": 0
+      },
+      {
+        "iteration": 18,
+        "exit_code": 0
+      },
+      {
+        "iteration": 19,
+        "exit_code": 0
+      },
+      {
+        "iteration": 20,
+        "exit_code": 0
+      }
+    ],
+    "phase_counts_per_run": {
+      "self": 1,
+      "busy": 100,
+      "waiting": 100,
+      "host_blocked": 20,
+      "leaving_wait": 200
+    }
+  },
+  "interpolation_regression": {
+    "passed": 111,
+    "new_cases": 13,
+    "graphics_fixture_modified": false,
+    "enabled_raw_IJ_rejection_preserved": true
+  },
+  "memory_checks": {
+    "configured_arena_base": "0x7400000000",
+    "configured_arena_size": "0x100000000",
+    "configured_arena_chunk": "0x10000000",
+    "guest_lock_errors_checked": true,
+    "inaccessible_middle_page_rejected": true,
+    "page_contents_after_reprotect_checked": true,
+    "native_windows_quota_assertions_retained": true,
+    "native_windows_quota_branch_executed": false,
+    "lock_runtime_implementation_changed": false
+  },
+  "private_shader_replay": {
+    "complete_captures_recompiled": 14,
+    "complete_captures_spirv_validated": 14,
+    "incomplete_capture_excluded": 1,
+    "displayed_frames_tested": false
+  },
+  "physical_ipad_updated_or_qualified": false,
+  "windows_gpu_reference_run": false,
+  "github_actions_used": false,
+  "solitaire_gameplay_qualified": false,
+  "remaining_hardware_blockers": [
+    "8x multisampling versus measured iPad attachment support of 1, 2 and 4 samples"
+  ],
+  "raw_game_or_shader_data_published": false,
+  "private_game_preparation": {
+    "source": "immutable original dump",
+    "status": "prepared_unexecuted",
+    "dependency_audit_passed": true,
+    "manifest_file_hashes_verified": 137,
+    "packaged_libraries": 51,
+    "hle_archive_sha256": "11c0512ffae514aed1ed4e8b4d6bb6b0d0145a8d81b98660c3314b7f1a795e5e",
+    "installed": false,
+    "executed": false
+  }
+}

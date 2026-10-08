@@ -78,7 +78,9 @@ AGC create logs remain disabled. An unpatched HLE archive is exported locally
 with source/patch hashes and the explicit failed-test status; it is not a
 qualified device runtime.
 
-Of 25 linked Windows test invocations under local macOS Wine, 22 pass. JSON,
+In the initial integration check, 22 of 25 linked Windows test invocations under
+local macOS Wine passed. The follow-up repairs below supersede those three failed
+host results while retaining their original evidence. JSON,
 allocator ownership, filesystem, priority, math, existing exception contracts,
 uniform/wide-subgroup shader emission, depth/stencil eligibility, AJM and the
 six AudioOut/AudioOut2 contracts pass. Three outcomes remain open:
@@ -108,6 +110,50 @@ The successful package is `prepared_unexecuted`, with no Windows GPU or iPad
 result. Dumps, converted game binaries and raw shader captures are outside Git.
 
 See the [structured integration evidence](evidence/upstream-refresh-20261008.json).
+
+## Exception, memory and interpolation follow-up
+
+Patch `0029-safe-wait-delivery-and-validation.patch` adds repairs after the
+initial integration, without changing the upstream pin or rewriting its failed
+result record.
+
+Exception delivery now reserves a queued APC in the same atomic state that
+tracks active waits. Wait exit keeps that state active through its last APC drain
+and closes it with compare/exchange; a concurrent reservation forces another
+drain. Failed enqueue releases the reservation before resuming the target.
+The semaphore wait also covers native setup and cleanup, with final delivery
+after its internal locks and waiter bookkeeping are released. Temporary host
+tracing exposed a native-host instruction/stack context during a failed redirect;
+that region now uses cooperative APC delivery rather than context redirection.
+The idle path checks for a newly entered wait after obtaining the context,
+because [SuspendThread completes asynchronously](https://devblogs.microsoft.com/oldnewthing/20150205-00/?p=44743).
+Delivery preserves the existing context/red-zone route for running guest code.
+The exception test's blocked-host handshake also waits for the worker to finish
+its interrupted mutex acquisition before starting another round. All busy,
+waiting, host-blocked and wait-exit assertions remain enabled.
+
+The memory failure came from host-specific assumptions in the test. Wine's
+`ProcessQuotaLimits` query returns fixed defaults, while its locking uses actual
+host `mlock`/`munlock`; Windows working-set quota growth and repeated-unlock
+errors are checked only on native Windows. Guest lock success/error checks
+remain active under Wine. New coverage rejects a span with an inaccessible
+middle page and verifies every guest page after protection is restored. Arena-end
+mapping checks now use the configured arena's actual bounds, including overflow
+and out-of-range refusal, instead of assuming the default full-size arena.
+No lock implementation is replaced with synthetic success.
+
+The interpolation validator now treats EXP sources as independent scalar VGPRs
+and reads only enabled channels. Compressed XY/ZW exports use their actual two
+packed operands. Disabled channel encodings no longer reject otherwise valid
+depth exports. Enabled raw I/J reads, unfinished interpolation pairs and unknown
+operations still fail the conservative guard. The full graphics fixture is
+unchanged; 13 new guard cases cover these boundaries.
+
+See the [follow-up results](evidence/runtime-contract-fixes-20261008.json) for
+build, repeated delivery, full host-suite and private shader-replay outcomes.
+The Git Bash HLE test route now includes the full graphics suite and repeats the
+complete exception test 20 times, failing on an error or timeout. Native Windows
+quota behavior and physical iPad execution remain separate qualification steps.
 
 ## Runtime qualification after integration
 

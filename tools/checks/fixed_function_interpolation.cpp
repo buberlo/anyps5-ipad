@@ -164,5 +164,23 @@ int main() {
     test("discard diamond must cover every instruction",false,[&](Case& c){discardDiamond(c);c.cfg.blocks[1].instructionBegin=7;});
     test("discard diamond cannot alias block ids",false,[&](Case& c){discardDiamond(c);c.cfg.blocks[2].id=1;});
     test("discard branch must match decoded control flow",false,[&](Case& c){discardDiamond(c);c.code.instructions[5].op=RdnaOpcode::SSetpcB64;});
+    const auto outputOnly = [](Case& c, unsigned mask, bool compressed) {
+        c.code.instructions.clear();
+        RdnaInstruction output;
+        output.op=RdnaOpcode::Exp; output.family=RdnaInstructionFamily::EXP;
+        output.exportEnableMask=mask; output.exportIsCompressed=compressed;
+        output.source0=reg(2); output.source1=reg(3); output.source2=reg(6); output.source3=reg(7);
+        c.code.instructions.push_back(output);
+    };
+    test("depth export ignores disabled raw-I operands",true,[&](Case& c){outputOnly(c,1,false);c.code.instructions[0].source1=reg(0);c.code.instructions[0].source2=reg(0);c.code.instructions[0].source3=reg(0);});
+    test("scalar export does not read adjacent raw I/J",true,[&](Case& c){outputOnly(c,2,false);c.pixel.psInputVgpr[static_cast<unsigned>(PixelInput::LinearCenter)]=4;});
+    for(unsigned channel=0;channel<4;++channel) {
+        const auto change=[&](Case& c,unsigned mask){outputOnly(c,mask,false);auto& i=c.code.instructions[0];std::array<RdnaOperand*,4> sources{&i.source0,&i.source1,&i.source2,&i.source3};*sources[channel]=reg(0);};
+        test("enabled export channel reads raw I",false,[&](Case& c){change(c,1u<<channel);});
+        test("disabled export channel ignores raw I",true,[&](Case& c){change(c,15u & ~(1u<<channel));});
+    }
+    test("packed XY export ignores disabled ZW raw I",true,[&](Case& c){outputOnly(c,3,true);c.code.instructions[0].source1=reg(0);});
+    test("packed ZW export reads raw I",false,[&](Case& c){outputOnly(c,12,true);c.code.instructions[0].source1=reg(0);});
+    test("empty export ignores all operands",true,[&](Case& c){outputOnly(c,0,false);auto& i=c.code.instructions[0];i.source0=i.source1=i.source2=i.source3=reg(0);});
     std::cout<<"PASS "<<passed<<" actual fixed-function interpolation validation cases\n";
 }

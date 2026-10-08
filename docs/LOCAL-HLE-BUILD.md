@@ -38,5 +38,7 @@ change or qualify the iPad/game arena; reservation failures still fail the tests
 
 The Git Bash `m0-build-anyps5-winlibs.sh` route remains available for the existing
 selected closure and Windows source-build transfer. Set `APS5_HLE_TESTS=ON` to run
-its focused compatibility tests. See [API coverage](HLE-API-COVERAGE.md) and
+its focused compatibility tests, including the complete AGC graphics validator
+and 20 repeated exception-delivery runs. A failure or timeout fails the build.
+See [API coverage](HLE-API-COVERAGE.md) and
 [runtime performance](RUNTIME-PERFORMANCE.md) for the limits of these results.

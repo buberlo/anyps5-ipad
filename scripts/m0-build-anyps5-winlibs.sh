@@ -127,7 +127,7 @@ fi
 if [ "${APS5_HLE_TESTS:-OFF}" = ON ]; then
     tests=(guest_json_tests guest_json2_initialization_tests guest_compatibility_api_tests
         guest_filesystem_tests guest_pthread_attr_tests guest_memory_tests guest_math_tests
-        guest_raise_exception_tests uniform_wave_branch_tests wave32_wide_subgroup_tests
+        guest_raise_exception_tests agc_driver_graphics_tests uniform_wave_branch_tests wave32_wide_subgroup_tests
         audio_out2_pad_mix_tests audio_out_mix_level_pad_spk_tests
         audio_out_last_output_time_tests audio_out2_latency_tests
         audio_out2_port_layouts_tests audio_out2_timing_tests windows_exception_tests)
@@ -141,7 +141,10 @@ if [ "${APS5_HLE_TESTS:-OFF}" = ON ]; then
     export APS5_GUEST_ARENA_CHUNK="${APS5_GUEST_ARENA_CHUNK:-0x10000000}"
     "$cmake_bin" -E chdir "$build" ctest --output-on-failure \
         --timeout 45 \
-        -R '^(guest_json|guest_json2_initialization|guest_compatibility_apis|guest_filesystem|guest_pthread_attr|guest_memory|guest_math|guest_raise_exception|uniform_wave_branch|wave32_wide_subgroup|audio_out2_pad_mix|audio_out_mix_level_pad_spk|audio_out_last_output_time|audio_out2_latency|audio_out2_port_layouts|audio_out2_timing)$'
+        -R '^(guest_json|guest_json2_initialization|guest_compatibility_apis|guest_filesystem|guest_pthread_attr|guest_memory|guest_math|guest_raise_exception|agc_driver_graphics|uniform_wave_branch|wave32_wide_subgroup|audio_out2_pad_mix|audio_out_mix_level_pad_spk|audio_out_last_output_time|audio_out2_latency|audio_out2_port_layouts|audio_out2_timing)$'
+    # The wait-exit race needs repeated full runs, not one successful delivery.
+    "$cmake_bin" -E chdir "$build" ctest --output-on-failure --timeout 45 \
+        -R '^guest_raise_exception$' --repeat until-fail:20
     "$build/tests/windows_exception_tests.exe"
 fi
 

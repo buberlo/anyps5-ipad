@@ -1,0 +1,345 @@
+diff --git a/core/libs/prx/libkernel/Pthread/include/Pthread.hpp b/core/libs/prx/libkernel/Pthread/include/Pthread.hpp
+index 2f3fb16e..da2fd274 100644
+--- a/core/libs/prx/libkernel/Pthread/include/Pthread.hpp
++++ b/core/libs/prx/libkernel/Pthread/include/Pthread.hpp
+@@ -85,6 +85,8 @@ struct PthreadPrivate {
+     std::atomic<unsigned> references{2};
+     void* stackAddress = nullptr;
+     std::size_t stackSize = 0;
++    // Low 16 bits: active wait regions; upper bits: reserved APC deliveries.
++    // Only TimedWait helpers may reserve/complete or close a wait region.
+     std::atomic<int> waitCount{0};
+     std::atomic<KernelCpumask> affinity{DEFAULT_THREAD_AFFINITY};
+     std::atomic<int> priority{DEFAULT_THREAD_PRIORITY};
+diff --git a/core/libs/prx/libkernel/Semaphore/src/Semaphore.cpp b/core/libs/prx/libkernel/Semaphore/src/Semaphore.cpp
+index 46490e9a..dc42e33a 100644
+--- a/core/libs/prx/libkernel/Semaphore/src/Semaphore.cpp
++++ b/core/libs/prx/libkernel/Semaphore/src/Semaphore.cpp
+@@ -50,6 +50,9 @@ int APS5_VABI sceKernelSignalSema(KernelSema sem, int count) {
+ }
+ 
+ int APS5_VABI sceKernelWaitSema(KernelSema sem, int need, KernelUseconds* time) {
++ // Destroy after the internal locks and waiter bookkeeping. A signal may
++ // interrupt native setup/cleanup, where editing a host context is unsafe.
++ TimedWait::DeliveryRegion deliveryRegion;
+  if (sem == nullptr || need <= 0) {
+   APS5_INVALID_ARG_EX;
+  }
+diff --git a/core/libs/prx/libkernel/System/src/Exception.cpp b/core/libs/prx/libkernel/System/src/Exception.cpp
+index e0ac735c..ba3d9b11 100644
+--- a/core/libs/prx/libkernel/System/src/Exception.cpp
++++ b/core/libs/prx/libkernel/System/src/Exception.cpp
+@@ -106,6 +106,7 @@ struct Delivery {
+     GuestExceptionHandler handler;
+     int signum;
+     CONTEXT context;
++    std::atomic<int>* waitState = nullptr;
+ };
+ 
+ void Deliver(GuestExceptionHandler handler, int signum, CONTEXT& context) {
+@@ -177,6 +178,7 @@ void CALLBACK WaitingEntry(ULONG_PTR parameter) {
+     auto* delivery = reinterpret_cast<Delivery*>(parameter);
+     const auto handler = delivery->handler;
+     const int signum = delivery->signum;
++    TimedWait::CompleteWaitDelivery(*delivery->waitState);
+     delete delivery;
+     CONTEXT context{};
+     RtlCaptureContext(&context);
+@@ -207,19 +209,38 @@ bool RaiseOn(Pthread thread, GuestExceptionHandler handler, int signum) {
+         ResumeThread(native);
+         return false;
+     }
+-    if (thread->waitCount.load(std::memory_order_seq_cst) > 0) {
++    const auto queueWhileWaiting = [&] {
++        bool waiting;
++        try {
++            waiting = TimedWait::ReserveWaitDelivery(thread->waitCount);
++        } catch (...) {
++            ResumeThread(native);
++            throw;
++        }
++        if (!waiting) return false;
++        queued->waitState = &thread->waitCount;
+         const bool accepted = QueueUserAPC(WaitingEntry, native, reinterpret_cast<ULONG_PTR>(queued.get())) != 0;
++        if (!accepted) TimedWait::CompleteWaitDelivery(thread->waitCount);
++        // Release ownership before resuming: the callback can immediately delete it.
++        if (accepted) queued.release();
+         ResumeThread(native);
+         if (!accepted) throw std::runtime_error("sceKernelRaiseException: cannot queue delivery to the waiting thread");
+-        queued.release();
+         return true;
+-    }
++    };
++    if (queueWhileWaiting()) return true;
++    // The idle path needs a completed suspension before editing its context.
++    // Alertable waits above use an atomic reservation instead of a snapshot.
+     alignas(16) Delivery delivery{handler, signum, {}};
+     delivery.context.ContextFlags = CONTEXT_FULL | CONTEXT_FLOATING_POINT;
+     if (!GetThreadContext(native, &delivery.context)) {
++        const bool exited = Exited(native);
+         ResumeThread(native);
++        if (exited) return false;
+         throw std::runtime_error("sceKernelRaiseException: cannot read the target thread context");
+     }
++    // SuspendThread returns before the target stops. It may have entered an
++    // alertable wait after the first reservation attempt but before this barrier.
++    if (queueWhileWaiting()) return true;
+     const DWORD64 slot = (delivery.context.Rsp - RedZone - sizeof(Delivery)) & ~static_cast<DWORD64>(15);
+     if (!StackWritable(slot - HomeArea - 8, delivery.context.Rsp - RedZone)) {
+         ResumeThread(native);
+diff --git a/core/libs/prx/libkernel/Time/TimedWait.cpp b/core/libs/prx/libkernel/Time/TimedWait.cpp
+index fd881390..afef47d8 100644
+--- a/core/libs/prx/libkernel/Time/TimedWait.cpp
++++ b/core/libs/prx/libkernel/Time/TimedWait.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <cstdlib>
+ #include <limits>
++#include <stdexcept>
+ 
+ #ifdef _WIN32
+ #include <windows.h>
+@@ -17,6 +18,9 @@ namespace {
+ constexpr std::uint64_t YIELD_BELOW_NANOS = 50000ULL;
+ constexpr std::uint64_t LEAD_NANOS = 500000ULL;
+ 
++constexpr int WaitDepthMask = 0xffff;
++constexpr int WaitDeliveryUnit = 0x10000;
++
+ thread_local std::atomic<int> ownWaitState{0};
+ thread_local std::atomic<int>* waitState = &ownWaitState;
+ 
+@@ -30,22 +34,33 @@ void DrainApcs() {
+     else SleepEx(0, TRUE);
+ }
+ 
++void LeaveAlertableWait() {
++    // Keep the wait active through the final host call. An atomic close either
++    // precedes a reservation or observes it and drains again; no APC can arrive
++    // after the last drain based on an already-closed wait state.
++    for (;;) {
++        DrainApcs();
++        auto observed = waitState->load(std::memory_order_seq_cst);
++        if (observed >= WaitDeliveryUnit) continue;
++        if (waitState->compare_exchange_weak(observed, observed - 1,
++                                             std::memory_order_seq_cst)) return;
++    }
++}
++
+ DWORD AlertableWait(DWORD count, const HANDLE* handles, DWORD milliseconds) {
+     waitState->fetch_add(1, std::memory_order_seq_cst);
+     DWORD result;
+     do {
+         result = WaitForMultipleObjectsEx(count, handles, FALSE, milliseconds, TRUE);
+     } while (result == WAIT_IO_COMPLETION);
+-    waitState->fetch_sub(1, std::memory_order_seq_cst);
+-    DrainApcs();
++    LeaveAlertableWait();
+     return result;
+ }
+ 
+ void AlertableSleep(DWORD milliseconds) {
+     waitState->fetch_add(1, std::memory_order_seq_cst);
+     SleepEx(milliseconds, TRUE);
+-    waitState->fetch_sub(1, std::memory_order_seq_cst);
+-    DrainApcs();
++    LeaveAlertableWait();
+ }
+ 
+ void WINAPI DestroyWaiter(void* value);
+@@ -223,6 +238,33 @@ void BindThreadWaitState(std::atomic<int>* state) {
+     waitState = state != nullptr ? state : &ownWaitState;
+ }
+ 
++DeliveryRegion::DeliveryRegion() {
++#ifdef _WIN32
++    waitState->fetch_add(1, std::memory_order_seq_cst);
++#endif
++}
++
++DeliveryRegion::~DeliveryRegion() {
++#ifdef _WIN32
++    LeaveAlertableWait();
++#endif
++}
++
++bool ReserveWaitDelivery(std::atomic<int>& state) {
++    auto observed = state.load(std::memory_order_seq_cst);
++    while ((observed & WaitDepthMask) != 0) {
++        if (observed > std::numeric_limits<int>::max() - WaitDeliveryUnit)
++            throw std::overflow_error("too many pending wait deliveries");
++        if (state.compare_exchange_weak(observed, observed + WaitDeliveryUnit,
++                                       std::memory_order_seq_cst)) return true;
++    }
++    return false;
++}
++
++void CompleteWaitDelivery(std::atomic<int>& state) {
++    state.fetch_sub(WaitDeliveryUnit, std::memory_order_seq_cst);
++}
++
+ bool Coarse() {
+ #ifdef _WIN32
+     static const bool coarse = std::getenv("APS5_COARSE_TIMED_WAITS") != nullptr;
+diff --git a/core/libs/prx/libkernel/Time/include/TimedWait.hpp b/core/libs/prx/libkernel/Time/include/TimedWait.hpp
+index bddd4189..69061ab7 100644
+--- a/core/libs/prx/libkernel/Time/include/TimedWait.hpp
++++ b/core/libs/prx/libkernel/Time/include/TimedWait.hpp
+@@ -11,6 +11,17 @@ namespace TimedWait {
+ 
+ bool Coarse();
+ void BindThreadWaitState(std::atomic<int>* state);
++// Reserve delivery while a wait is active; its exit drains all reservations.
++bool ReserveWaitDelivery(std::atomic<int>& state);
++void CompleteWaitDelivery(std::atomic<int>& state);
++// Cover setup, native lock reacquisition and cleanup around an alertable wait.
++class DeliveryRegion {
++public:
++    DeliveryRegion();
++    ~DeliveryRegion();
++    DeliveryRegion(const DeliveryRegion&) = delete;
++    DeliveryRegion& operator=(const DeliveryRegion&) = delete;
++};
+ std::uint64_t NowNanos();
+ std::uint64_t DeadlineNanos(std::uint64_t microseconds);
+ std::uint64_t RemainingMicros(std::uint64_t deadlineNanos);
+diff --git a/core/libs/tests/GuestMemory.cpp b/core/libs/tests/GuestMemory.cpp
+index ff2cd1b9..3d5ffb86 100644
+--- a/core/libs/tests/GuestMemory.cpp
++++ b/core/libs/tests/GuestMemory.cpp
+@@ -486,13 +486,13 @@ static void CheckNoOverwriteRejectsHostOccupiedMapping() {
+     Require(sceKernelReleaseDirectMemory(phys, page) == 0);
+ }
+ 
+-static void CheckFixedMappingsReachTheApplicationAreaEnd() {
++static void CheckFixedMappingsReachConfiguredArenaEnd() {
+     constexpr std::size_t page = 0x4000;
+-    constexpr std::uintptr_t applicationAreaEnd = 0xFC00000000ull;
+     std::uintptr_t base = 0;
+     std::size_t size = 0;
+     GuestArena::GuestArenaRange_nid_postfix(&base, &size);
+-    Require(base == 0x200000000ull && base + size == applicationAreaEnd);
++    Require(base != 0 && size >= page * 2 && base <= UINTPTR_MAX - size);
++    const auto applicationAreaEnd = base + size;
+     std::int64_t phys = 0;
+     Require(sceKernelAllocateDirectMemory(0, 0x7fffffffffll, page * 2, 0, 0, &phys) == 0);
+     void* const requested = reinterpret_cast<void*>(applicationAreaEnd - page * 2);
+@@ -551,15 +551,26 @@ static void CheckMlock() {
+     SIZE_T minimum = 0;
+     SIZE_T maximum = 0;
+     DWORD limits = 0;
+-    Require(GetProcessWorkingSetSizeEx(GetCurrentProcess(), &minimum, &maximum, &limits) && minimum >= length && maximum > minimum);
++    // Wine locks through the host's mlock/munlock. Its ProcessQuotaLimits
++    // query reports fixed defaults, and munlock is idempotent; neither is the
++    // Windows quota/ERROR_NOT_LOCKED contract. Keep those native checks intact.
++    const bool wine = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "wine_get_version") != nullptr;
++    if (!wine) Require(GetProcessWorkingSetSizeEx(GetCurrentProcess(), &minimum, &maximum, &limits) && minimum >= length && maximum > minimum);
++    else std::fprintf(stderr, "Mlock: Wine host locking; native Windows quota/unlock bookkeeping is not applicable\n");
+     Require(VirtualUnlock(mapped, length));
+-    Require(!VirtualUnlock(mapped, length) && GetLastError() == ERROR_NOT_LOCKED);
++    if (!wine) Require(!VirtualUnlock(mapped, length) && GetLastError() == ERROR_NOT_LOCKED);
+ #elif defined(__linux__)
+     Require(LockedKilobytes() - lockedBefore == length / 1024);
+ #endif
+     Require(sceKernelMlock_nid_postfix(mapped, length) == 0);
+     Require(sceKernelMlock_nid_postfix(mapped, length) == 0);
++    for (std::size_t offset = 0; offset < length; offset += page) bytes[offset] = 7;
+     bytes[length - 1] = 7;
++    // A valid first page must not hide an inaccessible page later in the span.
++    Require(sceKernelMprotect(bytes + page, page, 0) == 0);
++    Require(sceKernelMlock_nid_postfix(mapped, length) == outOfMemory);
++    Require(sceKernelMprotect(bytes + page, page, 3) == 0);
++    for (std::size_t offset = 0; offset < length; offset += page) Require(bytes[offset] == 7);
+     Require(sceKernelMlock_nid_postfix(reinterpret_cast<void*>(std::numeric_limits<std::uintptr_t>::max() - page + 1), page * 2) == invalid);
+     void* reserved = nullptr;
+     Require(sceKernelReserveVirtualRange(&reserved, page, 0, 0) == 0);
+@@ -1054,7 +1065,7 @@ int main() {
+     CheckHeapAfterMappingReuse();
+ #ifdef _WIN32
+     CheckNoOverwriteRejectsHostOccupiedMapping();
+-    CheckFixedMappingsReachTheApplicationAreaEnd();
++    CheckFixedMappingsReachConfiguredArenaEnd();
+ #endif
+     CheckSharedWriteTracking();
+     CheckReadsIntoSharedWriteTracking();
+diff --git a/core/libs/tests/GuestRaiseException.cpp b/core/libs/tests/GuestRaiseException.cpp
+index 4d17541a..026fac3a 100644
+--- a/core/libs/tests/GuestRaiseException.cpp
++++ b/core/libs/tests/GuestRaiseException.cpp
+@@ -7,6 +7,8 @@
+ #include <mutex>
+ #include <stdexcept>
+ #include <thread>
++#include <cstdio>
++#include <source_location>
+ 
+ extern "C" {
+ int APS5_VABI sceKernelInstallExceptionHandler(int signum, void* handler);
+@@ -26,7 +28,9 @@ static constexpr int SCE_KERNEL_ERROR_ESRCH = static_cast<int>(0x80020003);
+ static constexpr int SIGUSR1 = 30;
+ static constexpr int Repeats = 100;
+ 
+-static void Require(bool value) { if (!value) std::abort(); }
++static void Require(bool value, std::source_location at = std::source_location::current()) {
++    if (!value) { std::fprintf(stderr, "Guest exception check failed at line %u\n", at.line()); std::abort(); }
++}
+ 
+ static std::atomic<int> calls{0};
+ static std::atomic<std::thread::id> handlerThread;
+@@ -73,6 +77,7 @@ static std::mutex hostLock;
+ 
+ static constexpr int HostRounds = 20;
+ static std::atomic<int> hostRound{0};
++static std::atomic<int> hostCompletedRound{0};
+ 
+ static void* APS5_VABI HostBlocked(void* arg) {
+     auto& worker = *static_cast<Worker*>(arg);
+@@ -80,7 +85,8 @@ static void* APS5_VABI HostBlocked(void* arg) {
+     for (int round = 0; round < HostRounds; ++round) {
+         while (hostRound.load() != round) std::this_thread::yield();
+         worker.started.store(true);
+-        std::lock_guard lock(hostLock);
++        { std::lock_guard lock(hostLock); }
++        hostCompletedRound.store(round + 1);
+     }
+     return nullptr;
+ }
+@@ -109,6 +115,7 @@ static void* APS5_VABI Finished(void*) {
+ 
+ static void ExpectDelivery(int before, std::thread::id thread) {
+     for (int attempt = 0; attempt < 5000 && calls.load() == before; ++attempt) std::this_thread::sleep_for(std::chrono::milliseconds(1));
++    if (calls.load() != before + 1) std::fprintf(stderr, "Delivery count: expected=%d actual=%d\n", before + 1, calls.load());
+     Require(calls.load() == before + 1);
+     Require(handlerThread.load() == thread);
+     Require(handlerRsp.load() != 0 && handlerFrame.load() < handlerRsp.load());
+@@ -164,6 +171,9 @@ int main() {
+         Require(sceKernelRaiseException(blockedThread, SIGUSR1) == 0);
+         hostLock.unlock();
+         ExpectDelivery(1 + 2 * Repeats + round, blocked.id);
++        // Delivery can run before the interrupted mutex acquisition completes.
++        // Do not reacquire that mutex and strand the worker in the old round.
++        while (hostCompletedRound.load() != round + 1) std::this_thread::yield();
+         hostLock.lock();
+         blocked.started.store(false);
+         hostRound.store(round + 1);
+diff --git a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+index 5cf5f434..0e8d16e1 100644
+--- a/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
++++ b/core/shader/recompiler/Translation/include/Translation/FixedFunctionInterpolation.hpp
+@@ -182,8 +182,15 @@ inline void ValidateFixedFunctionInterpolation(const RdnaProgram& decoded,
+         }
+         const bool alu = i.family == RdnaInstructionFamily::VOP1 || i.family == RdnaInstructionFamily::VOP2 ||
+                          i.family == RdnaInstructionFamily::VOP3 || i.family == RdnaInstructionFamily::VOP3P || i.family == RdnaInstructionFamily::VOPC;
+-        const auto width = alu ? (i.is64Bit ? 2u : 1u) : std::max({4u, i.dataDwordCount, i.dataComponents, i.imageAddressComponents});
++        const bool output = i.op == RdnaOpcode::Exp && i.family == RdnaInstructionFamily::EXP;
++        const auto width = output ? 1u : alu ? (i.is64Bit ? 2u : 1u) : std::max({4u, i.dataDwordCount, i.dataComponents, i.imageAddressComponents});
++        std::uint32_t sourceIndex = 0;
+         for (const auto& source : {i.source0, i.source1, i.source2, i.source3}) {
++            // EXP channels name independent scalar VGPRs. Disabled channels
++            // do not read their encoded operands; packed outputs use two VGPRs.
++            const auto channelMask = i.exportIsCompressed ? (sourceIndex < 2u ? 3u << (sourceIndex * 2u) : 0u) : 1u << sourceIndex;
++            ++sourceIndex;
++            if (output && (i.exportEnableMask & channelMask) == 0u) continue;
+             if (source.dpp || source.dpp8) fail();
+             if (source.kind != RdnaOperandKind::VectorRegister) continue;
+             for (const auto reg : live) if (reg >= source.reg && reg - source.reg < width) fail();

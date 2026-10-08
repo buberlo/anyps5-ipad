@@ -163,6 +163,8 @@ The script applies the patches, builds the selected AnyPS5 libraries and probes,
 
 The qualified HLE compiler is **WinLibs GCC 15.2.0, posix-SEH, UCRT r7**, downloaded and hash-checked by [m0-build-anyps5-winlibs.sh](scripts/m0-build-anyps5-winlibs.sh). The SysV calling convention and exception/unwind path are toolchain-sensitive; an arbitrary MinGW or Clang build is not an equivalent replacement.
 
+With `APS5_HLE_TESTS=ON`, the Git Bash build runs the complete graphics validator and repeats exception delivery 20 times. Memory tests use the configured arena bounds and retain guest locking checks under Wine; native Windows quota bookkeeping is checked on Windows. See the [runtime contract repairs and local results](docs/UPSTREAM-REFRESH.md#exception-memory-and-interpolation-follow-up). These host checks do not establish iPad gameplay or frame rate.
+
 ### Prepare your decrypted dump
 
 Copy the HLE archive to the same local path on the preparation host, then run:

@@ -80,8 +80,18 @@ when the selected transfer crosses it. It checks all 32 KiB, including bytes
 outside the transfer. Build 42 passes 153 cases with zero errors, 459 rejected
 queries and Wine exit 0. The same binary's default mode also passes the original
 192 cases and 96 nested faults. Crossing tests do not enable nesting or handler
-mutations. Aligned non-temporal stores and arbitrary instruction sequences remain
-unqualified. See the [page-crossing evidence](evidence/ipad-cross-page-protected-stores-20261008.json).
+mutations. See the [page-crossing evidence](evidence/ipad-cross-page-protected-stores-20261008.json).
+
+Run `protected-store-state-probe.exe --non-temporal` for sixteen aligned
+`vmovntdq` stores followed by `sfence`. Moving the destination in sixteen-byte
+steps makes each of the sixteen register stores the first protected write in
+turn. Two load modes retain full YMM values or use VEX XMM loads that zero their
+upper halves. Three flag patterns produce 96 cases; each checks all fifteen
+general registers, sixteen YMM registers, seven arithmetic/direction flags and
+all 32 KiB of destination/guard memory. The handler deliberately executes
+`vzeroall`. This mode requires AVX and returns 77 rather than qualifying a
+skipped run. Nesting and handler mutations remain covered by the default mode.
+See the [non-temporal evidence](evidence/ipad-non-temporal-protected-stores-20261008.json).
 
 `GuestMemory.cpp` separately exercises the real libc handler with native CRT
 `memcpy` and `memset`, using nine transfer sizes across protected 16-KiB pages,
@@ -173,8 +183,28 @@ shader objects still have their expected function tables at the fatal call.
 The full 112-byte copy matches again. This identifies a bad source packet,
 without proving which writer introduced it. The private instruction observers
 can change timing and are not production fixes. A separate observer of existing
-write faults also finds guest libc non-temporal copies, a path the synthetic
-store suite does not qualify. See the [constructor/call checkpoint](evidence/solitaire-build42-shader-call-checkpoint.json).
+write faults also finds guest libc non-temporal copies. The independent
+non-temporal suite above now covers register-preserving continuations for its
+own store sequence. See the [constructor/call checkpoint](evidence/solitaire-build42-shader-call-checkpoint.json).
+
+A private black-box probe then loads the actual supplied copy export and calls
+it with its own deterministic data. Its real HLE arena scratch allocation uses
+separate native-page mappings, so protection changes are applied to each page
+individually. All 208 size/alignment cases pass, including 302 handled write
+faults, zero source/destination/guard differences and correct return pointers.
+The own VEH deliberately destroys vector state and uses the paired native
+query/prepare protocol. This tests neither overlapping buffers nor concurrent
+writers; the separate real HLE dirty-tracking tests are still required.
+The supplied library and raw diagnostics stay private. See the
+[copy contract record](evidence/ipad-supplied-copy-contract-20261008.json).
+
+A bounded run of the same game observer with scalar, vector, memcpy/set and
+half-barrier software TSO enabled confirms those settings in the actual FEX
+runtime, but still faults reading `0x30` at RVA `0x1461222`. The experiment does
+not qualify a fix or a performance improvement, and its settings are restored.
+See the [stricter TSO checkpoint](evidence/solitaire-build42-stricter-tso-checkpoint.json).
+These results narrow the tested failure hypotheses; the packet writer remains
+unidentified and arbitrary instruction sequences remain unqualified.
 Earlier runs rejected an 8-sample draw on the
 M2, whose queried Vulkan attachment counts are 1, 2 and 4. The CPU test repair
 therefore does not establish rendered or playable Solitaire.

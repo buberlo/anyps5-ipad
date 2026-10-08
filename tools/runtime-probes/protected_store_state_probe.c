@@ -6,7 +6,7 @@
 #include <string.h>
 #include "aps5_veh_state.h"
 static LONG (WINAPI *QueryState)(HANDLE,DWORD,void*,ULONG,ULONG*);
-static int BridgeActive, CrossPage;
+static int BridgeActive, CrossPage, NtCopy;
 void *Page, *NestedPage;
 static void *Allocation;
 int StoreMode;
@@ -137,6 +137,10 @@ __asm__(
     "movabsq $0x12345b789abcdef0, %r13\n"
     "movabsq $0x123458789abcdef0, %r14\n"
     "movabsq $0x123459789abcdef0, %r15\n"
+    "cmpl $7, StoreMode(%rip)\n"
+    "je 10f\n"
+    "cmpl $8, StoreMode(%rip)\n"
+    "je 11f\n"
     "cmpl $5, StoreMode(%rip)\n"
     "je 8f\n"
     "cmpl $6, StoreMode(%rip)\n"
@@ -187,6 +191,44 @@ __asm__(
     "vmovups %ymm3, 80(%rbx)\n"
     "vmovups %ymm2, 64(%rbx)\n"
     "vmovupd %ymm1, 32(%rbx)\n"
+    "jmp 7f\n"
+    "11:\n"
+    "vmovdqu InputVectors+0(%rip), %xmm0\n"
+    "vmovdqu InputVectors+32(%rip), %xmm1\n"
+    "vmovdqu InputVectors+64(%rip), %xmm2\n"
+    "vmovdqu InputVectors+96(%rip), %xmm3\n"
+    "vmovdqu InputVectors+128(%rip), %xmm4\n"
+    "vmovdqu InputVectors+160(%rip), %xmm5\n"
+    "vmovdqu InputVectors+192(%rip), %xmm6\n"
+    "vmovdqu InputVectors+224(%rip), %xmm7\n"
+    "vmovdqu InputVectors+256(%rip), %xmm8\n"
+    "vmovdqu InputVectors+288(%rip), %xmm9\n"
+    "vmovdqu InputVectors+320(%rip), %xmm10\n"
+    "vmovdqu InputVectors+352(%rip), %xmm11\n"
+    "vmovdqu InputVectors+384(%rip), %xmm12\n"
+    "vmovdqu InputVectors+416(%rip), %xmm13\n"
+    "vmovdqu InputVectors+448(%rip), %xmm14\n"
+    "vmovdqu InputVectors+480(%rip), %xmm15\n"
+    "10: pushq InputFlags(%rip)\n"
+    "popfq\n"
+    "vmovntdq %xmm0, 0(%rdi)\n"
+    "vmovntdq %xmm1, 16(%rdi)\n"
+    "vmovntdq %xmm2, 32(%rdi)\n"
+    "vmovntdq %xmm3, 48(%rdi)\n"
+    "vmovntdq %xmm4, 64(%rdi)\n"
+    "vmovntdq %xmm5, 80(%rdi)\n"
+    "vmovntdq %xmm6, 96(%rdi)\n"
+    "vmovntdq %xmm7, 112(%rdi)\n"
+    "vmovntdq %xmm8, 128(%rdi)\n"
+    "vmovntdq %xmm9, 144(%rdi)\n"
+    "vmovntdq %xmm10, 160(%rdi)\n"
+    "vmovntdq %xmm11, 176(%rdi)\n"
+    "vmovntdq %xmm12, 192(%rdi)\n"
+    "vmovntdq %xmm13, 208(%rdi)\n"
+    "vmovntdq %xmm14, 224(%rdi)\n"
+    "vmovntdq %xmm15, 240(%rdi)\n"
+    "sfence\n"
+    "jmp 7f\n"
     "7:\n"
     "movq %rax, OutputGprs+0(%rip)\n"
     "movq %rcx, OutputGprs+8(%rip)\n"
@@ -235,10 +277,12 @@ __asm__(
     "ret\n"
 );
 int main(int argc, char **argv) {
-    if(argc>2 || (argc==2 && strcmp(argv[1],"--cross-page")))return 64;
+    if(argc>2 || (argc==2 && strcmp(argv[1],"--cross-page") && strcmp(argv[1],"--non-temporal")))return 64;
+    NtCopy=argc==2 && !strcmp(argv[1],"--non-temporal");
     CrossPage=argc==2;
     __builtin_cpu_init();
     const int avx=__builtin_cpu_supports("avx")!=0;
+    if(NtCopy && !avx){puts("[fault-state] AVX unavailable; non-temporal mode not qualified");return 77;}
     Allocation=VirtualAlloc((void*)UINT64_C(0x7400000000),0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
     if((uintptr_t)Allocation!=UINT64_C(0x7400000000))return 10;
     Page=Allocation;
@@ -251,11 +295,11 @@ int main(int argc, char **argv) {
     unsigned errors=0,cases=0;
     const uint64_t flags[]={0x202,0xad7,0xed7};
     const unsigned crossings[]={1,4,7,8,15,16,24,31};
-    for(Nest=0;Nest<=(BridgeActive && !CrossPage);Nest++)for(Mutate=0;Mutate<=(BridgeActive && !CrossPage);Mutate++)for(UseAvx=0;UseAvx<=avx;UseAvx++)
-      for(StoreMode=0;StoreMode<=(UseAvx?6:0);StoreMode++)for(unsigned position=0;position<(CrossPage?8:2);position++)for(unsigned f=0;f<3;f++){
-        const unsigned writtenBytes=StoreMode==0?8:StoreMode==1?16:StoreMode==6?112:32;
-        if(CrossPage && crossings[position]>=writtenBytes)continue;
-        const unsigned offset=CrossPage?0x4000-crossings[position]:position*16;
+    for(Nest=0;Nest<=(BridgeActive && !CrossPage);Nest++)for(Mutate=0;Mutate<=(BridgeActive && !CrossPage);Mutate++)for(UseAvx=NtCopy?1:0;UseAvx<=avx;UseAvx++)
+      for(StoreMode=NtCopy?7:0;StoreMode<=(NtCopy?8:(UseAvx?6:0));StoreMode++)for(unsigned position=0;position<(NtCopy?16:(CrossPage?8:2));position++)for(unsigned f=0;f<3;f++){
+        const unsigned writtenBytes=NtCopy?256:StoreMode==0?8:StoreMode==1?16:StoreMode==6?112:32;
+        if(CrossPage && !NtCopy && crossings[position]>=writtenBytes)continue;
+        const unsigned offset=NtCopy?0x4000-position*16:CrossPage?0x4000-crossings[position]:position*16;
         Page=(char*)Allocation+offset;
         InputFlags=flags[f];memset(OutputGprs,0,sizeof(OutputGprs));memset(OutputVectors,0,sizeof(OutputVectors));
         memset(Allocation,0xa5,CrossPage?0x8000:0x4000);
@@ -264,21 +308,21 @@ int main(int argc, char **argv) {
         unsigned gprErrors=0,vectorErrors=0,contextVectorErrors=0;
         for(unsigned i=0;i<15;i++){
             uint64_t expected=i==6?(uintptr_t)Page:UINT64_C(0x123456789abcdef0)^((uint64_t)(i+1)<<40);
-            if(StoreMode>=5 && i==3)expected=(uintptr_t)Page;
+            if((StoreMode==5 || StoreMode==6) && i==3)expected=(uintptr_t)Page;
             if(StoreMode==6 && i==1)expected=16;
             if(StoreMode==6 && i==12)expected=(uintptr_t)InputVectors-16;
             if(ContextGprs[i]!=expected || OutputGprs[i]!=(expected ^ ((Mutate && i==2)?Mutation:0))){++gprErrors;printf("GPR=%u expected=%llx context=%llx resumed=%llx\n",i,(unsigned long long)expected,(unsigned long long)ContextGprs[i],(unsigned long long)OutputGprs[i]);}
         }
         if(UseAvx)for(unsigned i=0;i<64;i++){
-            const uint64_t expected=InputVectors[StoreMode==6 && i/4==3 ? 10+i%4 : i];
+            const uint64_t expected=StoreMode==8 && i%4>=2?0:InputVectors[StoreMode==6 && i/4==3 ? 10+i%4 : i];
             if(OutputVectors[i]!=(expected^(Mutate?Mutation:0))){++vectorErrors;printf("YMM=%u lane=%u expected=%llx resumed=%llx\n",i/4,i%4,(unsigned long long)expected,(unsigned long long)OutputVectors[i]);}
             if(i%4<2 && ContextVectors[(i/4)*2+i%4]!=expected)++contextVectorErrors;
         }
         unsigned flagErrors=(ContextGprs[15]&0xcd5)!=(InputFlags&0xcd5) || (OutputGprs[15]&0xcd5)!=((InputFlags^(Mutate?0xcd5:0))&0xcd5);
         unsigned callbackError=(CallbackFlags&0x400)!=0;
         unsigned dataError=0;
-        uint64_t written[14]={UINT64_C(0x123457789abcdef0)};
-        if(StoreMode)for(unsigned i=0;i<writtenBytes/8;i++)written[i]=InputVectors[i]^(Mutate?Mutation:0);
+        uint64_t written[32]={UINT64_C(0x123457789abcdef0)};
+        if(StoreMode)for(unsigned i=0;i<writtenBytes/8;i++)written[i]=InputVectors[NtCopy?(i/2)*4+i%2:i]^(Mutate?Mutation:0);
         const unsigned char* expectedBytes=(const unsigned char*)written;
         for(unsigned i=0;i<(CrossPage?0x8000:0x4000);i++){
             const unsigned char expectedByte=i>=offset && i<offset+writtenBytes ? expectedBytes[i-offset] : 0xa5;
@@ -289,7 +333,7 @@ int main(int argc, char **argv) {
         printf("[fault-state] case=%u avx=%d store_mode=%d offset=%u gpr_errors=%u vector_errors=%u saved_xmm_errors=%u flags=%llx/%llx/%llx callback_df=%u data_error=%u faults=%u\n",cases,UseAvx,StoreMode,offset,gprErrors,vectorErrors,contextVectorErrors,(unsigned long long)(InputFlags&0xcd5),(unsigned long long)(ContextGprs[15]&0xcd5),(unsigned long long)(OutputGprs[15]&0xcd5),callbackError,dataError,Faults);fflush(stdout);
     }
     RemoveVectoredExceptionHandler(h);VirtualFree(Allocation,0,MEM_RELEASE);
-    printf("[fault-state] mode=%s\n",CrossPage?"cross-page":"same-page");
+    printf("[fault-state] mode=%s\n",NtCopy?"non-temporal":CrossPage?"cross-page":"same-page");
     printf("[fault-state] cases=%u faults=%u errors=%u AVX=%s\n",cases,Faults,errors,avx?"verified":"skipped");fflush(stdout);
     printf("[fault-state] nested_faults=%u rejected_requests=%u query_errors=%u\n",NestedFaults,RejectedRequests,QueryErrors);fflush(stdout);
     return errors || InvalidFaults || Faults!=cases || NestedFaults!=(BridgeActive && !CrossPage?cases/2:0) || QueryErrors || (BridgeActive && RejectedRequests!=3*(Faults+NestedFaults));

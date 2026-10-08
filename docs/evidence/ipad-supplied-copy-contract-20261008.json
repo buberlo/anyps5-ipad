@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "private_supplied_copy_export_black_box_contract",
+  "source_base_commit": "2feead13c2309d4bc7fdadb0af1bc0225a2e0534",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "probe": {
+    "game_executed": false,
+    "private_supplied_library_loaded": true,
+    "export_verified_before_execution": true,
+    "scratch_allocated_with_real_hle_guest_arena": true,
+    "native_page_bytes": 16384,
+    "sizes": [
+      1,
+      3,
+      7,
+      8,
+      15,
+      16,
+      17,
+      31,
+      32,
+      33,
+      64,
+      127,
+      128,
+      255,
+      256,
+      257,
+      1023,
+      1024,
+      4095,
+      4096,
+      16383,
+      16384,
+      32767,
+      32768,
+      65496,
+      65536
+    ],
+    "destination_offsets": [
+      0,
+      8,
+      16,
+      24
+    ],
+    "source_offsets": [
+      0,
+      16
+    ],
+    "cases": 208,
+    "handled_write_faults": 302,
+    "data_errors": 0,
+    "source_errors": 0,
+    "return_pointer_errors": 0,
+    "missing_state": 0,
+    "fault_origins_outside_supplied_library": 0,
+    "wine_exit_code": 0,
+    "checked_destination_and_guard_bytes_each_case": 81920,
+    "checked_source_bytes_each_case": 81920,
+    "exception_handler": "own first-priority VEH; deliberately vzeroall; query/prepare paired native state",
+    "protection_changes": "one native page at a time; scratch uses separate mappings",
+    "own_source_sha256": "9a1692e57a01f8963bdeba2e37be3a3e5a88af8cd5b8f9ad4164d28da2eb0aa6",
+    "own_exe_sha256": "1df5d288b5b6716c6156861229b5c665dbf1c522f39d26888958776b72c30f1d",
+    "private_log_sha256": "d4392fba20ed74670d9ad33ca5e043fbd98cde9b2767d6040f810a569c269179",
+    "private_receipt_sha256": "966666fbb8fb622c97a7d647403c5d474647806062006ca617e79f5ec27e3856"
+  },
+  "cleanup": {
+    "runtime_hashes_restored": true,
+    "config_library_manifest_byte_restored": true,
+    "own_processes_closed_verified": true
+  },
+  "limits": [
+    "The supplied library and raw diagnostics remain private. No game code, shader data or dump is published.",
+    "This tests independent source and destination buffers, not overlapping copies, concurrent writers, or every copy length/alignment.",
+    "The custom handler exercises the paired state protocol; it does not substitute for separate real HLE dirty-tracking tests.",
+    "Passing these copies does not identify the writer of the bad shader packet or qualify Solitaire gameplay, graphics, audio or 60 FPS."
+  ],
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false
+}

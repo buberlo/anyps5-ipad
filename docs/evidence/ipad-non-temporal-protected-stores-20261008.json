@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "non_temporal_protected_store_state_and_regressions",
+  "source_base_commit": "2feead13c2309d4bc7fdadb0af1bc0225a2e0534",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "switches": {
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_SAFE_SELF_READ": true
+  },
+  "probe": {
+    "source": "tools/runtime-probes/protected_store_state_probe.c",
+    "argument": "--non-temporal",
+    "source_sha256": "950b3cf507624c559b6ad2e8ad5114499bd05f2beef1bf8da6c3b32b015c4831",
+    "exe_sha256": "27a36dc0f7c3fb4c697e75aa35005e01c47d7cd457e6dee1f550f471e27af206",
+    "header_sha256": "e4b526b6057e33b7c95baaf65c4a1d0025ea347d9073e5db11bf37b2fca61219",
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7 via macOS Wine",
+    "build_options": [
+      "-std=gnu11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-static-libgcc"
+    ],
+    "device_result": {
+      "cases": 96,
+      "faults": 96,
+      "errors": 0,
+      "avx": "verified",
+      "nested_faults": 0,
+      "rejected_requests": 288,
+      "query_errors": 0,
+      "wine_exit_code": 0,
+      "private_log_sha256": "9a766ff32e3041fcc989cc5aa2f732bece11e14f9b2d01aa0ce24b4396e5690b",
+      "private_receipt_sha256": "ec7245941e22f8abfbd8a3e7b3aa36738e45f9b310ac636ec5c8f87ad6982c76",
+      "config_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    }
+  },
+  "contract": {
+    "native_page_bytes": 16384,
+    "first_page_writable_second_readonly": true,
+    "transfer_bytes": 256,
+    "each_register_store_is_first_protected_store_in_turn": true,
+    "load_modes": [
+      "full YMM values retain upper halves",
+      "VEX XMM loads clear upper halves"
+    ],
+    "flag_patterns": 3,
+    "general_registers": 15,
+    "ymm_registers": 16,
+    "arithmetic_direction_flags": 7,
+    "handler_deliberately_zeroes_vector_state": true,
+    "callback_df_zero_checked": true,
+    "sfence_after_stores": true,
+    "checked_destination_guard_bytes_each_case": 32768,
+    "aligned_vmovntdq_stores": 16
+  },
+  "same_binary_device_regressions": {
+    "cross": {
+      "cases": 153,
+      "faults": 153,
+      "errors": 0,
+      "avx": "verified",
+      "nested_faults": 0,
+      "rejected_requests": 459,
+      "query_errors": 0,
+      "wine_exit_code": 0,
+      "private_log_sha256": "802df4baad2b2af1acfb99e62ef422a6554ce8c70af973bc792b2455d88830d4",
+      "private_receipt_sha256": "1b6757c312163b06579c7095c80d70b74b818394e075d325c4fec968ab574d1b",
+      "config_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    },
+    "same": {
+      "cases": 192,
+      "faults": 192,
+      "errors": 0,
+      "avx": "verified",
+      "nested_faults": 96,
+      "rejected_requests": 864,
+      "query_errors": 0,
+      "wine_exit_code": 0,
+      "private_log_sha256": "6f48df57f23291393f27e66c2a287ceb8682c6fa71f83d74674463b505fae347",
+      "private_receipt_sha256": "82bfa7da01748645d122840123b773cf4e8f666d4d55d30fbb142e5e56ffb394",
+      "config_library_byte_restored": true,
+      "own_processes_closed_verified": true
+    }
+  },
+  "host": {
+    "same_page": {
+      "cases": 6,
+      "errors": 0,
+      "avx": "skipped",
+      "exit_code": 0,
+      "log_sha256": "d44c9b73a3e7871b59cf4ce2303df42cb0d2c13d8650d6322ea7c82f2858a053"
+    },
+    "cross_page": {
+      "cases": 9,
+      "errors": 0,
+      "avx": "skipped",
+      "exit_code": 0,
+      "log_sha256": "35c77c433efe75fa4df27f50077562497bf0ed361b5ab92ac2513829774ff41e"
+    },
+    "non_temporal_without_avx": {
+      "exit_code": 77,
+      "status": "explicitly_unqualified_skip",
+      "log_sha256": "583c3a2c41a1bddbd410579058ec41238b3f56a3febf793e1e3cc24c15e4b17f"
+    }
+  },
+  "limits": [
+    "Non-temporal mode does not exercise nesting or handler mutations; the same binary default regression does.",
+    "These are independent project-owned store sequences, not all possible instruction patterns or concurrent copy operations.",
+    "Passing CPU state and guard checks does not identify the bad shader-packet writer or qualify rendered gameplay."
+  ],
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false
+}

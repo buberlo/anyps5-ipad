@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "bounded_stricter_software_tso_game_experiment",
+  "app_build": 42,
+  "actual_runtime_configuration": {
+    "scalar_tso": true,
+    "vector_tso": true,
+    "memcpy_set_tso": true,
+    "half_barrier_tso": true
+  },
+  "normal_memory_tracking": true,
+  "private_observer": "same bounded three-instruction constructor/destructor/call observer as earlier checkpoint; can change timing",
+  "observations": {
+    "shader_constructions": 2,
+    "program_calls": 1,
+    "fatal_read_address": "0x30",
+    "fatal_game_rva": "0x1461222",
+    "gameplay_qualified": false,
+    "fix_adopted": false
+  },
+  "private_log_sha256": "67ca8e788e2e153148d55f9d236f62ede5d67c9689721687ae0c775f61deee0a",
+  "private_receipt_sha256": "923c570737ecd584f7b1f61c66aa3b83e241f07ba31ec5fe76ae30701b2b1c45",
+  "cleanup": {
+    "runtime_hashes_restored": true,
+    "config_library_manifest_byte_restored": true
+  },
+  "limits": [
+    "The configured software memory-ordering options do not establish correct packet production.",
+    "Timing-sensitive failure sites differ; this bounded diagnostic is not a controlled gameplay performance benchmark.",
+    "All options were restored; no new FEX implementation code is changed."
+  ],
+  "github_actions_used": false
+}

@@ -97,6 +97,36 @@ deliveries are documented in the [asynchronous state record](evidence/ipad-async
 The full guest-memory suite remains a separate check of reservations, aliases,
 protection, locking, write-watch and release. Neither suite replaces the other.
 
+## Bounded same-process reads
+
+A separate Build 40 probe passed seven valid `ReadProcessMemory` calls, then
+faulted in native code on its first `PAGE_NOACCESS` source read. The Unix
+`__TRY` copy did not recover this ARM64EC access fault. The failure also prevented
+a post-mortem read across a game stack guard.
+
+`APS5_SAFE_SELF_READ=1` enables an opt-in native path for current-process reads
+whose source starts at or above 4 GiB. The destination's ordinary write-watch
+probe remains enabled. Under the virtual-memory mutex, the path checks each
+source page owned by Wine for committed/readable state and guards before using
+`mach_vm_read_overwrite`. Foreign native allocations are checked by Mach. A
+failed or short copy returns `STATUS_PARTIAL_COPY` with zero reported bytes.
+The default remains off while game compatibility is unresolved.
+
+The logical source check matters: an initial kernel-only implementation read
+two decommitted pages through their still-accessible native backing and was
+rejected. Build 42 passes all thirteen independent source-read cases with zero
+errors, zero exception callbacks and Wine exit 0. The cases include native
+16-KiB boundaries, read-only, no-access, guarded and decommitted sources. This
+matches the documented requirement that inaccessible source ranges fail
+([Microsoft ReadProcessMemory documentation](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-readprocessmemory)).
+See the [safe-read evidence](evidence/ipad-safe-self-read-20261008.json) and
+`tools/runtime-probes/self_read_probe.c`.
+
+Low guest aliases and remote process-handle reads retain their existing paths.
+Invalid or racing destination buffers are not qualified or repaired by this
+source-read change. It does not enable cross-process writes or change source
+permissions, and it does not qualify gameplay.
+
 ## Graphics qualification remains separate
 
 The fixed-function interpolation path retains validation of supported RDNA I/J
@@ -108,6 +138,11 @@ by the CPU-state bridge.
 Solitaire still has an unresolved game-side null-pointer fault in
 `UnityGfxDeviceWorker`; the Build 38 and Build 40 bridge runs read `0x30`
 at game RVA `0x1461222`
-and stayed on the launch screen. Earlier runs rejected an 8-sample draw on the
+and stayed on the launch screen. With bounded same-process reads enabled, a
+private Build 42 diagnostic captures 1,680 stack bytes and fifteen readable heap
+regions, safely rejects one unreadable region, and completes its report. The
+game still faults on a shader-table pointer (`0x2`) at RVA `0x1426ac4`; the
+35-second screenshot shows a white game surface. Raw game memory and shader
+contents remain private. Earlier runs rejected an 8-sample draw on the
 M2, whose queried Vulkan attachment counts are 1, 2 and 4. The CPU test repair
 therefore does not establish rendered or playable Solitaire.

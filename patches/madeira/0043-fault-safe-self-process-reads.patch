@@ -1,0 +1,56 @@
+diff --git a/build/ntdll-unix/virtual_ios.c b/build/ntdll-unix/virtual_ios.c
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -26264,6 +26264,52 @@
+     }
+     else if (process == GetCurrentProcess())
+     {
++#ifdef WINE_IOS
++        /* Opt-in fault-safe native reads: Unix __TRY cannot currently recover
++         * every ARM64EC fault across guest stack guards. The kernel copy reports
++         * inaccessible ranges without delivering a native signal. Keep the
++         * destination write-watch probe and ordinary low guest-alias path. */
++        static int safe_self_read = -1;
++        if (safe_self_read < 0)
++        {
++            const char *enabled = getenv( "APS5_SAFE_SELF_READ" );
++            safe_self_read = enabled && !strcmp( enabled, "1" );
++        }
++        if (safe_self_read && (uintptr_t)addr >= UINT64_C(0x100000000))
++        {
++            mach_vm_size_t transferred = 0;
++            kern_return_t ret = KERN_SUCCESS;
++            sigset_t sigset;
++            uintptr_t cursor = (uintptr_t)addr;
++            BOOL readable = size <= UINTPTR_MAX - cursor;
++            server_enter_uninterrupted_section( &virtual_mutex, &sigset );
++            if (readable)
++            {
++                const uintptr_t end = cursor + size;
++                while (cursor < end)
++                {
++                    const void *page = (const void *)cursor;
++                    /* A decommitted Wine page may still have accessible lazy
++                     * native backing. Physical readability must not bypass
++                     * Wine's committed/readable/guard state. Foreign native
++                     * allocations have no Wine view; Mach validates those. */
++                    if (find_view( page, 1 ) && !(get_unix_prot( get_page_vprot( page )) & PROT_READ))
++                    {
++                        readable = FALSE;
++                        break;
++                    }
++                    cursor += min( end - cursor, page_size - (cursor & page_mask) );
++                }
++            }
++            if (readable && size)
++                ret = mach_vm_read_overwrite( mach_task_self(), (mach_vm_address_t)addr,
++                    size, (mach_vm_address_t)buffer, &transferred );
++            status = readable && ret == KERN_SUCCESS && (!size || transferred == size) ? STATUS_SUCCESS : STATUS_PARTIAL_COPY;
++            server_leave_uninterrupted_section( &virtual_mutex, &sigset );
++            if (status) size = 0;
++        }
++        else
++#endif
+         __TRY
+         {
+             memmove( buffer, addr, size );

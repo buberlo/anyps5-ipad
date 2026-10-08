@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "fault_safe_same_process_native_reads",
+  "source_base_commit": "821388a",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app": {
+    "build": 42,
+    "bundle": "com.buberlo.anyps5ipad",
+    "signed": true,
+    "installed": true,
+    "binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01"
+  },
+  "switch": {
+    "APS5_SAFE_SELF_READ": true,
+    "default_enabled": false
+  },
+  "baseline": {
+    "build": 40,
+    "log_sha256": "527d8694235617f36ea7e1a2c180c6c8587d1dd4395689709c4a6690db2c7c4f",
+    "exe_sha256": "90b522c89eeb310349a3364f07d5fdfc68d30a4f793fd3befd2a0552791455fd",
+    "config_and_library_byte_restored": true,
+    "own_processes_closed": true,
+    "completed": false,
+    "wine_exit_code": null,
+    "valid_cases_completed": 7,
+    "stopped_at": "first PAGE_NOACCESS source read",
+    "native_memory_fault_address": "0x7400004000",
+    "no_clean_exit": true
+  },
+  "rejected_kernel_only_candidate": {
+    "build": 41,
+    "log_sha256": "34c37b5b3d7ec7a07a07fe556d9e71b03c23b0b7425f85250f6001e4e2814629",
+    "exe_sha256": "90b522c89eeb310349a3364f07d5fdfc68d30a4f793fd3befd2a0552791455fd",
+    "config_and_library_byte_restored": true,
+    "own_processes_closed": true,
+    "completed": true,
+    "wine_exit_code": null,
+    "cases": 13,
+    "failures": 2,
+    "exception_callbacks": 0,
+    "rejected": true,
+    "incorrect_cases": [
+      "decommitted-byte",
+      "cross-decommitted"
+    ]
+  },
+  "final": {
+    "build": 42,
+    "log_sha256": "c37c96f69f9b9c732ec1099449b981cb9b589bf9e5a4290cf6192457a7047aeb",
+    "exe_sha256": "90b522c89eeb310349a3364f07d5fdfc68d30a4f793fd3befd2a0552791455fd",
+    "config_and_library_byte_restored": true,
+    "own_processes_closed": true,
+    "completed": true,
+    "wine_exit_code": 0,
+    "cases": 13,
+    "failures": 0,
+    "exception_callbacks": 0
+  },
+  "contract": {
+    "valid_destination_only_qualified": true,
+    "source_at_or_above_4_gib_only": true,
+    "source_cases": [
+      "empty",
+      "byte",
+      "unaligned-vector",
+      "page",
+      "cross-page-readable",
+      "read-only",
+      "cross-read-only",
+      "no-access-byte",
+      "no-access-page",
+      "cross-no-access",
+      "guard-byte",
+      "decommitted-byte",
+      "cross-decommitted"
+    ],
+    "wine_committed_readable_guard_state_checked_before_kernel_copy": true,
+    "virtual_mutex_held_during_source_check_and_copy": true,
+    "no_source_permission_changes": true,
+    "ordinary_destination_write_watch_probe_retained": true
+  },
+  "host": {
+    "cases": 13,
+    "failures": 0,
+    "exceptions": 0,
+    "log_sha256": "e9d24c851192bef977ad8be7ecc6b227d3bd1f6c27c9acee6382d9e3842cafb6"
+  },
+  "source_sha256": {
+    "virtual_ios.c": "adc53754d342b889a6030d8f4b121d76bc386c0cc037d8cbdcbcf5d296920c2a",
+    "self_read_probe.c": "5ed2baccd83066ba8d080d3a6d478e5b42b1b2d636b590379ebd63c5515c1ba0"
+  },
+  "patch_sha256": {
+    "patches/madeira/0043-fault-safe-self-process-reads.patch": "c30e3cdfb06d21398a4aed15bc0ba88ba516c228ce956accc387f76097d1d127",
+    "patches/madeira/0044-safe-read-build-version.patch": "d2297e5bf7c07c994a0dec9e6fe9adf87c6926e6570d563404982765bcb944b7"
+  },
+  "checks": {
+    "app_build_log_sha256": "783d5de31de6757bce533ab82523595d6f00c6b97b72e3f5eeb631a5073172cb",
+    "full_patched_madeira_reverse_check_exit": 0,
+    "installation_preserved_library_and_config": true,
+    "native_compile_log_sha256": "9548bf841793511b73bb5514dd4e4f8eb7d69bcc878f892b01237e642dd5d8cb",
+    "native_virtual_object_sha256": "7a6807f0bc4226b5019abb0d657c88dbbc7b9a66a91c6c9a08c0899a7006c972"
+  },
+  "limits": [
+    "Low guest-alias reads and remote process-handle reads retain their existing paths and are not qualified by this probe.",
+    "Invalid or racing destination buffers retain the existing write probe; they are not repaired or qualified here.",
+    "The kernel-only candidate incorrectly accepted decommitted native backing and was rejected.",
+    "This memory API fix does not establish rendered or playable Solitaire."
+  ],
+  "github_actions_used": false,
+  "raw_game_or_shader_data_published": false,
+  "new_fex_implementation_changes": false,
+  "private_post_mortem_checkpoint": {
+    "diagnostic_only": true,
+    "game_log_sha256": "4b5ac96c7e9de18c8745e96e8ba2cb66d3b653e3779c7dcfae093653f2269050",
+    "receipt_sha256": "17f9c4086132d7e44a8bc830fd4c502dd6932c4b36ebd9bebd4cfd7e602148aa",
+    "raw_report_completed": true,
+    "stack_prefix_bytes": 1680,
+    "heap_regions_attempted": 16,
+    "heap_regions_fully_readable": 15,
+    "unreadable_heap_region_handled_without_native_fault": true,
+    "game_fault_rva": "0x1426ac4",
+    "game_fault_read_address": "0x2",
+    "normal_memory_tracking": true,
+    "runtime_hash_restored": true,
+    "config_and_library_byte_preserved": true,
+    "own_processes_closed": true,
+    "screen_at_35_seconds": "white_game_surface_with_touch_overlay",
+    "screen_sha256": "c311139c07586c8b8477e3b329b6aea4669732ce27d29d52181104a765cd0dea",
+    "gameplay_qualified": false,
+    "raw_game_memory_published": false
+  }
+}

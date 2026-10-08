@@ -30,11 +30,28 @@ individual group values, with zero differences above 0.00001. There are 33 and
 restore their original configuration and library byte-for-byte. See the
 [device evidence](evidence/ipad-two-pass-msaa-20261008.json).
 
-This proves a component of the proposed renderer. The test reuses its native
-target after each readback and computes the eight-sample average on the CPU.
-It does **not** preserve eight individual sample values for subsequent guest
-reads, integrate AnyPS5, render game shaders or qualify game performance. Its
-floating-point resolve also does not qualify guest-format rounding or sRGB.
+The original mode reuses its native target after each readback and computes
+the eight-sample average on the CPU. An additional `--array` mode now keeps
+both four-sample groups in separate layers of one native multisample image.
+The attachment store operation preserves each layer after rendering. A compute
+shader reads logical sample `i` from layer `i / 4`, native sample `i % 4`, stores
+each value separately, and computes the eight-sample mean on the GPU. Render-pass
+dependencies order attachment writes and subsequent shader reads; a final barrier
+and fence order readback before CPU inspection.
+
+Both patterns pass 4,096 individual sample checks and 512 GPU-mean checks with
+zero differences above 0.00001, in addition to the original coverage and group
+checks. Each pattern produces eight distinct CPU coverage signatures over the
+fixture, so a permutation of samples cannot pass just because two samples cover
+the same pixels. The same binary also passes the original mode again. Original
+configuration and library files are restored byte-for-byte and the app's own
+process cleanup is verified. See the
+[sample-preservation evidence](evidence/ipad-msaa-array-preservation-20261008.json).
+
+This qualifies GPU-resident sample preservation and shader read ordering for
+the synthetic triangle. It does **not** integrate AnyPS5, render game shaders,
+implement guest layouts or qualify game performance. The floating-point
+mean does not qualify guest-format rounding or sRGB.
 
 The capability query additionally returns support for sample-rate interpolation
 functions, although Wine does not enumerate `VK_KHR_portability_subset`. That
@@ -48,10 +65,10 @@ instructions. The distinction follows the
 
 The following work remains before this can replace a rejected game draw:
 
-1. Keep both native four-sample targets resident. Prove shader reads of all
-   eight individual samples, including their ordering, before implementing
-   guest resolve operations. A native multisample array or two distinct images
-   must be tested, rather than inferred from feature bits.
+1. Integrate the tested two-layer native four-sample image and logical sample
+   routing into render-target residency and shader image loads. Individual
+   sample preservation has passed the independent device probe; it has not
+   passed the guest renderer or guest resolve operations.
 2. Decode sample and fragment counts consistently in `State`, `ColorTarget`
    and `GuestTextureResource`. Extend color/depth byte sizes, swizzle equations,
    import/export and alias tracking to include the sample coordinate. Validate
@@ -82,14 +99,23 @@ and [physical-device properties](https://docs.vulkan.org/refpages/latest/refpage
 scripts/build-msaa-split-probe.sh windows
 cd build/msaa-split-probe/windows
 ./probe.exe
+./probe.exe --array
 ```
 
 Run that PE on a Vulkan-capable Windows reference, or import the generated
 directory into the iPad library and launch `probe.exe` through Madeira. The
-program expects its shader files in its working directory. A second argument
+program expects its shader files in its working directory. An optional argument
 may name a local 16-byte position file: eight distinct `(x,y)` byte pairs in
 units of 1/16, each coordinate between 0 and 15. The captured game pattern stays
 private; it is not shipped in this repository.
+
+Use `probe.exe --array positions.bin` to check that pattern with persistent
+samples and GPU resolve. `--array` requires a graphics/compute queue and a
+sampled native four-sample array image. When the portability-subset extension
+is enumerated, its `multisampleArrayImage` feature must be supported and is
+explicitly enabled at device creation. Wine on the tested iPad filters the
+extension name; the device execution proves this resource path independently
+of the queried feature bit.
 
 The macOS build requires `MOLTENVK_LIB` pointing to a pinned built dylib and
 `scripts/build-msaa-split-probe.sh macos`. A macOS result does not qualify iPad

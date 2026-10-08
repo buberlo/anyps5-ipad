@@ -11,6 +11,8 @@ for stage in vert frag; do
     glslangValidator -V --target-env vulkan1.1 "$root/tools/gpu-probe/msaa_split.$stage" -o "$out/msaa_split.$stage.spv"
     spirv-val --target-env vulkan1.1 "$out/msaa_split.$stage.spv"
 done
+glslangValidator -V --target-env vulkan1.1 "$root/tools/gpu-probe/msaa_split_read.comp" -o "$out/msaa_split_read.comp.spv"
+spirv-val --target-env vulkan1.1 "$out/msaa_split_read.comp.spv"
 case "$platform" in
     windows)
         python3 - "$src" "$out/vulkan-1.def" <<'PY'
@@ -35,8 +37,11 @@ python3 - "$root" "$out" <<'PY'
 import hashlib, json, pathlib, subprocess, sys
 root, out = map(pathlib.Path, sys.argv[1:])
 hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file() and p.name != 'manifest.json'}
+sources = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+    for p in (root / 'tools/gpu-probe').glob('msaa_split*')
+    if p.suffix in ('.c', '.vert', '.frag', '.comp')}
 commit = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
-(out / 'manifest.json').write_text(json.dumps({'schema': 1, 'commit': commit, 'files': hashes,
-    'scope': 'synthetic split coverage and center interpolation only'}, indent=2) + '\n')
+(out / 'manifest.json').write_text(json.dumps({'schema': 1, 'commit': commit, 'files': hashes, 'sources': sources,
+    'scope': 'synthetic split coverage; --array adds individual sample preservation and GPU resolve'}, indent=2) + '\n')
 PY
 printf 'Built MSAA experiment in %s; run from that directory so shaders resolve.\n' "$out"

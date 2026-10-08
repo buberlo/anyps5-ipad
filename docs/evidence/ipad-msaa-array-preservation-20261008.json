@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "two_layer_four_sample_storage_and_gpu_mean_device_proof",
+  "source_base_commit": "8c8878ff80bd84d258a03720369a0ce38253add0",
+  "device": {
+    "model": "iPad Air 13-inch (M2)",
+    "os": "iPadOS 27.0.1"
+  },
+  "app_build": 42,
+  "app_binary_sha256": "df44c2c847a1e2dbce3444005f69cfbe468949a319a5f3172688e76ab4e09f01",
+  "route": "x86-64 PE through Wine/FEX, Vulkan, MoltenVK and Metal on the physical iPad",
+  "probe": {
+    "source": "tools/gpu-probe/msaa_split_probe.c",
+    "source_sha256": "5d48a8e36f23650a0272b7ce2802e5fc5996a8dac10beefe8d7c68ae7574366d",
+    "exe_sha256": "f14dcdb34f0fb81030455eb6b20250f28bf87ca6dacd3ee1f735d29c472fbc32",
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7 via macOS Wine",
+    "shader_sources": {
+      "tools/gpu-probe/msaa_split_read.comp": "45caa697b33f33b15c3fbecbd0cbe7614887d0893b758edaad1b5ee93edd8d79",
+      "tools/gpu-probe/msaa_split.vert": "568918e8c80214ca5769d2e0c684990c22a815bfe600a30da12230fd4f0c7286",
+      "tools/gpu-probe/msaa_split.frag": "29d0105c14a753707221c3c7eeb6b6a98a7399d0777627339f567babb5a360ed"
+    },
+    "spirv_hashes": {
+      "msaa_split.frag.spv": "bb1dbe24deacae103e4e4609aca13aab628b041886bfa84611c125e4150d1be1",
+      "msaa_split_read.comp.spv": "415f5111016998548ce749115988052029ea1630904bc9a719bb07f5ce637e7a",
+      "msaa_split.vert.spv": "388f4849b3509052cb786b6f454e9facf9fc8c5d02b40fc014379dcf89aef12c"
+    },
+    "render_extent": [
+      16,
+      16
+    ],
+    "format": "R32_SFLOAT",
+    "native_samples_per_layer": 4,
+    "array_layers": 2,
+    "logical_sample_mapping": "layer = logical_sample / 4; native_sample = logical_sample % 4",
+    "shader_modes": [
+      "constant color for coverage counts",
+      "interpolated center gradient"
+    ],
+    "reference": "Integer edge coverage at all eight 1/16-pixel positions; no sample lies exactly on a fixture edge",
+    "value_tolerance": 1e-05,
+    "gpu_mean": "compute shader sums all eight individually fetched values and divides by eight",
+    "synchronization": "attachment writes to compute reads via render-pass dependencies; host readback after memory barrier and completed fence"
+  },
+  "runs": {
+    "synthetic_pattern": {
+      "pixels": 256,
+      "combined_value_checks": 512,
+      "individual_group_value_checks": 1024,
+      "partial_coverage_pixels": 33,
+      "combined_errors": 0,
+      "group_errors": 0,
+      "wine_exit_code": 0,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "ac6272d3f3a1166a2b5e78f20529469e4faac8140ec6172b70c55cc42041ab25",
+      "private_receipt_sha256": "66de02d95ec09186404065e8784d07e6404895cfa83a1ad679f93cca1f279da5",
+      "jit_detach_brk_logged_and_skipped": true,
+      "individual_sample_checks": 4096,
+      "individual_sample_errors": 0,
+      "gpu_mean_checks": 512,
+      "gpu_mean_errors": 0,
+      "distinct_cpu_coverage_signatures": 8
+    },
+    "captured_solitaire_pattern": {
+      "pixels": 256,
+      "combined_value_checks": 512,
+      "individual_group_value_checks": 1024,
+      "partial_coverage_pixels": 34,
+      "combined_errors": 0,
+      "group_errors": 0,
+      "wine_exit_code": 0,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "d345bc5a1647704abe350f73fd5f416291887989f7f0fd872980fda334cd4391",
+      "private_receipt_sha256": "34b39373ecdc8a027b5ebe4cb186ff6695d9432b0ea9edab1dd409fcf6bfe90d",
+      "jit_detach_brk_logged_and_skipped": true,
+      "individual_sample_checks": 4096,
+      "individual_sample_errors": 0,
+      "gpu_mean_checks": 512,
+      "gpu_mean_errors": 0,
+      "distinct_cpu_coverage_signatures": 8
+    },
+    "original_mode_regression": {
+      "pixels": 256,
+      "combined_value_checks": 512,
+      "individual_group_value_checks": 1024,
+      "partial_coverage_pixels": 33,
+      "combined_errors": 0,
+      "group_errors": 0,
+      "wine_exit_code": 0,
+      "config_and_library_byte_restored": true,
+      "own_processes_closed_verified": true,
+      "private_log_sha256": "dbc5d3bf5c35ff2c6f9a49eb324e48f8fbd455a599363bdc9cb07bcda1cee298",
+      "private_receipt_sha256": "8d78608723703937af3b0f094caff741c1362a49a562f8e9c8fbe2adfcd136de",
+      "jit_detach_brk_logged_and_skipped": true
+    }
+  },
+  "captured_pattern": {
+    "source_private_register_capture_sha256": "bb742a243a3ff418f0d177401ccaa1a97ee69c6e99f37e1ebcda0d4b09d72818",
+    "private_pattern_bytes_sha256": "7a0c161be5df217a42eb1c07c76e098b544f08e77eda4069ae76b33e9d80ba88",
+    "distinct_sample_positions": 8,
+    "identical_pattern_at_all_four_quad_pixels": true,
+    "pattern_contents_published": false
+  },
+  "limits": {
+    "anyps5_renderer_integrated": false,
+    "native_eight_sample_attachment_created": false,
+    "eight_individual_gpu_samples_preserved_and_read": true,
+    "depth_stencil_blending_discard_or_shader_side_effects_tested": false,
+    "guest_sample_tiling_or_resolve_tested": false,
+    "guest_format_rounding_or_srgb_tested": false,
+    "gameplay_audio_or_fps_qualified": false,
+    "interpolate_at_offset_instruction_execution_tested": false
+  },
+  "next_required": [
+    "Decode and transfer guest sample-aware color/depth layouts and resolve reads",
+    "Preserve center interpolation, depth/stencil, masks, blending and discard behavior",
+    "Reject or handle duplicated shader side effects before applying multiple passes",
+    "Integrate with resident-target caching, dirty tracking and frame lifetime",
+    "Repair pending-AVX exception state, then run actual Solitaire gameplay acceptance"
+  ],
+  "primary_references": [
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceSampleLocationsPropertiesEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPipelineSampleLocationsStateCreateInfoEXT.html",
+    "https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDevicePortabilitySubsetFeaturesKHR.html"
+  ]
+}

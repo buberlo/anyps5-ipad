@@ -1,0 +1,89 @@
+// Original new snapshot-owner test using existing production tiler/image transfers.
+// Buffer allocation and GuestMemory reader adapters are native fixture-owned;
+// actual Draw/BufferPool/GuestArena/Wine/FEX/iPad/performance are not qualified.
+#define main PreservedSampleTilingProbeMain
+#include "gpu_color_sample_tiling_probe.cpp"
+#undef main
+#include "prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp"
+#include "ColorSnapshotRaster_spv.h"
+
+namespace {
+bool omitSeedCopy=false;unsigned seedCalls=0,fixtureReads=0,bufferOwners=0;
+std::span<const std::byte> sourceGuest;
+VKAPI_ATTR void VKAPI_CALL seedCopy(VkCommandBuffer commands,VkBuffer src,VkBuffer dst,unsigned count,const VkBufferCopy* ranges){++seedCalls;if(!omitSeedCopy)vkCmdCopyBuffer(commands,src,dst,count,ranges);}
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL snapshotResolve(VkDevice device,const char* name){if(std::strcmp(name,"vkCmdCopyBuffer")==0)return reinterpret_cast<PFN_vkVoidFunction>(seedCopy);return trackedResolve(device,name);}
+void fixtureRead(std::uint64_t address,std::span<std::byte> output,std::size_t alignment){
+ ++fixtureReads;require(address==reinterpret_cast<std::uintptr_t>(sourceGuest.data())&&address%alignment==0&&output.size()==sourceGuest.size(),"native reader range/alignment mismatch");std::memcpy(output.data(),sourceGuest.data(),output.size());
+}
+}
+// The actual production snapshot owner receives these native VkBuffer objects.
+// This allocation adapter deliberately does not claim production BufferPool proof.
+namespace AgcDriver::Graphics {
+Buffer::Buffer(const Context& c,std::size_t n,VkBufferUsageFlags u,VkMemoryPropertyFlags p):context(c),size(n),capacity(n),usage(u),properties(p){
+ require(n&&p==(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),"native snapshot buffer properties");
+ try{VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};info.size=n;info.usage=u;info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;Check(vkCreateBuffer(c.device,&info,nullptr,&buffer),"snapshot buffer");VkMemoryRequirements requirements{};vkGetBufferMemoryRequirements(c.device,buffer,&requirements);VkMemoryAllocateInfo allocation{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};allocation.allocationSize=requirements.size;
+  try{allocation.memoryTypeIndex=c.MemoryType(requirements.memoryTypeBits,p|VK_MEMORY_PROPERTY_HOST_CACHED_BIT);}catch(const std::runtime_error&){allocation.memoryTypeIndex=c.MemoryType(requirements.memoryTypeBits,p);}
+  Check(vkAllocateMemory(c.device,&allocation,nullptr,&memory),"snapshot memory");Check(vkBindBufferMemory(c.device,buffer,memory,0),"snapshot bind");Check(vkMapMemory(c.device,memory,0,VK_WHOLE_SIZE,0,&mapping),"snapshot map");std::memset(mapping,0xda,n);++bufferOwners;
+ }catch(...){if(mapping)vkUnmapMemory(c.device,memory);if(buffer)vkDestroyBuffer(c.device,buffer,nullptr);if(memory)vkFreeMemory(c.device,memory,nullptr);throw;}
+}
+Buffer::~Buffer(){if(mapping)vkUnmapMemory(context.device,memory);if(buffer)vkDestroyBuffer(context.device,buffer,nullptr);if(memory)vkFreeMemory(context.device,memory,nullptr);--bufferOwners;}
+VkBuffer Buffer::Handle()const{return buffer;}
+std::span<std::byte>Buffer::Bytes(){return{static_cast<std::byte*>(mapping),size};}
+}
+namespace {
+struct Raster {
+ Device& d;AgcDriver::Graphics::RenderTarget& target;VkRenderPass pass{};VkPipelineLayout layout{};VkPipeline pipeline{};std::vector<VkFramebuffer> framebuffers;
+ Raster(Device& d,AgcDriver::Graphics::RenderTarget& t):d(d),target(t){VkShaderModule vs{},fs{};try{
+  VkAttachmentDescription attachment{};attachment.format=t.Format();attachment.samples=t.NativeSamples();attachment.loadOp=VK_ATTACHMENT_LOAD_OP_LOAD;attachment.storeOp=VK_ATTACHMENT_STORE_OP_STORE;attachment.initialLayout=attachment.finalLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  const VkAttachmentReference ref{0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};VkSubpassDescription sub{};sub.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;sub.colorAttachmentCount=1;sub.pColorAttachments=&ref;VkRenderPassCreateInfo pi{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};pi.attachmentCount=1;pi.pAttachments=&attachment;pi.subpassCount=1;pi.pSubpasses=&sub;check(vkCreateRenderPass(d.device,&pi,nullptr,&pass),"raster renderpass");
+  for(unsigned g=0;g<t.Groups();++g){auto view=t.View(g);VkFramebufferCreateInfo fi{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};fi.renderPass=pass;fi.attachmentCount=1;fi.pAttachments=&view;fi.width=t.Extent().width;fi.height=t.Extent().height;fi.layers=1;VkFramebuffer fb{};check(vkCreateFramebuffer(d.device,&fi,nullptr,&fb),"raster framebuffer");framebuffers.push_back(fb);}
+  const VkPushConstantRange push{VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,16};VkPipelineLayoutCreateInfo li{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};li.pushConstantRangeCount=1;li.pPushConstantRanges=&push;check(vkCreatePipelineLayout(d.device,&li,nullptr,&layout),"raster layout");
+  const auto module=[&](const auto& words,VkShaderModule& output){VkShaderModuleCreateInfo mi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};mi.codeSize=sizeof(words);mi.pCode=words;check(vkCreateShaderModule(d.device,&mi,nullptr,&output),"raster shader");};module(COLOR_SNAPSHOT_RASTER_VERT_SPV,vs);module(COLOR_SNAPSHOT_RASTER_FRAG_SPV,fs);
+  const std::array<VkPipelineShaderStageCreateInfo,2> stages{{{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_VERTEX_BIT,vs,"main",nullptr},{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_FRAGMENT_BIT,fs,"main",nullptr}}};
+  VkPipelineVertexInputStateCreateInfo vi{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};ia.topology=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};vp.viewportCount=vp.scissorCount=1;VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};rs.polygonMode=VK_POLYGON_MODE_FILL;rs.cullMode=VK_CULL_MODE_NONE;rs.lineWidth=1;
+  VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};ms.rasterizationSamples=t.NativeSamples();VkPipelineColorBlendAttachmentState ba{};ba.colorWriteMask=15;VkPipelineColorBlendStateCreateInfo bs{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};bs.attachmentCount=1;bs.pAttachments=&ba;
+  const std::array<VkDynamicState,2> states{VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};VkPipelineDynamicStateCreateInfo dy{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};dy.dynamicStateCount=2;dy.pDynamicStates=states.data();VkGraphicsPipelineCreateInfo ci{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};ci.stageCount=2;ci.pStages=stages.data();ci.pVertexInputState=&vi;ci.pInputAssemblyState=&ia;ci.pViewportState=&vp;ci.pRasterizationState=&rs;ci.pMultisampleState=&ms;ci.pColorBlendState=&bs;ci.pDynamicState=&dy;ci.layout=layout;ci.renderPass=pass;check(vkCreateGraphicsPipelines(d.device,VK_NULL_HANDLE,1,&ci,nullptr,&pipeline),"raster pipeline");vkDestroyShaderModule(d.device,vs,nullptr);vkDestroyShaderModule(d.device,fs,nullptr);
+ }catch(...){if(vs)vkDestroyShaderModule(d.device,vs,nullptr);if(fs)vkDestroyShaderModule(d.device,fs,nullptr);release();throw;}}
+ ~Raster(){release();}void release(){if(pipeline)vkDestroyPipeline(d.device,pipeline,nullptr);if(layout)vkDestroyPipelineLayout(d.device,layout,nullptr);for(auto fb:framebuffers)vkDestroyFramebuffer(d.device,fb,nullptr);if(pass)vkDestroyRenderPass(d.device,pass,nullptr);}
+ void Record(unsigned mode){if(mode==0)return;const auto extent=target.Extent();const VkViewport viewport{0,0,float(extent.width),float(extent.height),0,1};const VkRect2D scissor{{0,0},extent};const std::array<unsigned,4> parameters{mode,extent.width,extent.height,0};for(auto fb:framebuffers){VkRenderPassBeginInfo bi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};bi.renderPass=pass;bi.framebuffer=fb;bi.renderArea=scissor;vkCmdBeginRenderPass(d.commands,&bi,VK_SUBPASS_CONTENTS_INLINE);vkCmdSetViewport(d.commands,0,1,&viewport);vkCmdSetScissor(d.commands,0,1,&scissor);vkCmdBindPipeline(d.commands,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);vkCmdPushConstants(d.commands,layout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,16,parameters.data());vkCmdDraw(d.commands,3,1,0,0);vkCmdEndRenderPass(d.commands);}}
+};
+struct Geometry {VkExtent2D extent;unsigned samples;std::uint64_t tiledBytes;std::vector<std::uint64_t> offsets;std::vector<bool> logical;std::vector<std::byte> linear,tiled;};
+Geometry geometry(Oracle& oracle,VkExtent2D extent,unsigned samples){ADDR2_COMPUTE_SURFACE_INFO_INPUT info{};info.size=sizeof(info);info.flags.color=1;info.swizzleMode=ADDR_SW_64KB_R_X;info.resourceType=ADDR_RSRC_TEX_2D;info.bpp=32;info.width=extent.width;info.height=extent.height;info.numSlices=info.numMipLevels=1;info.numSamples=info.numFrags=samples;ADDR2_COMPUTE_SURFACE_INFO_OUTPUT out{};out.size=sizeof(out);require(Addr2ComputeSurfaceInfo(oracle.library,&info,&out)==ADDR_OK,"AMD geometry");Geometry g{extent,samples,out.surfSize};g.offsets.resize(std::size_t(extent.width)*extent.height*samples);g.logical.resize(out.surfSize/4);g.linear.resize(g.offsets.size()*4);g.tiled.assign(out.surfSize,std::byte{0x63});
+ for(unsigned y=0;y<extent.height;++y)for(unsigned x=0;x<extent.width;++x)for(unsigned s=0;s<samples;++s){ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT ai{};ai.size=sizeof(ai);ai.flags.color=1;ai.swizzleMode=ADDR_SW_64KB_R_X;ai.resourceType=ADDR_RSRC_TEX_2D;ai.bpp=32;ai.unalignedWidth=extent.width;ai.unalignedHeight=extent.height;ai.numSlices=ai.numMipLevels=1;ai.numSamples=ai.numFrags=samples;ai.x=x;ai.y=y;ai.sample=s;ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT ao{};ao.size=sizeof(ao);require(Addr2ComputeSurfaceAddrFromCoord(oracle.library,&ai,&ao)==ADDR_OK&&ao.addr+4<=out.surfSize&&ao.addr%4==0,"AMD offset");const auto i=(std::size_t(y)*extent.width+x)*samples+s;require(!g.logical[ao.addr/4],"AMD alias coordinate");g.logical[ao.addr/4]=true;g.offsets[i]=ao.addr;const auto word=pattern(x,y,s);std::memcpy(g.linear.data()+4*i,&word,4);std::memcpy(g.tiled.data()+ao.addr,&word,4);}
+ return g;
+}
+std::vector<std::byte> run(Device& d,AgcDriver::Graphics::RenderTarget& image,Raster& raster,const Geometry& g,unsigned mode,bool optimize,bool negative,bool& initialized){using namespace AgcDriver::Graphics;
+ auto allocation=std::unique_ptr<std::byte,void(*)(void*)>(static_cast<std::byte*>(std::aligned_alloc(65536,g.tiledBytes)),std::free);require(bool(allocation),"guest seed allocation");std::memcpy(allocation.get(),g.tiled.data(),g.tiled.size());sourceGuest={allocation.get(),g.tiled.size()};
+ ColorTarget color{};color.address=reinterpret_cast<std::uintptr_t>(allocation.get());color.extent=g.extent;color.format=VK_FORMAT_R8G8B8A8_UNORM;color.tileMode=ColorTileMode::RenderTarget;color.samples=color.fragments=g.samples;color.bytes=g.tiledBytes;
+ AgcDriver::Graphics::Context context=d.context;context.deviceProc=snapshotResolve;ColorSampleTransfer samples(context,image,color);GpuColorSampleTiler::Transfer tiling(*d.tiler,color);::Buffer linear(d,g.linear.size());::Buffer legacy(d,g.tiledBytes);std::unique_ptr<ColorSampleSnapshotCopy> snapshot;
+ if(optimize)snapshot=std::make_unique<ColorSampleSnapshotCopy>(context,color,fixtureRead);else std::memcpy(legacy.data(),g.tiled.data(),g.tiled.size());
+ const ColorSampleImageAccess attachment{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,VK_ACCESS_COLOR_ATTACHMENT_READ_BIT|VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT};
+ const ColorSampleTilingBufferAccess linearHost{d.device,linear.buffer,linear.offset,linear.bytes,VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT};
+ d.begin();omitSeedCopy=negative;if(snapshot)snapshot->RecordSeed(d.commands);omitSeedCopy=false;
+ const auto source=snapshot?snapshot->DetileSource():ColorSampleTilingBufferAccess{d.device,legacy.buffer,legacy.offset,legacy.bytes,VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_WRITE_BIT};
+ tiling.Record(d.commands,false,source,linearHost,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT);
+ samples.RecordUpload(d.commands,{linear.buffer,linear.offset,linear.bytes,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT},initialized?ColorSampleImageAccess{VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT}:ColorSampleImageAccess{VK_IMAGE_LAYOUT_UNDEFINED,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,0},attachment);
+ raster.Record(mode);
+ barrier(d,linear,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT);vkCmdFillBuffer(d.commands,linear.buffer,linear.offset,linear.bytes,0xfefefefeu);
+ samples.RecordReadback(d.commands,{linear.buffer,linear.offset,linear.bytes,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT},attachment,{VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_READ_BIT},VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_HOST_READ_BIT);
+ tiling.Record(d.commands,true,{d.device,linear.buffer,linear.offset,linear.bytes,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT},snapshot?snapshot->RetileDestination():ColorSampleTilingBufferAccess{d.device,legacy.buffer,legacy.offset,legacy.bytes,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_HOST_WRITE_BIT},VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_READ_BIT);
+ // Simulated newer CPU source bytes cannot alter the retained baseline.
+ allocation.get()[13]=std::byte{0x91};allocation.get()[g.tiledBytes-1]=std::byte{0x92};d.submit();initialized=true;
+ auto result=snapshot?snapshot->Result():std::span<const std::byte>(legacy.data(),g.tiledBytes);std::vector<std::byte> output(result.begin(),result.end());
+ require(linear.guardErrors()==0&&legacy.guardErrors()==0,"native buffer guards changed");if(snapshot)require(compareBytes(snapshot->Original().data(),g.tiled)==0,"GPU/CPU source edit modified immutable baseline");
+ for(std::size_t i=0;i<g.offsets.size();++i)require(std::memcmp(output.data()+g.offsets[i],linear.data()+4*i,4)==0,"retile disagrees with actual packed readback");
+ return output;
+}
+}
+int main(){try{Oracle oracle;Device d;std::uint64_t checked=0,padding=0,changed=0,negativePadding=0;unsigned pairs=0,negativeCases=0;
+ for(const auto samples:{2u,4u,8u})for(const auto extent:{VkExtent2D{17,19},VkExtent2D{33,65},VkExtent2D{65,73},VkExtent2D{4097,19},VkExtent2D{19,4097}}){auto g=geometry(oracle,extent,samples);AgcDriver::Graphics::ColorTarget color{};color.address=0x10000;color.extent=extent;color.format=VK_FORMAT_R8G8B8A8_UNORM;color.tileMode=AgcDriver::Graphics::ColorTileMode::RenderTarget;color.samples=color.fragments=samples;color.bytes=g.tiledBytes;AgcDriver::Graphics::RenderTarget image(d.context,color,false);Raster raster(d,image);bool initialized=false;std::uint64_t discardChanges=0,partialChanges=0;
+  for(unsigned mode=0;mode<4;++mode){auto legacy=run(d,image,raster,g,mode,false,false,initialized);auto optimized=run(d,image,raster,g,mode,true,false,initialized);require(legacy==optimized,"snapshot GPUcopy changed image/tiling bytes");std::uint64_t modeChanges=0;
+   for(std::size_t i=0;i<g.offsets.size();++i){checked++;if(std::memcmp(legacy.data()+g.offsets[i],g.tiled.data()+g.offsets[i],4)!=0){modeChanges++;std::uint32_t value=0;std::memcpy(&value,legacy.data()+g.offsets[i],4);require(value==0xff804020u,"raster color output differs from independent RGBA8 reference");}}
+   for(std::size_t i=0;i<g.logical.size();++i)if(!g.logical[i]){padding+=4;require(std::memcmp(optimized.data()+4*i,g.tiled.data()+4*i,4)==0,"padding was overwritten");}
+   if(mode==0)require(modeChanges==0&&legacy==g.tiled,"unchanged image chain mutated data");if(mode==1){partialChanges=modeChanges;require(modeChanges>0&&modeChanges<g.offsets.size(),"partial triangle did not have both covered/uncovered samples");}if(mode==2){discardChanges=modeChanges;require(modeChanges>0&&modeChanges<partialChanges,"fragment discard did not remove covered samples");}if(mode==3)require(modeChanges==g.offsets.size(),"full triangle did not cover every sample");changed+=modeChanges;++pairs;
+  }
+  auto negative=run(d,image,raster,g,0,true,true,initialized);std::uint64_t corrupt=0;for(std::size_t i=0;i<g.logical.size();++i)if(!g.logical[i]&&std::memcmp(negative.data()+4*i,g.tiled.data()+4*i,4)!=0)corrupt+=4;require(corrupt>0&&negative!=g.tiled,"missing-seed-copy poisonedpadding negative control passed");negativePadding+=corrupt;++negativeCases;require(bufferOwners==0,"snapshot buffers retained past completed owner");std::printf("[snapshot-copy] extent=%ux%u logical_samples=%u sample_groups=%u modes=4 pair_bytes_equal=1 partial_changed=%llu discard_changed=%llu missing_copy_padding_corrupt=%llu\n",extent.width,extent.height,samples,image.Groups(),(unsigned long long)partialChanges,(unsigned long long)discardChanges,(unsigned long long)corrupt);
+ }
+ require(seedCalls==pairs+negativeCases&&fixtureReads==pairs+negativeCases&&bufferOwners==0,"owner/copy counts incorrect");std::printf("[snapshot-copy] pairs=%u missing_copy_negatives=%u logical_samples_checked=%llu padding_bytes_checked=%llu raster_changed_samples=%llu negative_padding_bytes=%llu production_sample_transfer=1 snapshot_owner=1 native_allocator_adapter=1 errors=0 status=PASS\n",pairs,negativeCases,(unsigned long long)checked,(unsigned long long)padding,(unsigned long long)changed,(unsigned long long)negativePadding);return 0;
+}catch(const std::exception& e){std::fprintf(stderr,"[snapshot-copy] FAIL %s\n",e.what());return 1;}}

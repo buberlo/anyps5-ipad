@@ -1,0 +1,225 @@
+diff --git a/core/libs/prx/libSceAgcDriver/CMakeLists.txt b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+--- a/core/libs/prx/libSceAgcDriver/CMakeLists.txt
++++ b/core/libs/prx/libSceAgcDriver/CMakeLists.txt
+@@ -131,6 +131,7 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/Execution/src/AspectFit.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Execution/src/PresentationScaler.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/Draw.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorSampleSnapshotCopy.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/DepthSurface.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/ColorTargetLayout.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/src/DepthTargetLayout.cpp
+@@ -454,6 +455,7 @@
+         tests/GuestSamplerResource.cpp
+         tests/TextureDetiler.cpp
+         Graphics/src/Draw.cpp
++        Graphics/src/ColorSampleSnapshotCopy.cpp
+         Graphics/src/DepthSurface.cpp
+         Graphics/src/Pipeline.cpp
+         Graphics/src/State.cpp
+@@ -626,6 +628,7 @@
+             Execution/src/GuestMemory.cpp
+             Execution/src/BdaFeatures.cpp
+             Graphics/src/Draw.cpp
++            Graphics/src/ColorSampleSnapshotCopy.cpp
+             Graphics/src/DepthSurface.cpp
+             Graphics/src/ColorTargetLayout.cpp
+             Graphics/src/DepthTargetLayout.cpp
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp
+@@ -0,0 +1,30 @@
++#ifndef ANYPS5_COLOR_SAMPLE_SNAPSHOT_COPY_HPP
++#define ANYPS5_COLOR_SAMPLE_SNAPSHOT_COPY_HPP
++#include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/Resources.hpp"
++
++namespace AgcDriver::Graphics {
++bool ColorSampleStagingCopyEnabled();
++
++// One synchronous draw owns both coherent buffers. The baseline is never a
++// GPU destination, and remains immutable through fence/fault checks and the
++// final changed-byte commit. A full GPU copy seeds every result padding byte.
++class ColorSampleSnapshotCopy {
++public:
++    using Reader = void (*)(std::uint64_t, std::span<std::byte>, std::size_t);
++    ColorSampleSnapshotCopy(const Context& context, const ColorTarget& color, Reader read);
++    ColorSampleSnapshotCopy(const ColorSampleSnapshotCopy&) = delete;
++    ColorSampleSnapshotCopy& operator=(const ColorSampleSnapshotCopy&) = delete;
++    std::span<const std::byte> Original() const;
++    std::span<const std::byte> Result() const;
++    void RecordSeed(VkCommandBuffer commands);
++    ColorSampleTilingBufferAccess DetileSource() const;
++    ColorSampleTilingBufferAccess RetileDestination() const;
++private:
++    Context context;
++    std::unique_ptr<Buffer> baseline;
++    std::unique_ptr<Buffer> result;
++    bool seeded = false;
++};
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleSnapshotCopy.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleSnapshotCopy.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleSnapshotCopy.cpp
+@@ -0,0 +1,68 @@
++#include "prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp"
++#include <cstdlib>
++#include <cstring>
++
++namespace AgcDriver::Graphics {
++bool ColorSampleStagingCopyEnabled() {
++    static const bool enabled = [] {
++        const auto* value = std::getenv("APS5_GPU_COLOR_SAMPLE_STAGING_COPY");
++        return value != nullptr && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++ColorSampleSnapshotCopy::ColorSampleSnapshotCopy(const Context& context,
++        const ColorTarget& color, Reader read) : context(context) {
++    Require(read != nullptr && GpuColorSampleTiler::Supports(context, color),
++        "sample staging copy requires its qualified color layout and reader");
++    const ColorTargetLayout layout(color.extent.width, color.extent.height,
++        color.tileMode, color.elementBytes, color.samples);
++    baseline = std::make_unique<Buffer>(context, layout.Bytes(),
++        VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++    // Draw passes GuestMemory::Read: its pending-GPU flush and full mapped
++    // range validation precede this copy. No guest write or writable mapping.
++    read(color.address, baseline->Bytes(), layout.Alignment());
++    result = std::make_unique<Buffer>(context, layout.Bytes(),
++        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++}
++std::span<const std::byte> ColorSampleSnapshotCopy::Original() const { return baseline->Bytes(); }
++std::span<const std::byte> ColorSampleSnapshotCopy::Result() const { return result->Bytes(); }
++
++void ColorSampleSnapshotCopy::RecordSeed(VkCommandBuffer commands) {
++    Require(commands != VK_NULL_HANDLE && !seeded && baseline->Handle() && result->Handle() &&
++        baseline->Handle() != result->Handle() && baseline->Bytes().size() == result->Bytes().size() &&
++        baseline->Bytes().size() % 4u == 0, "sample staging copy command/buffers are invalid");
++    // Resolve before recording: a missing entry point cannot leave half a copy.
++    const auto barrier = context.Resolved(&DeviceFunctions::cmdPipelineBarrier, "vkCmdPipelineBarrier");
++    const auto copy = context.Resolved(&DeviceFunctions::cmdCopyBuffer, "vkCmdCopyBuffer");
++    std::array<VkBufferMemoryBarrier, 2> before{};
++    for (auto& item : before) {
++        item.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
++        item.srcQueueFamilyIndex = item.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
++        item.offset = 0; item.size = baseline->Bytes().size();
++    }
++    before[0].buffer = baseline->Handle(); before[0].srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
++    before[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
++    // The distinct pooled result has no live prior commands: its previous owner
++    // completed its fence before return to BufferPool. No stale contents read.
++    before[1].buffer = result->Handle(); before[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
++    barrier(commands, VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
++        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
++        0, 0, nullptr, 2, before.data(), 0, nullptr);
++    const VkBufferCopy region{0, 0, baseline->Bytes().size()};
++    copy(commands, baseline->Handle(), result->Handle(), 1, &region);
++    seeded = true;
++}
++ColorSampleTilingBufferAccess ColorSampleSnapshotCopy::DetileSource() const {
++    Require(seeded, "sample staging copy must seed its result before detiling");
++    return {context.device, baseline->Handle(), 0, baseline->Bytes().size(),
++        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
++        VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT};
++}
++ColorSampleTilingBufferAccess ColorSampleSnapshotCopy::RetileDestination() const {
++    Require(seeded, "sample staging copy must seed its padding before retiling");
++    // Retile overwrites logical words only; the full copy owns padding.
++    return {context.device, result->Handle(), 0, result->Bytes().size(),
++        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT};
++}
++}
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -3,6 +3,7 @@
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/GpuStencilSampleTiler.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/StencilSampleTransfer.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/StencilZeroInvariant.hpp"
+@@ -1596,6 +1597,7 @@
+         std::unique_ptr<DeviceBuffer> tiledDevice;
+         std::unique_ptr<DeviceBuffer> linearDevice;
+         std::vector<std::byte> original;
++        std::unique_ptr<ColorSampleSnapshotCopy> sampleSnapshot;
+         TileMipLayout mip{};
+         std::unique_ptr<RenderTarget> target;
+         std::unique_ptr<ColorSampleTransfer> sampleTransfer;
+@@ -1661,10 +1663,16 @@
+         } else {
+             binding.transfer = std::make_unique<Buffer>(context, colorLayout.LinearBytes(), copies | (groupedSamples ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0u));
+             if (binding.sampleGpuTiling) {
+-                binding.original.resize(colorLayout.Bytes());
+-                GuestMemory::Read(color.address, binding.original, colorLayout.Alignment());
+-                binding.tiled = std::make_unique<Buffer>(context, colorLayout.Bytes(), copies | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+-                std::memcpy(binding.tiled->Bytes().data(), binding.original.data(), binding.original.size());
++                if (ColorSampleStagingCopyEnabled()) {
++                    binding.sampleSnapshot = std::make_unique<ColorSampleSnapshotCopy>(context, color, GuestMemory::Read);
++                    static std::once_flag reportedSampleCopy;
++                    std::call_once(reportedSampleCopy, [] { std::fprintf(stderr, "[sample-staging-copy] immutable coherent baseline and full GPU padding seed enabled\n"); });
++                } else {
++                    binding.original.resize(colorLayout.Bytes());
++                    GuestMemory::Read(color.address, binding.original, colorLayout.Alignment());
++                    binding.tiled = std::make_unique<Buffer>(context, colorLayout.Bytes(), copies | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
++                    std::memcpy(binding.tiled->Bytes().data(), binding.original.data(), binding.original.size());
++                }
+                 binding.sampleTiling = std::make_unique<GpuColorSampleTiler::Transfer>(*context.colorSampleTiler, color);
+                 static std::once_flag reportedSampleTiling;
+                 std::call_once(reportedSampleTiling, [] { std::fprintf(stderr, "[sample-tiling] GPU RGBA8 R64KB_X 2/4/8 transfer enabled\n"); });
+@@ -1691,7 +1699,7 @@
+             if (event) {
+                 // Bounded diagnostics alone need the pre-draw pixels on the CPU.
+                 // Ordinary draws leave conversion entirely to the GPU.
+-                if (binding.sampleGpuTiling) colorLayout.Detile(binding.original, binding.transfer->Bytes());
++                if (binding.sampleGpuTiling) colorLayout.Detile(binding.sampleSnapshot ? binding.sampleSnapshot->Original() : std::span<const std::byte>(binding.original), binding.transfer->Bytes());
+                 binding.pixelDiagnostic = std::make_unique<TargetBinding::PixelDiagnosticInput>(
+                     TargetBinding::PixelDiagnosticInput{*event, SampleFramePixels(binding.transfer->Bytes(),
+                         color.extent.width, color.extent.height, color.samples)});
+@@ -2042,10 +2050,14 @@
+             continue;
+         }
+         if (binding.sampleTransfer) {
+-            if (binding.sampleTiling) binding.sampleTiling->Record(commands, false,
+-                {context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
+-                {context.device, binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
+-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
++            if (binding.sampleTiling) {
++                if (binding.sampleSnapshot) binding.sampleSnapshot->RecordSeed(commands);
++                binding.sampleTiling->Record(commands, false,
++                    binding.sampleSnapshot ? binding.sampleSnapshot->DetileSource() : ColorSampleTilingBufferAccess{
++                        context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                    {context.device, binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_WRITE_BIT},
++                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
++            }
+             binding.sampleTransfer->RecordUpload(commands,
+                 {binding.transfer->Handle(), 0, binding.transfer->Bytes().size(),
+                  binding.sampleTiling ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_HOST_BIT,
+@@ -2122,8 +2134,9 @@
+                 binding.sampleTiling ? (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_READ_BIT) : VK_ACCESS_HOST_READ_BIT);
+             if (binding.sampleTiling) binding.sampleTiling->Record(commands, true,
+                 {context.device, binding.transfer->Handle(), 0, binding.transfer->Bytes().size(), VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT},
+-                {context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(),
+-                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_WRITE_BIT},
++                binding.sampleSnapshot ? binding.sampleSnapshot->RetileDestination() : ColorSampleTilingBufferAccess{
++                    context.device, binding.tiled->Handle(), 0, binding.tiled->Bytes().size(),
++                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_HOST_WRITE_BIT},
+                 VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
+             continue;
+         }
+@@ -2257,7 +2270,8 @@
+         // A seed captured before GPU work must never overwrite newer padding or
+         // unchanged CPU/alias stores. Commit only byte runs changed by the GPU,
+         // after resource writeback and the same synchronous fault-checked fence.
+-        if (binding.gpuTiling || binding.sampleGpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
++        if (binding.sampleSnapshot) GuestMemory::WriteChanged(binding.color.address, binding.sampleSnapshot->Result(), binding.sampleSnapshot->Original());
++        else if (binding.gpuTiling || binding.sampleGpuTiling) GuestMemory::WriteChanged(binding.color.address, binding.tiled->Bytes(), binding.original);
+         else WriteColorTarget(binding.color, binding.transfer->Bytes());
+         // The stored texels are the whole target now, so later reads must see them rather than a fast clear.
+         MarkDccUncompressed(binding.color.dccAddress, ColorTargetLayout(binding.color.extent.width, binding.color.extent.height, binding.color.tileMode, binding.color.elementBytes, binding.color.fragments).Bytes());

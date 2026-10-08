@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "frozen_source_focused_native_gpu_and_windows_tracking_qualification_passed",
+  "scope": "Historical focused source61 checkpoint. Complete local HLE and host suites are documented separately. This record does not qualify physical iPad execution or performance.",
+  "patch": {
+    "path": "patches/anyps5/0061-gpu-color-sample-staging-copy.patch",
+    "sha256": "8c524a1685122ecfee93f149bc849f0af775f4cd5631fb3c4d9a7a6d1d667249",
+    "baselinePatchCount": 60,
+    "productionPaths": 4,
+    "isolatedForwardReverseByteExact": true,
+    "reverseRemovesNewFiles": true,
+    "source60SnapshotManifestSha256": "2be1e867d159f867a89cf9df4023bf78ccb8343db38b80015faec630e542a6bc",
+    "source60FrozenPathsVerified": 152,
+    "source60PatchDigestsVerified": 60,
+    "candidateRecordSha256": "9fab5f81c98229c46e65deb5d854f98564840a339bfb384e6a1777dc99bcae81",
+    "roundtripReportSha256": "9cdc63a8d91325e919a9f2a145ed86cd0e3f25ef0c65ee8047bf23bfe44ad5ba"
+  },
+  "productionFiles": {
+    "core/libs/prx/libSceAgcDriver/CMakeLists.txt": {
+      "baselineSha256": "4c9f0f8789188934bb3fcb5c24be902717ddeb19b99b9ef3e3099bcc74d4ffdd",
+      "candidateSha256": "fe331ba839170f601aee43a2672c3b0580f17bf1ae70f511d03fe7f25bc55bb8"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSnapshotCopy.hpp": {
+      "baselineSha256": null,
+      "candidateSha256": "7f95d076b54f81e151039ce78fa5d86983d7cced253fc2f7ee35b5107459979b"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleSnapshotCopy.cpp": {
+      "baselineSha256": null,
+      "candidateSha256": "984580c35ce89d66c28fa0ceb1b195e146afdb3f7cc259e2659b186e75b8f545"
+    },
+    "core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp": {
+      "baselineSha256": "b28e6f1fe06f21564bc2da363a29ab3c68e0bba0e33c01d5909c032d26a6402c",
+      "candidateSha256": "3ed0a9f0f575b8efb376a49b4f7952e920f14cc2d0063727454884b965cf6d83"
+    }
+  },
+  "change": {
+    "option": "APS5_GPU_COLOR_SAMPLE_STAGING_COPY",
+    "enabledOnlyByExactValue": "1",
+    "defaultEnabled": false,
+    "admission": "Existing qualified GPU color sample tiler only: uncompressed RGBA8 UNORM, R64KB_X, two/four/eight equal logical samples and fragments, one validated full tiled range. EQAA, other formats, compressed targets and unqualified metadata keep the existing path.",
+    "baseline": "Actual Draw supplies GuestMemory::Read. Its pending GPU writer flush and mapped-readable full-range check precede one read directly into a distinct coherent baseline Buffer. The retained baseline is never a GPU destination and remains immutable until changed-byte commit.",
+    "gpuSeed": "Record one full-range baseline-to-result vkCmdCopyBuffer including tiled padding. Baseline uses TRANSFER_SRC|STORAGE; result uses TRANSFER_DST|STORAGE. Resolve both command functions before recording. Carry HOST_WRITE to TRANSFER_READ|SHADER_READ visibility and preserve transfer-write to retile dependencies.",
+    "draw": "Retain GPU detile, upload of every logical sample group, actual geometry/rasterization, sample readback and retile. The result is read only after the existing synchronous fence, fault/indirect checks and resource writeback. Grouped sample draws remain ineligible for asynchronous recorded draw completion.",
+    "commit": "GuestMemory::WriteChanged(result, immutable baseline) preserves newer CPU/alias writes in unchanged logical bytes and padding. Existing writable-range validation, pending writer flush and tracking remain; no full guest overwrite.",
+    "lifetime": "Targets retain both snapshot buffers. Local CommandBatch unwind cancels unsubmitted work or waits submitted work before the snapshot owners are destroyed. Released native buffers follow the existing fence-dependent pool ownership.",
+    "fallback": "Default-off and unqualified states retain the previous CPU seed path. No altered sample count, padding semantics, image quality, shader acceptance or new writeback bypass."
+  },
+  "validation": {
+    "helperContract": {
+      "status": "PASS",
+      "script": "scripts/check-color-sample-snapshot-copy.py",
+      "fixture": "tools/checks/color_sample_snapshot_copy_contract.cpp",
+      "reportSha256": "b14ab9378055dc400937be6571e3ff737ddc3c07c80a93fbe7c698da7ab5ed21",
+      "logSha256": "0db3b47508f81b61c76c66e6b657729e0ffe3688c6fdd95c7ff552b0bcf227ae",
+      "executableSha256": "e3cbeef57298d395e53b07e07cea0a105b15f0c981149848c7b6e3b823b48da7",
+      "sanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "samples": [
+        2,
+        4,
+        8
+      ],
+      "guardedRejections": 26,
+      "exactOptionRuns": [
+        {
+          "option": null,
+          "enabled": false
+        },
+        {
+          "option": "0",
+          "enabled": false
+        },
+        {
+          "option": "1",
+          "enabled": true
+        },
+        {
+          "option": "yes",
+          "enabled": false
+        },
+        {
+          "option": "01",
+          "enabled": false
+        },
+        {
+          "option": "true",
+          "enabled": false
+        },
+        {
+          "option": " 1",
+          "enabled": false
+        },
+        {
+          "option": "1 ",
+          "enabled": false
+        }
+      ],
+      "checked": "Deferred copy records no immediate CPU result write; full logical/padding copy completes at modeled fence; baseline remains immutable after newer guest changes; exact access/stage/range metadata; allocation/reader failures; cancel-versus-submitted-wait owner unwind.",
+      "metadataOnlyRejections": [
+        "Unsupported R32_UINT format",
+        "Single sample",
+        "Samples/fragments mismatch",
+        "Nonzero DCC address",
+        "Incorrect declared tiled byte range",
+        "Unaligned source address",
+        "Packed mip tail"
+      ],
+      "recordingOrOwnershipControls": [
+        "Null reader",
+        "Null command buffer",
+        "Access to source/result before seed",
+        "Missing vkCmdCopyBuffer",
+        "Missing vkCmdPipelineBarrier",
+        "Duplicate seed",
+        "First or second modeled Buffer construction failure",
+        "Modeled reader failure",
+        "Exception after recording, before or after modeled submission"
+      ],
+      "brokenSourceNegatives": [
+        {
+          "name": "missing-copy",
+          "exitCode": -6,
+          "rejected": true
+        },
+        {
+          "name": "missing-compute-visibility",
+          "exitCode": -6,
+          "rejected": true
+        }
+      ],
+      "boundary": "Actual production snapshot helper and qualified-layout checks; coherent allocator, reader and Vulkan/CommandBatch execution are explicit fixture adapters. Metadata rejection cases are not native GPU execution cases."
+    },
+    "nativeGpu": {
+      "status": "PASS",
+      "exitCode": 0,
+      "device": "Apple M3 Pro",
+      "backend": "Native macOS MoltenVK 1.4.2",
+      "apiVersionReported": "1.1.357",
+      "driverVersionReported": 10402,
+      "maxStorageBufferRangeReported": 4294967295,
+      "script": "scripts/build-color-sample-snapshot-copy-probe.py",
+      "fixture": "tools/gpu-probe/color_sample_snapshot_copy_probe.cpp",
+      "manifestSha256": "fe0b0491ba636cf1f9ee2b87b1744074f233ca0dd0807ad1f9cd558eb3317505",
+      "logSha256": "9c1e85408c6e69db6611b121c538b57a2ed378e5666e88901efbbd8380779484",
+      "executableSha256": "4fdbbfdfbe407e9628edd29d2ac2adb01424423428d509d6d1acaa2de336ac0e",
+      "dependencySha256": {
+        "addrLibrary": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+        "addrHeader": "566a5b9815094818027fc2b8b84382b5fa217310846ea5d0cb855139fd55fae2",
+        "vulkanLibrary": "e21bceade8d0638bb2bc041f3166fbd54da19fa0958d8bbaff584afd7958d542"
+      },
+      "cpuSanitizers": [
+        "ASan",
+        "UBSan"
+      ],
+      "qualifiedFormat": "RGBA8 UNORM R64KB_X",
+      "logicalSamples": [
+        2,
+        4,
+        8
+      ],
+      "nativeSampleGroups": {
+        "2": 1,
+        "4": 1,
+        "8": 2
+      },
+      "extents": [
+        {
+          "width": 17,
+          "height": 19
+        },
+        {
+          "width": 33,
+          "height": 65
+        },
+        {
+          "width": 65,
+          "height": 73
+        },
+        {
+          "width": 4097,
+          "height": 19
+        },
+        {
+          "width": 19,
+          "height": 4097
+        }
+      ],
+      "rasterModes": [
+        "Unchanged/no draw",
+        "Partial triangle",
+        "Partial triangle with fragment discard",
+        "Full coverage triangle"
+      ],
+      "summary": {
+        "legacyVersusCopyPairs": 60,
+        "missingCopyNegativeCases": 15,
+        "logicalSamplesChecked": 9122344,
+        "paddingBytesChecked": 79902560,
+        "rasterChangedSamples": 3991022,
+        "negativeCorruptedPaddingBytes": 19975640,
+        "errors": 0
+      },
+      "comparison": "Legacy and staging-copy chains are byte-identical over the complete tiled allocation. Independent AMD AddrLib coordinates select every logical sample; independent RGBA8 raster values and full untouched padding are checked. Real unchanged/partial/discard/full raster uses the same repeatedly uploaded image.",
+      "negative": "Fifteen native cases omit the actual seed copy and detect poisoned padding; they cannot pass solely from matching unchanged image output.",
+      "ownership": "Simulated later CPU source-byte changes leave the retained baseline unchanged. Snapshot owners are released after completed native work; allocator guards and copy/read counts are checked.",
+      "boundary": "Actual ColorSampleSnapshotCopy, GpuColorSampleTiler, RenderTarget and ColorSampleTransfer run on the native GPU. Coherent Buffer allocator and guest-reader are adapters; synthetic raster uses its own pipeline. No actual production Draw, BufferPool, GuestArena, translated shader or iPad proof."
+    },
+    "actualWindowsTracking": {
+      "status": "PASS",
+      "runtime": "Local macOS Wine with Windows x64 MinGW executable",
+      "script": "scripts/check-color-sample-snapshot-writeback.py",
+      "fixture": "tools/checks/color_sample_snapshot_writeback_windows.cpp",
+      "reportSha256": "27e00872e67373d7fc30fe8738ac7e217c69ec8ccab33e9c676494447b53ef16",
+      "executableSha256": "1bf8f92d393ae07a43e711f0100a5855bca5021d690374d6edd0cb76a75a6dd4",
+      "bulkDriverWriteOption": "APS5_BULK_DRIVER_WRITES",
+      "runs": [
+        {
+          "option": null,
+          "exitCode": 0,
+          "logSha256": "3dc1cd3ba96725cd9fc460d60c020f92525314e7b5cb8901a8a7467e728b931d"
+        },
+        {
+          "option": "0",
+          "exitCode": 0,
+          "logSha256": "3dc1cd3ba96725cd9fc460d60c020f92525314e7b5cb8901a8a7467e728b931d"
+        },
+        {
+          "option": "1",
+          "exitCode": 0,
+          "logSha256": "c66f118adf4501d05fdf6897764c5b72cb24bafde49149fd1768078f343faf9f"
+        },
+        {
+          "option": "yes",
+          "exitCode": 0,
+          "logSha256": "3dc1cd3ba96725cd9fc460d60c020f92525314e7b5cb8901a8a7467e728b931d"
+        }
+      ],
+      "checked": "Actual GuestMemory::Read performs pending-producer flush before owned baseline copy. Later source changes leave that baseline immutable. Readable read-only input is accepted; unmapped reads and read-only/unmapped changed-byte commits reject after their ordinary flush/range checks. Preserved production tracking checks cover shared aliases, changed logical runs, newer CPU/alias padding, guards and CPU/driver generation classification.",
+      "boundary": "Actual GuestMemory, GuestArena, WindowsMappings and WriteTracking execute under local Windows Wine. GPU bytes/fence interleaving and owned spans are synthetic; this fixture does not combine the native Vulkan helper with production BufferPool or prove ARM64EC/iPad behavior."
+    },
+    "fullDrawSyntax": {
+      "exitCode": 0,
+      "actualPromotedProductionTranslationUnit": true,
+      "commandRecordSha256": "be15c98fbaff27d8a85c889a3c405fa60d6bd1a781999abcd1f88b81a36a8ab6",
+      "frozenCandidateLogSha256": "ed610a04fce15c0dbcc625b9dfb57f9f5206616bb6acb805f50aa044e85daaff",
+      "promotedSourceLogSha256": "26c5e2e580465f9c57fc1bb60975694aa0266c6d41a3aec5e8b66b083b21f606",
+      "warnings": "Four inherited C-linkage warnings",
+      "boundary": "Compilation syntax only; no runtime production Draw/pooled-buffer qualification."
+    },
+    "independentReview": {
+      "status": "PASS_with_explicit_runtime_and_performance_limits",
+      "blockingFindings": [],
+      "reportSha256": "74c35abc7038a43c52a86e1e52037bbd444ccdfc374b6d6abaad9bad34049a5d",
+      "freshSanitizedHelperRerunReportSha256": "257fd9b2e61c3bd71dd85288d177638fc56943eb6fe4725fc55e68cb6ce23842",
+      "reviewedHashClosurePaths": 75,
+      "freshHelperRerunOnly": true,
+      "nativeGpuRerunByReviewer": false
+    },
+    "guardedPromotion": {
+      "status": "PASS",
+      "promotionReportSha256": "ee69cb14b36e4ab5795695469cf77f3389b193d8a219eb3abb5411a60ceda056",
+      "exactlyFourProductionPaths": true,
+      "source60BaselineChecked": true,
+      "otherProductionPathsTouched": false,
+      "candidateAndPromotedSourceDigestsMatch": true
+    }
+  },
+  "memoryLimits": {
+    "allocationChange": "Replaces the CPU vector plus one tiled Vulkan Buffer seed with two distinct coherent tiled Vulkan Buffers. One additional Vulkan allocation is required; live Buffer allocations may exceed retained-pool budgets.",
+    "retention": "The existing large host-visible retained tier is bounded at 512 MiB by default, with a separate 64 MiB small tier and a device-only tier whose default is 512 MiB. These are retained-tier budgets, not a total process RSS bound.",
+    "usageClasses": "Pool keys include size, usage and memory properties. New baseline/result usage classes may coexist with retained legacy TRANSFER_SRC|TRANSFER_DST|STORAGE classes until ordinary eviction. Replacing a vector is not proof of identical peak or retained memory.",
+    "productionBufferPoolSourceSha256": {
+      "core/libs/prx/libSceAgcDriver/Graphics/src/BufferPool.cpp": "4df72254e87a894574075211d46c5cea3095220784d08061e962ffd83c09406a",
+      "core/libs/prx/libSceAgcDriver/Graphics/include/BufferPool.hpp": "8d7b8b84de606754fac412e9d589461bbc720764436d71df733a7512013305d6"
+    },
+    "unqualified": [
+      "Actual pooled reuse and retained RSS on the iPad",
+      "Free-RAM admission",
+      "iPad allocation failure, OOM or Jetsam behavior",
+      "Peak and steady-state memory equivalence"
+    ]
+  },
+  "workflowSha256": {
+    "scripts/check-color-sample-snapshot-copy.py": "b33a11431b312146b6b8dec8cf53e941a0c708ae3dfddf2c2069edeb5f806a8b",
+    "scripts/check-color-sample-snapshot-writeback.py": "af0e56ad36e2b24b919dbf958ef9d344068a4cea796ac7c1cff3d94e35536cd4",
+    "scripts/build-color-sample-snapshot-copy-probe.py": "b2b598afc30cfce6c3f59263a25c5fa97f821a24185efdde1b671196dfbf2986",
+    "tools/checks/color_sample_snapshot_copy_contract.cpp": "9c259dd13fb4f83e2c76ca9864dce8ccd7f44ad35410c159ae8b8c5d53ad1c51",
+    "tools/checks/color_sample_snapshot_writeback_windows.cpp": "96fc8d32bf4ae569eeef6089bf639e60051d4c0d4cbb7779547c4e33d99bd4f4",
+    "tools/gpu-probe/color_sample_snapshot_copy_probe.cpp": "cfed726638b7a166f11fc2f6d46fc381dd41fd22ac357d8f949d0a7bda603a94",
+    "tools/gpu-probe/color_snapshot_copy_raster.vert": "b43d7c8fb7f92b26b274d4b79aba94483273f1da23489b7826255995e17db2a5",
+    "tools/gpu-probe/color_snapshot_copy_raster.frag": "3eeca352db13016fca8ce31acbbab56f7264d4443c1a9f6d480c32121bebc95a"
+  },
+  "nativeProductionDependencySha256": {
+    "core/libs/prx/libSceAgcDriver/Graphics/src/GpuColorSampleTiler.cpp": "41333cbbeddda5b98ed881ff86b73e2e005a827ae515ad5d48b02496609ea2be",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorTargetLayout.cpp": "d0cc9422668aafd33ff279848573cb440bd7173f5d5c281611550bd189b2fe83",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorSampleTransfer.cpp": "9c66aaf1bec0fda477a47dcba7be2badbd29aceeb5f26c18c97bb2fbe8f9b129",
+    "core/libs/prx/libSceAgcDriver/Graphics/src/ColorRenderTarget.cpp": "7042a932836768ddf060cd8683b73971186f8b7288f099645e4692eacddfc285",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/GpuColorSampleTiler.hpp": "a8bd0169f733c4650e9dfa0ac581cbc317fba7b6454025a7ef31014f444a6cc1",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/ColorTargetLayout.hpp": "f917553f9039b54063ed3d73aa224427a76d8401d6c822bd47c39b3af2b6237e",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleTransfer.hpp": "4a1402164407a279709229e984ab953909f580cfaa6d46c6a584964c6721a361",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/Resources.hpp": "17179f135e2b4d06ee117d7f64e176046d0b9d6fd9bc42a36fb3ad53d74a46f4",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp": "1d1853d105fbf550ae446eb12e3b3df180fbff3b0cfd96f4201b925f34ffb187",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/State.hpp": "426513c4764b441126a2f1b11d6b6a8020bf8ac72d493dce082feb3a4493bf56",
+    "core/libs/prx/libSceAgcDriver/Graphics/include/ColorSampleSwizzleEquations.hpp": "d20d2b85589828390f0aeefcf9217875b2b0d2fca84fe77069ec966c0e709c46",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.vert": "cc8202671fcc1110362890b46f21355a72f6e168b2ac3dde5521de388b4f67b3",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleReadback.comp": "2e0bed3040ab29e6c2eb6868b7ba446e0f6bbe57619a9fbc3c09ac1973f5212e",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling.comp": "4fca473726eba13b9cf6e0dcdcfb00e9f50e5ace0c4a3a2cfba37c79c33e5296",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTiling_spv.h": "a71714341ded2010786bdaa267ecaf0c485900c4653a4c17a4ca329bc4efde89",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleUpload.frag": "8a62aea574c9d61bcad56e1eb6647c2664526b0f9159d0046f9b9e861f4604b6",
+    "core/libs/prx/libSceAgcDriver/Graphics/shaders/ColorSampleTransfer_spv.h": "a9bce2ff9f216f0423bf76dd7ec736f7d77422c6542a0e0d7cfac585a48fea41"
+  },
+  "windowsProductionDependencySha256": {
+    "core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp": "1f1d6d60614ef5eff1d693b63b333ba27f114995ac439f869087292406f9f65c",
+    "core/libs/prx/libc/src/GuestArena.cpp": "a314ff66e9ccf838029a115e9fcafb7a672e3a31bd9471859c78a670e889cbde",
+    "core/libs/prx/libc/src/GuestAllocations.cpp": "8eacb4048a87e5c20f4a3152bf6d116f38ff0615dc07b570a85fe899407adaea",
+    "core/libs/prx/libSceAgcDriver/tests/WriteTracking.cpp": "2fafd6dbc2cbdd032588150df1551113f784ce5a95552cdf5df3605e58c1fac3",
+    "core/libs/prx/libc/include/WindowsMappings.hpp": "43ff03ef98d364134795ac658f185aeeab9098f3832c92f337041df54254530c"
+  },
+  "separateFullBuildCheckpoint": {
+    "path": "docs/evidence/color-sample-staging-copy-build-20261009.json",
+    "sha256": "34969c9f742ab8212b153f33af989a82b0d24dc2e8fea4945cb3822ae53a98b4",
+    "status": "local_build_host_suites_and_private_preparation_passed",
+    "binaryFiles": 53,
+    "passingHostSuiteRuns": 25,
+    "boundary": "Separate full local HLE build, host suites and private preparation evidence; it does not qualify physical iPad draw/performance in this focused record."
+  },
+  "audit": {
+    "allCitedFocusedArtifactsAndDependenciesRehashed": true,
+    "mismatches": [],
+    "publication": "Sanitized metadata and hashes only; no private paths, raw logs, shader captures, game assets or audio."
+  },
+  "qualification": {
+    "frozenFourPathSourceAndRoundtrip": true,
+    "helperContract": true,
+    "nativeSyntheticRasterAndPadding": true,
+    "actualWindowsReadWriteChangedAndAliases": true,
+    "actualProductionDrawAndBufferPoolRuntime": false,
+    "physicalIpadExecutionInThisRecord": false,
+    "matchedPerformanceGain": false,
+    "identicalRssOrOomBehavior": false,
+    "playableOr60FpsAcceptance": false
+  },
+  "githubActionsUsed": false
+}

@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "status": "local_build_host_suites_and_private_preparation_passed",
+  "source": {
+    "upstreamCommit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "projectCommit": "2a842418103d74aa02f006fc911bf6856d6e02bd",
+    "patches": 61,
+    "frozenPatchedPaths": 154,
+    "patch61Sha256": "8c524a1685122ecfee93f149bc849f0af775f4cd5631fb3c4d9a7a6d1d667249",
+    "patchSeriesForwardByteExact": true,
+    "patchSeriesReverseRestoresPin": true,
+    "sourceBeforeAfterCompilationMatches": true,
+    "snapshotManifestSha256": "c4044b56ece03a53c8c3b37353c943dcde1dea7a0e83bcccb8cb47582baab956",
+    "asBuiltVerificationSha256": "4350c00d0821897351a8cbe962b5502cd03d40e833210c39ccf3f5303d57588f",
+    "recipe": "Same verified offline compiler/source/build recipe as60; complete61patch stack also applied and reversed in a fresh local pinned clone before compilation",
+    "pinnedLocalVendorRepositories": 11,
+    "vendorQualificationLimit": "Four preexisting cleanup-deleted SDL test-GUI sample bundle files are absent from shared source and restored only in the clean qualification clone; not used by this Windows HLE build"
+  },
+  "feature": {
+    "gate": "APS5_GPU_COLOR_SAMPLE_STAGING_COPY=1",
+    "defaultEnabled": false,
+    "requiresQualifiedGpuColorSampleTiler": true,
+    "preservesLogicalSampleCount": true,
+    "preservesFullTiledPadding": true,
+    "retainsRealDrawReadbackRetileFenceFaultAndAliasChecks": true,
+    "guestCommit": "WriteChanged(result, immutable baseline) after existing fence and resource writeback",
+    "memoryLimit": "Existing layout/index/storage-range admission preserved. Adds one Vulkan allocation and separate buffer-pool usage keys; free-RAM admission, iPad peak/retained RSS and allocation-failure behavior are not hardware-qualified"
+  },
+  "build": {
+    "archiveSha256": "1831816f025bc8f1d1427eaea5ef4cb51fe4b4c2949aa4421b9f3b58d7899c0c",
+    "binaryFiles": 53,
+    "unpatchedPrx": 50,
+    "compilerDlls": 3,
+    "allArchiveFileDigestsAndX64PeHeadersVerified": true,
+    "buildProvenanceSha256": "232d83fd0e94bcfc44015b410f77850e98d13092ccd8f9fdb34b4adacee4e78e",
+    "compilerArchiveSha256": "a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b3",
+    "ffmpegArchiveSha256": "e4be9938b321da5f53e248d8ae947c984390e09d0f59fb6855644a972126e26b",
+    "pythonArchiveSha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    "buildExitCode": 0,
+    "containsGameData": false
+  },
+  "hostVerification": {
+    "runtime": "local macOS Wine with pinned WinLibs MinGW",
+    "cpuApiSuites": 22,
+    "additionalActualCmakeSuites": [
+      "agc_write_tracking_tests",
+      "agc_driver_graphics_tests --resource-write-classification-only",
+      "agc_driver_graphics_tests"
+    ],
+    "totalPassingSuiteRuns": 25,
+    "allExitCodes": 0,
+    "frozen25LogDigestsSha256": "0e055a064f10d9ae9028719c7d28d21f2b5e3711b9ff1b46d8b2e0bb27c57532",
+    "frozen22CpuApiCommandDigestsSha256": "08879699fdddb44f9227ce107183be1506cfe792aab9fbab1da6c5c66f45c894",
+    "qualifierReportSha256": "76f279690867dc3e235975a4096228176e0d32dd4e82863a061e17770e3734b1",
+    "options": {
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+      "APS5_ENABLE_SAMPLE_GROUPS": "1",
+      "APS5_BULK_DRIVER_WRITES": "1",
+      "APS5_RAW_RESOLVE_SNAPSHOT": "1",
+      "APS5_CACHE_COLOR_RESOLVE_PIPELINES": "1",
+      "APS5_GPU_COLOR_SAMPLE_TILING": "1",
+      "APS5_GPU_STENCIL_SAMPLE_TILING": "1",
+      "APS5_CACHE_STENCIL_TRANSFER_PIPELINES": "1",
+      "APS5_ZERO_STENCIL_INVARIANT": "1",
+      "APS5_GPU_COLOR_SAMPLE_STAGING_COPY": "1"
+    },
+    "actualGpuDeviceDrawQualified": false
+  },
+  "focusedPrebuildVerification": {
+    "candidateSha256": "9fab5f81c98229c46e65deb5d854f98564840a339bfb384e6a1777dc99bcae81",
+    "independentReviewSha256": "74c35abc7038a43c52a86e1e52037bbd444ccdfc374b6d6abaad9bad34049a5d",
+    "independentReview": "passed with explicit runtime and performance limits",
+    "nativeGpuPairedRasterCases": 60,
+    "nativeMissingCopyNegativeCases": 15,
+    "nativeScope": "Actual snapshot helper, GPU color sample tiler, RenderTarget and ColorSampleTransfer with explicit coherent allocator/guest-reader adapters and synthetic unchanged/partial/discard/full raster; not actual Draw/BufferPool/GuestArena/iPad",
+    "actualWindowsReadWriteChangedBulkOptions": [
+      null,
+      "0",
+      "1",
+      "yes"
+    ],
+    "helperContractSanitizers": [
+      "ASan",
+      "UBSan"
+    ],
+    "brokenCopyAndVisibilityNegativeControlsRejected": true
+  },
+  "privatePreparation": {
+    "status": "prepared_unexecuted",
+    "manifestSha256": "985c3b2b47c9d15cc4a4415f479ca2c741cfbd98978d0a170b6f3e718e003aef",
+    "verifiedManifestFiles": 137,
+    "physicalFilesIncludingManifest": 138,
+    "elfDependencyRoots": 6,
+    "loadedHostPrxLibraries": 47,
+    "packagedPrxFiles": 48,
+    "compilerDllFiles": 3,
+    "guestNids": 3225,
+    "missingLibraries": 0,
+    "unresolvedGuestNids": 0,
+    "unresolvedNativeImports": 0,
+    "sameOriginalDumpAndLifecycleToolsAs60": true,
+    "sameGameAndFiveGuestModulesAs60": true,
+    "deltaFrom60": {
+      "hlePrxFiles": 3,
+      "preparationLogs": 2,
+      "otherManifestFiles": 0
+    },
+    "rawDumpGameModulesAssetsLogsAndShaderCapturesPublished": false
+  },
+  "qualification": {
+    "fullLocalHleBuild": true,
+    "local25HostSuiteRuns": true,
+    "canonicalPrivatePreparation": true,
+    "fresh61IpadDraw": false,
+    "matchedPerformanceImprovement": false,
+    "ipadRssOrJetsam": false,
+    "playableOr60FpsAcceptance": false
+  },
+  "githubActionsUsed": false
+}

@@ -113,6 +113,7 @@ source, build, device and unqualified-path states.
 | 0058 | Opt-in GPU detile/retile for qualified S8 SW_64KB_Z_X eight-sample planes, preserving the original tiled seed and changed-byte commit | Eight-path round trip, 28 contract controls, 42 native compute and six D32S8 image chains pass. The 58-patch/150-path series, full HLE build with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; private preparation verifies all 137 files. Actual Draw/DepthSurface, iPad and performance qualification remain separate. [Native evidence](evidence/gpu-stencil-sample-tiling-native-20261009.json), [build evidence](evidence/gpu-stencil-sample-tiling-build-20261009.json). |
 | 0059 | Opt-in per-device immutable stencil transfer program cache, keyed by format/counts and full ordered bit-exact sample positions | Four-path source comparison, cache/legacy contracts and six native D32S8 chains pass. The full 59-patch HLE, 22 CPU/API and three additional runtime suites pass; 137 private preparation files are verified. A bounded iPad run logs real program reuse and renders the full Golf board; cache hit rate, speed and gameplay/FPS remain unqualified. [Source/native evidence](evidence/stencil-transfer-program-cache-native-20261009.json), [build checkpoint](evidence/stencil-transfer-program-cache-build-20261009.json), [device record](evidence/ipad-solitaire-stencil-transfer-program-cache-20261009.json). |
 | 0060 | Opt-in zero-invariant D32S8 path: per-draw stencil-only clear replaces transfers when the entire eight-sample S8 snapshot remains provably zero | Source/native contracts and independent review pass. The complete 60-patch/152-path series, full HLE with 53 verified binaries, 22 CPU/API and three additional runtime suites pass; 137 private preparation files and dependency closure are independently verified. A bounded iPad run exercises the real clear and visibly verifies a legal Golf move and undo. Speed, audio and complete gameplay remain unqualified. [Source/native evidence](evidence/zero-stencil-invariant-native-20261009.json), [build checkpoint](evidence/zero-stencil-invariant-build-20261009.json), [device controls](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json). |
+| 0061 | Opt-in immutable coherent color baseline and full GPU output seed, removing one CPU snapshot copy while preserving padding/fence/alias commits | Helper contracts, 60 native raster comparisons, 15 omitted-copy negatives and four Windows guest-memory modes pass. Full 61-patch/154-path HLE and 25 host suites pass. iPad stock draw, undo and selection respond; two A attempts produce no visible tableau change. No legal move or speed/audio acceptance in this run. [Focused qualification](evidence/color-sample-staging-copy-native-20261009.json), [build checkpoint](evidence/color-sample-staging-copy-build-20261009.json), [device result](evidence/ipad-solitaire-color-sample-staging-copy-controls-20261009.json). |
 
 ## White selected-source comparison: patch0048
 
@@ -1354,6 +1355,43 @@ remain unqualified. Runtime and metadata restore. See the [separate controls
 record](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json); the
 [earlier OS-automation-blocked attempt](evidence/ipad-solitaire-zero-stencil-invariant-first-run-20261009.json)
 remains a separate historical run. No speed gain is inferred.
+
+## GPU color snapshot seeding: patch0061
+
+Exact `APS5_GPU_COLOR_SAMPLE_STAGING_COPY=1` replaces one additional CPU copy
+in the qualified GPU color sample-transfer path. `GuestMemory::Read` fills an
+owned coherent baseline buffer directly. A full GPU copy seeds a separate
+result buffer, including tiled padding, before the existing compute/raster
+transfer and actual draw. The baseline is never a GPU destination. The existing
+fence, writable-range admission, resource writeback and changed-byte guest commit
+remain; unqualified layouts and the unset switch retain the previous path.
+
+For the captured eight-sample 1920 × 1080 layout this removes a 66,846,720-byte
+CPU `memcpy`. It does not omit the original guest read, GPU readback or fence.
+Submission/unwind order preserves both buffers until recorded or pending GPU
+work can no longer use them. Allocation failure remains explicit. The existing
+bounded buffer pool can retain the new baseline usage class alongside older
+allocations, so identical payload size is not proof of identical physical memory.
+
+Production-helper ownership contracts, 60 native raster comparisons and 15
+omitted-copy negative controls pass. The native probe uses explicit allocator
+and guest-reader adapters; it does not execute the entire production Draw or
+BufferPool. Four actual Windows guest-memory modes verify alias, padding and
+protection behavior. See the
+[focused source/native record](evidence/color-sample-staging-copy-native-20261009.json).
+The complete 61-patch/154-path stack, 53 HLE binaries, 25 host suites and private
+137-file preparation pass separately in the
+[build checkpoint](evidence/color-sample-staging-copy-build-20261009.json).
+
+A separate 720-second iPad run logs actual snapshot seeding and shows Golf's
+full board. Stock draw, stock undo and column selection respond visibly. Two A
+attempts produce no visible tableau change; no legal move is qualified in this
+run. The strict reader accepts all 675 display rows, reporting 8,388 completion
+intervals over 699.449 seconds with 33,580 missed vblanks. The final native
+footprint is 4,304 MiB, with a 4,365-MiB sampled telemetry peak. This mixed route is not a matched
+speed comparison or proof of unique displayed game FPS, audio or resource
+stability. The original runtime and metadata restore. See the
+[separate device record](evidence/ipad-solitaire-color-sample-staging-copy-controls-20261009.json).
 
 ## Unobserved stencil-draw viewport depth: 2026-10-08
 

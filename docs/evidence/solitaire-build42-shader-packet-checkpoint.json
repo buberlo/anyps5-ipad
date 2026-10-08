@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "bounded_private_shader_packet_post_mortem",
+  "source_base_commit": "3e1afa8d4228ed82ad61c4ca68cd7e11571cbad9",
+  "app_build": 42,
+  "game": "15in1 Solitaire",
+  "title_id": "PPSA15706",
+  "normal_memory_tracking": true,
+  "diagnostic_hle_only": true,
+  "switches": {
+    "APS5_X64_SIGNAL_SUSPEND": true,
+    "APS5_PRESERVE_ASYNC_AVX": true,
+    "APS5_PRESERVE_ASYNC_FLAGS": true,
+    "APS5_VEH_CONTEXT_BRIDGE": true,
+    "APS5_FIXED_FUNCTION_INTERPOLATION": true,
+    "APS5_SAFE_SELF_READ": true
+  },
+  "fatal": {
+    "thread": "UnityGfxDeviceWorker",
+    "code": "0xc0000005",
+    "game_rva": "0x1426827",
+    "read_address": "0x20",
+    "shader_object_address_nonzero": true,
+    "shader_object_function_table_null": true
+  },
+  "capture": {
+    "stack_prefix_bytes": 1680,
+    "source_buffer_bytes": 8192,
+    "full_112_byte_packet_matches_destination": true,
+    "source_dump_completed": true,
+    "screen_at_35_seconds": "white_game_surface_with_touch_overlay"
+  },
+  "checks": {
+    "game_log_sha256": "ab6a4a5bf23e0e019f20be3144584befcef34da0cc31c736dacf520328494db0",
+    "receipt_sha256": "84787b48fe58c35e9164890a31bc13eddcaed0ab96152b526bed712739a50b91",
+    "private_analysis_sha256": "52e7c10adababbd43fdb9d6b17190c78d0d5a7b4d71cd64b87110c6703e4b99d",
+    "diagnostic_source_sha256": "1ffb1b3e2c2c5d519bd335f284d5422c9e6a1589f584d263a19cf48e31051bdd",
+    "diagnostic_hle_archive_sha256": "822ee29fe09b2dfffcdd31898e4e7931606f10a01238b3b54d8f7ba0cb1da42b",
+    "runtime_hash_restored": true,
+    "config_and_library_byte_preserved": true,
+    "own_processes_closed_verified": true,
+    "screen_sha256": "e3dd068f9b500e956cb46f68adc05e65205d20f2b213186c4befe53ef26ab0e5"
+  },
+  "limits": [
+    "A matching source/destination packet qualifies this captured copy only, not all copies, object construction or lifetime.",
+    "The object function table is null at the fatal call; its earlier history is not captured.",
+    "No rendered gameplay, usable audio or performance is qualified.",
+    "A fresh native Windows comparison is pending RDP authentication."
+  ],
+  "gameplay_qualified": false,
+  "raw_game_or_shader_data_published": false,
+  "github_actions_used": false,
+  "new_fex_implementation_changes": false
+}

@@ -143,6 +143,12 @@ private Build 42 diagnostic captures 1,680 stack bytes and fifteen readable heap
 regions, safely rejects one unreadable region, and completes its report. The
 game still faults on a shader-table pointer (`0x2`) at RVA `0x1426ac4`; the
 35-second screenshot shows a white game surface. Raw game memory and shader
-contents remain private. Earlier runs rejected an 8-sample draw on the
+contents remain private. A subsequent bounded source-buffer capture proves that
+all 112 copied packet bytes match their source in that run. It still faults at
+RVA `0x1426827`: the non-null shader object has a null function table at the
+fatal call. This narrows the next investigation to object creation/lifetime or
+other writes, but does not identify their cause or qualify every packet copy.
+See the [packet checkpoint](evidence/solitaire-build42-shader-packet-checkpoint.json).
+Earlier runs rejected an 8-sample draw on the
 M2, whose queried Vulkan attachment counts are 1, 2 and 4. The CPU test repair
 therefore does not establish rendered or playable Solitaire.

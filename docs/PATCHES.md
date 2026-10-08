@@ -5,7 +5,9 @@ The current FEX stack is consolidated into two release-based patches:
 FEX-2610. Historical patch numbers/results below describe their original builds.
 Madeira0046 adapts the native bridge to FEX's new API; Madeira0047 preserves the
 native process-name lifetime after an embedded Wine session. The latest AnyPS5
-pin retains all 33 reconciled local patches. See the
+pin retains all 33 reconciled local patches, followed by patch0034 for color
+MSAA memory addressing and full-coordinate pipe XOR. The latter passes an
+independent AMD-reference comparison but does not enable multisampled draws. See the
 [integration evidence](evidence/fex-2610-integration-20261008.json) for separate
 source, build, device and unqualified-path states.
 

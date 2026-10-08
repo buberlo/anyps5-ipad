@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "date": "2026-10-08",
+  "kind": "solitaire_normal_translation_checkpoint_and_color_sample_layout",
+  "goal_completed": false,
+  "source_pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+  "app_build": 47,
+  "game_hle_runtime_note": "Private candidate prepared before the final AnyPS5 refresh; actual pre-test runtime restored afterwards. The new layout patch is not deployed.",
+  "device_run": {
+    "title": "15in1 Solitaire",
+    "title_id": "PPSA15706",
+    "normal_memory_tracking": true,
+    "multiblock": true,
+    "maxinst": 5000,
+    "bounded_game_seconds": 60,
+    "observed": "white output at 15, 35 and 60 seconds; eight-sample draws rejected",
+    "prior_terminal_small_address_worker_fault_observed": false,
+    "clean_guest_exit": false,
+    "audio_qualified": false,
+    "controls_qualified": false,
+    "displayed_gameplay_qualified": false,
+    "fps_qualified": false,
+    "game_candidate_manifest_sha256": "61ecb33dc3eeabe96a1e67c62bd740438f967f0484ea0d79d902bb0052bcac49",
+    "actual_original_manifest_sha256": "f1fb75a02ade817d65b87ddc6880054f98f56c3b49007cae18011313ad077714",
+    "closed_log_sha256": "b83c2b8600bd3161a46e02822670aa96d7dda33c56af6160a2ccc390a3a77ea9",
+    "config_and_library_restored": true,
+    "actual_pretest_runtime_files_restored": true,
+    "own_processes_verified_closed": true,
+    "screenshot_sha256": {
+      "15": "ff7c7b03bc23902a686e0f55636bfbc3c652f2dfc05ff52cefd89d343ca81465",
+      "35": "6f3f3098576d6afa0dccca05953b9c1e214dc519e1605ef74a14bd3e138cdc90",
+      "60": "ea72c596f92d1aa9fbf6d66a2a57b16895e7606785ef184eecad443e458c51cc"
+    }
+  },
+  "layout_changes": {
+    "samples_supported": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "element_bytes_supported": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "mode": "uncompressed 2D SW_64KB_R_X; samples equal fragments",
+    "transfers": "all stored samples interleaved within each pixel; padding preserved",
+    "single_sample_fix": "retain pipe XOR coordinate bits above macroblock dimensions for 8- and 16-byte elements",
+    "draw_validation_changed": false,
+    "renderer_integration_complete": false
+  },
+  "independent_reference": {
+    "upstream": "https://github.com/GPUOpen-Drivers/pal",
+    "commit": "c5e800072a32f68b6ccc4422936d96167c6e0728",
+    "component": "src/core/imported/addrlib",
+    "model": "Navi10 non-RB+, 16 pipes, 256-byte interleave, no pipeBankXor, one 2D slice and one mip",
+    "library_sha256": "2edb6993e6ce27410b74d837a93e12389f21123a387fa3063b69e95c707c81dc",
+    "library_build": "separate Release reference; candidate/harness compiled with ASan/UBSan",
+    "layouts": 80,
+    "address_comparisons": 2650990,
+    "sample_round_trips": 40,
+    "errors": 0,
+    "sizes": [
+      "1x1",
+      "257x129",
+      "3840x2160",
+      "16384x16384"
+    ],
+    "verifier_log_sha256": "6a0ee4f75ae8f4da826c2afcdf65420b9521dcbcc3af5bd4be428066e2c33571"
+  },
+  "patch_validation": {
+    "patches": 34,
+    "paths_checked": 73,
+    "forward_apply": true,
+    "matches_checked_source": true,
+    "reverse_restores_pin": true
+  },
+  "patch_sha256": "d4a79ea86984bff5a3843b095fd55d9620a51e89ea8272e41068a5493402e8f1",
+  "limitations": [
+    "AMD model verification does not independently prove captured guest pitch, metadata or PS5 hardware behavior.",
+    "Guest state/texture descriptors, depth/stencil, shader logical-sample reads, GPU targets/resolve, metadata and alias synchronization remain to be integrated.",
+    "The hardware prototype and CPU layout do not qualify playable Solitaire."
+  ],
+  "github_actions_used": false
+}

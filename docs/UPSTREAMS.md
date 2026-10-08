@@ -82,3 +82,10 @@ The final same-day AnyPS5 pin is `6e037e98`: the standalone native tools pass
 32 tests, all 33 patches match the reviewed source and reverse cleanly, and
 interpolation/sanitizer checks pass. These source changes are not yet rebuilt
 into the installed game's Windows HLE package.
+
+The subsequent [color/sample layout checkpoint](evidence/solitaire-msaa-color-layout-20261008.json)
+adds AnyPS5 patch0034. All 34 patches apply from the pin, match the checked
+source and reverse back to the pin. The production CPU layout passes an
+independent AMD AddrLib comparison, including retained pipe XOR above
+macroblock boundaries. Multisampled guest draws still require renderer
+integration; this patch is not in the installed game package.

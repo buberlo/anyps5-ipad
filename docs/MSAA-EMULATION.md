@@ -3,7 +3,9 @@
 Solitaire's captured state requests eight raster, exposed and color-fragment
 samples. The M2 iPad exposes native attachment sample counts of 1, 2 and 4.
 The current AnyPS5 decoder rejects multisampling, and its render targets,
-pipeline attachments and transfer layouts are single-sample. Increasing the
+pipeline attachments and descriptor/transfer routing are single-sample. The
+CPU color layout now supports separate stored samples; it is not yet connected
+to those renderer paths. Increasing the
 pipeline sample count alone cannot repair this path.
 
 ## Physical iPad result
@@ -61,6 +63,57 @@ and `VK_EXT_sample_locations`; it does not use those extended interpolation
 instructions. The distinction follows the
 [Vulkan feature definition](https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDevicePortabilitySubsetFeaturesKHR.html).
 
+## Guest color/sample memory layout
+
+AnyPS5 patch0034 extends the production `ColorTargetLayout` with a stored-sample
+coordinate and 2-, 4- and 8-sample SW_64KB_R_X backing sizes. A linear transfer
+buffer contains every sample of each pixel in order; tiling and detiling retain
+the individual bytes and leave padding intact. Only uncompressed 2D color with
+samples equal to fragments is covered. Other multisample tile modes, EQAA,
+FMASK/DCC, array slices, mip tails and depth/stencil are outside this work.
+
+The address equations are generated from the original AMD AddrLib in
+[PAL c5e80007](https://github.com/GPUOpen-Drivers/pal/tree/c5e800072a32f68b6ccc4422936d96167c6e0728/src/core/imported/addrlib),
+using the same non-RB+ Navi1x, 16-pipe, 256-byte interleave model as the existing
+single-sample equations. A separately linked AddrLib computes independent sizes
+and offsets: 80 layouts, 2,650,990 coordinate/sample comparisons and 40 complete
+sample-buffer round trips pass with ASan/UBSan. The matrix covers element sizes
+1/2/4/8/16 bytes, counts 1/2/4/8, odd extents, 4K and the maximum 16384-pixel
+extent. No large surface is allocated for the maximum-size address checks.
+This validates that AMD reference model; captured guest resources and actual
+renderer transfers still require independent qualification.
+
+The comparison also found an existing single-sample bug: for 8- and 16-byte
+color elements, discarding coordinate bits at a macroblock boundary discarded
+pipe XOR. For example, the 8-byte, 257×129 surface at (0,64) returned 196608
+instead of the reference's 198656. The layout now uses the equation's coordinate
+period, keeping those bits. Cached tables cover that small period rather than
+the complete surface. The ordinary 32-bit scanout equations remain the same.
+
+Run the production-code/reference comparison after separately building that
+AddrLib checkpoint:
+
+```sh
+python3 scripts/check-msaa-color-layout.py \
+  --addrlib-source /path/to/pal/src/core/imported/addrlib \
+  --addrlib-library /path/to/build/libaddrlib.a
+```
+
+The script downloads nothing and uses no game data. The reference library's
+build is separate; the tested production code and harness run under sanitizers.
+Current draw validation still rejects multisampling. The layout tests do not
+justify enabling a draw without its remaining render-target, shader, depth,
+metadata and synchronization semantics.
+
+On Build47, the same private Solitaire CPU candidate runs for 60 seconds with
+normal memory tracking, multiblock enabled and MAXINST5000. Its three captures
+remain white and both logged render targets reject eight-sample draws. The
+closed log contains no prior terminal small-address graphics-worker exception;
+ongoing protected writes are still handled. This is bounded startup evidence,
+not interactive gameplay, audible correctness, a clean guest exit or FPS proof.
+Actual pre-test runtime hashes, configuration and library are restored.
+See [source and device evidence](evidence/solitaire-msaa-color-layout-20261008.json).
+
 ## Required renderer integration
 
 The following work remains before this can replace a rejected game draw:
@@ -70,8 +123,9 @@ The following work remains before this can replace a rejected game draw:
    sample preservation has passed the independent device probe; it has not
    passed the guest renderer or guest resolve operations.
 2. Decode sample and fragment counts consistently in `State`, `ColorTarget`
-   and `GuestTextureResource`. Extend color/depth byte sizes, swizzle equations,
-   import/export and alias tracking to include the sample coordinate. Validate
+   and `GuestTextureResource`. The standalone production color layout is checked
+   against AddrLib; connect it to metadata and transfer routing, add depth byte
+   sizes/swizzles, and extend import/export and alias tracking. Validate
    against an independent AMD address-layout reference.
 3. Apply the guest positions and sample masks to each subset. Preserve
    depth/stencil, blending, discard and center interpolation independently for

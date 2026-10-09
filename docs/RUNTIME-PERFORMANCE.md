@@ -659,3 +659,29 @@ restored afterward. This captured/profiled run establishes no card move, audio
 quality or matched off/on performance gain; keep the variant default-off until
 a separate comparison qualifies it.
 [Enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json).
+
+## Optional legacy AudioOut cadence
+
+Patch0065 adds the exact, default-off per-game switch
+`env.APS5_AUDIOOUT_FRAME_PACING = 1`. After a one-time startup budget, a real
+port waits for a rational block deadline before reading guest input. The old
+SDL byte guard, conversion, volume, drain and positive frame returns remain.
+Only successful enqueue advances the cadence; late blocks reanchor instead of
+releasing a multi-block catch-up burst. Restart the app when changing the
+cached switch. Virtual ports are unchanged.
+
+A bounded two-launch iPad comparison changes the observed 256-frame enqueue
+groups from four packets to single packets. Raw fingerprints matching four
+calls apart change from 1,855/1,870 to 0/1,870; byte-equal adjacent native
+1,024-frame blocks change from 463/467 to 0/467. The enabled qualified enqueue
+intervals span 4.6999–5.7170 ms, with a mean of 5.3331 ms. These are diagnostic
+packet/content measurements, not a simulation-speed or FPS result. Raw-to-queue
+timing excludes the new wait before the raw hook.
+
+Both original strict capture results remain inconclusive because concurrent
+writers split log markers; a separate exact-fragment analysis retains those
+failures. No UI automation runs during this pair. Separate launch/capture
+clocks are not aligned, and audible quality, defect causality, visible gameplay
+and matched foreground performance remain unqualified. See
+[implementation and reusable source checks](AUDIOOUT-FRAME-PACING.md) and the
+[sanitized diagnostic record](evidence/audioout-frame-pacing-20261010.json).

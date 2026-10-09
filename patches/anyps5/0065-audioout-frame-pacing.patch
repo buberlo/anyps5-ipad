@@ -1,0 +1,178 @@
+diff --git a/core/libs/prx/libSceAudioOut/src/AudioOut.cpp b/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
+--- a/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
++++ b/core/libs/prx/libSceAudioOut/src/AudioOut.cpp
+@@ -13,6 +13,7 @@
+ 
+ #include "SDL.h"
+ #include "AudioOutIngressTrace.hpp"
++#include "AudioOutFramePacing.hpp"
+ #include "SceTypes.hpp"
+ #include "prx/libkernel/Time/include/Time.hpp"
+ 
+@@ -94,6 +95,7 @@
+     SDL_AudioDeviceID device = 0;
+     SDL_AudioSpec spec = {};
+     AudioOutIngressTrace::Stream* ingressTrace = nullptr;
++    AudioOutFramePacing::Cadence framePacing{};
+ };
+ 
+ static std::mutex g_mutex;
+@@ -193,7 +195,10 @@
+     return buf.data();
+ }
+ 
++static void sleepUs(std::uint64_t us);
++
+ static void queueAudio(Port& port, const void* data) {
++    const bool framePaced = AudioOutFramePacing::Enabled() && port.framePacing.Configured();
+     if (data == nullptr) {
+         bool cleared = false;
+         const std::uint64_t waitStart = sceKernelGetProcessTime();
+@@ -208,10 +213,19 @@
+             req.tv_nsec = static_cast<long>(DRAIN_SLEEP_US * 1000ULL);
+             nanosleep(&req, nullptr);
+         }
++        if (framePaced) port.framePacing.ResetTimeline();
+         AudioOutIngressTrace::Event(port.ingressTrace, cleared ? "null-drain-clear" : "null-drain", true, cleared);
+         return;
+     }
+ 
++    if (framePaced) {
++        // Wait before reading/preparing guest bytes, not while retaining a prepared alias.
++        for (;;) {
++            const auto remaining = port.framePacing.Remaining(sceKernelGetProcessTime());
++            if (remaining == 0) break;
++            sleepUs(remaining);
++        }
++    }
+     auto ingress = AudioOutIngressTrace::Raw(port.ingressTrace, data, port.samplesNum);
+     std::vector<std::uint8_t> prepareBuf;
+     const void* prepared = prepareBuffer(port, data, prepareBuf);
+@@ -225,6 +239,7 @@
+         port.spec.format, port.spec.channels, port.spec.freq);
+ 
+     if (cvtResult < 0) {
++        if (framePaced) port.framePacing.ResetTimeline();
+         AudioOutIngressTrace::Event(port.ingressTrace, "cvt-build-failure", false, false, true);
+         throw std::runtime_error(std::string("SDL_BuildAudioCVT: ") + SDL_GetError());
+     }
+@@ -239,6 +254,7 @@
+         cvt.buf = convertBuf.data();
+         cvt.len = static_cast<int>(preparedSize);
+         if (SDL_ConvertAudio(&cvt) < 0) {
++            if (framePaced) port.framePacing.ResetTimeline();
+             AudioOutIngressTrace::Event(port.ingressTrace, "cvt-convert-failure", false, false, true);
+             throw std::runtime_error(std::string("SDL_ConvertAudio: ") + SDL_GetError());
+         }
+@@ -258,6 +274,7 @@
+     while (SDL_GetQueuedAudioSize(port.device) > minQueued) {
+         if (sceKernelGetProcessTime() - waitStart > DRAIN_TIMEOUT_US) {
+             SDL_ClearQueuedAudio(port.device);
++            if (framePaced) port.framePacing.ResetTimeline();
+             AudioOutIngressTrace::Event(port.ingressTrace, "pacing-timeout-clear", false, true);
+             break;
+         }
+@@ -271,8 +288,10 @@
+     const int queueResult = SDL_QueueAudio(port.device, queueData, queueSize);
+     AudioOutIngressTrace::Result(ingress, queueResult);
+     if (queueResult < 0) {
++        if (framePaced) port.framePacing.ResetTimeline();
+         throw std::runtime_error(std::string("SDL_QueueAudio: ") + SDL_GetError());
+     }
++    if (framePaced) port.framePacing.Commit(sceKernelGetProcessTime());
+     // APS5_LOG_OUT("device=%u type=%d bytes=%u queued=%u", port.device, port.type, queueSize, SDL_GetQueuedAudioSize(port.device));
+ }
+ 
+@@ -364,6 +383,9 @@
+             }
+             if (type != PORT_TYPE_VIBRATION) {
+                 openDevice(port);
++            }
++            if (port.device != 0 && AudioOutFramePacing::Enabled()) {
++                port.framePacing.Configure(len, freq, TARGET_LATENCY_US);
+             }
+             if (AudioOutIngressTrace::Enabled()) {
+                 AudioOutIngressTrace::Metadata metadata;
+diff --git a/core/libs/prx/libSceAudioOut/src/AudioOutFramePacing.hpp b/core/libs/prx/libSceAudioOut/src/AudioOutFramePacing.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAudioOut/src/AudioOutFramePacing.hpp
+@@ -0,0 +1,78 @@
++#pragma once
++#include <cstdint>
++#include <cstdlib>
++#include <cstring>
++#include <limits>
++
++// Optional host cadence experiment, not a PS5 scheduling-contract assertion.
++namespace AudioOutFramePacing {
++inline bool EnabledValue(const char* value) {
++    return value != nullptr && std::strcmp(value, "1") == 0;
++}
++inline bool Enabled() {
++    static const bool enabled = EnabledValue(std::getenv("APS5_AUDIOOUT_FRAME_PACING"));
++    return enabled;
++}
++
++// Owned solely by the file-private Port under AudioOut's existing mutex.
++// No allocation, worker, new lock or public structure layout is involved.
++struct Cadence {
++    std::uint64_t wholeUs = 0;
++    std::uint64_t fraction = 0;
++    std::uint64_t denominator = 0;
++    std::uint64_t remainder = 0;
++    std::uint64_t deadlineUs = 0;
++    std::uint64_t lastCommitUs = 0;
++    std::uint32_t startupPackets = 0;
++    bool configured = false;
++    bool armed = false;
++
++    void Configure(std::uint32_t frames, std::uint32_t rate, std::uint64_t targetUs) {
++        *this = {};
++        if (frames == 0 || rate == 0) return;
++        const std::uint64_t numerator = static_cast<std::uint64_t>(frames) * 1000000ULL;
++        wholeUs = numerator / rate;
++        fraction = numerator % rate;
++        denominator = rate;
++        // The clock is in microseconds. Sub-microsecond blocks retain legacy pacing.
++        if (wholeUs == 0) return;
++        const std::uint64_t packets = targetUs / wholeUs + (targetUs % wholeUs != 0);
++        const std::uint64_t watermark = packets < 2 ? 2 : packets > 16 ? 16 : packets;
++        // The old strict > watermark check permits one additional current packet.
++        startupPackets = static_cast<std::uint32_t>(watermark + 1);
++        configured = true;
++    }
++    bool Configured() const { return configured; }
++    void ResetTimeline() {
++        armed = false;
++        deadlineUs = lastCommitUs = remainder = 0;
++        // A clear/drain/failure never grants another startup packet budget.
++    }
++    std::uint64_t Remaining(std::uint64_t nowUs) const {
++        if (!armed || nowUs < lastCommitUs || nowUs >= deadlineUs) return 0;
++        return deadlineUs - nowUs;
++    }
++    void Commit(std::uint64_t nowUs) {
++        if (!configured) return;
++        if (startupPackets != 0) {
++            --startupPackets;
++            if (startupPackets != 0) return;
++        }
++        const std::uint64_t grainCeil = wholeUs + (fraction != 0);
++        const bool reanchor = !armed || nowUs < lastCommitUs ||
++            (nowUs >= deadlineUs && nowUs - deadlineUs >= grainCeil);
++        const std::uint64_t base = reanchor ? nowUs : deadlineUs;
++        if (reanchor) remainder = 0;
++        remainder += fraction; // <2*UINT32_MAX; rate and frames originate as u32.
++        const std::uint64_t step = wholeUs + (remainder >= denominator);
++        if (remainder >= denominator) remainder -= denominator;
++        if (step > std::numeric_limits<std::uint64_t>::max() - base) {
++            ResetTimeline();
++            return;
++        }
++        deadlineUs = base + step;
++        lastCommitUs = nowUs;
++        armed = true;
++    }
++};
++} // namespace AudioOutFramePacing

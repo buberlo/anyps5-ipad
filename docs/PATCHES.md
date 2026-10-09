@@ -117,6 +117,73 @@ source, build, device and unqualified-path states.
 | 0062 | Default-off bounded fingerprints before legacy AudioOut preparation and immediately before SDL enqueue, preserving original queue behavior | Actual old/new queue, format, pacing and error contracts pass sanitizer checks; exclusive exports and a missing-hook negative pass. Full combined 63-patch rebuild passes. A bounded iPad run completes exports and worker closure; recurring input fingerprints are already present before SDL. Audio cause/quality and general DLL detach remain unqualified. [Focused checks](evidence/audioout-ingress-trace-focused-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [device result](evidence/ipad-solitaire-audioout-ingress-20261009.json). |
 | 0063 | Default-off pixel-owned eight-sample color tiling with immutable per-owner variant and distinct specialization/cache keys | 99 paired compute and 60 paired raster chains match independent AMD bytes and seeded padding. Shader, cache, failure, descriptor and negative controls pass; full combined HLE and 25 host suites pass. An enabled M2 iPad run selects Golf and opens its full board. A fully decoded native cache contains the expected converted Metal variant; raw SPIR-V dumps remain absent. Speed, audio and complete gameplay remain unqualified. [Native checks](evidence/color-sample-pixel-owned-native-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json). |
 
+## Optional host thread priorities: Wine0004 and AnyPS50064
+
+Wine0004 connects Windows thread priority requests to the existing native iOS
+threads. The server retains a same-task `COPY_SEND` right from the startup
+handshake, validates `THREAD_IDENTIFIER_INFO`, and retains it until thread
+destruction. `THREAD_PRECEDENCE_POLICY` uses Wine's existing importance mapping;
+the helper checks old policy, sets the requested policy, reads it back and rolls
+back on failure. It does not replace QoS or ECO policy. Failed explicit host
+requests restore the previous Wine thread metadata; requests before bootstrap
+remain queued until initialization. Live process-wide changes return
+`STATUS_NOT_SUPPORTED` before metadata or thread changes; no-op requests skip
+fanout. The appended server fields preserve the old field offsets. Rebuild
+consumers of the changed thread header together.
+
+AnyPS50064 supplies the opt-in guest mapping in `libkernel.prx`. It computes
+`clamp((700-priority)/128, -2, 2)` with a 64-bit intermediate. Both 256 and 260
+therefore select Windows priority +2. No new PS5 priority range is imposed.
+A file-local mutex serializes priority application and metadata commit without
+changing `PthreadPrivate`'s cross-library layout. Initial application happens
+before the creation handshake succeeds; failure cleans up the host thread and
+returns a mapped guest error without publishing a handle or entering guest code.
+
+The exact gates `MADEIRA_IOS_THREAD_PRECEDENCE=1` and
+`APS5_HOST_THREAD_PRIORITY=1` are both default-off. The separate exact native
+trace gate caps explicit requests at 32 and excludes startup tracing. The normal
+patch glob applies these changes; no empty compatibility module is introduced.
+
+Strict and ASan/UBSan mock contracts cover readback/failure rollback, rights
+ownership, thread/process metadata, startup failure, exact cached gates and the
+trace cap. Native iPhoneOS compilation and a signed host build are separate
+checks. A four-phase physical iPad probe confirms relative priorities
+`+2,-2,0,+2` read back as native importance `9,-9,0,9`; invalid, read-only,
+wrong-type, terminated-thread and live-process requests are also exercised.
+The original app/configuration are restored and restarted after the probe.
+
+Run the source contracts locally after applying the patch series:
+
+```sh
+python3 scripts/check-ios-thread-precedence.py --output-dir build/priority-native-new
+python3 scripts/check-host-thread-priority.py --output-dir build/priority-hle-new
+```
+
+Use fresh output directories for each run. Generated extraction headers, binaries,
+logs and reports stay there. These scripts use Mach/WinAPI mocks and perform no
+device actions.
+
+The actual new Windows kernel links with the pinned WinLibs toolchain. Four
+local Wine API suites pass with the HLE gate off and on; attribute and memory
+tests directly import the kernel, while TLS and exception suites qualify their
+own helpers/libc. This is a focused regression run, not a new full HLE rebuild
+or an iPad audio result. The changed promise specialization alters auto-export
+ordinals, so the private game package is freshly NID-patched and its imports
+audited again. Retained export names alone do not validate an old package.
+
+The sanitized [API checkpoint](evidence/thread-priority-api-20261009.json)
+separates these checks. Scheduler latency, audio improvement, full gameplay and
+displayed FPS remain unqualified by this record.
+
+The combined Native53 host subsequently completes two 105-second game diagnostic
+phases with both gates off/on and full 480,000-frame ingress/postmix windows.
+The original strict capture flags remain false because concurrent output splits
+the initialization log line; successful exports and closure are separately
+recorded. XCTest cannot enable automation in either phase and the app becomes
+inactive, so this is not a qualified foreground comparison. Repeated audio
+persists in both captures. All runtime/configuration restoration checks pass,
+and the original Native48 host completes a fresh nonce-qualified restart.
+
 ## White selected-source comparison: patch0048
 
 Two completed runs use the same prepared manifest and HLE archive. The resident

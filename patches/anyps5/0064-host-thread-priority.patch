@@ -1,0 +1,138 @@
+diff --git a/core/libs/prx/libkernel/Pthread/src/Thread.cpp b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
+--- a/core/libs/prx/libkernel/Pthread/src/Thread.cpp
++++ b/core/libs/prx/libkernel/Pthread/src/Thread.cpp
+@@ -31,6 +31,7 @@
+ #include <windows.h>
+ #include <process.h>
+ #include <limits>
++#include "../include/HostThreadPriority.hpp"
+ #endif
+ 
+ struct ThreadArgs {
+@@ -45,6 +46,10 @@
+ static thread_local PthreadPrivate* currentThread = nullptr;
+ static thread_local bool threadFinishing = false;
+ static std::mutex stackLock;
++#ifdef _WIN32
++// Control-path calls only; avoid changing PthreadPrivate across DLL allocators.
++static std::mutex hostPriorityLock;
++#endif
+ static std::map<PthreadPrivate*, std::pair<std::uintptr_t, std::uintptr_t>> liveStacks;
+ 
+ static bool HostStackLimits(std::uintptr_t* low, std::uintptr_t* high) {
+@@ -229,7 +234,7 @@
+ struct NativeThreadArgs {
+     std::unique_ptr<ThreadArgs> guest;
+     std::future<bool> start;
+-    std::promise<void> initialized;
++    std::promise<int> initialized;
+ };
+ 
+ static unsigned __stdcall StartNativeThread(void* opaque) {
+@@ -255,7 +260,15 @@
+             SetThreadDescription(GetCurrentThread(), description.c_str());
+             ApplyJobAffinity(*self, nullptr);
+         }
+-        args->initialized.set_value();
++        if (HostThreadPriority::Enabled()) {
++            std::lock_guard<std::mutex> lock(hostPriorityLock);
++            const auto error = HostThreadPriority::Apply(GetCurrentThread(), self->priority.load(std::memory_order_relaxed));
++            if (error != ERROR_SUCCESS) {
++                args->initialized.set_value(HostThreadPriority::GuestError(error));
++                return 0;
++            }
++        }
++        args->initialized.set_value(SCE_OK);
+     } catch (...) {
+         args->initialized.set_exception(std::current_exception());
+         return 0;
+@@ -308,7 +321,13 @@
+     p->nativeHandle = reinterpret_cast<void*>(handle);
+     native.release();
+     try {
+-        initialized.get();
++        const auto status = initialized.get();
++        if (status != SCE_OK) {
++            start.set_value(false);
++            WaitForSingleObject(p->nativeHandle, INFINITE);
++            CloseHandle(p->nativeHandle);
++            return status; // Never publish the thread or enter guest code.
++        }
+     } catch (...) {
+         start.set_value(false);
+         WaitForSingleObject(p->nativeHandle, INFINITE);
+@@ -515,6 +534,18 @@
+ 
+ int APS5_VABI scePthreadSetprio(Pthread thread, int prio) {
+     if (!thread) return SCE_KERNEL_ERROR_EINVAL;
++#ifdef _WIN32
++    if (HostThreadPriority::Enabled()) {
++        std::lock_guard<std::mutex> lock(hostPriorityLock);
++        if (!thread->nativeHandle || thread->_finished.load(std::memory_order_acquire))
++            return SCE_KERNEL_ERROR_ESRCH;
++        const auto error = HostThreadPriority::Apply(static_cast<HANDLE>(thread->nativeHandle), prio);
++        if (error != ERROR_SUCCESS) return HostThreadPriority::GuestError(error);
++        // Commit only after the Wine/native policy request actually succeeds.
++        thread->priority.store(prio, std::memory_order_relaxed);
++        return SCE_OK;
++    }
++#endif
+     thread->priority.store(prio, std::memory_order_relaxed);
+     return SCE_OK;
+ }
+diff --git a/core/libs/prx/libkernel/Pthread/include/HostThreadPriority.hpp b/core/libs/prx/libkernel/Pthread/include/HostThreadPriority.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libkernel/Pthread/include/HostThreadPriority.hpp
+@@ -0,0 +1,51 @@
++// Optional coarse host scheduling; no claim of an exact PS5 priority contract.
++#ifndef CORE_LIBS_PRX_LIBKERNEL_HOST_THREAD_PRIORITY_HPP
++#define CORE_LIBS_PRX_LIBKERNEL_HOST_THREAD_PRIORITY_HPP
++
++#include "prx/libkernel/KernelErrors.hpp"
++#include <algorithm>
++#include <cstdint>
++#include <cstdlib>
++#include <cstring>
++#ifndef APS5_PRIORITY_MOCK_WINAPI
++#include <windows.h>
++#endif
++
++namespace HostThreadPriority {
++static bool Enabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("APS5_HOST_THREAD_PRIORITY");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++static int Relative(int guestPriority) {
++    // Existing default700 maps to NORMAL. One regular host step spans128 guest
++    // units; smaller guest numbers mean higher importance. Saturate regular
++    // levels only; accept every existing int without inventing a legal range.
++    const std::int64_t delta = 700 - static_cast<std::int64_t>(guestPriority);
++    return static_cast<int>(std::clamp(delta / 128, std::int64_t{-2}, std::int64_t{2}));
++}
++
++static DWORD Apply(HANDLE thread, int guestPriority) {
++    if (!Enabled() || SetThreadPriority(thread, Relative(guestPriority))) return ERROR_SUCCESS;
++    const DWORD error = GetLastError();
++    return error ? error : ERROR_GEN_FAILURE; // A failed API never becomes success.
++}
++
++static int GuestError(DWORD error) {
++    switch (error) {
++    case ERROR_SUCCESS: return 0;
++    case ERROR_ACCESS_DENIED:
++    case ERROR_PRIVILEGE_NOT_HELD: return SCE_KERNEL_ERROR_EPERM;
++    case ERROR_INVALID_HANDLE:
++    case ERROR_THREAD_NOT_IN_PROCESS: return SCE_KERNEL_ERROR_ESRCH;
++    case ERROR_INVALID_PARAMETER: return SCE_KERNEL_ERROR_EINVAL;
++    case ERROR_NOT_SUPPORTED:
++    case ERROR_CALL_NOT_IMPLEMENTED: return SCE_KERNEL_ERROR_EOPNOTSUPP;
++    default: return SCE_KERNEL_ERROR_EIO;
++    }
++}
++} // namespace HostThreadPriority
++#endif

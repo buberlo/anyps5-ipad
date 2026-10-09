@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "date": "2026-10-09",
+  "status": "source_build_local_api_and_native_priority_probe_checked",
+  "defaultEnabled": false,
+  "patches": {
+    "patches/wine/0004-ios-thread-precedence.patch": "4f1653c7cea423fab9e650b63e8b8db586b1a97f2f4a5b6bae87074ab8c85c2c",
+    "patches/anyps5/0064-host-thread-priority.patch": "80d42709981c866bed6d24e701314a79156d3ae4d878339018fceabaa4ec692e"
+  },
+  "gates": {
+    "MADEIRA_IOS_THREAD_PRECEDENCE": "exact 1, default off, before native runtime initialization",
+    "APS5_HOST_THREAD_PRIORITY": "exact 1, default off, captured by kernel before use",
+    "MADEIRA_IOS_THREAD_PRECEDENCE_TRACE": "exact 1 and core enabled, default off, at most 32 explicit requests"
+  },
+  "implementation": {
+    "preservesExistingQosAndEco": true,
+    "machSendRightLifetime": "validated startup handshake to server-thread destruction",
+    "nativePolicy": "THREAD_PRECEDENCE_POLICY, checked readback, failure rollback",
+    "processWideScheduling": "live changes rejected before mutation; no-op and pre-thread initialization supported",
+    "hlePriorityMapping": "clamp((700-priority)/128, -2, 2), int64 intermediate",
+    "initialHostFailure": "guest error, wait/close, no published handle or guest entry",
+    "pthreadPrivateLayoutChanged": false
+  },
+  "sourceChecks": {
+    "strictAndAsanUbsanMockContractsPassed": true,
+    "realMachOrWinApiCallsInMockTests": false,
+    "nativeIphoneOsThreadAndProcessCompilationPassed": true,
+    "sourceMatchesFrozenCheckedCandidate": true,
+    "publicRegressionScripts": [
+      "scripts/check-ios-thread-precedence.py",
+      "scripts/check-host-thread-priority.py"
+    ],
+    "publicMockCasesPerStrictAndSanitizedVariant": {
+      "native": {
+        "cases": 114,
+        "assertions": 914
+      },
+      "hle": {
+        "cases": 28,
+        "assertions": 238
+      }
+    },
+    "publicLocalReportSha256": {
+      "native": "ac03d4f72466358da6bce82e46634a9be37f82df9f0e4c7f3169bf01c8438261",
+      "hle": "3df68dde923ccbf37e02a7f64de6b9bd3a33ba1cc8ca79b1fcc787d24b798beb"
+    }
+  },
+  "physicalNativeApiProbe": {
+    "nativeBuild": "52",
+    "signedAndInstalled": true,
+    "sameOldFexAsBaseline": true,
+    "phases": [
+      {
+        "label": "baseline48",
+        "build": "48",
+        "gate": 0,
+        "complete": true,
+        "ownMainPresentAt15And35Seconds": true,
+        "nativeReadbackQualified": false
+      },
+      {
+        "label": "candidate52-off",
+        "build": "52",
+        "gate": 0,
+        "complete": true,
+        "ownMainPresentAt15And35Seconds": true,
+        "nativeReadbackQualified": false
+      },
+      {
+        "label": "candidate52-on",
+        "build": "52",
+        "gate": 1,
+        "complete": true,
+        "ownMainPresentAt15And35Seconds": true,
+        "nativeReadbackQualified": true
+      },
+      {
+        "label": "restored48",
+        "build": "48",
+        "gate": 0,
+        "complete": true,
+        "ownMainPresentAt15And35Seconds": true,
+        "nativeReadbackQualified": false
+      }
+    ],
+    "relativePriorityRequests": [
+      2,
+      -2,
+      0,
+      2
+    ],
+    "nativeImportanceReadback": [
+      9,
+      -9,
+      0,
+      9
+    ],
+    "checkedRejections": [
+      "invalid priority",
+      "read-only handle",
+      "wrong-type handle",
+      "terminated worker",
+      "live process priority change"
+    ],
+    "allRollbackStepsPassed": true,
+    "originalMetadataBytesRestored": true,
+    "originalBuildRestarted": true,
+    "gameOrSavedataChanged": false
+  },
+  "linkedHleKernel": {
+    "pinnedWindowsToolchain": "WinLibs GCC15.2 posix-seh UCRT r7",
+    "actualKernelLinked": true,
+    "rawKernelSha256": "e144a6f3bdeedf88d15cca600f046a67bf3b3e6cf4b816af27842b8f6d9329dc",
+    "fullHleRebuildPerformed": false,
+    "exportOrdinalDrift": "preserved names need fresh NID patch and dependency audit; original link-review failure retained",
+    "localRuntime": "macOS x86 Wine, not iPad/ARM64EC",
+    "focusedApiRuns": [
+      {
+        "test": "guest_pthread_attr_tests",
+        "gate": 0,
+        "exitCode": 0,
+        "directKernelImport": true
+      },
+      {
+        "test": "host_thread_local_tests",
+        "gate": 0,
+        "exitCode": 0,
+        "directKernelImport": false
+      },
+      {
+        "test": "guest_memory_tests",
+        "gate": 0,
+        "exitCode": 0,
+        "directKernelImport": true
+      },
+      {
+        "test": "windows_exception_tests",
+        "gate": 0,
+        "exitCode": 0,
+        "directKernelImport": false
+      },
+      {
+        "test": "guest_pthread_attr_tests",
+        "gate": 1,
+        "exitCode": 0,
+        "directKernelImport": true
+      },
+      {
+        "test": "host_thread_local_tests",
+        "gate": 1,
+        "exitCode": 0,
+        "directKernelImport": false
+      },
+      {
+        "test": "guest_memory_tests",
+        "gate": 1,
+        "exitCode": 0,
+        "directKernelImport": true
+      },
+      {
+        "test": "windows_exception_tests",
+        "gate": 1,
+        "exitCode": 0,
+        "directKernelImport": false
+      }
+    ],
+    "originalLoaderFailure": "missing GCC runtime DLLs and TLS helper in isolated test stage; corrected stage loads exact new kernel",
+    "fullLegacySuiteRerun": false
+  },
+  "combinedNativeHost": {
+    "build": "53",
+    "builtSignedAndVerified": true,
+    "gameDeviceRun": "Two 105-second diagnostic phases completed; formal pair inconclusive, no game/audio/FPS acceptance",
+    "fullIngressAndPostmixWindowsCapturedInBothPhases": true,
+    "strictCaptureMarkerQualification": false,
+    "strictCaptureMarkerFailure": "interleaved initialization log lines; original false flags retained",
+    "screenshots": "XCTest failed to initialize automation mode in both phases",
+    "foregroundGameplayQualified": false,
+    "nativePriorityTrace": "enabled phase: 32 successful checked readbacks; cap does not identify all audio workers",
+    "originalRuntimeAndMetadataRestored": true,
+    "originalNativeHostRestartedWithFreshNonce": true
+  },
+  "accepted": {
+    "nativePolicyReadback": true,
+    "schedulerLatencyImprovement": false,
+    "audioRepair": false,
+    "fullGameplay": false,
+    "displayedFps": false
+  },
+  "privateDataPublished": false
+}

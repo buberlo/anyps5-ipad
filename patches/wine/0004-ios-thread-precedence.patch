@@ -1,0 +1,475 @@
+diff --git a/server/thread.c b/server/thread.c
+--- a/server/thread.c
++++ b/server/thread.c
+@@ -59,6 +59,9 @@
+ #include "request.h"
+ #include "user.h"
+ #include "security.h"
++#if defined(WINE_IOS) && defined(__APPLE__)
++#include "ios_thread_precedence.h"
++#endif
+ 
+ 
+ /* thread queues */
+@@ -289,6 +292,13 @@
+     }
+ }
+ 
++#ifdef WINE_IOS
++int thread_uses_ios_precedence(void)
++{
++    return ios_precedence_enabled();
++}
++#endif
++
+ static int get_mach_importance( int effective_priority )
+ {
+     int min = -31, max = 32, range = max - min;
+@@ -305,6 +315,14 @@
+     mach_port_t thread_port, process_port = thread->process->trace_data;
+     int effective_priority = get_effective_thread_priority( thread );
+ 
++#ifdef WINE_IOS
++    if (ios_precedence_enabled())
++    {
++        thread->ios_priority_status = ios_precedence_apply(thread->ios_priority_port,
++            thread->ios_priority_identity, get_mach_importance(effective_priority));
++        return;
++    }
++#endif
+     if (!process_port) return;
+     kr = mach_port_extract_right( process_port, thread->unix_tid,
+                                   MACH_MSG_TYPE_COPY_SEND, &thread_port, &type );
+@@ -436,6 +454,10 @@
+     thread->ios_start_pending  = 0;   /* same 0x55 poisoning as above */
+     thread->ios_ctx_frame      = 0;
+     thread->ios_ctx_seq        = 0;
++    thread->ios_priority_reserved = 0;
++    thread->ios_priority_port = 0;
++    thread->ios_priority_identity = 0;
++    thread->ios_priority_status = STATUS_SUCCESS;
+ #endif
+     thread->dbg_hidden      = 0;
+     thread->bypass_proc_suspend = 0;
+@@ -684,6 +706,14 @@
+ 
+     list_remove( &thread->entry );
+     cleanup_thread( thread );
++#if defined(WINE_IOS) && defined(__APPLE__)
++    {
++        static unsigned int release_failures;
++        unsigned int status = ios_precedence_release(&thread->ios_priority_port);
++        if (status && release_failures++ < 16)
++            fprintf(stderr, "[ios-thread-priority] retained right release failed: %08x\n", status);
++    }
++#endif
+     release_object( thread->process );
+     if (thread->id) free_ptid( thread->id );
+     if (thread->token) release_object( thread->token );
+@@ -874,6 +904,25 @@
+     if (priority < LOW_PRIORITY + 1 || priority > HIGH_PRIORITY) return STATUS_INVALID_PARAMETER;
+     if (priority_class != PROCESS_PRIOCLASS_REALTIME && priority >= LOW_REALTIME_PRIORITY) return STATUS_PRIVILEGE_NOT_HELD;
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (ios_precedence_enabled())
++    {
++        int previous = thread->priority;
++        if (thread->state != RUNNING) return STATUS_THREAD_IS_TERMINATING;
++        thread->priority = priority;
++        /* Before bootstrap this is a queued request, not an applied policy. */
++        if (thread->unix_tid != -1)
++        {
++            apply_thread_priority(thread);
++            if (thread->ios_priority_status)
++            {
++                thread->priority = previous;
++                return thread->ios_priority_status;
++            }
++        }
++        return STATUS_SUCCESS;
++    }
++#endif
+     thread->priority = priority;
+ 
+     /* if thread is gone or hasn't started yet, this will be called again from init_thread with a unix_tid */
+@@ -889,6 +938,10 @@
+ unsigned int set_thread_base_priority( struct thread *thread, int base_priority )
+ {
+     int priority;
++#if defined(WINE_IOS) && defined(__APPLE__)
++    int previous = thread->base_priority;
++    unsigned int status;
++#endif
+     int is_realtime = thread->process->priority == PROCESS_PRIOCLASS_REALTIME;
+ 
+     if (base_priority != THREAD_PRIORITY_IDLE && base_priority != THREAD_PRIORITY_TIME_CRITICAL)
+@@ -915,14 +968,70 @@
+         break;
+     }
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    status = set_thread_priority(thread, priority);
++    if (ios_precedence_enabled() && status) thread->base_priority = previous;
++    return status;
++#else
+     return set_thread_priority( thread, priority );
++#endif
+ }
+ 
+ void set_thread_disable_boost( struct thread *thread, int disable_boost )
+ {
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (ios_precedence_enabled())
++    {
++        int previous = thread->disable_boost;
++        if (thread->state != RUNNING)
++        {
++            thread->ios_priority_status = STATUS_THREAD_IS_TERMINATING;
++            return;
++        }
++        thread->disable_boost = disable_boost;
++        thread->ios_priority_status = STATUS_SUCCESS;
++        if (thread->unix_tid != -1) apply_thread_priority(thread);
++        if (thread->ios_priority_status) thread->disable_boost = previous;
++        return;
++    }
++#endif
+     thread->disable_boost = disable_boost;
+     apply_thread_priority( thread );
+ }
++
++#if defined(WINE_IOS) && defined(__APPLE__)
++/* Explicit requests only: bootstrap applies are deliberately not logged. The
++ * bounded policy readback is evidence of Mach precedence, not a QoS or latency
++ * guarantee. A queued prebootstrap request has no native readback yet. */
++static void ios_trace_explicit_priority(struct thread *thread, const char *kind,
++                                       int requested, long long nt_priority, unsigned int status)
++{
++    static int trace_enabled = -1;
++    static unsigned int changes;
++    long long effective = nt_priority;
++    int applied, importance_valid;
++    if (!ios_precedence_enabled()) return;
++    if (trace_enabled == -1)
++    {
++        const char *value = getenv("MADEIRA_IOS_THREAD_PRECEDENCE_TRACE");
++        trace_enabled = value && !strcmp(value, "1");
++    }
++    if (!trace_enabled || changes >= 32) return;
++    ++changes;
++    if (!thread->disable_boost && effective < LOW_REALTIME_PRIORITY)
++    {
++        if (get_process_first_thread(thread->process) == thread) ++effective;
++        effective = min(effective, LOW_REALTIME_PRIORITY - 1);
++    }
++    applied = !status && thread->state == RUNNING && thread->unix_tid != -1 &&
++              thread->ios_priority_port && thread->ios_priority_identity;
++    importance_valid = effective >= 1 && effective < LOW_REALTIME_PRIORITY;
++    fprintf(stderr, "[ios-thread-priority] explicit=%s tid=%04x requested=%d effective=%lld importance=%d importance-valid=%d status=%08x precedence-readback-match=%d queued-before-bootstrap=%d\n",
++            kind, thread->id, requested, effective,
++            importance_valid ? get_mach_importance((int)effective) : 0, importance_valid, status,
++            applied, !status && thread->unix_tid == -1);
++}
++#endif
+ 
+ /* set all information about a thread */
+ static void set_thread_info( struct thread *thread,
+@@ -931,11 +1040,27 @@
+     if (req->mask & SET_THREAD_INFO_PRIORITY)
+     {
+         unsigned int status = set_thread_priority( thread, req->priority );
++#if defined(WINE_IOS) && defined(__APPLE__)
++        ios_trace_explicit_priority(thread, "priority", req->priority, req->priority, status);
++#endif
+         if (status) set_error( status );
+     }
+     if (req->mask & SET_THREAD_INFO_BASE_PRIORITY)
+     {
++#if defined(WINE_IOS) && defined(__APPLE__)
++        long long priority;
++        int realtime = thread->process->priority == PROCESS_PRIOCLASS_REALTIME;
++        switch (req->base_priority)
++        {
++        case THREAD_PRIORITY_IDLE: priority = realtime ? LOW_REALTIME_PRIORITY : LOW_PRIORITY + 1; break;
++        case THREAD_PRIORITY_TIME_CRITICAL: priority = realtime ? HIGH_PRIORITY : LOW_REALTIME_PRIORITY - 1; break;
++        default: priority = (long long)thread->process->base_priority + req->base_priority; break;
++        }
++#endif
+         unsigned int status = set_thread_base_priority( thread, req->base_priority );
++#if defined(WINE_IOS) && defined(__APPLE__)
++        ios_trace_explicit_priority(thread, "base-priority", req->base_priority, priority, status);
++#endif
+         if (status) set_error( status );
+     }
+     if (req->mask & SET_THREAD_INFO_AFFINITY)
+@@ -954,7 +1079,13 @@
+     if (req->mask & SET_THREAD_INFO_DBG_HIDDEN)
+         thread->dbg_hidden = 1;
+     if (req->mask & SET_THREAD_INFO_DISABLE_BOOST)
++    {
+         set_thread_disable_boost( thread, req->disable_boost );
++#if defined(WINE_IOS) && defined(__APPLE__)
++        if (ios_precedence_enabled() && thread->ios_priority_status)
++            set_error(thread->ios_priority_status);
++#endif
++    }
+     if (req->mask & SET_THREAD_INFO_DESCRIPTION)
+     {
+         WCHAR *desc;
+@@ -2235,13 +2366,29 @@
+ 
+     current->unix_pid = process->unix_pid = req->unix_pid;
+     current->unix_tid = req->unix_tid;
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (ios_precedence_enabled())
++    {
++        unsigned int status = ios_precedence_retain(current->unix_tid,
++            &current->ios_priority_port, &current->ios_priority_identity);
++        current->ios_priority_status = status;
++        if (status) { set_error(status); return; }
++    }
++#endif
+ 
+     if (!process->parent_id)
+         process->affinity = current->affinity = get_thread_affinity( current );
+     else
+         set_thread_affinity( current, current->affinity );
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    {
++        unsigned int status = set_thread_base_priority(current, current->base_priority);
++        if (ios_precedence_enabled() && status) { set_error(status); return; }
++    }
++#else
+     set_thread_base_priority( current, current->base_priority );
++#endif
+ 
+     debug_level = max( debug_level, req->debug_level );
+ 
+@@ -2275,12 +2422,28 @@
+ 
+     current->unix_pid = current->process->unix_pid;
+     current->unix_tid = req->unix_tid;
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (ios_precedence_enabled())
++    {
++        unsigned int status = ios_precedence_retain(current->unix_tid,
++            &current->ios_priority_port, &current->ios_priority_identity);
++        current->ios_priority_status = status;
++        if (status) { set_error(status); return; }
++    }
++#endif
+     current->teb      = req->teb;
+     current->entry_point = req->entry;
+ 
+     init_thread_context( current );
+     generate_debug_event( current, DbgCreateThreadStateChange, &req->entry );
++#if defined(WINE_IOS) && defined(__APPLE__)
++    {
++        unsigned int status = set_thread_base_priority(current, current->base_priority);
++        if (ios_precedence_enabled() && status) { set_error(status); return; }
++    }
++#else
+     set_thread_base_priority( current, current->base_priority );
++#endif
+     set_thread_affinity( current, current->affinity );
+ 
+     reply->suspend = (is_thread_suspended( current ) || current->context != NULL);
+diff --git a/server/thread.h b/server/thread.h
+--- a/server/thread.h
++++ b/server/thread.h
+@@ -128,6 +128,12 @@
+      * applies a SetThreadContext only while both are unchanged. */
+     unsigned long long     ios_ctx_frame;
+     unsigned int           ios_ctx_seq;
++    /* Append-only: keep every prebuilt server object's existing field offsets.
++     * A retained send right acquired at bootstrap prevents Mach name reuse. */
++    unsigned int           ios_priority_reserved; /* Preserve the old 672-byte object boundary. */
++    unsigned int           ios_priority_port;
++    unsigned long long     ios_priority_identity;
++    unsigned int           ios_priority_status;
+ #endif
+ };
+ 
+@@ -177,6 +183,9 @@
+ extern struct token *thread_get_impersonation_token( struct thread *thread );
+ extern int get_effective_thread_priority( struct thread *thread );
+ extern unsigned int set_thread_priority( struct thread *thread, int priority );
++#if defined(WINE_IOS) && defined(__APPLE__)
++extern int thread_uses_ios_precedence(void);
++#endif
+ extern unsigned int set_thread_base_priority( struct thread *thread, int base_priority );
+ extern void set_thread_disable_boost( struct thread *thread, int disable_boost );
+ extern int set_thread_affinity( struct thread *thread, affinity_t affinity );
+diff --git a/server/process.c b/server/process.c
+--- a/server/process.c
++++ b/server/process.c
+@@ -1710,6 +1710,14 @@
+         return;
+     }
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (thread_uses_ios_precedence() && process->running_threads)
++    {
++        /* This prototype supports checked thread-scoped changes only. */
++        if (process->base_priority != base_priority) set_error(STATUS_NOT_SUPPORTED);
++        return;
++    }
++#endif
+     process->base_priority = base_priority;
+ 
+     LIST_FOR_EACH_ENTRY( thread, &process->thread_list, struct thread, proc_entry )
+@@ -1721,8 +1729,6 @@
+ static void set_process_priority( struct process *process, int priority )
+ {
+     int base_priority;
+-
+-    process->priority = priority;
+ 
+     switch (priority)
+     {
+@@ -1748,6 +1754,15 @@
+         base_priority = 8;
+     }
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (thread_uses_ios_precedence() && process->running_threads)
++    {
++        if (process->priority != priority || process->base_priority != base_priority)
++            set_error(STATUS_NOT_SUPPORTED);
++        return;
++    }
++#endif
++    process->priority = priority;
+     set_process_base_priority( process, base_priority );
+ }
+ 
+@@ -1755,6 +1770,14 @@
+ {
+     struct thread *thread;
+ 
++#if defined(WINE_IOS) && defined(__APPLE__)
++    if (thread_uses_ios_precedence() && process->running_threads)
++    {
++        /* Even a process no-op must not reset individual thread boost flags. */
++        if (process->disable_boost != disable_boost) set_error(STATUS_NOT_SUPPORTED);
++        return;
++    }
++#endif
+     process->disable_boost = disable_boost;
+ 
+     LIST_FOR_EACH_ENTRY( thread, &process->thread_list, struct thread, proc_entry )
+diff --git a/server/ios_thread_precedence.h b/server/ios_thread_precedence.h
+new file mode 100644
+--- /dev/null
++++ b/server/ios_thread_precedence.h
+@@ -0,0 +1,109 @@
++/* Local iOS precedence bridge. Existing QoS and ECO policies are unchanged. */
++#ifndef WINE_IOS_THREAD_PRECEDENCE_H
++#define WINE_IOS_THREAD_PRECEDENCE_H
++
++#include <stdlib.h>
++#include <string.h>
++#ifndef IOS_THREAD_PRECEDENCE_MOCK_MACH
++#include <mach/mach.h>
++#include <mach/thread_policy.h>
++#endif
++
++static int ios_precedence_enabled(void)
++{
++    static int enabled = -1;
++    if (enabled == -1)
++    {
++        const char *value = getenv("MADEIRA_IOS_THREAD_PRECEDENCE");
++        enabled = value && !strcmp(value, "1");
++    }
++    return enabled;
++}
++
++static unsigned int ios_precedence_error(kern_return_t error)
++{
++    if (error == KERN_SUCCESS) return STATUS_SUCCESS;
++    if (error == KERN_NO_ACCESS || error == KERN_PROTECTION_FAILURE) return STATUS_ACCESS_DENIED;
++    if (error == KERN_INVALID_ARGUMENT) return STATUS_INVALID_PARAMETER;
++    if (error == KERN_TERMINATED || error == KERN_INVALID_NAME || error == KERN_INVALID_RIGHT)
++        return STATUS_THREAD_IS_TERMINATING;
++    if (error == KERN_NOT_SUPPORTED) return STATUS_NOT_SUPPORTED;
++    return STATUS_UNSUCCESSFUL;
++}
++
++/* Called only during the client/server startup handshake, never by a later
++ * priority request. Hold the send right for the server thread object's lifetime
++ * so a departed client's recycled port name cannot select a different thread. */
++static unsigned int ios_precedence_retain(int unix_tid, mach_port_t *owned_port,
++                                          unsigned long long *identity)
++{
++    struct thread_identifier_info info;
++    mach_msg_type_number_t count = THREAD_IDENTIFIER_INFO_COUNT;
++    mach_msg_type_name_t type;
++    kern_return_t error;
++    if (unix_tid == -1 || !unix_tid || *owned_port) return STATUS_INVALID_HANDLE;
++    error = mach_port_extract_right(mach_task_self(), (mach_port_name_t)unix_tid,
++                                   MACH_MSG_TYPE_COPY_SEND, owned_port, &type);
++    if (error != KERN_SUCCESS) return ios_precedence_error(error);
++    /* Even validation failures retain ownership until object destruction. */
++    if (type != MACH_MSG_TYPE_PORT_SEND || !*owned_port || *owned_port == MACH_PORT_DEAD)
++        return STATUS_INVALID_HANDLE;
++    error = thread_info(*owned_port, THREAD_IDENTIFIER_INFO, (thread_info_t)&info, &count);
++    if (error != KERN_SUCCESS) return ios_precedence_error(error);
++    if (count != THREAD_IDENTIFIER_INFO_COUNT || !info.thread_id) return STATUS_INVALID_HANDLE;
++    *identity = info.thread_id;
++    return STATUS_SUCCESS;
++}
++
++static unsigned int ios_precedence_apply(mach_port_t port, unsigned long long identity, int importance)
++{
++    struct thread_identifier_info info;
++    struct thread_precedence_policy previous, observed, requested;
++    mach_msg_type_number_t count = THREAD_IDENTIFIER_INFO_COUNT;
++    boolean_t defaults = FALSE;
++    kern_return_t error;
++    unsigned int status;
++    if (!port || port == MACH_PORT_DEAD || !identity) return STATUS_INVALID_HANDLE;
++    if (importance < -31 || importance > 32) return STATUS_NOT_SUPPORTED;
++    error = thread_info(port, THREAD_IDENTIFIER_INFO, (thread_info_t)&info, &count);
++    if (error != KERN_SUCCESS) return ios_precedence_error(error);
++    if (count != THREAD_IDENTIFIER_INFO_COUNT || info.thread_id != identity) return STATUS_INVALID_HANDLE;
++    count = THREAD_PRECEDENCE_POLICY_COUNT;
++    error = thread_policy_get(port, THREAD_PRECEDENCE_POLICY, (thread_policy_t)&previous,
++                              &count, &defaults);
++    if (error != KERN_SUCCESS) return ios_precedence_error(error);
++    if (count != THREAD_PRECEDENCE_POLICY_COUNT || defaults) return STATUS_UNSUCCESSFUL;
++    requested.importance = importance;
++    error = thread_policy_set(port, THREAD_PRECEDENCE_POLICY, (thread_policy_t)&requested,
++                              THREAD_PRECEDENCE_POLICY_COUNT);
++    if (error != KERN_SUCCESS) return ios_precedence_error(error);
++    count = THREAD_PRECEDENCE_POLICY_COUNT;
++    defaults = FALSE;
++    error = thread_policy_get(port, THREAD_PRECEDENCE_POLICY, (thread_policy_t)&observed,
++                              &count, &defaults);
++    if (error == KERN_SUCCESS && count == THREAD_PRECEDENCE_POLICY_COUNT && !defaults &&
++        observed.importance == importance) return STATUS_SUCCESS;
++    status = error == KERN_SUCCESS ? STATUS_UNSUCCESSFUL : ios_precedence_error(error);
++    /* A failed readback never counts as success. Restore the previous single
++     * policy and verify it; callers also keep their previous Wine metadata. */
++    error = thread_policy_set(port, THREAD_PRECEDENCE_POLICY, (thread_policy_t)&previous,
++                              THREAD_PRECEDENCE_POLICY_COUNT);
++    if (error != KERN_SUCCESS) return STATUS_UNSUCCESSFUL;
++    count = THREAD_PRECEDENCE_POLICY_COUNT;
++    defaults = FALSE;
++    error = thread_policy_get(port, THREAD_PRECEDENCE_POLICY, (thread_policy_t)&observed,
++                              &count, &defaults);
++    if (error != KERN_SUCCESS || count != THREAD_PRECEDENCE_POLICY_COUNT || defaults ||
++        observed.importance != previous.importance) return STATUS_UNSUCCESSFUL;
++    return status;
++}
++
++static unsigned int ios_precedence_release(mach_port_t *owned_port)
++{
++    kern_return_t error;
++    if (!*owned_port) return STATUS_SUCCESS;
++    error = mach_port_deallocate(mach_task_self(), *owned_port);
++    if (error == KERN_SUCCESS) *owned_port = MACH_PORT_NULL;
++    return ios_precedence_error(error);
++}
++#endif

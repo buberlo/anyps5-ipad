@@ -27,6 +27,39 @@ changes affect the shared execution and measurement paths, not the launcher.
   defaults this switch to 1 because that title bar is invisible. Set it to 0
   before launch to restore title diagnostics.
 
+## Optional guest thread priorities
+
+`APS5_HOST_THREAD_PRIORITY=1` enables coarse guest-to-Windows priority mapping
+in the rebuilt `libkernel.prx`. Guest priority 700 maps to normal; each 128 units
+selects one regular Windows priority step, clamped to -2 through +2. Smaller
+guest values mean greater importance. This is an approximation, not a complete
+PS5 scheduler contract. A thread applies its initial priority before publishing
+successful creation. Failed host requests return a guest error without publishing
+the thread or changing its recorded priority.
+
+On iOS, also set `MADEIRA_IOS_THREAD_PRECEDENCE=1` before starting Wine. Wine's
+server retains a validated same-task Mach send right from the native thread's
+startup handshake and applies `THREAD_PRECEDENCE_POLICY`, checking the result by
+reading it back. It preserves the existing QoS/ECO settings and releases the right
+with the server thread object. Failed operations preserve thread metadata and
+attempt to restore the previous policy. Live process-wide scheduling changes are
+rejected before mutation because this prototype cannot atomically update every
+thread. Unchanged requests and pre-thread process initialization remain supported.
+
+Both switches require exactly `1` and default to off. Updating the app alone does
+not replace a game's kernel; rebuild and reprepare its HLE package. Native policy
+readback is verified separately on the iPad. Two diagnostic game runs collected
+full ingress/postmix windows, but XCTest automation failed and the app became
+inactive. Strong repeated audio remains in both recordings. This comparison
+qualifies no audio repair or scheduler speedup; the switches stay off in the
+normal game profile pending a valid foreground comparison.
+
+`MADEIRA_IOS_THREAD_PRECEDENCE_TRACE=1` additionally prints at most 32 explicit
+priority/boost requests, including mapped importance, status and readback match.
+It produces no bootstrap trace and is also off by default. Keep audio captures
+and other diagnostics off during performance qualification.
+[Implementation and verification](PATCHES.md#optional-host-thread-priorities-wine0004-and-anyps50064).
+
 ## Private bounded audio capture
 
 Madeira0049 provides an optional postmix diagnostic, after the existing stereo

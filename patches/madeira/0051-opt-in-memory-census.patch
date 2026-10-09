@@ -1,0 +1,21 @@
+--- a/build/ntdll-unix/virtual_ios.c
++++ b/build/ntdll-unix/virtual_ios.c
+@@ -643,6 +643,7 @@
+  * logic; defined further down alongside ios_jit_pool_size_global. */
+ extern unsigned long long ios_last_footprint_mb;
+ extern int ios_fast_footprint;
++extern int madeira_get_diag_enabled( void );
+ 
+ static void *ios_pool_warmer_thread( void *arg )
+ {
+@@ -929,7 +930,9 @@
+              * addresses identify the owner offline (pool = RX base, FEX bands,
+              * PA pools, guest heap). Every 5th cycle plus cycle 2, because the
+              * walk is tens of thousands of kernel calls. */
+-            if (cycle == 2 || (cycle % 5) == 0)
++            /* The census only reports diagnostic statistics. Keep JIT alias
++             * warming, footprint updates and heap-integrity checks above active. */
++            if (madeira_get_diag_enabled() && (cycle == 2 || (cycle % 5) == 0))
+             {
+                 struct { unsigned long long base, size, dirty, res, swap; unsigned tag; } top[12];
+                 unsigned long long dirty_by_tag[256];

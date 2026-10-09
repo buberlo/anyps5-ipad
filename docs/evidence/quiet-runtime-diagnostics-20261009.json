@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "dateUTC": "2026-10-09",
+  "status": "source_contracts_compilation_signed_host_and_120s_device_component_check_verified_performance_pending",
+  "changes": {
+    "nativeCensus": {
+      "patch": "patches/madeira/0051-opt-in-memory-census.patch",
+      "sha256": "4d7486fec492dd12c048e0a6a745bc924545211c8fde90a77d11ce04550d6ca6",
+      "existingLiveDiagnosticsDefault": false,
+      "gateSkipsWholeStatisticalCensus": true,
+      "JitWarmingFootprintHeapIntegrityAllocatorProtectionAndFaultCodePreserved": true
+    },
+    "fexRoutineMessages": {
+      "patch": "patches/fex/0002-opt-in-invalidation-diagnostics.patch",
+      "sha256": "9e5b4c0d8269d60211419ec7dd8ad66a6046c529f1a496bbc70791cca0a0672d",
+      "exactGate": "MADEIRA_INVALIDATION_DIAGNOSTICS=1",
+      "defaultOff": true,
+      "cachedBeforeInitialNotifications": true,
+      "onlySectionAndAlignedMessageCounterGated": true,
+      "functionalInvalidationAndErrorHandlingPreserved": true,
+      "privateClassAllConsumersMustRebuild": true
+    }
+  },
+  "observations": {
+    "sectionMessages": 19622,
+    "mostlyInitialization": true,
+    "recordedPhysicalRegionVisits": 299496,
+    "censusPasses": 4,
+    "atLeastOnePassAfterFinalStartupDetach": true,
+    "steadyLoggingRateInferred": false,
+    "fpsCauseAccepted": false
+  },
+  "sourceChecks": {
+    "madeira51SeriesReverseObservedExit": 0,
+    "fexTop0000And0002SeriesReverseObservedExit": 0,
+    "unchangedNestedRpmallocRerun": false,
+    "fexPatchForwardReverseTwoFilesExact": true,
+    "fexOptimizedArm64ecTuExit": 0,
+    "fexOptimizedArm64WindowTuExit": 0,
+    "fullFexDllOrAllClassConsumersRebuilt": false,
+    "firstMixedWrapperHeaderCompileFailurePreserved": true
+  },
+  "nativeHost": {
+    "build": 54,
+    "baselineBuild": 48,
+    "builtSignedVerified": true,
+    "machoSha256": "54c78428a4d541d6fe53239a31afd528e66fbe8af4fab604f527ef932e0f9901",
+    "onlyNtdllVirtualObjectAndIndexChanged": true,
+    "unchangedNtdllObjects": 36,
+    "unchangedActualAppPeFiles": 305,
+    "sameSigningProfilesAndEntitlements": true,
+    "fexNewGateLinked": false,
+    "installed": true
+  },
+  "qualification": {
+    "visibleGameplay": false,
+    "controls": false,
+    "audioQuality": false,
+    "fpsImprovement": false,
+    "constant60FPS": false,
+    "benchmark": false
+  },
+  "localEvidenceHashes": {
+    "sourceReview": "1695328d527ccb559ae780be05cc6cff9e393207ca5eb42a480a7755ca6ee781",
+    "fexGateSourceReceipt": "6a912192a2c837b8b92d78c0e6ac56c43a8dddd9808a2cbfacf43d8cb7914a5d",
+    "fexTuReceipt": "0d1c0cd907c546d34fa7a0bef42ac6302375e54b22b0b20b96458a3bb50c1717",
+    "nativeBuildReceipt": "8c62ffa5b7ea4b8f67fc39f450c3070c260128c14d91cd64aea197691820edb5",
+    "allActualAppPeVerification": "7d39bcc0e6acde70b5c130a97b00ca5cfa8347161e522be5320d153b16f7d750",
+    "native54DeviceReceipt": "9ca7d29b58a82069b0915615804f442ba28fa407651d6b3326c84c39590a79e4"
+  },
+  "privateGameAssetsPcmLogsPairingAndDeviceIdentifiersIncluded": false,
+  "githubActionsUsed": false,
+  "deviceComponentCheck": {
+    "nativeBuild": 54,
+    "sourceProfile": 65,
+    "sameMainAliveAtSeconds": [
+      15,
+      30,
+      60,
+      120
+    ],
+    "normalLaunchBuiltInJit": true,
+    "jitPoolMegabytes": 512,
+    "statisticalRegionHoleMallocCensusAbsent": true,
+    "poolWarmerFootprintAndPassingHeapCheckObserved": true,
+    "globalConfigurationAndSource65ManifestBytePreserved": true,
+    "library18ControlsFpsOnlyAndFunctionalProfilePreserved": true,
+    "renderedSolitaireMenuVisible": true,
+    "currentProfileTouchInputsIssued": false,
+    "newFexGateInstalled": false,
+    "logCollectionSuspendedThenResumedOwnMain": true,
+    "screenshotAndLogCollectionAreNeutralBenchmark": false,
+    "appLeftRunning": true,
+    "observedThermalTransition": "serious_to_critical",
+    "thermalConditionMatchedForPerformance": false
+  }
+}

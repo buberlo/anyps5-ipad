@@ -82,6 +82,21 @@ runtime/metadata/cache/diagnostics, Native48 reinstallation and a fresh nonce
 probe that retargets the Wine prefix. This does not upgrade the original
 capture-parser qualification or establish a permanent game installation.
 
+## Subsequent device installation
+
+Source65 was subsequently installed with pacing enabled under Native48. All
+56 runtime files were read back and checked; original game assets and the five
+guest images were retained. The actual JIT pool is 512 MiB through the global
+configuration. The 18 touch controls are retained; a separate verified update
+enables the FPS-only overlay. Capture and priority tracing are disabled. A
+rendered Solitaire menu is visible.
+
+The current-profile touch test remains incomplete: XCTest timed out enabling
+automation mode and issued no touch presses. Listening quality, card gameplay
+and performance are still unaccepted. This installation is a separate
+checkpoint from the restored capture pair above. The sanitized evidence records
+the installation, overlay and readiness receipts separately.
+
 ## Reusable source checks
 
 After applying the patch series, run the checker with a fresh output directory:

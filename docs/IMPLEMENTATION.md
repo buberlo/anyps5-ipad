@@ -1,12 +1,25 @@
 # Runtime implementation and verification
 
-The source baseline for this implementation log is main
+The historical foundation baseline for this implementation log is main
 `20bb9809e5f19624c7ae27fd129c32ebfad055e8` and its pinned upstream commits.
-Selected build repairs from PR #2 are included; the pins themselves have not
-moved. PR #3 merged the runtime work into main. This document distinguishes
+Selected build repairs from PR #2 were included; later upstream refreshes are
+recorded in [UPSTREAM-REFRESH.md](UPSTREAM-REFRESH.md). PR #3 merged the runtime
+work into main. This document distinguishes
 source work, build artifacts, host execution and physical-device acceptance.
 
 ## Current device result
+
+As of 2026-10-09, Native54 and Solitaire Source65 are installed. The game
+selection menu renders with 18 touch controls and an FPS-only overlay. The
+two-minute native component check retains JIT warming, footprint sampling and
+passing heap checks while suppressing the statistical memory census. AudioOut
+pacing changes the captured repeating-packet pattern; listening quality and
+speed remain unaccepted. XCTest currently times out enabling automation mode,
+so this profile has no new touch-gameplay qualification. See the [current
+milestone](MILESTONES.md#current-installed-milestone-2026-10-09), [AudioOut checkpoint](AUDIOOUT-FRAME-PACING.md)
+and [native device evidence](evidence/quiet-runtime-diagnostics-20261009.json).
+
+## Earlier Dreaming Sarah gameplay observation
 
 On 2026-10-06 at about 16:11 UTC (23:11 WIB), buberlo recorded the iPad
 screen for about two minutes. The device was an iPad Air 13-inch M2 running

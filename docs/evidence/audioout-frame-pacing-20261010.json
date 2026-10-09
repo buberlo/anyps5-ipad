@@ -161,6 +161,28 @@
     "loadedMemoryByteIdentityProved": false,
     "pairAnalysisEstablishesRestoration": false
   },
+  "subsequentInstallation": {
+    "sourceProfile": 65,
+    "initialNativeHostBuild": 48,
+    "installedAndRuntimeMetadataReadbackVerified": true,
+    "actualRuntimeFilesReadBack": 56,
+    "unchangedGameAssetsAndFiveGuestImagesPreserved": true,
+    "pacingEnabled": true,
+    "globalJitPoolMegabytes": 512,
+    "touchControlLabels": 18,
+    "fpsOnlyOverlayEnabled": true,
+    "captureAndThreadPriorityDiagnosticsDisabled": true,
+    "visibleRenderedMenuObserved": true,
+    "currentProfileTouchGameplayVerified": false,
+    "currentProfileSoundAcceptedByListening": false,
+    "currentXctestReadiness": "Timed out while enabling automation mode",
+    "timedOutInspectorIssuedTouchPresses": false,
+    "singleHudReadoutsArePerformanceAcceptance": false,
+    "installationReceiptSha256": "ae7e454ddd75cfc09b94d597189d82a1e2e3ef40d9660fee61936d21e65c3f8e",
+    "independentInstallationReviewSha256": "3d6fa0de5c5b430950b1d1dc275d619fcac85e36b0f8f2568301d6db08ce9e4f",
+    "fpsOverlayReceiptSha256": "764f6368402f6520e6ee028714ad30100fd607ff50f88f452aaded17ab115f93",
+    "readinessReceiptSha256": "1bf1c9f55b9d258607bcca13a9a1ff72e6806ee893470e4fe14798d3f079fd6d"
+  },
   "qualification": {
     "audioQuality": false,
     "audioDefectCausality": false,

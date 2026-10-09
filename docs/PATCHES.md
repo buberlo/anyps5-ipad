@@ -1598,3 +1598,27 @@ restores all 56 runtime files, three metadata files, seven diagnostics and the
 93 original cache files. Capture and profiling remain enabled; no card move,
 audio repair, speed or displayed-FPS result is accepted. The gate stays
 default-off. [Enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json).
+
+## Optional routine memory diagnostics (Madeira0051, FEX0002)
+
+[Runtime configuration and scope](RUNTIME-PERFORMANCE.md#routine-memory-diagnostics).
+Madeira's existing live Diagnostics flag gates the complete statistical region,
+hole and malloc-zone census, while retaining JIT warming, footprint and heap
+checks. FEX's constructor-cached exact opt-in gates only two routine messages
+and their diagnostic counter. All functional invalidation operations remain.
+These patches require native/FEX rebuilds; they do not change game HLE, render
+quality or establish a device FPS improvement.
+
+[Source, compilation and signed host checkpoint](evidence/quiet-runtime-diagnostics-20261009.json).
+The FEX tracker compiles for both optimized ARM64EC and guest-window ARM64
+paths. Native54 changes only the census object from Native48; its FEX DLL is
+unchanged. These are separate build scopes, not a full FEX rebuild or a
+performance result.
+
+Native54 was installed with the existing Source65 profile. The same native
+main remained alive through 120 seconds; pool warming, footprint sampling and
+passing heap checks were observed with no statistical census. The rendered
+Solitaire menu, 18 controls and FPS-only overlay remain. This component check
+does not qualify touch gameplay, listening quality or an FPS improvement.
+Its log reports a serious-to-critical thermal transition; this is not a
+controlled-temperature performance comparison.

@@ -1,6 +1,39 @@
 # Milestones
 
-The current device result is in the [README](../README.md): the PS5 build of
+## Current installed milestone, 2026-10-09
+
+The M2 iPad has Native54 installed with the Solitaire Source65 package. Its
+selection menu renders correctly, with all 18 touch-control labels and an
+FPS-only overlay. The same native main remains alive at 15, 30, 60 and 120
+seconds. The 512 MiB JIT pool, functional game profile and installation
+manifest are retained.
+
+- **Audio cadence:** optional patch0065 paces the legacy AudioOut producer.
+  A controlled comparison changes the captured four-packet repetition from
+  1,855/1,870 matching fingerprints to 0/1,870, and consecutive identical
+  native blocks from 463/467 to zero. These are digital-content observations,
+  not a listening-quality or simulation-speed acceptance.
+- **Native diagnostics:** Madeira0051 skips the complete statistical region,
+  hole and malloc-zone census when the existing Diagnostics setting is off.
+  The installed host still reports pool warming, footprint sampling and
+  passing heap checks. FEX0002 separately gates two routine messages; this
+  source change is not in the installed FEX DLL.
+- **Remaining qualification:** the latest XCTest inspector times out while
+  enabling automation mode and sends no touches. Card gameplay with Source65,
+  audible quality, save/load, lifecycle, sustained memory and performance
+  remain open. Earlier legal moves belong to their recorded profiles. A
+  screenshot's FPS reading is not a matched benchmark or constant-60 result.
+  The component-check log reports a serious-to-critical thermal transition;
+  its temperature state was not matched for a performance comparison.
+
+The [AudioOut record](AUDIOOUT-FRAME-PACING.md) separates the restored capture
+pair from the subsequent installation. The [native component evidence](evidence/quiet-runtime-diagnostics-20261009.json)
+records the installed host and preserved checks. Detailed switches are in
+[runtime performance](RUNTIME-PERFORMANCE.md).
+
+## Earlier foundation and gameplay milestones
+
+The earlier gameplay result is in the [README](../README.md): the PS5 build of
 Dreaming Sarah boots on an M2 iPad and is playable in a basic sense. Details
 and the open gates are in [IMPLEMENTATION.md](IMPLEMENTATION.md). The foundation
 log below is the 2026-10-05 run. Its notes that M1 was not closed, and that

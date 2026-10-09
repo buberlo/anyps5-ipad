@@ -35,3 +35,11 @@ Validate the full overlapping series with `scripts/check-patch-series.py`.
 implementations on macOS with ASan/UBSan. `scripts/check-async-flags-layout.py`
 checks the native/PE exception bridge ABI. Device evidence is separate under
 `docs/evidence/`.
+
+`0002-opt-in-invalidation-diagnostics.patch` makes the routine section and
+sampled aligned invalidation messages opt-in with exact
+`MADEIRA_INVALIDATION_DIAGNOSTICS=1`, cached before initial tracker notifications.
+The underlying queries, invalidation and interval removal remain active.
+Rebuild all affected FEX objects together because the tracker gains a private
+constant flag; a partial replacement into older allocation code is unsafe.
+This reduces explicit diagnostic work, without claiming a measured speedup.

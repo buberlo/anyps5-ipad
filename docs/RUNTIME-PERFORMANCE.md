@@ -27,6 +27,32 @@ changes affect the shared execution and measurement paths, not the launcher.
   defaults this switch to 1 because that title bar is invisible. Set it to 0
   before launch to restore title diagnostics.
 
+## Routine memory diagnostics
+
+Madeira0051 gates the complete physical-region, address-hole and malloc-zone
+statistics census with Madeira's existing live **Diagnostics** setting. Leave
+that setting off for normal play. This skips the Mach region walk and the
+statistics work, while keeping JIT RW/RX alias warming, footprint sampling,
+heap-integrity checks, allocation, protection and exception handling active.
+
+FEX0002 separately disables two routine invalidation messages by default.
+`MADEIRA_INVALIDATION_DIAGNOSTICS=1` restores the section-removal message and
+the existing first-40/one-in-64 aligned-removal sample. The exact switch is
+cached in each tracker constructor before its initial memory notifications.
+Fault and locked invalidation paths do not read the environment. Disabling
+the messages also skips their diagnostic counter; all range queries,
+invalidations, interval removals, locks and reentrant-notification handling
+remain unchanged. Other errors and assertions stay visible.
+
+The inspected startup log contained 19,622 section-removal messages, almost
+all during initialization, plus four statistics passes totaling 299,496
+recorded region visits. A pass also occurs after the final startup detach marker.
+Those counts are not a steady logging rate or proof
+of an FPS bottleneck. Rebuild the native archive/app for the census gate and
+all affected FEX objects for the private tracker-layout change; updating only
+one FEX object or the game-local HLE is insufficient. Device performance
+acceptance remains separate from source and build checks.
+
 ## Optional guest thread priorities
 
 `APS5_HOST_THREAD_PRIORITY=1` enables coarse guest-to-Windows priority mapping

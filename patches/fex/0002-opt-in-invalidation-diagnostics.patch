@@ -1,0 +1,80 @@
+diff --git a/Source/Windows/Common/InvalidationTracker.cpp b/Source/Windows/Common/InvalidationTracker.cpp
+--- a/Source/Windows/Common/InvalidationTracker.cpp
++++ b/Source/Windows/Common/InvalidationTracker.cpp
+@@ -45,16 +45,25 @@
+ static std::atomic<uint64_t> NestedNotificationSkips {0};
+ static std::atomic<uint64_t> NestedNotificationSkipsReported {0};
+ 
++// Read once per tracker, before construction sends its initial memory notifications.
++// Invalidation and fault paths must not read the environment or initialize logging.
++static bool InvalidationDiagnosticsEnabled() {
++  const char* Value = std::getenv("MADEIRA_INVALIDATION_DIAGNOSTICS");
++  return Value && std::strcmp(Value, "1") == 0;
++}
++
+ #if !defined(ARCHITECTURE_arm64ec)
+ InvalidationTracker::InvalidationTracker(FEXCore::Context::Context& CTX,
+                                          const std::unordered_map<DWORD, FEXCore::Core::InternalThreadState*>& Threads, uint64_t GuestBase)
+   : CTX {CTX}
+   , Threads {Threads}
+-  , GuestBase {GuestBase} {
++  , GuestBase {GuestBase}
++  , RoutineInvalidationDiagnostics {InvalidationDiagnosticsEnabled()} {
+ #else
+ InvalidationTracker::InvalidationTracker(FEXCore::Context::Context& CTX, const std::unordered_map<DWORD, FEXCore::Core::InternalThreadState*>& Threads)
+   : CTX {CTX}
+-  , Threads {Threads} {
++  , Threads {Threads}
++  , RoutineInvalidationDiagnostics {InvalidationDiagnosticsEnabled()} {
+ #endif
+   FEX_CONFIG_OPT(SMCChecks, SMCCHECKS);
+   SMCDetectionDisabled = (SMCChecks == FEXCore::Config::CONFIG_SMC_NONE);
+@@ -462,8 +471,10 @@
+ 
+   if (Free) {
+     std::unique_lock Lock(IntervalsLock);
+-    LogMan::Msg::EFmt("[iOS-xrem] via=section tracker={} {:#x}-{:#x}", static_cast<void*>(this),
+-                      SectionBase, SectionBase + SectionSize);
++    if (RoutineInvalidationDiagnostics) {
++      LogMan::Msg::EFmt("[iOS-xrem] via=section tracker={} {:#x}-{:#x}", static_cast<void*>(this),
++                        SectionBase, SectionBase + SectionSize);
++    }
+     XIntervals.Remove({SectionBase, SectionBase + SectionSize});
+     RWXIntervals.Remove({SectionBase, SectionBase + SectionSize});
+   }
+@@ -489,16 +500,15 @@
+ 
+   if (Free) {
+     std::unique_lock Lock(IntervalsLock);
+-    // ml437 (#74): this fires on EVERY guest free/decommit (the ml201 probe is
+-    // unconditional) — ml436 logged 4,234 lines of ordinary heap decommit
+-    // churn, drowning the log and costing a dprintf syscall per free. The
+-    // signal (which path removes a tracked range) is preserved by the first 40
+-    // plus a 1-in-64 sample.
+-    static std::atomic<uint32_t> AlignedRemoveCount;
+-    const auto N = AlignedRemoveCount.fetch_add(1) + 1;
+-    if (N <= 40 || !(N & 63)) {
+-      LogMan::Msg::EFmt("[iOS-xrem] via=aligned #{} tracker={} {:#x}-{:#x}", N, static_cast<void*>(this),
+-                        AlignedBase, AlignedBase + AlignedSize);
++    if (RoutineInvalidationDiagnostics) {
++      // ml437 (#74): preserve the first 40 removals plus a 1-in-64 sample
++      // when explicitly requested. The diagnostic counter is also off by default.
++      static std::atomic<uint32_t> AlignedRemoveCount;
++      const auto N = AlignedRemoveCount.fetch_add(1) + 1;
++      if (N <= 40 || !(N & 63)) {
++        LogMan::Msg::EFmt("[iOS-xrem] via=aligned #{} tracker={} {:#x}-{:#x}", N, static_cast<void*>(this),
++                          AlignedBase, AlignedBase + AlignedSize);
++      }
+     }
+     XIntervals.Remove({AlignedBase, AlignedBase + AlignedSize});
+     RWXIntervals.Remove({AlignedBase, AlignedBase + AlignedSize});
+diff --git a/Source/Windows/Common/InvalidationTracker.h b/Source/Windows/Common/InvalidationTracker.h
+--- a/Source/Windows/Common/InvalidationTracker.h
++++ b/Source/Windows/Common/InvalidationTracker.h
+@@ -143,5 +143,6 @@
+   bool MonoBackpatcherDetectionPending {false};
+   uint64_t MonoBase {0};
+   uint64_t MonoEnd {0};
++  const bool RoutineInvalidationDiagnostics;
+ };
+ } // namespace FEX::Windows

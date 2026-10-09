@@ -9,6 +9,11 @@ source work, build artifacts, host execution and physical-device acceptance.
 
 ## Current device result
 
+**Solitaire has reached touch-controlled card gameplay on the iPad.** The
+12-minute Native48/Source60 run verifies Golf's full board, stock draws, a legal
+2♣ onto A♥ move exposing 9♣, and Undo. See [what made Solitaire work](SOLITAIRE.md)
+for the CPU, relinker and graphics repairs, and the [seven-action device record](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json).
+
 As of 2026-10-09, Native54 and Solitaire Source65 are installed. The game
 selection menu renders with 18 touch controls and an FPS-only overlay. The
 two-minute native component check retains JIT warming, footprint sampling and

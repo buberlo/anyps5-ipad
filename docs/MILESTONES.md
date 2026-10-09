@@ -1,5 +1,20 @@
 # Milestones
 
+## Solitaire gameplay milestone, 2026-10-09
+
+**15in1 Solitaire's PS5 build now runs locally on the M2 iPad and accepts real
+card actions.** A 12-minute device run verifies Golf's full board, stock draws,
+a legal 2♣ onto A♥ move exposing 9♣, and Undo. The same game process survives
+the seven reviewed inputs and the complete run. This is the main compatibility
+achievement, beyond startup or a visible menu.
+
+Getting there required CPU-state preservation across exceptions and protected
+writes, retained guest-module initialization, validated shader/descriptor
+handling, eight logical MSAA samples mapped to two native four-sample layers,
+color/stencil transfers and resolve, and explicit per-draw transitions. The
+[Solitaire technical account](SOLITAIRE.md) explains the blockers, implemented
+repairs, tested configuration and remaining work. [Gameplay proof](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json).
+
 ## Current installed milestone, 2026-10-09
 
 The M2 iPad has Native54 installed with the Solitaire Source65 package. Its

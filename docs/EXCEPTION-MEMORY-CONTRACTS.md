@@ -5,11 +5,14 @@ violations use different paths. Passing the asynchronous tests did not qualify
 write-watch handling. A protected store can enter libc's VEH through FEX's
 ARM64EC exception dispatcher without preserving all x86 state in `CONTEXT`.
 
-**Known limit:** a newer independent test reproduces stale upper YMM state
+**Historical Build42 limit:** an independent test reproduced stale upper YMM state
 when an AVX update is still pending inside a larger FEX block. The paired
 transport cannot recover state that was not committed to its source CPU frame.
-The earlier passing store sequences below do not qualify arbitrary AVX fault
-locations. See [pending AVX state](#pending-avx-state-within-a-jit-block).
+The later Build44 runtime passes that probe's six protected-fault cases with
+zero resumed or snapshot errors; this result is part of the integrated
+[FEX-2610 device record](evidence/fex-2610-integration-20261008.json). These
+specific sequences do not qualify arbitrary AVX fault locations. See the
+[earlier pending-state diagnosis](#pending-avx-state-within-a-jit-block).
 
 ## Ordinary protected-store repair
 
@@ -238,8 +241,11 @@ configuration after testing. Thus a successful snapshot query is insufficient
 to prove register freshness. Read-only inspection of the pinned FEX code shows
 that its per-instruction SRA flush excludes the cached upper AVX halves; Madeira
 copies those halves from the reconstructed CPU frame. A full block boundary
-flush explains the single-instruction result. The underlying FEX correction is
-still pending. See the [device evidence](evidence/ipad-pending-avx-state-20261008.json).
+flush explains the single-instruction result. At that Build42 checkpoint the
+underlying correction was still pending. The later Build44 probe passes all six
+protected cases, as recorded in the [integrated runtime evidence](evidence/fex-2610-integration-20261008.json).
+The [original failing device evidence](evidence/ipad-pending-avx-state-20261008.json)
+remains unchanged.
 
 For bounded diagnosis, configure the existing FEX switches before Wine starts:
 

@@ -1,4 +1,13 @@
-# Eight-sample rendering: stock action observed, full gameplay unqualified
+# Eight-sample rendering for Solitaire
+
+**The connected renderer now displays Golf's complete board and accepts card
+actions on the M2 iPad.** A 12-minute run verifies stock draws, a legal 2♣ onto
+A♥ move exposing 9♣, and Undo. All eight logical samples remain represented by
+two native four-sample layers. See [the Solitaire milestone and required repairs](SOLITAIRE.md)
+and [reviewed gameplay evidence](evidence/ipad-solitaire-zero-stencil-invariant-controls-20261009.json).
+Complete-game, audio, save/load and sustained-performance acceptance remain open.
+
+## Earlier implementation and checkpoints
 
 Solitaire's captured state requests eight raster, exposed and color-fragment
 samples. The M2 iPad exposes native attachment sample counts of 1, 2 and 4.

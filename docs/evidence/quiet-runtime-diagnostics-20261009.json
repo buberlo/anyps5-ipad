@@ -37,7 +37,7 @@
     "fexPatchForwardReverseTwoFilesExact": true,
     "fexOptimizedArm64ecTuExit": 0,
     "fexOptimizedArm64WindowTuExit": 0,
-    "fullFexDllOrAllClassConsumersRebuilt": false,
+    "fullFexDllOrAllClassConsumersRebuilt": true,
     "firstMixedWrapperHeaderCompileFailurePreserved": true
   },
   "nativeHost": {
@@ -66,7 +66,10 @@
     "fexTuReceipt": "0d1c0cd907c546d34fa7a0bef42ac6302375e54b22b0b20b96458a3bb50c1717",
     "nativeBuildReceipt": "8c62ffa5b7ea4b8f67fc39f450c3070c260128c14d91cd64aea197691820edb5",
     "allActualAppPeVerification": "7d39bcc0e6acde70b5c130a97b00ca5cfa8347161e522be5320d153b16f7d750",
-    "native54DeviceReceipt": "9ca7d29b58a82069b0915615804f442ba28fa407651d6b3326c84c39590a79e4"
+    "native54DeviceReceipt": "9ca7d29b58a82069b0915615804f442ba28fa407651d6b3326c84c39590a79e4",
+    "fexBothFullDllTargetsReceipt": "3d91d6c61a9f1b44b853a1437101fd4d979ee7d8cecf6bfbb9ece37251117550",
+    "fexFullLinkStaticSeal": "439e5dc1c6f634d75edc2cd56f2cdc2399a9d7f5e67f8b07833058c63f27e0c0",
+    "independentNative54DeviceReview": "f285b9ac47973a6536c2fcc62a5d764dd57e100c33d5e7bb178ac7f74c10c560"
   },
   "privateGameAssetsPcmLogsPairingAndDeviceIdentifiersIncluded": false,
   "githubActionsUsed": false,
@@ -93,5 +96,21 @@
     "appLeftRunning": true,
     "observedThermalTransition": "serious_to_critical",
     "thermalConditionMatchedForPerformance": false
+  },
+  "separateFexDllBuild": {
+    "status": "both_full_dll_targets_built_verified_not_installed",
+    "arm64ecObjects": 187,
+    "wow64Objects": 186,
+    "allActualTrackerAndModuleConsumersRebuilt": true,
+    "actualDirectLinkInputsEach": 77,
+    "onlyTrackerCppAndHeaderSourceChanges": true,
+    "originalBaselineSourceFilesPreserved": 6971,
+    "exportsOrdinalsAndImportNamesPreserved": true,
+    "snapshotCodeIncluded": false,
+    "installed": false,
+    "deviceRuntimeOrPerformanceAccepted": false,
+    "arm64ecDllSha256": "c7445b6bfc8321a7fd6d9963318036569aba3cb57a7ffdcc71f1016e79927de5",
+    "wow64DllSha256": "dc9acd4528da97a4b36857768aebf0e9282fa5b7f2ce4d60a39c2ff151de93ef",
+    "originalDriverDryRunAssertionFailurePreserved": true
   }
 }

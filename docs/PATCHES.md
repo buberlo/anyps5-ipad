@@ -1610,10 +1610,12 @@ These patches require native/FEX rebuilds; they do not change game HLE, render
 quality or establish a device FPS improvement.
 
 [Source, compilation and signed host checkpoint](evidence/quiet-runtime-diagnostics-20261009.json).
-The FEX tracker compiles for both optimized ARM64EC and guest-window ARM64
-paths. Native54 changes only the census object from Native48; its FEX DLL is
-unchanged. These are separate build scopes, not a full FEX rebuild or a
-performance result.
+Both FEX DLL targets were subsequently compiled and linked from fresh object
+trees, including all actual tracker-header consumers in the ARM64EC and WOW64
+Module translation units. Their exports, ordinals and named imports are
+preserved. These DLLs are built and checked, but not installed. Native54 changes
+only the census object from Native48; its installed FEX DLL is unchanged. The
+separate builds do not establish runtime or performance acceptance.
 
 Native54 was installed with the existing Source65 profile. The same native
 main remained alive through 120 seconds; pool warming, footprint sampling and

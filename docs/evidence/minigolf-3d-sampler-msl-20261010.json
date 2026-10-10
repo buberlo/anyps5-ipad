@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "status": "passed_cpu_msl_translation_frontend_unavailable_not_gpu",
+  "executionReceiptSha256": "70e7abe0e44c3e4389f1b7a09bf2a8006599a1619f7de80136f5f6fee208636d",
+  "planSha256": "bee58ee5620a3d74a7b370eec810655a02ad2f5a557c17f870b6979d134e7034",
+  "source": "actual imported 3D candidate PRX materialization",
+  "candidateHeaderSha256": "1877d198f792c2381be21b03df8a8c33346a0a2b3eef1e0e61eda12cb3c99cf9",
+  "configuration": {
+    "platform": "iOS",
+    "mslVersion": "2.4",
+    "iosUseSimdgroupFunctions": true,
+    "argumentBufferTier": 2
+  },
+  "fourthShaderTranslations": [
+    {
+      "argumentBuffers": false,
+      "mslSha256": "2bbfdf77a48c03fdc80663555236b1bb247dc12b7ddad70053f5f90b4d685a73",
+      "mslBytes": 9228,
+      "texture3dPresent": true
+    },
+    {
+      "argumentBuffers": true,
+      "mslSha256": "2c7a6c2460ea390e45374778c08b0e1e36a79f9056096b92dba826e22b5593b0",
+      "mslBytes": 9605,
+      "texture3dPresent": true
+    }
+  ],
+  "previousThreeShaders": {
+    "spirvBytesUnchanged": true,
+    "sixPriorCpuTranslationsReusedWithVerifiedHashes": true,
+    "frontendFailuresNotConvertedToPass": true
+  },
+  "metalFrontendAvailable": false,
+  "airCompiled": false,
+  "moltenVkPipelineCreated": false,
+  "gpuExecuted": false,
+  "deviceActions": false,
+  "networkActions": false,
+  "githubActions": false,
+  "inputsUnchanged": true,
+  "privateShaderOrMslPublished": false,
+  "limits": [
+    "Translation uses bounded preflight settings, not an exact MoltenVK resource configuration.",
+    "No physical GPU, FEX, iPad or gameplay acceptance."
+  ]
+}

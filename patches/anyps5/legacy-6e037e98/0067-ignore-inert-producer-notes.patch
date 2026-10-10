@@ -1,0 +1,150 @@
+diff --git a/core/relinker/relinker/src/guest/GuestImageReader.cpp b/core/relinker/relinker/src/guest/GuestImageReader.cpp
+--- a/core/relinker/relinker/src/guest/GuestImageReader.cpp
++++ b/core/relinker/relinker/src/guest/GuestImageReader.cpp
+@@ -38,6 +38,9 @@
+     constexpr std::uint32_t sceLibVersion = 0x6fffff01;
+     for (const auto& header : image.Headers) {
+         if (header.Type == sceComment || header.Type == sceLibVersion) continue;
++        // Dumped images may omit an inert producer note. Neither guest writer
++        // consumes it; notes with runtime addresses, memory or flags stay checked.
++        if (header.Type == 4 && header.Flags == 0 && header.MappedAddress == 0 && header.MemorySize == 0) continue;
+         range(header.Offset, header.FileSize);
+         if (header.Type == 1) {
+             if (header.FileSize > header.MemorySize || header.MemorySize > std::numeric_limits<std::uint64_t>::max() - header.MappedAddress || (header.Flags & ~7u) != 0) fail("Invalid load segment");
+diff --git a/core/relinker/CMakeLists.txt b/core/relinker/CMakeLists.txt
+--- a/core/relinker/CMakeLists.txt
++++ b/core/relinker/CMakeLists.txt
+@@ -233,6 +233,8 @@
+             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_intel_trampolines.py $<TARGET_FILE:relinker>)
+         add_test(NAME guest_tls COMMAND ${Python3_EXECUTABLE}
+             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_tls.py $<TARGET_FILE:relinker>)
++        add_test(NAME guest_optional_notes COMMAND ${Python3_EXECUTABLE}
++            ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_optional_notes.py $<TARGET_FILE:relinker>)
+         add_test(NAME guest_needed_modules COMMAND ${Python3_EXECUTABLE}
+             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_needed_modules.py $<TARGET_FILE:relinker>)
+         add_test(NAME guest_module_directories COMMAND ${Python3_EXECUTABLE}
+diff --git a/core/relinker/relinker/tests/test_guest_optional_notes.py b/core/relinker/relinker/tests/test_guest_optional_notes.py
+new file mode 100644
+--- /dev/null
++++ b/core/relinker/relinker/tests/test_guest_optional_notes.py
+@@ -0,0 +1,120 @@
++"""Ignore omitted inert producer notes while keeping runtime ELF bounds strict."""
++from pathlib import Path
++import struct
++import subprocess
++import sys
++import tempfile
++
++from test_guest_intel_trampolines import main_fixture
++from test_guest_module_directories import module_with_symbol
++from test_guest_lifecycle_ownership import lifecycle_tags, windows_lifecycle_targets
++from test_guest_symbol_names import imported_symbols, module_symbols
++
++
++def module():
++    image = module_with_symbol(True)
++    strings = b'\0shared#A#B\0Record\0libc.prx\0'
++    image[0x800:0x800 + len(strings)] = strings
++    struct.pack_into('<II', image, 0x840, 1, 3)
++    struct.pack_into('<IBBHQQ', image, 0x8b0, 12, 0x12, 0, 0, 0, 0)
++    struct.pack_into('<QQq', image, 0x900, 0x2320, (2 << 32) | 6, 0)
++    tags = [(5, 0x2200), (10, len(strings)), (6, 0x2280), (11, 24),
++            (4, 0x2240), (7, 0x2300), (8, 24), (9, 24),
++            (1, 19), (12, 0x1000), (13, 0x1010), (0, 0)]
++    for index, tag in enumerate(tags):
++        struct.pack_into('<qQ', image, 0x600 + index * 16, *tag)
++    struct.pack_into('<QQ', image, 176 + 32, len(tags) * 16, len(tags) * 16)
++    return image
++
++
++def append_header(image, kind=4, flags=0, address=0, memory=0, offset=None, size=24):
++    count, = struct.unpack_from('<H', image, 56)
++    struct.pack_into('<H', image, 56, count + 1)
++    struct.pack_into('<IIQQQQQQ', image, 64 + count * 56, kind, flags,
++                     len(image) + 0x1e0 if offset is None else offset,
++                     address, address, size, memory, 1)
++    return image
++
++
++def dynamic_value(image, tag, value):
++    for position in range(0x600, 0x6c0, 16):
++        current, = struct.unpack_from('<q', image, position)
++        if current == tag:
++            struct.pack_into('<Q', image, position + 8, value)
++            return image
++    raise AssertionError(f'Missing dynamic tag {tag}')
++
++
++def main():
++    relinker = Path(sys.argv[1]).resolve()
++    checked = 0
++    with tempfile.TemporaryDirectory(prefix='anyps5-guest-optional-notes-') as temporary:
++        work = Path(temporary)
++
++        def convert(name, image, windows, error=None):
++            nonlocal checked
++            case = work / f'{name}-{windows}'
++            modules = case / 'sce_module'
++            modules.mkdir(parents=True)
++            (modules / 'module.prx').write_bytes(image)
++            source, output = case / 'input.elf', case / 'output.exe'
++            source.write_bytes(main_fixture())
++            result = subprocess.run([str(relinker), *(['--windows'] if windows else []),
++                                     str(source), str(output)],
++                                    capture_output=True, text=True, timeout=30)
++            artifact = case / 'app0/sce_module/module.prx.guest.prx'
++            checked += 1
++            if error is not None:
++                assert result.returncode == 2 and error in result.stderr, (name, result.stdout, result.stderr)
++                assert not output.exists() and not artifact.exists(), name
++                return
++            assert result.returncode == 0, (name, result.stdout, result.stderr)
++            data = artifact.read_bytes()
++            assert data.startswith(b'MZ' if windows else b'\x7fELF'), name
++            if windows:
++                targets = windows_lifecycle_targets(output.read_bytes())
++                assert set(targets) == {0x10000, 0x10010}, (name, targets)
++                assert b'shared\0' in data and b'Record\0' in data, name
++                return targets
++            assert module_symbols(data) == ['shared#guest', 'Record'], name
++            assert imported_symbols(data) == {'Record'}, name
++            tags = lifecycle_tags(data)
++            assert tags == {12, 13}, (name, tags)
++            return tags
++
++        for windows in (False, True):
++            baseline = convert('baseline', module(), windows)
++            assert convert('omitted-inert-note', append_header(module()), windows) == baseline
++            assert convert('present-mapped-note', append_header(module(), address=0x2200,
++                           memory=24, offset=0x800), windows) == baseline
++
++            truncated = append_header(module())
++            struct.pack_into('<QQ', truncated, 120 + 32, 0x401, 0x401)
++            convert('truncated-load', truncated, windows, 'ELF range exceeds file')
++
++            truncated = append_header(module())
++            struct.pack_into('<Q', truncated, 176 + 8, len(truncated) - 8)
++            convert('truncated-dynamic', truncated, windows, 'ELF range exceeds file')
++
++            convert('truncated-tls', append_header(module(), kind=7, flags=4,
++                    address=0x2380, memory=32), windows, 'ELF range exceeds file')
++            for name, flags, address, memory in (('flagged-note', 4, 0, 0),
++                    ('mapped-note', 0, 0x2200, 0), ('sized-note', 0, 0, 24)):
++                convert(name, append_header(module(), flags=flags, address=address,
++                        memory=memory), windows, 'ELF range exceeds file')
++
++            convert('unmapped-symbol-table', dynamic_value(append_header(module()), 6, 0x999999),
++                    windows, 'Unmapped ELF address')
++            bad_export = append_header(module())
++            struct.pack_into('<Q', bad_export, 0x898 + 8, 0x999999)
++            convert('unmapped-export', bad_export, windows, 'Unmapped or inaccessible guest address')
++            bad_import = append_header(module())
++            struct.pack_into('<I', bad_import, 0x8b0, 0xffff)
++            convert('invalid-import-name', bad_import, windows, 'String offset out of bounds')
++            convert('unmapped-initializer', dynamic_value(append_header(module()), 12, 0x999999),
++                    windows, 'Unmapped or inaccessible guest address')
++    print(f'Guest optional-note tests passed: {checked} Linux/Windows conversion cases')
++
++
++if __name__ == '__main__':
++    main()

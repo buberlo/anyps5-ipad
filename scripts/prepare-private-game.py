@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
@@ -34,6 +35,19 @@ def digest(path):
         for block in iter(lambda: source.read(1024 * 1024), b""):
             value.update(block)
     return value.hexdigest()
+
+
+def deferred_lifecycle_modules(requested, selected):
+    """Select exact discovered plugin basenames; relinker checks dependency safety."""
+    if len(requested) != len(set(requested)):
+        raise ValueError("Duplicate deferred guest lifecycle selection")
+    for name in requested:
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.+-]*\.prx", name):
+            raise ValueError("Expected an exact PRX basename for deferred lifecycle")
+        matches = [path for path in selected if path != "eboot.elf" and Path(path).name == name]
+        if len(matches) != 1:
+            raise ValueError("Deferred lifecycle module must identify one selected guest: " + name)
+    return list(requested)
 
 
 def dynamic_strings(path):
@@ -329,6 +343,8 @@ def main():
     parser.add_argument("--relinker", type=Path, default=ROOT / "build/host-tools/build/relinker/relinker")
     parser.add_argument("--nid-patcher", type=Path, default=ROOT / "build/host-tools/build/nid_patcher")
     parser.add_argument("--nid-catalog", type=Path, help="Optional local whitespace-separated NID/name catalog; names are hash-verified")
+    parser.add_argument("--defer-guest-lifecycle", action="append", default=[], metavar="NAME",
+                        help="Exact runtime-started guest PRX basename; repeat only where the game's real start call is established. Default initialization stays eager.")
     args = parser.parse_args()
     dump, output = args.dump.resolve(), args.output.resolve()
     if ROOT / "build" not in output.parents or output.exists():
@@ -342,6 +358,7 @@ def main():
                  for p in files if p.is_file()}
     param = json.loads((dump / "sce_sys/param.json").read_text())
     selected, module_names = select_elfs(dump)
+    deferred = deferred_lifecycle_modules(args.defer_guest_lifecycle, selected)
     needed = {name: needed_libraries(path) for name, path in selected.items()}
     hints = {name: import_library_hints(path) for name, path in selected.items()}
     names = nid_catalog(args.nid_catalog) if args.nid_catalog else {}
@@ -364,8 +381,10 @@ def main():
                 raise ValueError("Dump changed while staging an ELF")
         # Relinker diagnostics are relative to cwd; keep them in the private
         # staging directory instead of accidentally writing into the repo root.
-        command = [str(args.relinker.resolve()), "--windows", "--windows-diagnostics", "--to-intel", "--registry",
-                   str(input_dir / "eboot.elf"), str(stage / "game.exe")]
+        command = [str(args.relinker.resolve()), "--windows", "--windows-diagnostics", "--to-intel", "--registry"]
+        for name in deferred:
+            command.extend(("--defer-guest-lifecycle", name))
+        command.extend((str(input_dir / "eboot.elf"), str(stage / "game.exe")))
         with (preparation / "relink.log").open("w") as log:
             subprocess.run(command, cwd=preparation, stdout=log, stderr=subprocess.STDOUT, check=True)
         PEImage(stage / "game.exe")
@@ -410,6 +429,7 @@ def main():
                     "title": param["localizedParameters"][param["localizedParameters"]["defaultLanguage"]]["titleName"],
                     "selected_inputs": {name: {"dump_path": p.relative_to(dump).as_posix(), "sha256": inventory[p.relative_to(dump).as_posix()]["sha256"]} for name, p in selected.items()},
                     "dump_inventory": inventory, "elf_dependencies": needed, "dependency_audit": audit,
+                    "deferred_guest_lifecycle": deferred,
                     "relinker_sha256": digest(args.relinker), "nid_patcher_sha256": digest(args.nid_patcher),
                     "preparer_sha256": digest(Path(__file__)),
                     "status": "prepared_unexecuted" if audit["passed"] else "not_ready_missing_dependencies",

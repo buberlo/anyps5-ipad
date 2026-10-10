@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "kind": "apple_upstream_applicability_review",
+  "checkedAtUTC": "2026-10-09T10:38:04.576145+00:00",
+  "scope": "Live public GitHub metadata and source review; no runtime integration or device qualification",
+  "localPins": {
+    "AnyPS5": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "MoltenVK": "67b2682699d7903606b97a0392061d85d27d49e6",
+    "SPIRV-Cross": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165",
+    "Madeira": "48f976429c189f8396e23d251d8a82f43c705922"
+  },
+  "candidates": [
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1565",
+      "title": "test(agc): skip the exec host lanes vertex draw without vertex subgroups",
+      "state": "open",
+      "merged": false,
+      "headSHA": "ed14c24bd7fb97dcc6fcab710adccd4ffedbbf91",
+      "baseSHA": "0596a7a27442da9fbd1147d342b241ace3a41377",
+      "updatedAt": "2026-10-08T16:47:38Z",
+      "metadataSHA256": "0ebe386b0389b5d9d669ae0a776fb797c320a64fb245d08f5ab86a9f6e8dc655",
+      "filesMetadataSHA256": "f788f4f9d5917e6cfa424358ff6578fa7e5222cf21db62a8500f7ade792aaf6a",
+      "apiReconstructedDiffSHA256": "bc100cac37fee2de82171e1851e4a800243afbf6840760aa3764714b0ffd4d2a",
+      "combinedApplyCheckExit": 1,
+      "combinedApplyCheckDiagnostic": "error: patch failed: core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp:162\nerror: core/libs/prx/libSceAgcDriver/Execution/include/VulkanDevice.hpp: patch does not apply\nerror: patch failed: core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp:2450\nerror: core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp: patch does not apply\nerror: core/libs/prx/libSceAgcDriver/tests/execution/ExecHostLanes.cpp: No such file or directory",
+      "assessment": {
+        "alreadyIncluded": false,
+        "priority": "test correctness only",
+        "wineIOSApplicability": "Honest capability-based skip of vertex subgroup part; compute remains tested. Does not implement unsupported vertex subgroup operations or speed runtime.",
+        "integration": "Current pinned test ExecHostLanes.cpp absent and API context conflicts; use with controlled upstream refresh, not direct cherry-pick.",
+        "testPlan": [
+          "compute lane test must still run",
+          "vertex path skipped explicitly only if unsupported stage",
+          "supported vertex-capable device must execute draw"
+        ]
+      }
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1571",
+      "title": "fix(shader): keep v_exp_f32 at or above the smallest normal for inputs from -126",
+      "state": "open",
+      "merged": false,
+      "headSHA": "847bd9f49613e3cd6431640c66c233010676551b",
+      "baseSHA": "09a17e963aa075e1576abc4bcb3f2e5c3219e4e7",
+      "updatedAt": "2026-10-08T16:47:27Z",
+      "metadataSHA256": "011fd5c730ae441b6a20f34d0417c89ae9e98268beb02f4bfebcaf1c79cb9fd5",
+      "filesMetadataSHA256": "644e7281de5a9c2b4576d11cb9888a9c628c630ff4a705b18e089c57943d7563",
+      "apiReconstructedDiffSHA256": "76684798b28eff40c3614d36ca6b82e3d6027eb54afa8550308d7a092f7cc1c6",
+      "combinedApplyCheckExit": 0,
+      "combinedApplyCheckDiagnostic": "",
+      "assessment": {
+        "alreadyIncluded": false,
+        "priority": "small shader correctness fix",
+        "wineIOSApplicability": "Pure shader IR emission, platform-independent; relevant to Apple GPU exp2(-126) normal-boundary underflow, survives Windows/Wine/Vulkan/MoltenVK route.",
+        "integration": "Single file exact diff passes git apply --check against current patched source; no mutation performed.",
+        "testPlan": [
+          "bit-exact exp2 at -126 and neighboring inputs",
+          "underflow below -126, +inf/-inf/NaN/zero behaviors",
+          "native GPU and Wine/iPad shader path"
+        ]
+      }
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1580",
+      "title": "feat(agc): bind storage buffers update-after-bind above the per-stage limit",
+      "state": "open",
+      "merged": false,
+      "headSHA": "910a777f6539f2c5f774080217cefa9de1dd879f",
+      "baseSHA": "6cc0503dacc9d9697d23001d4103780ad2e9acba",
+      "updatedAt": "2026-10-09T08:32:08Z",
+      "metadataSHA256": "5b52efeb9804daee3582d6e603f7d649446def8dab90e8634062cd05af0e9b2b",
+      "filesMetadataSHA256": "b9d8883ba114212e04165fe608506a7c07e6cfe86cbfbab600bdf3e6ec278d30",
+      "apiReconstructedDiffSHA256": "20f56eabb4644c5f196092b61be5959c23f1d405be2cfc50a4d42b41406e008e",
+      "combinedApplyCheckExit": 1,
+      "combinedApplyCheckDiagnostic": "error: patch failed: core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp:57\nerror: core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp: patch does not apply\nerror: patch failed: core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp:889\nerror: core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp: patch does not apply\nerror: patch failed: core/libs/prx/libSceAgcDriver/tests/Graphics.cpp:1179\nerror: core/libs/prx/libSceAgcDriver/tests/Graphics.cpp: patch does not apply",
+      "assessment": {
+        "alreadyIncluded": false,
+        "priority": "highest GPU compatibility benefit among cited AnyPS5 PRs",
+        "wineIOSApplicability": "Vulkan descriptor features/properties are queried through existing Vulkan API route. If available on current MoltenVK/M2, allows >regular storage-buffer stage/set limits with matching layout/binding/pool flags; no unsupported feature spoofing.",
+        "integration": "Execution VulkanDevice.cpp and Context.hpp apply; ShaderResources.hpp/.cpp and Graphics.cpp conflict. Latest PR uses newer ValidateDescriptorLayout, dedicated pool retention and per-set limit helpers absent in current pin. Requires controlled upstream refresh or explicit reviewed adaptation; blind backport unsafe.",
+        "testPlan": [
+          "real MoltenVK feature/property query on target M2",
+          "many_buffers execution with >31 storage buffers",
+          "graphics mock flags/cache/pool isolation",
+          "missing feature and excessive update-after-bind limits must throw",
+          "small normal layout stays unchanged",
+          "cache/no-cache paths and GPU-in-flight lifetime regressions"
+        ]
+      }
+    },
+    {
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross/pull/2704",
+      "title": "MSL: Preserve negative zero in precise multiplication",
+      "state": "open",
+      "merged": false,
+      "headSHA": "51648cae36ebcb24442333ea3dd074b0c4ea66ae",
+      "baseSHA": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165",
+      "updatedAt": "2026-10-08T14:02:05Z",
+      "metadataSHA256": "892a462f665f729bc2cd4645f95b6cb2a492eeac1eafafcb9e64077b9dce70f9",
+      "filesMetadataSHA256": "fe916aa9378b63f7611575363f041c59277dcff64bb3bfb53af278732943e00f",
+      "apiReconstructedDiffSHA256": "c2d65b2481fdcb08c46847eeee8b591238dcdc23b90db236c42dc987e05644bc",
+      "combinedApplyCheckExit": 0,
+      "combinedApplyCheckDiagnostic": "",
+      "assessment": {
+        "alreadyIncluded": false,
+        "priority": "small Metal numeric correctness fix",
+        "wineIOSApplicability": "SPIRV-Cross is inside native statically linked MoltenVK shader conversion, independent of Wine/FEX CPU route. Corrects precise scalar and matrix multiplication -0 sign.",
+        "integration": "All seven file patches pass git apply --check on exact MoltenVK dependency pin aa217aeb6c9f0ace7a0ab233b28807edf45eb165. To affect device, patch/pin external dependency reproducibly and rebuild MoltenVK/static iOS app; guest HLE-only rebuild insufficient.",
+        "testPlan": [
+          "MSL scalar float/half exact sign-bit +0/-0 products",
+          "precise vector/matrix multiplication and sums",
+          "NoContraction shader golden outputs",
+          "actual iPad output through embedded MoltenVK"
+        ]
+      }
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/927",
+      "title": "feat(libc): exception runtime on macOS hosts",
+      "state": "closed",
+      "merged": true,
+      "mergedAt": "2026-10-08T10:35:52Z",
+      "headSHA": "0ae0bbf244dc8619d204f1ba7e7ac1089d7e9c93",
+      "baseSHA": "30e89cc6a0a4b88caf5074928e620aaf354fb736",
+      "mergedCommitSHA": "4ffc9a14f87ef2af703fb75f716a408c392c82e5",
+      "updatedAt": "2026-10-08T11:02:23Z",
+      "metadataSHA256": "8c0d64c95fadfc79e42b1cd39bad3955d3d02acd2d21d2f0ac9e21ce47594df6"
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1835",
+      "title": "feat(aot): add experimental native Apple ARM64 compiler",
+      "state": "open",
+      "merged": false,
+      "mergedAt": null,
+      "headSHA": "a2f4f3689a962835060cd9bfca01f9e401c99191",
+      "baseSHA": "745b775e2d883c68560b2d87f4ab96a01e221ccf",
+      "mergedCommitSHA": null,
+      "updatedAt": "2026-10-09T10:26:22Z",
+      "metadataSHA256": "fedbf921872be0c9363efe914d2afbd76f77dee6f9d31b50f9196f7ca12d6ab7"
+    },
+    {
+      "url": "https://github.com/willfaust/Madeira/pull/227",
+      "title": "ntdll: thin reservations for 1-2 GB read-write MEM_RESERVE",
+      "state": "open",
+      "merged": false,
+      "mergedAt": null,
+      "headSHA": "55741b77cde9ccbcb872e8e1f8cbb3a14ff06647",
+      "baseSHA": "48f976429c189f8396e23d251d8a82f43c705922",
+      "mergedCommitSHA": null,
+      "updatedAt": "2026-10-08T19:27:36Z",
+      "metadataSHA256": "b56060e2b464ff911db7cfd0c2e7821b83456ca50847982373a6a31db46a3f81"
+    }
+  ],
+  "validation": {
+    "shaderIR1571ApplyCheck": "passed_without_mutation",
+    "SPIRVCross2704ApplyCheck": "passed_without_mutation",
+    "descriptor1580ApplyCheck": "conflicts_in_resources_and_tests",
+    "vertexTest1565ApplyCheck": "conflicts_and_test_absent",
+    "exception927InLocalPin": false,
+    "exception927AncestryEvidence": "GitHub compare reports current pin behind merge by 55 commits; shallow local repository lacks merge object",
+    "thin227MatchesArenaAllocationShape": false,
+    "thin227AdvertisedTailsOverlap": true
+  },
+  "recommendations": {
+    "nextControlledAnyPS5Update": [
+      "927 cross-platform C exception personality and regression",
+      "1571 exp2 normal-boundary correction",
+      "1580 update-after-bind after reconciling descriptor dependencies",
+      "1565 honest subgroup capability test skip"
+    ],
+    "nextMoltenVKBuild": [
+      "2704 precise MSL negative-zero preservation"
+    ],
+    "separateExperiments": [
+      "native ARM64 HLE with in-process FEXCore",
+      "1835 hash-bound selected-function AOT"
+    ],
+    "excludedFromNormalRuntime": [
+      "227 overlapping thin reservations"
+    ]
+  },
+  "boundaries": {
+    "runtimeSourcesModified": false,
+    "pinsModified": false,
+    "runtimeBuildsRun": false,
+    "deviceActions": false,
+    "GitHubActionsUsed": false,
+    "measuredFPSImprovement": null,
+    "MiniGolfPlayabilityEstablished": false,
+    "documentationChangesOnly": true
+  }
+}

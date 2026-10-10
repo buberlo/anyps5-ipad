@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "kind": "sanitized_anyps5_native_windows_cpu_reference",
+  "date": "2026-10-09",
+  "status": "passed",
+  "scope": "Native x86-64 Windows CPU synthetic tests; no Wine/FEX/iPad/game/GPU execution",
+  "source": {
+    "repository": "https://github.com/boykopovar/AnyPS5",
+    "commit": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+    "patches_sha256": {
+      "0001-ipad-runtime-compatibility.patch": "3d7ab29f13efb669f99736baf1594caf456720e5d79d244ea615f05f9ed61acc",
+      "0062-bounded-legacy-audioout-ingress-trace.patch": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+      "0065-audioout-frame-pacing.patch": "d119e02b7edec8ffeba6edc035fea3fca504e7e39a84b4c7fc360f227947bd95"
+    },
+    "frozen_source_snapshot_sha256": "9756ae735b56918e87991a8b0547095f7b1d7f5d657cb9a90571a7ab24b95200"
+  },
+  "platform": {
+    "cpu": {
+      "name": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+      "cores": 8,
+      "logical_processors": 16
+    },
+    "os": {
+      "caption": "Microsoft Windows 11 Pro",
+      "build_number": "26300",
+      "architecture": "64-bit",
+      "version": "10.0.26300"
+    }
+  },
+  "environment": {
+    "APS5_GUEST_ARENA_LAZY": "1",
+    "APS5_GUEST_ARENA_BASE": "0x7400000000",
+    "APS5_GUEST_ARENA_SIZE": "0x100000000",
+    "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+    "APS5_PRESERVE_ASYNC_AVX": "1",
+    "APS5_PRESERVE_ASYNC_FLAGS": "1"
+  },
+  "test_target_count": 4,
+  "tests": [
+    {
+      "target": "windows_exception_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "internal_skip": false,
+      "timed_out": false,
+      "avx_verified": false,
+      "executable_sha256": "b25c4d2d8033cd8f1856c37b35b1182abbad669743b29accb1eeaaa056f8c40d",
+      "stdout_sha256": "857ca37a459ab886808ba1443bfd747e2f828de9ec7b3eb1d99097265c983d0b",
+      "stderr_sha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5"
+    },
+    {
+      "target": "exception_personality_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "internal_skip": false,
+      "timed_out": false,
+      "avx_verified": false,
+      "executable_sha256": "93a19877ea4ab6c4d42dc69b03d524dde480a2a40ee8d8923c835b2441cb2634",
+      "stdout_sha256": "568caf5b965ebd430531157861a439fbb87ce0338c5e87e9f1faa4782c3f04b2",
+      "stderr_sha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5"
+    },
+    {
+      "target": "guest_raise_exception_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "internal_skip": false,
+      "timed_out": false,
+      "avx_verified": true,
+      "executable_sha256": "cac9c7017ef90d43dd1667632bf99d48cd1c1a31741eb7dd0492960a1648caa5",
+      "stdout_sha256": "a483f2c95331480e7816a1362992a10c183666a48d58d821619b5d975274374a",
+      "stderr_sha256": "f512958529199d920fcbfc5918e0af8f6f65966c3904d8e34f414af26a274a00"
+    },
+    {
+      "target": "guest_memory_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "internal_skip": false,
+      "timed_out": false,
+      "avx_verified": false,
+      "executable_sha256": "7ae28f1a2a914b18d639e14a49a6c1d83d2476a68b342af0a47b6b1146e5b8f2",
+      "stdout_sha256": "e981fd9826682ecbd6dd954401ec8c0a7ae09a3881dc367b181958d86d0b8612",
+      "stderr_sha256": "ae2fa03df8cfe4c8cbf058c3917bf573802906db11db5b0bc6b9af24bf4bc769"
+    }
+  ],
+  "exception_delivery": {
+    "verified_deliveries": 553,
+    "native_avx_context_verified": true,
+    "integer_state_verified": true,
+    "vector_modes": {
+      "preserve": {
+        "checks": 64,
+        "errors": 0
+      },
+      "mutate": {
+        "checks": 64,
+        "errors": 0
+      },
+      "reset-avx": {
+        "checks": 64,
+        "errors": 0
+      }
+    }
+  },
+  "memory": {
+    "native_crt_shared_write_tracking_checks_passed": 36
+  },
+  "internal_skips": [],
+  "unexpected_failures": [],
+  "input_hashes_sha256": {
+    "windows_exception_tests.exe": "b25c4d2d8033cd8f1856c37b35b1182abbad669743b29accb1eeaaa056f8c40d",
+    "exception_personality_tests.exe": "93a19877ea4ab6c4d42dc69b03d524dde480a2a40ee8d8923c835b2441cb2634",
+    "guest_raise_exception_tests.exe": "cac9c7017ef90d43dd1667632bf99d48cd1c1a31741eb7dd0492960a1648caa5",
+    "guest_memory_tests.exe": "7ae28f1a2a914b18d639e14a49a6c1d83d2476a68b342af0a47b6b1146e5b8f2",
+    "libc.prx": "8f600f1d302451ec5df27b8156adcc4aff96a4c53541bab405869facfec560bf",
+    "libkernel.prx": "526e18f41e0fda7864b81f5592a93a35d391fa80cccf1c069b358badb4027e43",
+    "libgcc_s_seh-1.dll": "0e41bb41c8d5d5a1c16150cf860225e835ff8fdbb351073835bf45eaa8fe831d",
+    "libstdc++-6.dll": "d1aebaa36202db736b96a7e4f491eb457256ff6e3cac8e225dae05790bacd147",
+    "libwinpthread-1.dll": "a9230c9b3590af438066c18afa2185ac6c74b544f58606a0d20d80039b102179"
+  },
+  "evidence_hashes_sha256": {
+    "qualification_receipt": "dc3735e34958176f2ca10f556635fd024e3a4db8b5830a290095a293394ea74f",
+    "package_archive": "d5fb2835d2fe2036cb65fd5d960238eab202bd1555f6c63a02695fdd8a643ae6",
+    "package_manifest": "7b87cfc4f70a7fd3bd174d20aa3241c1e1de1e4a72c0603f0019b751429a175a",
+    "execution_script": "b830195c32809934087e22bd86654263f433c3012afecbb910329111a07a39da",
+    "returned_report": "4e3a5790e4a48d69ff0869c1ea11a58f74199ed76b32418b40a8a0caab79cfc1"
+  },
+  "independent_local_recheck": {
+    "source_build_binaries_matched_package_inputs": true,
+    "packaged_and_archived_binaries_matched": true,
+    "returned_stdout_stderr_and_report_hashes_matched": true,
+    "summary_counts_reparsed_from_returned_logs": true,
+    "all_four_test_executables_and_libc_libkernel_match_historical_host_qualification": true
+  },
+  "historical_macos_wine_qualification": {
+    "public_manifest": "anyps5-main-integration-20261009.json",
+    "manifest_sha256": "bdd6b69e02f99828b1b2ff349a6af30f81f34f6b5cdf3d6d5ee33513004f1267",
+    "internal_avx_subcase": "async_avx_context",
+    "internal_avx_skipped": true,
+    "verified_exception_deliveries": 451,
+    "historical_record_unchanged": true
+  },
+  "acceptance_boundaries": {
+    "native_windows_host_avx_comparison_complete": true,
+    "fex_avx_execution_verified": false,
+    "physical_ipad_execution_verified": false,
+    "physical_gpu_rendering_verified": false,
+    "gameplay_verified": false,
+    "fps_or_performance_improvement_verified": false
+  },
+  "github_actions_used": false,
+  "game_assets_included": false,
+  "device_actions_performed": false,
+  "public_artifact_scope": "Synthetic test names, hardware/OS class, hashes and sanitized results only; raw logs, game assets and network/machine identifiers remain private"
+}

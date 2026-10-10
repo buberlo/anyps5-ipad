@@ -1,0 +1,195 @@
+diff --git a/core/libs/prx/libSceSaveData.native/Export.cpp b/core/libs/prx/libSceSaveData.native/Export.cpp
+--- a/core/libs/prx/libSceSaveData.native/Export.cpp
++++ b/core/libs/prx/libSceSaveData.native/Export.cpp
+@@ -71,7 +71,8 @@
+ // with a small .param sidecar holding the last SaveDataParam the title wrote. Keying by user as well as slot
+ // keeps two users' in-memory saves from colliding on the same console.
+ constexpr char MEM_DIR[] = "_sd_mem";
+-constexpr std::size_t MEM_MAX_SIZE = 0x1000000;  // 16 MiB
++// Match the bounded 32 MiB range supported by the other save-memory provider.
++constexpr std::size_t MEM_MAX_SIZE = 0x2000000;
+ std::mutex g_mem_mutex;
+ 
+ std::string mem_path(std::int32_t user_id, std::uint32_t slot, const char* ext) {
+diff --git a/core/libs/tests/SaveDataMemoryGrowth.cpp b/core/libs/tests/SaveDataMemoryGrowth.cpp
+--- a/core/libs/tests/SaveDataMemoryGrowth.cpp
++++ b/core/libs/tests/SaveDataMemoryGrowth.cpp
+@@ -1,11 +1,14 @@
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/general/VabiMacros.hpp"
++#include <algorithm>
++#include <array>
+ #include <chrono>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <filesystem>
+ #include <fstream>
+ #include <iterator>
++#include <limits>
+ #include <string>
+ #include <vector>
+ #ifdef _WIN32
+@@ -16,6 +19,8 @@
+ int APS5_VABI sceSaveDataInitialize3(const void*);
+ int APS5_VABI sceSaveDataTerminate();
+ int APS5_VABI sceSaveDataSetupSaveDataMemory2(const SaveDataMemorySetup2*, SaveDataMemorySetupResult*);
++int APS5_VABI sceSaveDataGetSaveDataMemory2(SaveDataMemoryGet2*);
++int APS5_VABI sceSaveDataSetSaveDataMemory2(const SaveDataMemorySet2*);
+ }
+ 
+ static void Check(bool value, int line) {
+@@ -30,6 +35,146 @@
+     std::ifstream file(path, std::ios::binary);
+     Require(file.is_open());
+     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
++}
++
++static void CheckLargeMemory() {
++    constexpr std::size_t largeSize = 32u * 1024u * 1024u;
++    constexpr int parameterError = static_cast<int>(0x809F0000u);
++    constexpr int internalError = static_cast<int>(0x809F000Bu);
++    constexpr std::int32_t user = 8632;
++    const auto path = std::filesystem::path("_sd_mem/u8632/slot0.bin");
++    SaveDataMemorySetup2 setup{};
++    setup.user_id = user;
++    setup.memory_size = largeSize;
++    SaveDataMemorySetupResult result{};
++    Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == 0);
++    Require(result.existed_memory_size == 0);
++    Require(std::filesystem::file_size(path) == largeSize);
++    {
++        const auto bytes = Read(path);
++        Require(std::all_of(bytes.begin(), bytes.end(), [](char value) { return value == 0; }));
++    }
++
++    std::array<char, 8> head{'s', 'a', 'v', 'e', '\0', '\x7f', '3', '2'};
++    std::array<char, 8> tail{'t', 'a', 'i', 'l', '\0', '3', '2', '\xff'};
++    std::array<SaveDataMemoryData, 2> writes{{
++        {head.data(), head.size(), 0},
++        {tail.data(), tail.size(), largeSize - tail.size()}
++    }};
++    SaveDataMemorySet2 set{};
++    set.user_id = user;
++    set.data = writes.data();
++    set.data_num = static_cast<std::uint32_t>(writes.size());
++    Require(sceSaveDataSetSaveDataMemory2(&set) == 0);
++    const auto saved = Read(path);
++    Require(saved.size() == largeSize);
++    Require(std::equal(head.begin(), head.end(), saved.begin()));
++    Require(std::equal(tail.begin(), tail.end(), saved.end() - tail.size()));
++    Require(std::all_of(saved.begin() + head.size(), saved.end() - tail.size(),
++                       [](char value) { return value == 0; }));
++
++    // An invalid later entry must not commit the valid first range, even at 32 MiB.
++    auto changedHead = head;
++    changedHead.fill('x');
++    writes[0].buf = changedHead.data();
++    for (const auto offset : {largeSize, std::numeric_limits<std::size_t>::max(), largeSize - 1}) {
++        writes[1].offset = offset;
++        Require(sceSaveDataSetSaveDataMemory2(&set) == parameterError);
++        Require(Read(path) == saved);
++    }
++    writes[1].offset = largeSize - tail.size();
++    writes[0].buf = nullptr;
++    Require(sceSaveDataSetSaveDataMemory2(&set) == parameterError);
++    Require(Read(path) == saved);
++    writes[0].buf = changedHead.data();
++    const auto temporary = path.string() + ".tmp";
++    Require(std::filesystem::create_directory(temporary));
++    Require(sceSaveDataSetSaveDataMemory2(&set) == internalError);
++    Require(Read(path) == saved);
++    Require(!std::filesystem::exists(temporary));
++
++    // Reopen through the public API; the final valid byte must survive initialization.
++    Require(sceSaveDataTerminate() == 0);
++    Require(sceSaveDataInitialize3(nullptr) == 0);
++    Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == 0);
++    Require(result.existed_memory_size == largeSize);
++    Require(Read(path) == saved);
++    std::array<char, 8> got{};
++    SaveDataMemoryData read{got.data(), got.size(), largeSize - got.size()};
++    SaveDataMemoryGet2 get{};
++    get.user_id = user;
++    get.data = &read;
++    Require(sceSaveDataGetSaveDataMemory2(&get) == 0);
++    Require(got == tail);
++    read.offset = largeSize - 1;
++    read.buf_size = 1;
++    Require(sceSaveDataGetSaveDataMemory2(&get) == 0);
++    Require(got[0] == tail.back());
++    for (const auto offset : {largeSize, std::numeric_limits<std::size_t>::max()}) {
++        read.offset = offset;
++        got.fill('z');
++        Require(sceSaveDataGetSaveDataMemory2(&get) == parameterError);
++        Require(got[0] == 'z');
++    }
++
++    // Preserve an existing shorter blob and its sidecar when growing to the bound.
++    const auto growthPath = std::filesystem::path("_sd_mem/u8632/slot1.bin");
++    {
++        std::ofstream file(growthPath, std::ios::binary);
++        file.write(head.data(), static_cast<std::streamsize>(head.size()));
++        Require(static_cast<bool>(file));
++    }
++    const auto metadataPath = std::filesystem::path("_sd_mem/u8632/slot1.param");
++    SaveDataParam param{};
++    param.user_param = 32;
++    {
++        std::ofstream file(metadataPath, std::ios::binary);
++        file.write(reinterpret_cast<const char*>(&param), sizeof(param));
++        Require(static_cast<bool>(file));
++    }
++    const auto metadata = Read(metadataPath);
++    setup.slot_id = 1;
++    result.existed_memory_size = 123;
++    Require(std::filesystem::create_directory(growthPath.string() + ".tmp"));
++    Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == internalError);
++    Require(result.existed_memory_size == 123);
++    Require(Read(growthPath) == std::vector<char>(head.begin(), head.end()));
++    Require(Read(metadataPath) == metadata);
++    Require(!std::filesystem::exists(growthPath.string() + ".tmp"));
++    Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == 0);
++    Require(result.existed_memory_size == head.size());
++    {
++        const auto grown = Read(growthPath);
++        Require(grown.size() == largeSize);
++        Require(std::equal(head.begin(), head.end(), grown.begin()));
++        Require(std::all_of(grown.begin() + head.size(), grown.end(),
++                           [](char value) { return value == 0; }));
++    }
++    Require(Read(metadataPath) == metadata);
++    Require(Read(path) == saved);
++
++    setup.user_id = user + 1;
++    setup.slot_id = 0;
++    setup.memory_size = 1;
++    Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == 0);
++    Require(result.existed_memory_size == 0);
++    Require(Read("_sd_mem/u8633/slot0.bin") == std::vector<char>(1, 0));
++    Require(Read(path) == saved);
++
++    // Oversized/zero requests must neither replace an existing save nor create a new one.
++    setup.user_id = user;
++    for (const auto size : {std::size_t{0}, largeSize + 1, std::numeric_limits<std::size_t>::max()}) {
++        setup.memory_size = size;
++        result.existed_memory_size = 123;
++        Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == parameterError);
++        Require(result.existed_memory_size == 123);
++        Require(Read(path) == saved);
++        Require(!std::filesystem::exists(temporary));
++        setup.user_id = user + 2;
++        Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == parameterError);
++        Require(!std::filesystem::exists("_sd_mem/u8634"));
++        setup.user_id = user;
++    }
+ }
+ 
+ int main(int argc, char**) {
+@@ -104,6 +249,7 @@
+         Require(sceSaveDataSetupSaveDataMemory2(&setup, &result) == 0);
+         Require(result.existed_memory_size == 0);
+         Require(Read("_sd_mem/u7531/slot1.bin") == std::vector<char>(2, 0));
++        CheckLargeMemory();
+     }
+     Require(sceSaveDataTerminate() == 0);
+     std::filesystem::current_path(previousDirectory);

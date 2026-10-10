@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "status": "native_windows_prerequisites_pass_game_exits_on_fifth_shader_request_cpu_rejection_reproduced",
+  "scope": "Sanitized native Windows and exact-driver diagnostic checkpoint; isolated volume-sampler candidate, not gameplay or iPad acceptance",
+  "evidence_date_utc": "2026-10-10",
+  "native_windows": {
+    "report_status": "game_exited_requires_log_review",
+    "transfer_status": "bounded_reference_evidence_returned_requires_review",
+    "started_utc": "2026-10-10T00:35:21.9232393Z",
+    "finished_utc": "2026-10-10T00:36:14.2853014Z",
+    "system": {
+      "cpu": "AMD Ryzen 9 7940HS w/ Radeon 780M Graphics",
+      "physical_cores": 8,
+      "logical_processors": 16,
+      "os": "Microsoft Windows 11 Pro",
+      "os_version": "10.0.26300",
+      "os_build": "26300",
+      "os_architecture": "64-bit",
+      "physical_gpu": "AMD Radeon 780M Graphics"
+    },
+    "prerequisites_passed": 8,
+    "prerequisites": [
+      {
+        "target": "windows_exception_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.0403783,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "f14f3a7ec072bb1a4b17d9d4ccf9f41bd0339751a1e1d2bddb733a7bb65e3911"
+      },
+      {
+        "target": "exception_personality_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.0156856,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "a04fb9ac99d3e4917228e7f91808ff96c964c9b5bf60894b3bc46842217a0c44"
+      },
+      {
+        "target": "guest_raise_exception_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 13.3395751,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "b77ac77604006ce2e66f66dd6cde9b44a1440b9dffd5c81996c5e913dd3b3250"
+      },
+      {
+        "target": "guest_memory_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.0417967,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "c5913a1bb619e7b521b906edd7998ae92ec13847d418cf95f9c718bbf47d2746"
+      },
+      {
+        "target": "raw_log_output_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.023024,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "02bc6bbe2b8f7538ce14cd503f74620bce56189bb896c08fd0a91e1da9179c9e"
+      },
+      {
+        "target": "agc_unused_barycentric_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.0352919,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "91b89f7795602397c662b0aa196039664e951cfebf960f91f6f766f11f9d0802"
+      },
+      {
+        "target": "agc_volume_actual_driver_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 16.2463996,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "95a181b4cb21c05fa1ad31b243ad897bc63f724fb85d282831b4292198943d91"
+      },
+      {
+        "target": "physical-gpu",
+        "status": "passed",
+        "exit_code": 0,
+        "seconds": 0.144706,
+        "owned_tree_stopped": true,
+        "timed_out": false,
+        "discarded_log_bytes": 0,
+        "executable_sha256": "df41144a9af0a1a41d3a71bbed249e8c88a23b705cf2701688c56c14a2e74bdf"
+      }
+    ],
+    "public_shader_cases": 144,
+    "baseline_public_shader_cases": 45,
+    "raw_logging_cases": 12,
+    "native_exception_deliveries": 553,
+    "native_avx_verified": true,
+    "async_vector_checks_per_mode": 64,
+    "async_vector_modes": [
+      "preserve",
+      "mutate",
+      "reset-avx"
+    ],
+    "async_vector_errors": 0,
+    "physical_gpu_probe": {
+      "status": "passed",
+      "scope": "Vulkan hardware/device creation, buffer-device-address and 8-bit readback, BC1 sampling readback; not game-frame evidence",
+      "game_rendering_proven": false
+    },
+    "file_closure": {
+      "verified_game_files": 170,
+      "verified_payload_manifest_files": 213,
+      "unchanged_game_files_compared_with_original_archive": 114,
+      "game_runtime_prx_files": 47,
+      "game_runtime_dll_files": 3,
+      "returned_zip_members_verified": 23,
+      "returned_zip_contents_match_returned_files": true
+    },
+    "fresh_game_cache_verified": true,
+    "game": {
+      "started": true,
+      "exited": true,
+      "seconds": 6.4547302,
+      "exit_code_signed": -1073740791,
+      "exit_code_hex": "0xc0000409",
+      "owned_tree_stopped": true,
+      "discarded_stdout_bytes": 0,
+      "discarded_stderr_bytes": 0,
+      "swapchain_created": true,
+      "swapchain_width": 837,
+      "swapchain_height": 471,
+      "swapchain_requested_images": 3,
+      "swapchain_actual_images": 3,
+      "captured_screenshots": 0,
+      "rendered_game_frame_evidence": false,
+      "first_fatal": "ShaderRecompiler::Recompile rejected fixed-function interpolation: unmodified center I/J pairs and complete P1/P2 sequences on a proven entry/discard path required (pc=0).",
+      "termination": "Uncaught std::runtime_error followed by abort (SIGABRT)."
+    },
+    "reference_process_stopped": true,
+    "reference_process_exit_code": 0,
+    "original_runtime_failure_retained": true
+  },
+  "fifth_request": {
+    "serialized_bytes": 2975,
+    "sha256": "388adb75931274772dd0dcf556e4a26c36884d3116216723630df4df3e233a60",
+    "same_as_preceding_2111_byte_request": false,
+    "raw_content_included": false
+  },
+  "actual_prx_cpu_replay": {
+    "status": "144_public_cases_pass_fifth_complete_request_reproduces_interpolation_rejection_cpu_only",
+    "retained_public_cases_passed": 144,
+    "imported_fixture_with_fifth_request_exit_code": 1,
+    "independent_complete_request_replay_exit_code": 1,
+    "fifth_request_rejected_by_both_paths": true,
+    "full_replay_reproduces_interpolation_rejection_at_pc": 0,
+    "frozen_inputs_unchanged": true,
+    "cleanup_k_exit_code": 0,
+    "cleanup_w_exit_code": 0,
+    "owned_prefix_server_lock_unlocked": true,
+    "owned_prefix_server_socket_absent": true,
+    "matching_owned_prefix_processes": 0,
+    "scope": "CPU replay of actual imported candidate PRX only; no GPU or device execution"
+  },
+  "native_decoder": {
+    "status": "native_decoder_completed_proof_1",
+    "compile_exit_code": 0,
+    "decode_exit_code": 1,
+    "decoded_instructions": 76,
+    "control_flow_blocks": 12,
+    "proof_accepted": false,
+    "frozen_inputs_unchanged": true,
+    "scope": "Terminal native decoder/proof rejection; a repair is not qualified.",
+    "missing_footprint_opcodes": [
+      "VCmpNleF32",
+      "VLogF32",
+      "VExpF32",
+      "VMadakF32"
+    ],
+    "missing_footprint_instruction_count": 12,
+    "implicit_image_sample_count": 0,
+    "whole_quad_mask_expansion_count": 0,
+    "cfg_or_derivative_guard_relaxed": false
+  },
+  "sha256": {
+    "windows_report": "4e2d37d18f2047e4248b62f3fa8190e295096ae88f53875cfaea2086f465e170",
+    "windows_transfer_report": "ed90ec6ce7e1b5395bae2dddf731b7ec7aa94f3a2657672ab66bb802f9f45900",
+    "returned_evidence_zip": "5e3a4021f55fa3e278e1559858fd35b0898937a2fa713743c4f26167fcd0cdac",
+    "game_stdout": "6a4f1e1dcb60a4595827e0ccc79b165ab7170a3eda7097320a1a2ffefb4ee546",
+    "game_stderr": "fcbd31df5bc15c3676fc4132c6f79d62d0cff8d5321248c0c543ba1ea329c381",
+    "public_144_case_stdout": "e872b6d1e62bf2bf469533b5b3640e4eb0d1d062e2245015e8aa3f765ba59838",
+    "physical_gpu_probe_stdout": "0a55be41f0246233d22dd863fea13beb31789fdec0ef769d13020524d1929fe2",
+    "overlay": "f525be2adcb127f30c88be88093a14f8b975a91e719c908f870019a2c8d70931",
+    "reference_manifest": "3c9c7d9422b5b327526bf806f42a354cd5123de014edcdabc3b8f4b68a51baed",
+    "original_failed_runtime_receipt": "688dec32c1bf18e9016ad36ef39058912300b9f895cb7d4b0c897f39a3137033",
+    "terminal_cleanup_reconciliation_receipt": "2800fee4817f53a5cd36b29f566a3625f610a175e3845e56705db628ab8a8259",
+    "request_extraction_receipt": "a3bd1735880c64dd7448615950562c9eb366b11626516239dd7036e8baa22a18",
+    "actual_prx_cpu_replay_receipt": "f6956f572912b4226ba579a727994359376d0fa804aa300d7c1159519288adc6",
+    "native_decoder_receipt": "b1e1b2f91e4d785e3260c3b70d1aa85202f45922e03d63767c2aaa6e3f6beee5"
+  },
+  "claims": {
+    "native_windows_prerequisites_verified": true,
+    "physical_gpu_offscreen_probe_verified": true,
+    "game_gpu_rendering_verified": false,
+    "gameplay_verified": false,
+    "performance_accepted": false,
+    "ipad_executed": false,
+    "ipad_accepted": false,
+    "repair_qualified": false
+  },
+  "privacy": {
+    "raw_requests": false,
+    "shader_words": false,
+    "game_assets": false,
+    "private_paths": false,
+    "network_addresses": false,
+    "tokens": false,
+    "desktop_images": false
+  }
+}

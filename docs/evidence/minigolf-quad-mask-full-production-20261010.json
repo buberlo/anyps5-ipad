@@ -1,0 +1,888 @@
+{
+  "schema": 1,
+  "kind": "sanitized_full_quad_production_runtime_evidence_candidate",
+  "status": "passed_local_host_with_internal_avx_skip_not_device_or_gameplay",
+  "recordedUtc": "2026-10-10T00:16:57.411269+00:00",
+  "scope": "Fresh Windows x86-64 Release HLE libraries and CPU/mock-Vulkan host tests under local Wine on macOS; staged shader compiler proofs use the freshly linked, actually loaded production AGC PRX. No physical GPU, FEX, iPad or gameplay qualification.",
+  "authoritativeReceipts": {
+    "selectedRunSha256": "07a8a3097dc4cbd59ac50f3b6e25fe5a32b1c54b7f144ebecbebfb28e4a8055e",
+    "additionalRunSha256": "52619cba30a1cd20bf4dfc2287a30cce7f8a21e9053a88b38f478120da7e5aa2",
+    "compilerProofSha256": "9870ba34d31ac18ebca06d16b44705532a653ebfb9c82cb18e91d3b1734bb13b",
+    "runtimeQualificationSha256": "5441692f90cca968ab5758e5369090cd8cf0fe04a61105bb2891d4df6678cabd",
+    "exportSealingSha256": "218ff615484742b4059c8566bd3ac27b405777758c900c57f11ce6a4ae8ce19d",
+    "independentQuadSemanticSha256": "e558031ce0f44205af139e77945d11cafe10ea6bb750b83ab64e2d5923e2a4a9"
+  },
+  "source": {
+    "anyps5Commit": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+    "patches": {
+      "0001-ipad-runtime-compatibility.patch": "3d7ab29f13efb669f99736baf1594caf456720e5d79d244ea615f05f9ed61acc",
+      "0002-bounded-exception-logging.patch": "19824fccb822111fda3cd5887d3cd855cbd02cc5c3e14d49995a043eaf3766cc",
+      "0003-valid-image-descriptor-policy.patch": "149cdd10bfe66bb49515463a228540a1100dbcfb5305838368f4e5ae83207eb0",
+      "0004-no-vintrp-exec-aware-input-liveness.patch": "702c1ce03a25e831a08544176ffb9a233c5faaf1b51ca0c288092279ba7e6701",
+      "0062-bounded-legacy-audioout-ingress-trace.patch": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+      "0065-audioout-frame-pacing.patch": "d119e02b7edec8ffeba6edc035fea3fca504e7e39a84b4c7fc360f227947bd95"
+    },
+    "proofHeaderSha256": "4c3b1144ca75aff928a573ee1930e08d26c370bef010ef37013a9d9cfad879a5",
+    "publicFixtureSha256": "777f1d797f58738cc5a8ae28cb68d6345ed85ab643c4e2493d6a642ef42fbcfa",
+    "sourceFreezeSha256": "a67724d82d24a7c6162b0aa25b63f5b2cae8b02b82f30d50472ed2ce33b8e87a",
+    "sourceSnapshotSha256": "32b9c096791afdf6dc1f2ad324cf4bd8d6a2d9a83fbb1bf684560bed9cc42c76",
+    "sourceFileCount": 1771,
+    "activeSourceBytesAndModesMatched": true,
+    "previousCombinedSourceFreezeIsCurrent": false,
+    "buildFlags": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    }
+  },
+  "freshCompilation": {
+    "projectOutputsInitiallyAbsent": true,
+    "olderProjectObjectsCopied": false,
+    "compiledProjectObjectCount": 630,
+    "ninjaLogSha256": "fba6ddf2b98a977d3f8386465edf3358e549cb8dc4678e8b261a276415816df8",
+    "thirdpartyReuse": "Only authenticated unchanged third-party outputs were seeded; Ninja command and dependency state decided validity. All project objects were freshly compiled.",
+    "allRuntimeAndGraphicsInputsUnchanged": true
+  },
+  "runtimeTests": {
+    "prxLibraryCount": 47,
+    "selectedTargetCount": 42,
+    "additionalTargetCount": 10,
+    "distinctTargetCount": 52,
+    "ctestCaseCount": 53,
+    "selectedCaseCount": 43,
+    "additionalCaseCount": 10,
+    "caseExpansion": "The save-data memory growth target has both its ordinary and read-failure CTest cases.",
+    "passedCaseCount": 53,
+    "failedCaseCount": 0,
+    "skippedCtestCaseCount": 0,
+    "selectedRunExitCode": 0,
+    "selectedRunSeconds": 1731.533189625,
+    "additionalBuildExitCode": 0,
+    "additionalTestExitCode": 0,
+    "selectedTargets": [
+      "raw_log_output_tests",
+      "windows_exception_tests",
+      "exception_personality_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_json2_virtual_allocator_tests",
+      "guest_compatibility_api_tests",
+      "guest_hmd_tests",
+      "guest_player_review_dialog_tests",
+      "guest_ulobjmgr_tests",
+      "guest_audio3d_parameters_tests",
+      "guest_audio3d_port_tests",
+      "guest_audio3d_object_attributes_tests",
+      "guest_kernel_module_lifecycle_tests",
+      "savedata_memory_growth_tests",
+      "savedata_memory_metadata_tests",
+      "savedata_native_write_replacement_tests",
+      "savedata_replace_file_failure_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "agc_driver_graphics_tests",
+      "agc_unused_barycentric_tests",
+      "agc_write_tracking_tests",
+      "agc_profile_output_tests",
+      "agc_shader_device_profile_tests",
+      "agc_shader_disk_cache_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "additionalTargets": [
+      "guest_pthread_key_tests",
+      "guest_thread_callback_abi_tests",
+      "guest_demangle_tests",
+      "guest_path_case_tests",
+      "guest_dynamic_loader_tests",
+      "guest_unwind_module_info_tests",
+      "guest_http2_tests",
+      "guest_offline_imports_tests",
+      "guest_savedata_search_tests",
+      "guest_savedata_mount_status_tests"
+    ],
+    "cases": [
+      {
+        "name": "raw_log_output",
+        "target": "raw_log_output_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "49d619ea870ab4af6a9320b8fb0d216462f1374a18e19e90f09b4ade0882061a"
+      },
+      {
+        "name": "windows_exceptions",
+        "target": "windows_exception_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+      },
+      {
+        "name": "exception_personality",
+        "target": "exception_personality_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "2988d0790635f6656ab8f2f70160e250c3166641d7309152d82c76f9b9cb9588"
+      },
+      {
+        "name": "guest_formatting",
+        "target": "guest_formatting_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "d86665858c4fc871a5936de689b4e0e80c48246c0a222d38f5312614fb0ed29f"
+      },
+      {
+        "name": "host_thread_local",
+        "target": "host_thread_local_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_environment",
+        "target": "guest_environment_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "file_position",
+        "target": "file_position_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_math",
+        "target": "guest_math_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_json",
+        "target": "guest_json_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_json2_initialization",
+        "target": "guest_json2_initialization_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57"
+      },
+      {
+        "name": "guest_json2_virtual_allocator",
+        "target": "guest_json2_virtual_allocator_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "8cc8d27f013d02b67343e3ec5a49531294bca4af41f76bb2c082c36b2ea57f54"
+      },
+      {
+        "name": "guest_compatibility_apis",
+        "target": "guest_compatibility_api_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994"
+      },
+      {
+        "name": "guest_hmd",
+        "target": "guest_hmd_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_player_review_dialog",
+        "target": "guest_player_review_dialog_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_ulobjmgr",
+        "target": "guest_ulobjmgr_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_audio3d_parameters",
+        "target": "guest_audio3d_parameters_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_audio3d_port",
+        "target": "guest_audio3d_port_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_audio3d_object_attributes",
+        "target": "guest_audio3d_object_attributes_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "3400f2613d959d08445ef8cfda21e991847e072c5b9435069946e482f5336e03"
+      },
+      {
+        "name": "guest_kernel_module_lifecycle",
+        "target": "guest_kernel_module_lifecycle_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "adbaf8581a8cf0ab4c640c99e149eb4c20094c88f13ad71381734ac4bbb5ab38"
+      },
+      {
+        "name": "savedata_memory_growth",
+        "target": "savedata_memory_growth_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e6afec4d3680f9cebb461d21ecae96c15df870b2490770ac1a4046c064cfaf9b"
+      },
+      {
+        "name": "savedata_memory_growth_read_failure",
+        "target": "savedata_memory_growth_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e6afec4d3680f9cebb461d21ecae96c15df870b2490770ac1a4046c064cfaf9b"
+      },
+      {
+        "name": "savedata_memory_metadata",
+        "target": "savedata_memory_metadata_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "71e64001cd04ffdceae74337da697187dcae4ad65f9e6b9a8a0236b44313af4f"
+      },
+      {
+        "name": "savedata_native_write_replacement",
+        "target": "savedata_native_write_replacement_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "3093899ed26388c9a56fcf5c8de431f864f0bfd6cdb4bb5ff5edc66125b61710"
+      },
+      {
+        "name": "savedata_replace_file_failure",
+        "target": "savedata_replace_file_failure_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_filesystem",
+        "target": "guest_filesystem_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e5aa2ff527a25f7e9cddd45858c07f7fc06cbe2690d5c54ee3cad33ccf6b509a"
+      },
+      {
+        "name": "guest_pthread_attr",
+        "target": "guest_pthread_attr_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3aeeedfcefc761d2b7d14553682b7219bcba5824c50ccf583b089ef40dd578a"
+      },
+      {
+        "name": "guest_shader_alignment",
+        "target": "guest_shader_alignment_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "guest_memory",
+        "target": "guest_memory_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e519abbbfa7ec3ace399b60fb690ffd4b82f00d48544eeeeeaa21f4c406c2ca4"
+      },
+      {
+        "name": "guest_raise_exception",
+        "target": "guest_raise_exception_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "f7c36d57731e5f62b4c0e85d9186bbfed718187f01e6f17a3ee28da43d65a7a4"
+      },
+      {
+        "name": "agc_driver_graphics",
+        "target": "agc_driver_graphics_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "45ce6690e16b3c2150d1558af6006e8f0ae55e2ea2dd22b0d00337108530e67f"
+      },
+      {
+        "name": "agc_unused_barycentric",
+        "target": "agc_unused_barycentric_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "4b0143b72afe45f22cf566afe877b8392762f44c9ffa7595c2d109efcdc0a6e6"
+      },
+      {
+        "name": "agc_write_tracking",
+        "target": "agc_write_tracking_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "0ce956a7a1db4c92ae205e5c1b8bac9ad5e420572669d9e9e335773b89d2a6a7"
+      },
+      {
+        "name": "agc_profile_output",
+        "target": "agc_profile_output_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "a1eb0f277419f66925759e934e8f88598b66d7f60712abd34e6319190c0b878d"
+      },
+      {
+        "name": "agc_shader_device_profile",
+        "target": "agc_shader_device_profile_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "aeae9027f90e205abadba811f92a8ba55d02979c928a1f360883506af765a1d7"
+      },
+      {
+        "name": "agc_shader_disk_cache",
+        "target": "agc_shader_disk_cache_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "c06c0781670988889e56a15ca9a211c0418907fb0260c24ad3d2796467f95f0c"
+      },
+      {
+        "name": "uniform_wave_branch",
+        "target": "uniform_wave_branch_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde"
+      },
+      {
+        "name": "wave32_wide_subgroup",
+        "target": "wave32_wide_subgroup_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00"
+      },
+      {
+        "name": "audio_out2_pad_mix",
+        "target": "audio_out2_pad_mix_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "audio_out_mix_level_pad_spk",
+        "target": "audio_out_mix_level_pad_spk_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "df7bc02b3d454fd5a06212d38bf6c5fcf212a4a06ab642d0f59af36330fe6020"
+      },
+      {
+        "name": "audio_out_last_output_time",
+        "target": "audio_out_last_output_time_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104"
+      },
+      {
+        "name": "audio_out2_latency",
+        "target": "audio_out2_latency_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104"
+      },
+      {
+        "name": "audio_out2_port_layouts",
+        "target": "audio_out2_port_layouts_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "37059defb32c17e098f9c304663aa61755773b45a8a44ddfa9caefcb7442c4a3"
+      },
+      {
+        "name": "audio_out2_timing",
+        "target": "audio_out2_timing_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "58a7c52ef4184eefba9cd2f6f69f54dcbe6ecbd59a5f7e0ce5dab1d6963d2060"
+      },
+      {
+        "name": "guest_offline_imports",
+        "target": "guest_offline_imports_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "e90feab6e167960b9719aaa54dc95bacb3a4e9733d2b09f7c48d7a70ef6f1415"
+      },
+      {
+        "name": "guest_path_case",
+        "target": "guest_path_case_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "c4a04587f50cf19d1afb0a10b423a65f1213872c7a7391b5cea185c371bbf44e"
+      },
+      {
+        "name": "guest_thread_callback_abi",
+        "target": "guest_thread_callback_abi_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "9f1593959871faa07171e8c9783645be485ee39b5bafb64af991a22aa1f504da"
+      },
+      {
+        "name": "guest_demangle",
+        "target": "guest_demangle_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "f60dccb68f9277da86d5e53fcb48f312eb48cc923e3ef0b3635426b05597d3ae"
+      },
+      {
+        "name": "guest_http2",
+        "target": "guest_http2_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "35c9cf3711415d0e78c61e5490e8f04fc7ba1e89fdb90604b3c760010a8a238c"
+      },
+      {
+        "name": "guest_savedata_search",
+        "target": "guest_savedata_search_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "760fa7299cd5a3c2e537c84537e40b359a29507b3b6e12076f95736bf36c658c"
+      },
+      {
+        "name": "guest_savedata_mount_status",
+        "target": "guest_savedata_mount_status_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "31bbe9045d68a70f06fb82f049955f022d230c52351480d769cfd6d484dc5540"
+      },
+      {
+        "name": "guest_dynamic_loader",
+        "target": "guest_dynamic_loader_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "00cbf575aeac1047c8136a107fb43a09ecdcca6933117f5cf43a0a6b1f219fc3"
+      },
+      {
+        "name": "guest_pthread_key",
+        "target": "guest_pthread_key_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "dae6c60896e293657a24b295cb3ca7f6030fe1650bc17777d5eb6999b6fdad0b"
+      },
+      {
+        "name": "guest_unwind_module_info",
+        "target": "guest_unwind_module_info_tests",
+        "status": "passed",
+        "exitCode": 0,
+        "logSha256": "0d7577dc3556b2a907d85c0317c655f51bcf534aec933747c78399b2f24fb414"
+      }
+    ],
+    "internalSubtestSkips": [
+      {
+        "case": "guest_raise_exception",
+        "subtest": "async_avx_context",
+        "reason": "Local Wine host does not expose AVX despite explicit AVX opt-in; this is not FEX/iPad AVX execution",
+        "deliveredExceptionCount": 451,
+        "logSha256": "f7c36d57731e5f62b4c0e85d9186bbfed718187f01e6f17a3ee28da43d65a7a4"
+      }
+    ],
+    "internalSkipBoundary": "451 delivered guest exceptions passed. The asynchronous AVX context subtest was internally skipped because the local Wine host did not expose AVX despite explicit opt-in; neither native Windows nor FEX/iPad AVX execution is established by this run.",
+    "guestArena": {
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+      "APS5_PRESERVE_ASYNC_AVX": "1",
+      "APS5_PRESERVE_ASYNC_FLAGS": "1"
+    }
+  },
+  "prxClosure": {
+    "libSceAgc": {
+      "sha256": "de73c73f082bcc07bce0e2061549273e51218125eaead69f8e74f9a16dc35d41",
+      "machine": "0x8664",
+      "exportsCount": 290
+    },
+    "libSceAgcDriver": {
+      "sha256": "d59c479d255e26fba4848c4f6dfde2ad2820a960baf2f18c378716b09b0a7867",
+      "machine": "0x8664",
+      "exportsCount": 3692
+    },
+    "libSceAjm.native": {
+      "sha256": "85705775af402f27e33a959f45f1c0bb19f5533b585e87710ef511c671cd6bea",
+      "machine": "0x8664",
+      "exportsCount": 4793
+    },
+    "libSceAmpr": {
+      "sha256": "b80ea4524fbe4cc5ae61f266120fe89b6a24ce3cbddc9ade15f8ccbb32e19e46",
+      "machine": "0x8664",
+      "exportsCount": 119
+    },
+    "libSceAppContent": {
+      "sha256": "715cb24beb80e4ad488801b5898691c3f088108d0d1a0cc4956cdc6760e0ea6d",
+      "machine": "0x8664",
+      "exportsCount": 46
+    },
+    "libSceAudio3d": {
+      "sha256": "82f8e65de26babcdaf8031ad56bf049d4ccea5af01b82a853cb831d32b2ecd58",
+      "machine": "0x8664",
+      "exportsCount": 28
+    },
+    "libSceAudioIn": {
+      "sha256": "97fe0f3385ad6ed687a1ef2cb4552519cb228d7408d6bd08576a0f1fd1cb546f",
+      "machine": "0x8664",
+      "exportsCount": 8
+    },
+    "libSceAudioOut": {
+      "sha256": "94c196655a68d48dce318d09b8749e97e8c6921473490193f3418e5bdfa33fda",
+      "machine": "0x8664",
+      "exportsCount": 2869
+    },
+    "libSceAvPlayer.native": {
+      "sha256": "a941002d13beca94f0f438453f484eceafaec3c4fa5f0c30e3177957e8abf42b",
+      "machine": "0x8664",
+      "exportsCount": 5802
+    },
+    "libSceCdlgPlayerReview": {
+      "sha256": "dc8c74719df15495c44dfffd69b208b76cf7ee16de035daf71c2702f72a58436",
+      "machine": "0x8664",
+      "exportsCount": 11
+    },
+    "libSceCommonDialog": {
+      "sha256": "7623ae2f61eceffbc1967015da8de24661656c11e489f9e45550d4325eb68c57",
+      "machine": "0x8664",
+      "exportsCount": 2
+    },
+    "libSceHmd": {
+      "sha256": "4a220a239bccfe553808178ab4d38794ed0a1cf403c38f8372fc1ec3b5f51dd6",
+      "machine": "0x8664",
+      "exportsCount": 9
+    },
+    "libSceHttp": {
+      "sha256": "d2d0829949f0b76752384b8781c5764c4f93a2df0fe6feca9f1cefba3bac048f",
+      "machine": "0x8664",
+      "exportsCount": 66
+    },
+    "libSceHttp2": {
+      "sha256": "b2ec1bcb7cfddcb0cb63f61bc7256532e0092a1f52785e53ec85dbc42061054b",
+      "machine": "0x8664",
+      "exportsCount": 51
+    },
+    "libSceIme": {
+      "sha256": "e9aa8a2a069ed22286f6df2299473dbb940370cf16ae59f226c68545d04cc91b",
+      "machine": "0x8664",
+      "exportsCount": 23
+    },
+    "libSceImeDialog": {
+      "sha256": "ccb39714af552a7b10b8fd228ff95384cdf50d8eb135da5fe329438524c833e1",
+      "machine": "0x8664",
+      "exportsCount": 8
+    },
+    "libSceJson2": {
+      "sha256": "2debe45968defbf055530bb9591a07d9091cf1c2ed75e59c539ce09f05418875",
+      "machine": "0x8664",
+      "exportsCount": 107
+    },
+    "libSceKeyboard": {
+      "sha256": "14487594b84c1d1c759d9eb6d8a2dada73adc62b9dd5b13fe1741644b2233ab2",
+      "machine": "0x8664",
+      "exportsCount": 14
+    },
+    "libSceLibcInternal": {
+      "sha256": "c0db553639f865851de6c872b682af434543f4ac658a30505dc94b521fabcdf3",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceMouse": {
+      "sha256": "ca62be8e3a618fc2a435066a6acabe1317264ff194eec25625d5dd431714330d",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceMsgDialog.native": {
+      "sha256": "e46337f479e12a8afa3fd7a48b9b2f7bf7267813bb085c17d833bb88013d53bd",
+      "machine": "0x8664",
+      "exportsCount": 11
+    },
+    "libSceNet": {
+      "sha256": "9263bca41e01a3eead569650744991688e7e243041b3fb380070d343013d1e7b",
+      "machine": "0x8664",
+      "exportsCount": 71
+    },
+    "libSceNetCtl": {
+      "sha256": "6be0c27b3a0ea8b6882890cfa9a3ac98fb7b225ad2f708bf513af579be19e20c",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceNpAuth": {
+      "sha256": "4162eb3cee827ec84c6f18f8b29e820fbcea105e0d942e8c7b108e6e4d6babab",
+      "machine": "0x8664",
+      "exportsCount": 8
+    },
+    "libSceNpCommerce": {
+      "sha256": "b615e6322e46c9b19af6111dd3e621f431e69d24728338fcd2395a146595ed37",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceNpEntitlementAccess": {
+      "sha256": "7e78e06dfa146165fd46e839141eb08255e2a3c8deb3be677637f8601df00b6d",
+      "machine": "0x8664",
+      "exportsCount": 59
+    },
+    "libSceNpGameIntent": {
+      "sha256": "6d6e3b583a77b56c4b949a8c32ebd62a022985955621abe45ab3d86c937d812a",
+      "machine": "0x8664",
+      "exportsCount": 11
+    },
+    "libSceNpManager": {
+      "sha256": "6de0a9989b9bc053dbd84a00cdae56ab9a93da1f0591080b051e6382c28fd690",
+      "machine": "0x8664",
+      "exportsCount": 32
+    },
+    "libSceNpSessionSignaling": {
+      "sha256": "4e219ff18af47fea9be4d5988edd0dedb733569d79c04b9d794c83b6896f40d2",
+      "machine": "0x8664",
+      "exportsCount": 16
+    },
+    "libSceNpTrophy2": {
+      "sha256": "f56f3ae99890f20ad9e387940deb413c14de868ce36cf88bd55646c1a5a94f86",
+      "machine": "0x8664",
+      "exportsCount": 28
+    },
+    "libSceNpUniversalDataSystem": {
+      "sha256": "4457c2ca4b21942b2e5ad788e8dcde3d95c40f45ce993f9af9044a79ea2e9e69",
+      "machine": "0x8664",
+      "exportsCount": 49
+    },
+    "libSceNpWebApi2": {
+      "sha256": "fc00f8b35b442351fbc65a6436efbd75e7733a808c0e75adb3c025cf66cf34c7",
+      "machine": "0x8664",
+      "exportsCount": 25
+    },
+    "libScePad": {
+      "sha256": "498a3cc4c3264006d5c601fee0c161f1e0b15eabbbe39baac22267dbbf574272",
+      "machine": "0x8664",
+      "exportsCount": 54
+    },
+    "libSceRazorCpu": {
+      "sha256": "702224d6567bc77d1ae5978c44639f4da2971baabecade97df811f05c4fdb674",
+      "machine": "0x8664",
+      "exportsCount": 9
+    },
+    "libSceRemoteplay": {
+      "sha256": "a75913d4af2a526e6da460ba0d1ab9488eadf13ea3ca14e18f389b49ce135715",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceRtc": {
+      "sha256": "284ae734f9283f5bbea58adaed996f9114aa59fbdc4afa6839dcd776df994129",
+      "machine": "0x8664",
+      "exportsCount": 34
+    },
+    "libSceSaveData.native": {
+      "sha256": "0fb233a19ceead5b88715378d5f8c3a449c048170a6f90ecc984de01922a5041",
+      "machine": "0x8664",
+      "exportsCount": 75
+    },
+    "libSceSaveDataDialog.native": {
+      "sha256": "585faec18d9a707e0038edf48a207867f4bea7916e828ce7dceb10f0265fa10f",
+      "machine": "0x8664",
+      "exportsCount": 10
+    },
+    "libSceSsl": {
+      "sha256": "c273ec9e5d03e7d76cb76c5d5827f810c837c5db7b70b54abbaaeb0d81e48bcd",
+      "machine": "0x8664",
+      "exportsCount": 21
+    },
+    "libSceSysmodule": {
+      "sha256": "23d50516dd65a81b04a5a9c55c4a92121597e8d4a8e4986f2724e28ce1980a98",
+      "machine": "0x8664",
+      "exportsCount": 18
+    },
+    "libSceSystemService": {
+      "sha256": "84e1c1bda3f3550565d243a6d4c4bd943d2dff10e3188e4328b24abdb91de507",
+      "machine": "0x8664",
+      "exportsCount": 24
+    },
+    "libSceUserService": {
+      "sha256": "a87a87d39e769a4cc68a118cdbb4b3c031c8eb28b5fdf6038748d7186b3d5179",
+      "machine": "0x8664",
+      "exportsCount": 21
+    },
+    "libSceVideoOut": {
+      "sha256": "2d5aba3570278638552eabc12508badfe6d40820fb00beffc1c1a79b5e450267",
+      "machine": "0x8664",
+      "exportsCount": 3033
+    },
+    "libSceWebBrowserDialog": {
+      "sha256": "5a8089169a63be415e869187d8b08c08084dec1c17dd00f1b73208663c7f8fd4",
+      "machine": "0x8664",
+      "exportsCount": 14
+    },
+    "libc": {
+      "sha256": "7ea6974248c1f1f8108ee37deb8a74de3ea72e4e9b26fdbdb05a6a23f033184e",
+      "machine": "0x8664",
+      "exportsCount": 952
+    },
+    "libkernel": {
+      "sha256": "58aa48ae9db6acd21481ef04c64c6b086344d05737ed130271cbc5f05b3d19da",
+      "machine": "0x8664",
+      "exportsCount": 707
+    },
+    "ulobjmgr": {
+      "sha256": "f4d2da8202739bfdc58911c99714d13a74f36282a8113b3394c1fe5f2aeaf26a",
+      "machine": "0x8664",
+      "exportsCount": 2
+    }
+  },
+  "productionShaderProof": {
+    "publicSyntheticCaseCount": 121,
+    "publicCasesPassed": true,
+    "publicCasesUsedActuallyLoadedProductionPrx": true,
+    "publicFixtureExecutableSha256": "89d0a4fa40a0615dccdb7a18e7c638db35bc99efe6c70e98d1736e016c261ba7",
+    "freshProductionPrxSha256": "d59c479d255e26fba4848c4f6dfde2ad2820a960baf2f18c378716b09b0a7867",
+    "allThreeFullPrivateRequestsPassed": true,
+    "privateRequestCount": 3,
+    "steps": [
+      "Prepare",
+      "Capture",
+      "Materialize"
+    ],
+    "completeMetadataDecodedAndRoundtripped": true,
+    "privateRequestSerialization": [
+      {
+        "serializerVersion": 14,
+        "fullMetadataRoundtrip": true,
+        "originalSerializationMatch": false,
+        "oldFormatCanonicalMigrationExplicit": true,
+        "materializedSpirvHeaderAndWordLengthValid": true,
+        "bindingLayoutWordCountMatchesSpirv": true
+      },
+      {
+        "serializerVersion": 15,
+        "fullMetadataRoundtrip": true,
+        "originalSerializationMatch": true,
+        "oldFormatCanonicalMigrationExplicit": false,
+        "materializedSpirvHeaderAndWordLengthValid": true,
+        "bindingLayoutWordCountMatchesSpirv": true
+      },
+      {
+        "serializerVersion": 15,
+        "fullMetadataRoundtrip": true,
+        "originalSerializationMatch": true,
+        "oldFormatCanonicalMigrationExplicit": false,
+        "materializedSpirvHeaderAndWordLengthValid": true,
+        "bindingLayoutWordCountMatchesSpirv": true
+      }
+    ],
+    "oldFormatBoundary": "The older serializer-14 request was fully decoded and explicitly migrated to the current canonical serialization; it is not claimed byte-identical to its older format. Both serializer-15 requests roundtripped exactly.",
+    "allCompilerCommandExitCodesZero": true,
+    "sourceArchiveAndToolInputsUnchanged": true,
+    "driverAbi": {
+      "exportsCount": 3692,
+      "namesOrdinalsForwardersIdentical": true,
+      "nativeImportsIdentical": true
+    },
+    "shaderCache": {
+      "sourceVersion": "0xee2929b1aa766da2",
+      "generatedHeaderSha256": "84543aaa241053749be5d575411fc7aef20402e4485c87494995f127b30591d3",
+      "sourceManifestSha256": "6195e93d24d323697bb3a2ca69871eec34a68484580ff5855af734eadd8b02f8",
+      "proofHeaderIncludedInActualGeneratorHashing": true,
+      "historicalVersionReused": false
+    }
+  },
+  "independentQuadCpuSemantics": {
+    "receiptSha256": "e558031ce0f44205af139e77945d11cafe10ea6bb750b83ab64e2d5923e2a4a9",
+    "reusedAsSeparatePreviouslyQualifiedCpuEvidence": true,
+    "headerSha256": "4c3b1144ca75aff928a573ee1930e08d26c370bef010ef37013a9d9cfad879a5",
+    "modelSourceSha256": "e0890499d65a540c0777a7c3ce3745554015763184cfe30a73002545101a5003",
+    "runnerSha256": "8a873dfd3fa7e4d4843b72ca7cf51d36c9c27053e9c3f39012e2f92e98f81436",
+    "eachNativeAndAsanUbsanRun": {
+      "fixtureCount": 16,
+      "acceptedFixtures": 5,
+      "rejectedFixtures": 11,
+      "rawInputComparisons": 18432,
+      "concreteRejectedCounterexamples": 8,
+      "acceptedDependencyFailures": 0,
+      "cfgBoundaryControls": 3
+    },
+    "mutationControlsDetected": [
+      "missing-helper-coordinate-gate",
+      "stale-wqm-epoch",
+      "subset-counted-as-entry-coverage"
+    ],
+    "boundary": "Independent finite binary32 derivative-dependence model for 64 lanes and helper-coordinate/EXEC epochs. No Vulkan filtering, Metal behavior, FEX, physical subgroup equivalence or gameplay proof."
+  },
+  "ownedProcessCleanup": {
+    "selectedDirectChildExitCode": 0,
+    "selectedChildGroupClosed": true,
+    "selectedChildGroupClosedAfterWineCleanup": true,
+    "selectedBuildPrefix": {
+      "stopExitCode": 0,
+      "waitExitCode": 0,
+      "otherPrefixesTouched": false
+    },
+    "additionalTestPrefix": {
+      "stopExitCode": 0,
+      "waitExitCode": 0,
+      "otherPrefixesTouched": false
+    },
+    "additionalBuildPrefix": {
+      "stopExitCode": 1,
+      "waitExitCode": 0,
+      "otherPrefixesTouched": false
+    },
+    "compilerProofPrefix": {
+      "stopExitCode": 0,
+      "waitExitCode": 0,
+      "otherPrefixesTouched": false
+    },
+    "cleanupStatusBoundary": "The recorded additional-build stop returned 1 and the terminal wait returned 0; the reviewed cleanup contract accepts stop 0 or 1 followed by wait 0. Other owned-prefix stop/wait pairs were 0/0."
+  },
+  "sealedExport": {
+    "qualificationSha256": "5441692f90cca968ab5758e5369090cd8cf0fe04a61105bb2891d4df6678cabd",
+    "finalProvenanceSha256": "4b3e428f93f6dd7344b6293ed27aeab0b1c9a1c5e9a6d9518d255b8cad990035",
+    "finalArchiveSha256": "0d8b1822621cb1200ef04219c91651e726017770be2c7f92b010a58e8dcaef48",
+    "sealingReceiptSha256": "218ff615484742b4059c8566bd3ac27b405777758c900c57f11ce6a4ae8ce19d",
+    "preFinalSelectedProvenanceSha256": "c28565624cc218df8d989dc7dbbca3679b6700ffbfd1d4869c148aeb9369babb",
+    "preFinalSelectedArchiveSha256": "4239475d8123711bb6d9de4812cbf6d0ac5da2f0d9215027c8b9a9a23f0b871d",
+    "payloadFilesVerified": 50,
+    "archiveEntriesIncludingManifest": 51,
+    "containsGameData": false,
+    "embeddedProvenanceEqualsOuterWithoutArchiveHash": true,
+    "qualificationImmutableDuringSeal": true,
+    "qualifiedBinaryInputsUnchangedDuringSeal": true,
+    "mutualHashLinks": false,
+    "dag": "Immutable pre-final selected-build snapshot -> runtime qualification -> final provenance containing qualification digest -> archive embedding final provenance without its archive digest -> outer provenance archive digest and sealing receipt."
+  },
+  "qualificationBoundaries": {
+    "plain3dCandidateIncluded": false,
+    "physicalGpuExecution": false,
+    "fexExecution": false,
+    "ipadExecutionWithThisFreshRuntime": false,
+    "gameplayVerifiedWithThisFreshRuntime": false,
+    "nativeWindowsAvxQualifiedByThisRun": false,
+    "allPrivateGameShadersQualified": false,
+    "sixtyFpsQualified": false,
+    "githubActionsUsed": false,
+    "deviceActions": false,
+    "rawPrivateShaderRequestsOrLogsPublished": false,
+    "publicOrCanonicalSourcesEditedByEvidencePreparation": false
+  },
+  "limitations": [
+    "This fresh host qualification does not replace historical device or Windows failure evidence.",
+    "Three complete retained private shader requests passed CPU staged materialization through the fresh PRX; that does not prove all MiniGolf shaders or GPU rendering.",
+    "The separate plain-3D sample candidate is excluded. Its isolated work does not change this source freeze or sealed runtime.",
+    "The native iPad host and physical MoltenVK feature/renderer path still require separate validation with this runtime."
+  ]
+}

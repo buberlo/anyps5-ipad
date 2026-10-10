@@ -1,0 +1,538 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "source_integrated_hle_host_qualified_native_app_built_unsigned_not_installed",
+  "architecture": "PS5 ELF relinked to x86-64 Windows PE; Wine/FEX; Vulkan to MoltenVK to Metal",
+  "sourcePins": {
+    "AnyPS5": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "FEX": "14c92681f4d62cf84d901460e0358de09c8847a7",
+    "Madeira": "48f976429c189f8396e23d251d8a82f43c705922",
+    "wine": "257f271cfffed9f22f7987cac53bc00095d092fe",
+    "MoltenVK": "67b2682699d7903606b97a0392061d85d27d49e6",
+    "SPIRV-Cross": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165"
+  },
+  "upstreamChecks": {
+    "checkedAt": "2026-10-09T11:17:41.126944+00:00",
+    "records": [
+      {
+        "name": "AnyPS5",
+        "branch": "main",
+        "pin": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+        "upstream_head": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+        "status": "update_required"
+      },
+      {
+        "name": "Madeira",
+        "branch": "main",
+        "pin": "48f976429c189f8396e23d251d8a82f43c705922",
+        "upstream_head": "48f976429c189f8396e23d251d8a82f43c705922",
+        "status": "current"
+      },
+      {
+        "name": "FEX",
+        "branch": "monthly release",
+        "url": "https://github.com/FEX-Emu/FEX.git",
+        "tag": "FEX-2610",
+        "release_commit": "14c92681f4d62cf84d901460e0358de09c8847a7",
+        "pin": "14c92681f4d62cf84d901460e0358de09c8847a7",
+        "upstream_head": "14c92681f4d62cf84d901460e0358de09c8847a7",
+        "status": "current",
+        "installed_runtime_qualified": false,
+        "release_ancestor_of_pin": true
+      },
+      {
+        "name": "FEX-main",
+        "branch": "main",
+        "pin": "14c92681f4d62cf84d901460e0358de09c8847a7",
+        "upstream_head": "14c92681f4d62cf84d901460e0358de09c8847a7",
+        "status": "current"
+      },
+      {
+        "name": "wine",
+        "branch": "madeira-lgpl",
+        "pin": "257f271cfffed9f22f7987cac53bc00095d092fe",
+        "upstream_head": "257f271cfffed9f22f7987cac53bc00095d092fe",
+        "status": "current"
+      },
+      {
+        "name": "MoltenVK",
+        "branch": "main",
+        "pin": "67b2682699d7903606b97a0392061d85d27d49e6",
+        "upstream_head": "67b2682699d7903606b97a0392061d85d27d49e6",
+        "status": "current"
+      }
+    ],
+    "anyps5MainFullyIntegrated": false
+  },
+  "adopted": [
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/927",
+      "scope": "Guest SysV C personality export and unwind routing; separate host Microsoft ABI; macOS-only implementation excluded"
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1571",
+      "scope": "Production shader IR exp2 minimum-normal clamp"
+    },
+    {
+      "url": "https://github.com/boykopovar/AnyPS5/pull/1580",
+      "scope": "Adapted conditional storage-buffer update-after-bind, robust-access compatibility, mixed limits, separate layout/pool flags and preserved ownership"
+    },
+    {
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross/pull/2704",
+      "scope": "All seven upstream files; precise float/half multiplication and matrix negative-zero accumulation"
+    }
+  ],
+  "patches": {
+    "anyps5/0073-export-guest-c-personality.patch": "33020bee5328af8a68504da6293004873c779158ea0a4c567c72ce89e62e94af",
+    "anyps5/0074-exp2-smallest-normal-boundary.patch": "8e2d32963833354b9744e4e48937932b89cc653ae944ea65d9bbd76fc2a99d7a",
+    "anyps5/0075-storage-buffer-update-after-bind.patch": "84ddf96aae636240189fd771d799265a053ecd465f81f6c722369930c5742b67",
+    "spirv-cross/0001-precise-multiply-negative-zero.patch": "ea7cdcb861de92521a2750bad5d078739b06418f26de7374f1b280e1a5a1c966"
+  },
+  "patchFormatRepairs": [
+    {
+      "patch": "patches/anyps5/0069-defer-guest-module-lifecycle.patch",
+      "beforeSHA256": "9ea9240806bb1957a1efe8cc077b563d04a2206abf0cb430421a76443a68d337",
+      "afterSHA256": "03312c8e3653aa18ebe37a5ab9136d4c00e6d7b0c41490f487bf0d0f1f651adb",
+      "addedNewFileModeHeaders": 4,
+      "hunkContentChanged": false
+    },
+    {
+      "patch": "patches/anyps5/0072-dispatch-json-virtual-allocators.patch",
+      "beforeSHA256": "5ff0836b0182b2b464beb18bda29189da9890e3861338daaa926be230b5664ee",
+      "afterSHA256": "21c0bfa83720c533a17b7126488011b6a41ee4a4dfe90eb75865e47176716ee3",
+      "addedNewFileModeHeaders": 1,
+      "hunkContentChanged": false
+    },
+    {
+      "patch": "patches/anyps5/0070-forward-kernel-module-lifecycle-arguments.patch",
+      "beforeSHA256": "53e112d08e0d23f13c5f3bc686c50604235a8da70fcebebdc46e0fe45cbcdc64",
+      "afterSHA256": "aaf134e90d9ed091f020332a529172b832a08d9bac33be515ec241034c8299c8",
+      "addedDiffGitHeaders": 7,
+      "addedNewFileModeHeaders": 4,
+      "hunkContentChanged": false
+    }
+  ],
+  "sourceReproduction": {
+    "pristinePinnedFiles": true,
+    "forwardMatchesActualSourceBytesAndExecutableModes": true,
+    "reverseRestoresPristineBytesAndExecutableModes": true,
+    "effectiveUnderPythonOptimize": true,
+    "activeSeriesPatchCounts": {
+      "anyps5": 75,
+      "madeira": 40,
+      "wine": 4,
+      "fex": 3,
+      "spirv-cross": 1
+    },
+    "checkerSha256": "a4d84e15c0cf0e9d462060e2267bbe97d536c938f42611ea18bff8def02aaf40",
+    "logSha256": "09de7988b677585087163f8eb03fab938da31c0fe3099d150922524aa355ff0c",
+    "isolatedControlsPassed": 9
+  },
+  "exceptionQualification": {
+    "ctestsPassed": [
+      "exception_personality",
+      "windows_exceptions",
+      "guest_raise_exception"
+    ],
+    "skipped": [],
+    "newNidGuestCallPassed": true,
+    "oldWrongAbiNegativeControlExit": 38,
+    "exportMapping": {
+      "schema": 1,
+      "guestNid": "FW2QeoYK7-c",
+      "newGuestRva": 213872,
+      "newPatchedGuestRva": 213872,
+      "newHostRva": 213904,
+      "newPatchedHostRva": 213904,
+      "priorHostRva": 213888,
+      "priorPatchedGuestRva": 213888,
+      "newNidTargetsGuestSysV": true,
+      "newNamedHostWrapperPreserved": true,
+      "priorNidTargetedHostMicrosoftAbi": true
+    },
+    "finalHleNidCallPassed": true,
+    "finalHleNidLogSha256": "4d34a33af44488f3189f2392898ab64bc41d735f638e4c71dfcc1a3b7be63fe1",
+    "finalNidPatchedLibcSha256": "caab455893b934bf3900003a0cab0d7daa0cf640308b228cda3f01bdb37bf492"
+  },
+  "shaderAndDescriptorHostQualification": {
+    "exp2": {
+      "command": "python3 upstreams/AnyPS5/core/libs/prx/libSceAgcDriver/tests/CheckExp2Boundary.py",
+      "logSHA256": "01e9be164048b37a4f939803d46e34349d4446ba20a146dbe71f5e9a5074f730",
+      "ASan": true,
+      "UBSan": true,
+      "fixtures": 12,
+      "productionFailures": 0,
+      "removedClampNegativeControlFailures": 2,
+      "GPUExecution": false
+    },
+    "robustAccessFeaturePolicyCasesPassed": 8,
+    "graphicsAndDepthWineTests": [
+      {
+        "name": "descriptor-focus-v3",
+        "arguments": [
+          "--descriptor-update-after-bind-only"
+        ],
+        "exit": 0,
+        "seconds": 1.5393526249999998,
+        "logSHA256": "6b0fe06574167af5cb4d73fef2d68b6bae6a3d3c1e57a48586aa480ff1eae6c9"
+      },
+      {
+        "name": "graphics-full-v3",
+        "arguments": [],
+        "exit": 0,
+        "seconds": 7.461919291999999,
+        "logSHA256": "2dee932227766ae46af00681f37c8d2bcae51a53a12e7927809295519570809a"
+      },
+      {
+        "name": "depth-state-v3",
+        "arguments": [
+          "--depth-state-only"
+        ],
+        "exit": 0,
+        "seconds": 0.5750082919999997,
+        "logSHA256": "e62debea5dad6bb4438f5b2658c2453281f255fc4d21ffc866ea3e66d3f65983"
+      }
+    ],
+    "physicalGpuExecuted": false
+  },
+  "nativeMacMetalQualification": {
+    "executed": true,
+    "device": "Apple M3 Pro",
+    "channels": 40,
+    "floatAndHalf": true,
+    "scalarVectorMatrix": true,
+    "patchedFailures": 0,
+    "positiveZeroControlFailures": 24,
+    "positiveZeroControlFailedExactlyNegativeZeroChannels": true,
+    "fastMathEnabled": false
+  },
+  "hleBuild": {
+    "status": "built_host_tests_passed_device_not_tested",
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7",
+    "incrementalBuildTreeReused": true,
+    "gameDataIncluded": false,
+    "libraryCount": 47,
+    "compilerRuntimeDllCount": 3,
+    "archiveSha256": "c659699feaf3f9c1e8438c25f76f4e04852bc854bbf0da65d43b04c4154a0776",
+    "archiveBytes": 28344738,
+    "archiveFileHashes": {
+      "unpatched/libSceAgc.prx": "8483b9f187981947fd5d9fab2fd9eeaded6aae25fe4983c101f223e77d3fb860",
+      "unpatched/libSceAgcDriver.prx": "81d964555454e83e03e6fea82e96867855e5d8573b31f0361eaaba5e2b09016b",
+      "unpatched/libSceAjm.native.prx": "7e509365b33038404f4cb26139079caf66b214c08140a4918f811b39f7b3ea83",
+      "unpatched/libSceAmpr.prx": "727e0edb6f99455b22340611a200aaee92da89783a63ee066e50a5e2fc3aab96",
+      "unpatched/libSceAppContent.prx": "ec536a133a9704a21a1262faf4d32413578c11df9ae91c311e4c321d0901db6c",
+      "unpatched/libSceAudio3d.prx": "08ec20da4c989e2e4e70339d796dead457bd294443d33397fd7fee6918635b39",
+      "unpatched/libSceAudioIn.prx": "ab7a4567a620363770e36d48015d9633f564d0f20939def0af2d1e067f1e080f",
+      "unpatched/libSceAudioOut.prx": "64a3117a6d1c5a6c4db58d69c93c65230e24cb39080cbf4d772be7c9cb7095d4",
+      "unpatched/libSceAvPlayer.native.prx": "64e02729125ddf2526594f4a37a32b8d5f1471a7a8d4a2903fe0bbda767e862c",
+      "unpatched/libSceCdlgPlayerReview.prx": "a5336ddd37ec0ef095ee1935f5243202acb565aec31f140ef9d4ca5e3ec34816",
+      "unpatched/libSceCommonDialog.prx": "ddba45df6cb672bd43fa8cc4a4681e0fdca0234fb78784e60282dd4bdccb0453",
+      "unpatched/libSceHmd.prx": "10570a89874af6a2666cfc06c1b1fda684f2bd08bf6be049e690affd34bed365",
+      "unpatched/libSceHttp.prx": "46548411fa6c7296c64d467425b75053e58212b0f4c2dd7223bcc6a80b77e1c6",
+      "unpatched/libSceHttp2.prx": "44b3724582165604ce9ecb0a1f9ff98da5498840646df1ebfdcba982037348b6",
+      "unpatched/libSceIme.prx": "435270078f51d650e520c73dddeef6d6da29400ce0f3341be106cdd763380402",
+      "unpatched/libSceImeDialog.prx": "7ef4de46e4fa4674002028795257df81d2fc80ba21784eda9dec21f94d334fc4",
+      "unpatched/libSceJson2.prx": "c0f507ad6dbe81b3af3c427bd6bc21e4466e239bc114f550eba1549d058d4786",
+      "unpatched/libSceKeyboard.prx": "a08102abe3c0c4ed7cc5e2483b506dd2c69666a2b1203e7e10278e4c1f36ac4c",
+      "unpatched/libSceLibcInternal.prx": "6bd431d09e96a069bc2174d86847bfc0253a7c5f5f9f65f47db1782f7a523846",
+      "unpatched/libSceMouse.prx": "891d6b658511774f8126bdf0792ad4e8392acf9a45f5b2205b97af237c612858",
+      "unpatched/libSceMsgDialog.native.prx": "30fa1cf6e973296fc0d6a95cfa3d19bf07756ad36a75a00ed2b22d15ed9524fb",
+      "unpatched/libSceNet.prx": "1d6d9cca313170b5f77fbca9730789154d44d8ac8447484b06d374b4bb712b37",
+      "unpatched/libSceNetCtl.prx": "42046741ce7f0db88c81010ca8e050dd9d7170bffb1ee7605fc60e2e830b5882",
+      "unpatched/libSceNpAuth.prx": "4330113d8aeda910ecda9c2363d748012b6f4dd3ceb4278d8d18a3e299947502",
+      "unpatched/libSceNpCommerce.prx": "685e4d2c6f480794bbb6c8b5d3954bb5cde10d0b7b183d957932eb1b3ffacf84",
+      "unpatched/libSceNpEntitlementAccess.prx": "5b9dbf4906cd2d410c71d9f85f1e72f2fe4c51cf503063a534aa4c4e87091aa6",
+      "unpatched/libSceNpGameIntent.prx": "40146cf38d13e9e999f00e46e8b406b6eac4f78a6723faf0895d5f7c44a7f3eb",
+      "unpatched/libSceNpManager.prx": "5e42a17a1f4eb15d1f8b64f86ff6ba001a3e9c1ec756a9defd5d95db68caa7cf",
+      "unpatched/libSceNpSessionSignaling.prx": "6ad6b5c2f0dc5b96fee9d401113660132cfc8fb291c2e2c1bf39b0bede5a2cf8",
+      "unpatched/libSceNpTrophy2.prx": "7fb6ee35cfc55bd67f16791dc3da94930df6287c38f46aad338a5ae18c8acd18",
+      "unpatched/libSceNpUniversalDataSystem.prx": "763c37896cef34c52983ec4e557be6ef87602296958375e56581e3e856438995",
+      "unpatched/libSceNpWebApi2.prx": "5c034b0bfd6fa404119a226e33ce0c39339c7422f2a46f775481da58cea47eb0",
+      "unpatched/libScePad.prx": "3b6f8df6f470015171a709403521aa677d2b59e9f228dbbd3563868249898f5d",
+      "unpatched/libSceRazorCpu.prx": "cd1e6be469f9a4e9afc26eb4ec37750eddc1af084e002f9f6e3a2e4e2bc3cf21",
+      "unpatched/libSceRemoteplay.prx": "77d3af6094d83a19bf891a1239706d184043490f29e2239ed0f3d4380c86b30c",
+      "unpatched/libSceRtc.prx": "3444686cab364125bfb91f1e92baeef4e18ea75ca6f5a4f6c58de24b5614caad",
+      "unpatched/libSceSaveData.native.prx": "9150afa9794ee5c4b6d4ca74619994cccc7100ce4f2a8936a50cccfce3189833",
+      "unpatched/libSceSaveDataDialog.native.prx": "db436916e8f08c8c2fa6f704301e4018ca087fbd739b22ff083175339d44c55e",
+      "unpatched/libSceSsl.prx": "7fa9aa44261059d8165f9e13cfaa71534cc46878ab620e7bd57969e1e4b36133",
+      "unpatched/libSceSysmodule.prx": "1b8a10397a4b7155d5c020a5326f8ed704b764c606b2dfe2827d2112ab440d75",
+      "unpatched/libSceSystemService.prx": "234a1f9050093d9932413e08d72f408c5809e59737637f8685c7f89f055f903c",
+      "unpatched/libSceUserService.prx": "b13cf532b1baed92700948e121f2e09ce2f351775cded2e1a7e9c63a775d8976",
+      "unpatched/libSceVideoOut.prx": "7cfc095c005f06352f9ff6d726b6d757e8bc958dc8d2d1ab0f0ff2d13f56d72f",
+      "unpatched/libSceWebBrowserDialog.prx": "30609856f21049d4d8b8c3860a65848e76e21f2b5ec1587c3e32d28e602f6fd8",
+      "unpatched/libc.prx": "f0ae208ce55947a83371570f888c591d96cc7536f2b5cf5182711ab831b7cb87",
+      "unpatched/libkernel.prx": "4a84dd63003f5e7e7eea697ce5e94641b41e5166c7fdec015df19bfb3f730103",
+      "unpatched/ulobjmgr.prx": "91473f35dc383126473144c6348c3df086f06def5f10def37ae635c17c78c104",
+      "runtime/libgcc_s_seh-1.dll": "0e41bb41c8d5d5a1c16150cf860225e835ff8fdbb351073835bf45eaa8fe831d",
+      "runtime/libstdc++-6.dll": "d1aebaa36202db736b96a7e4f491eb457256ff6e3cac8e225dae05790bacd147",
+      "runtime/libwinpthread-1.dll": "a9230c9b3590af438066c18afa2185ac6c74b544f58606a0d20d80039b102179"
+    },
+    "hostTargetsPassed": [
+      "windows_exception_tests",
+      "exception_personality_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_json2_virtual_allocator_tests",
+      "guest_compatibility_api_tests",
+      "guest_hmd_tests",
+      "guest_player_review_dialog_tests",
+      "guest_ulobjmgr_tests",
+      "guest_audio3d_parameters_tests",
+      "guest_audio3d_port_tests",
+      "guest_audio3d_object_attributes_tests",
+      "guest_kernel_module_lifecycle_tests",
+      "savedata_memory_growth_tests",
+      "savedata_memory_metadata_tests",
+      "savedata_native_write_replacement_tests",
+      "savedata_replace_file_failure_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "agc_driver_graphics_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "hostCases": {
+      "guest_kernel_module_lifecycle": {
+        "status": "passed"
+      },
+      "savedata_memory_growth": {
+        "status": "passed"
+      },
+      "savedata_memory_growth_read_failure": {
+        "status": "passed"
+      }
+    },
+    "skipped": [],
+    "hostArena": {
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000"
+    },
+    "provenanceSha256": "c4d0ce81de6d95a601623269699a490df0cdf1c104530fe31775d5e5d4ffeeff",
+    "flags": {
+      "build_type": "Release",
+      "APS5_SLIM": true,
+      "APS5_ENABLE_TIMING_LOG": false,
+      "APS5_AGC_CREATE_LOG": false
+    },
+    "buildDriverLogSha256": "6cac4bfc11c91adc66a7606a1fc1024adcd79fae7e82a88594b13159ca5203a0",
+    "initialAttempt": "Compilation completed; relative Wine path failed before tests. Retried with absolute path; all tests passed."
+  },
+  "moltenvkIos": {
+    "schemaVersion": 1,
+    "status": "built_not_installed",
+    "platform": "ios",
+    "moltenvkPin": "67b2682699d7903606b97a0392061d85d27d49e6",
+    "spirvCrossPin": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165",
+    "spirvCrossPatchSha256": "ea7cdcb861de92521a2750bad5d078739b06418f26de7374f1b280e1a5a1c966",
+    "spirvCrossEmitterSha256": "09513cde0adb5b83af9e2cad5eaaa889bc7a2174d356b0347299b1364e0fe4e8",
+    "libraries": [
+      {
+        "path": "Package/Release/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a",
+        "bytes": 7063792,
+        "sha256": "ffa14f19f7f46737b6a83897986d6862c04462ddd92f87512d350a2a9cc8e0b4",
+        "libraryIdentifier": "ios-arm64",
+        "supportedPlatform": "ios",
+        "supportedPlatformVariant": null,
+        "architectures": [
+          "arm64"
+        ]
+      }
+    ],
+    "boundary": "Local archive/package build only. Native app rebuilding, signing, installation and device/game validation remain separate.",
+    "guardControlsPassed": 12,
+    "guardSha256": "d3a00d538c44a72c0739c7971a05448af0a2a668c275753cc1872fc6cfe58a84",
+    "allFourCompiledHelperLiteralsVerified": true
+  },
+  "nativeApp": {
+    "status": "audited_native_app_compiled_linked_unsigned_not_installed",
+    "bundleIdentifier": "com.buberlo.anyps5ipad",
+    "bundleVersion": "42",
+    "bundleShortVersion": "0.1.9",
+    "configuration": "Debug; GCC_OPTIMIZATION_LEVEL=2; SWIFT_OPTIMIZATION_LEVEL=-O; dwarf-with-dsym",
+    "codeSigning": "disabled",
+    "machOCodeSignaturePresent": false,
+    "executable": {
+      "bytes": 32203176,
+      "sha256": "1156b9cf7485820a559315413246f773a99c1f094f2588a685e52b85fe8f89d1",
+      "allFourCorrectedMslHelperLiteralsPresent": true,
+      "architecture": "Mach-O 64-bit executable arm64"
+    },
+    "extensions": [
+      {
+        "name": "MadeiraJITHelper.appex",
+        "executablePresent": true,
+        "sha256": "6841124d2458f33643088992d07a6bfc50bcc0b41754f48def2508767d635052"
+      }
+    ],
+    "fexArchives": [
+      {
+        "name": "libFEXCore.a",
+        "bytes": 5044112,
+        "sha256": "9d5992c3cbc59a3759ed81391c02f4538db95898fdda54d3def35aef988ebcfb"
+      },
+      {
+        "name": "libFEXCore_Base.a",
+        "bytes": 281656,
+        "sha256": "a8bbc9fd982a00b2f19a388fea34637896431cfe6701ac057b7ff393bb45626a"
+      },
+      {
+        "name": "libJemallocLibs.a",
+        "bytes": 9168,
+        "sha256": "79c65a13f8de43b3d620ea407af22c31c5be94de785460bd0c52418c59cf6fb5"
+      }
+    ],
+    "nativeArchives": [
+      {
+        "name": "libMoltenVK.a",
+        "bytes": 7063792,
+        "sha256": "ffa14f19f7f46737b6a83897986d6862c04462ddd92f87512d350a2a9cc8e0b4"
+      },
+      {
+        "name": "libaps5_ui.a",
+        "bytes": 15144,
+        "sha256": "309adc4f0fc22e9d6faf05c7277c7c9126ed0de7462e6980e8604f65101a2dc5"
+      },
+      {
+        "name": "libavcodec.a",
+        "bytes": 720984,
+        "sha256": "670310cf187b91345a9bd974614475b240ab5bf9a79ace05962b2df9ab0eee4d"
+      },
+      {
+        "name": "libavformat.a",
+        "bytes": 595832,
+        "sha256": "95b74ed519629b6808f1ee5f8993666f738b6fed9d9af515a47f7328dff68494"
+      },
+      {
+        "name": "libavutil.a",
+        "bytes": 896496,
+        "sha256": "fe131f8200233876dddad513c8b05db5afaa142d5df1b1a145607241b5673d08"
+      },
+      {
+        "name": "libgmp.a",
+        "bytes": 911800,
+        "sha256": "46208e5418b923c1838a8f4838806d112afcdbfd3cd10f49b83beb7e71770cfa"
+      },
+      {
+        "name": "libgnutls.a",
+        "bytes": 4096856,
+        "sha256": "c55ff94f5cad0dedadd21a5d11f8ca3726601e6ef4b1d43f4406e0d76b6e7ef0"
+      },
+      {
+        "name": "libhogweed.a",
+        "bytes": 1147120,
+        "sha256": "f4fe77a080b08569475ea556248304db445b2335ff6be8e5fb9ce008364a6e5e"
+      },
+      {
+        "name": "libmadeira_rppairing.a",
+        "bytes": 7187920,
+        "sha256": "00b62b1e445aa9c84912aa132bf9b23ff5d5da7ceabde3f1251b74c93d74b842"
+      },
+      {
+        "name": "libnettle.a",
+        "bytes": 1587000,
+        "sha256": "48e55330dd6e7dc8253342a0a59c355db4970527a1a7ea27246953d625d9afcb"
+      },
+      {
+        "name": "libntdll_unix.a",
+        "bytes": 2176576,
+        "sha256": "98a7def4d2cb44eb737c3b06d14f6c20f0bfb4507f7b5985a2fd59809c202705"
+      },
+      {
+        "name": "libswresample.a",
+        "bytes": 121064,
+        "sha256": "290781ec8a1ba28bb944b43d5d84d6c9c3a3a39ea3ea4b699c02275c6d2097b1"
+      },
+      {
+        "name": "libwin32u_unix.a",
+        "bytes": 3866664,
+        "sha256": "5bb6ef91bdbe38d0f94188a0a77a65bad5eaa0adb823ea4f13ec9516874cb118"
+      },
+      {
+        "name": "libwineserver.a",
+        "bytes": 1318008,
+        "sha256": "5c4abf528a3d74eab5f23538fd7f4c2e9d161068f988ec2787002fae0cc476cc"
+      },
+      {
+        "name": "libwinevulkan_unix.a",
+        "bytes": 883840,
+        "sha256": "a8b9c2c52988828305323e4874b52b2a6a3a6fc35baae8761af8c155dd59db13"
+      }
+    ],
+    "sourcePreservation": {
+      "buildProducerScriptsAndRecordedReceiptsUnchanged": {
+        "scripts/m3-madeira-ios.sh": true,
+        "scripts/m3-madeira-pe.sh": true,
+        "scripts/m3-madeira-unix-libs.sh": true,
+        "scripts/check-ios-pe.py": true,
+        "scripts/check-moltenvk-package.py": true,
+        "scripts/build-moltenvk-local.sh": true,
+        "scripts/apply-patches.sh": true,
+        "build/moltenvk-local/ios/receipt.json": true,
+        "build/upstream-review-20261009/guard-negative-controls/receipt.json": true
+      },
+      "allFourUpstreamPinsUnchanged": true,
+      "peSourceStateStillMatchesActualRecordedBuild": true,
+      "boundary": "Producer scripts and recorded source pins/patch hashes verified; generated native/PE build outputs and license staging are intentionally rebuilt."
+    },
+    "buildLogSha256": "2eec8ee2f83b58fb0c21d639cdc004c62bc97ad8669f96a6735c7640c01ac2a7"
+  },
+  "embeddedPeComponents": {
+    "ntdll.dll": {
+      "sha256": "5c87f2726f5f36a1a72a23ad9283616d21b963650385525a03e9e63bc97c9614",
+      "bytes": 1572864,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "xtajit64.dll": {
+      "sha256": "e7e6daf5eb0a45764ec4c09b084951c51c7f7241779d22e4ab56694f8d3556e3",
+      "bytes": 5865472,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "winevulkan.dll": {
+      "sha256": "458e1368de5d568674436307e74c80fd248ed94708d76468e6b3316260e1f7a4",
+      "bytes": 917504,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    },
+    "vulkan-1.dll": {
+      "sha256": "c3db118a995543fce40abae156f008f2cfc67eacf486263817ee67da0a094a15",
+      "bytes": 655360,
+      "machine": "0x8664",
+      "arm64ec_code_map": true
+    }
+  },
+  "excluded": {
+    "AnyPS51565": "Only skips a vertex subgroup test absent in this pin; no runtime feature provided",
+    "Madeira227": "Overlapping advertised reservation tails; incompatible ownership and arena predicates",
+    "nativeArm64FexCoreAndAot": "Research paths with missing guest signal/exception/module contracts"
+  },
+  "acceptanceBoundary": {
+    "localBuildsOnly": true,
+    "githubActionsUsed": false,
+    "signed": false,
+    "installed": false,
+    "iPadExecuted": false,
+    "gameExecuted": false,
+    "MiniGolfPlayableQualified": false,
+    "fpsImprovementMeasured": false,
+    "originalDownloadsAndPrivateGamePackagesModified": false,
+    "nextDeviceGate": "Prepare a new private game package with these host tools/HLE, sign/version the native app, then qualify GPU and MiniGolf startup on the coordinated iPad."
+  }
+}

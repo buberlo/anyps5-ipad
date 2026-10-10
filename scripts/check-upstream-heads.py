@@ -18,6 +18,7 @@ UPSTREAMS = (
     ("AnyPS5", "main"),
     ("Madeira", "main"),
     ("FEX", "monthly release"),
+    ("FEX-main", "main"),
     ("wine", "madeira-lgpl"),
     ("MoltenVK", "main"),
 )
@@ -34,7 +35,9 @@ def check(item):
     name, branch = item
     if name == "FEX":
         return check_fex_release()
-    path = "upstreams/" + name
+    # Also check post-release CPU fixes. A current monthly tag alone does not
+    # establish that the official development branch has no newer commits.
+    path = "upstreams/" + ("FEX" if name == "FEX-main" else name)
     record = {"name": name, "branch": branch}
     try:
         entry = git("ls-files", "--stage", "--", path).split()
@@ -56,7 +59,7 @@ def check(item):
 
 
 def check_fex_release():
-    """Compare the canonical monthly release with the pinned source commit.
+    """Check that the pinned source includes the canonical monthly release.
 
     The iOS port is a local patch series. Source freshness never establishes
     qualification of an installed app or game package.
@@ -98,6 +101,8 @@ def check_fex_release():
         if result.returncode not in (0, 1):
             raise ValueError("ancestry check failed")
         record["release_ancestor_of_pin"] = result.returncode == 0
+        if result.returncode == 0 and pin != sha:
+            record["status"] = "release_included"
     except (OSError, subprocess.SubprocessError, ValueError) as error:
         record.update(status="query_failed", reason=type(error).__name__)
     return record

@@ -46,6 +46,27 @@ class PrivateGameTests(unittest.TestCase):
         path.write_bytes(data)
         return game.needed_libraries(path)
 
+    def test_deferred_lifecycle_requires_exact_discovered_plugin(self):
+        selected = {"eboot.elf": None, "Media/Plugins/SaveData.prx": None}
+        self.assertEqual(game.deferred_lifecycle_modules(["SaveData.prx"], selected), ["SaveData.prx"])
+        self.assertEqual(game.deferred_lifecycle_modules([], selected), [])
+        for name in ("Unknown.prx", "savedata.prx", "eboot.elf"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                game.deferred_lifecycle_modules([name], selected)
+
+    def test_deferred_lifecycle_rejects_paths_globs_and_option_tokens(self):
+        for name in ("../SaveData.prx", "Media/Plugins/SaveData.prx", r"Media\SaveData.prx",
+                     "*.prx", "", "--option.prx", "bad\x00.prx", "bad\n.prx"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                game.deferred_lifecycle_modules([name], {name: None})
+
+    def test_deferred_lifecycle_rejects_duplicate_or_ambiguous_modules(self):
+        with self.assertRaises(ValueError):
+            game.deferred_lifecycle_modules(["SaveData.prx", "SaveData.prx"], {"SaveData.prx": None})
+        with self.assertRaises(ValueError):
+            game.deferred_lifecycle_modules(["SaveData.prx"],
+                {"Media/Plugins/SaveData.prx": None, "sce_module/SaveData.prx": None})
+
     def test_runtime_index_is_preserved_but_dump_executables_are_not_assets(self):
         dump = self.root / "dump"
         contents = {"~INDEX": b"original runtime index", "data.js": b'{"project":[]}',

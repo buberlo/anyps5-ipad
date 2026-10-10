@@ -1,0 +1,469 @@
+diff --git a/core/libs/prx/libkernel/CMakeLists.txt b/core/libs/prx/libkernel/CMakeLists.txt
+--- a/core/libs/prx/libkernel/CMakeLists.txt
++++ b/core/libs/prx/libkernel/CMakeLists.txt
+@@ -99,6 +99,27 @@
+         add_test(NAME nid_patcher_symbol_versions COMMAND ${Python3_EXECUTABLE}
+             ${LIBS_INCLUDE_DIR}/nid/tests/test_symbol_versions.py $<TARGET_FILE:nid_patcher>)
+     endif()
++    foreach(lifecycleFixture IN ITEMS guest_kernel_lifecycle_fixture guest_kernel_lifecycle_incomplete_fixture guest_kernel_lifecycle_native_fixture)
++        add_library(${lifecycleFixture} SHARED ${LIBS_INCLUDE_DIR}/tests/GuestKernelModuleLifecycleFixture.cpp)
++        target_include_directories(${lifecycleFixture} PRIVATE ${LIBS_INCLUDE_DIR})
++        configure_windows_unwind(${lifecycleFixture})
++        set_target_properties(${lifecycleFixture} PROPERTIES BUILD_WITH_INSTALL_RPATH ON INSTALL_RPATH "$ORIGIN")
++    endforeach()
++    target_compile_definitions(guest_kernel_lifecycle_incomplete_fixture PRIVATE KERNEL_MODULE_FIXTURE_INCOMPLETE)
++    target_compile_definitions(guest_kernel_lifecycle_native_fixture PRIVATE KERNEL_MODULE_FIXTURE_NATIVE)
++    target_link_libraries(guest_kernel_lifecycle_native_fixture PRIVATE guest_kernel_lifecycle_fixture)
++    add_test_executable(guest_kernel_module_lifecycle_tests ${LIBS_INCLUDE_DIR}/tests/GuestKernelModuleLifecycle.cpp)
++    target_include_directories(guest_kernel_module_lifecycle_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(guest_kernel_module_lifecycle_tests PRIVATE libkernel libc)
++    configure_windows_unwind(guest_kernel_module_lifecycle_tests)
++    add_dependencies(guest_kernel_module_lifecycle_tests guest_kernel_lifecycle_fixture guest_kernel_lifecycle_incomplete_fixture guest_kernel_lifecycle_native_fixture)
++    add_test(NAME guest_kernel_module_lifecycle COMMAND guest_kernel_module_lifecycle_tests
++        $<TARGET_FILE:guest_kernel_lifecycle_fixture> $<TARGET_FILE:guest_kernel_lifecycle_incomplete_fixture> $<TARGET_FILE:guest_kernel_lifecycle_native_fixture>)
++    set_tests_properties(guest_kernel_module_lifecycle PROPERTIES TIMEOUT 20)
++    if(WIN32)
++        set_tests_properties(guest_kernel_module_lifecycle PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libkernel>")
++    endif()
+     add_test_executable(guest_dynamic_loader_tests ${LIBS_INCLUDE_DIR}/tests/GuestDynamicLoader.cpp)
+     target_include_directories(guest_dynamic_loader_tests PRIVATE ${LIBS_INCLUDE_DIR})
+     target_link_libraries(guest_dynamic_loader_tests PRIVATE libkernel libc)
+diff --git a/core/libs/prx/libkernel/Module/ModuleLifecycle.hpp b/core/libs/prx/libkernel/Module/ModuleLifecycle.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libkernel/Module/ModuleLifecycle.hpp
+@@ -0,0 +1,8 @@
++#ifndef CORE_LIBS_PRX_LIBKERNEL_MODULE_MODULELIFECYCLE_HPP
++#define CORE_LIBS_PRX_LIBKERNEL_MODULE_MODULELIFECYCLE_HPP
++#include <cstddef>
++// Returns a loader error separately from the guest callback's result.
++// The native module remains pinned until the callback returns.
++extern "C" int ModuleLifecycle_nid_no_patch(void* handle, bool stop, std::size_t args,
++                                           const void* argp, int* result);
++#endif
+diff --git a/core/libs/prx/libkernel/Module/src/DynamicLoader.cpp b/core/libs/prx/libkernel/Module/src/DynamicLoader.cpp
+--- a/core/libs/prx/libkernel/Module/src/DynamicLoader.cpp
++++ b/core/libs/prx/libkernel/Module/src/DynamicLoader.cpp
+@@ -1,6 +1,10 @@
+ #include "prx/libc/include/General.hpp"
+ #include <nid/NidCompute.hpp>
++#include "prx/libkernel/KernelErrors.hpp"
++#include "prx/libkernel/Module/ModuleLifecycle.hpp"
+ #include <array>
++#include <cstddef>
++#include <cstdint>
+ #include <filesystem>
+ #include <cstdio>
+ #include <map>
+@@ -15,6 +19,9 @@
+ #include <windows.h>
+ #else
+ #include <dlfcn.h>
++#ifdef __linux__
++#include <link.h>
++#endif
+ #endif
+ 
+ namespace {
+@@ -28,6 +35,9 @@
+     void* native = nullptr;
+     bool owned = true;
+     bool global = false;
++#ifndef _WIN32
++    std::filesystem::path path;
++#endif
+     ~Module() {
+         if (owned && native) {
+ #ifdef _WIN32
+@@ -48,6 +58,25 @@
+ #else
+     return ::dlsym(module.native, name);
+ #endif
++}
++void* LifecycleSymbol(Module& module, const char* name) {
++    void* symbol = Symbol(module, name);
++#ifndef _WIN32
++    if (!symbol || !module.owned) return nullptr;
++    // dlsym may search dependencies. Reserved wrappers are valid only in this image.
++    Dl_info owner{};
++    if (::dladdr(symbol, &owner) == 0) return nullptr;
++#ifdef __linux__
++    link_map* image = nullptr;
++    if (::dlinfo(module.native, RTLD_DI_LINKMAP, &image) != 0 || !image ||
++        owner.dli_fbase != reinterpret_cast<void*>(image->l_addr)) return nullptr;
++#else
++    std::error_code error;
++    if (!owner.dli_fname || std::filesystem::weakly_canonical(owner.dli_fname, error) != module.path || error)
++        return nullptr;
++#endif
++#endif
++    return symbol;
+ }
+ void* FindSymbol(Module& module, const char* name) {
+     if (auto* symbol = Symbol(module, name)) return symbol;
+@@ -99,6 +128,7 @@
+         }
+ #else
+         const auto resolved = path ? RelinkedModulePath(ResolvePath_nid_no_patch(path)).string() : std::string{};
++        if (path) module->path = std::filesystem::weakly_canonical(resolved);
+         const int nativeFlags = ((flags & 3) == 1 ? RTLD_LAZY : RTLD_NOW) |
+             ((flags & 0x100) ? RTLD_GLOBAL : RTLD_LOCAL);
+         module->native = ::dlopen(path ? resolved.c_str() : nullptr, nativeFlags);
+@@ -129,6 +159,39 @@
+         return nullptr;
+     } catch (const std::exception& error) { Error(error.what()); return nullptr; }
+ }
++int ModuleLifecycle_nid_no_patch(void* handle, bool stop, std::size_t args, const void* argp, int* result) {
++    if (!result) return SCE_KERNEL_ERROR_EFAULT;
++    std::shared_ptr<Module> module;
++    {
++        std::lock_guard lock(modulesMutex);
++        const auto found = modules.find(reinterpret_cast<std::uintptr_t>(handle));
++        if (found == modules.end()) {
++            Error("module lifecycle: invalid module handle");
++            return SCE_KERNEL_ERROR_ESRCH;
++        }
++        module = found->second;
++    }
++    // The shared owner pins the native image. Guest callbacks may close this handle
++    // or reenter the loader, so neither symbol lookup nor execution holds the registry lock.
++    try {
++        using Lifecycle = std::uint64_t (APS5_VABI *)(std::size_t, const void*);
++        const auto start = reinterpret_cast<Lifecycle>(LifecycleSymbol(*module, "__anyps5_guest_start_v1"));
++        const auto finish = reinterpret_cast<Lifecycle>(LifecycleSymbol(*module, "__anyps5_guest_stop_v1"));
++        if (static_cast<bool>(start) != static_cast<bool>(finish)) {
++            Error("module lifecycle: incomplete guest lifecycle exports");
++            return SCE_KERNEL_ERROR_ENOEXEC;
++        }
++        // Host/HLE modules do not use guest ELF lifecycle wrappers.
++        const std::uint64_t packed = start ? (stop ? finish : start)(args, argp) : 0;
++        // Version 1 returns independent signed 32-bit status and module result.
++        // A real module may return the same negative value as a wrapper guard error.
++        *result = static_cast<std::int32_t>(static_cast<std::uint32_t>(packed));
++        return static_cast<std::int32_t>(static_cast<std::uint32_t>(packed >> 32));
++    } catch (const std::exception& error) {
++        Error(error.what());
++        return SCE_KERNEL_ERROR_EIO;
++    }
++}
+ int APS5_VABI dlclose_nid_postfix(void* handle) {
+     std::shared_ptr<Module> module;
+     {
+diff --git a/core/libs/prx/libkernel/Module/src/Module.cpp b/core/libs/prx/libkernel/Module/src/Module.cpp
+--- a/core/libs/prx/libkernel/Module/src/Module.cpp
++++ b/core/libs/prx/libkernel/Module/src/Module.cpp
+@@ -3,11 +3,13 @@
+ #include <cstring>
+ #include <stdexcept>
+ #include <string>
++#include <limits>
+ #include "SceTypes.hpp"
+ #include "prx/libc/include/General.hpp"
+ #include "prx/libc/include/specifics/linux/ElfTypes.hpp"
+ #include "prx/libkernel/DirectMemory/DirectMemory.hpp"
+ #include "prx/libkernel/KernelErrors.hpp"
++#include "prx/libkernel/Module/ModuleLifecycle.hpp"
+ #ifdef _WIN32
+ #include <windows.h>
+ #include <psapi.h>
+@@ -76,6 +78,13 @@
+ 
+ namespace {
+ constexpr int kRtldNow = 2;
++int ValidateLifecycleArguments(std::size_t args, const void* argp, std::uint32_t flags, const void* opt) {
++    if (flags != 0) return SCE_KERNEL_ERROR_EINVAL;
++    if (opt) return SCE_KERNEL_ERROR_EOPNOTSUPP;
++    if (args != 0 && (!argp || args - 1 > std::numeric_limits<std::uintptr_t>::max() - reinterpret_cast<std::uintptr_t>(argp)))
++        return SCE_KERNEL_ERROR_EFAULT;
++    return 0;
++}
+ }
+ 
+ extern "C" {
+@@ -139,24 +148,32 @@
+ }
+ 
+ KernelModule APS5_VABI sceKernelLoadStartModule(const char* module_file_name, size_t args, const void* argp, uint32_t flags, const KernelLoadModuleOpt* opt, int* res) {
+- (void)args;
+- (void)argp;
+- (void)flags;
+- (void)opt;
+  if (res) *res = 0;
+- if (!module_file_name) return static_cast<KernelModule>(SCE_KERNEL_ERROR_EFAULT);
++ if (!module_file_name) return SCE_KERNEL_ERROR_EFAULT;
++ if (!*module_file_name) return SCE_KERNEL_ERROR_EINVAL;
++ if (const int error = ValidateLifecycleArguments(args, argp, flags, opt)) return error;
+  void* handle = dlopen_nid_postfix(module_file_name, kRtldNow);
+- if (!handle) return static_cast<KernelModule>(SCE_KERNEL_ERROR_ENOENT);
++ if (!handle) return SCE_KERNEL_ERROR_ENOENT;
++ int result = 0;
++ if (const int error = ModuleLifecycle_nid_no_patch(handle, false, args, argp, &result)) {
++     dlclose_nid_postfix(handle);
++     return error;
++ }
++ if (res) *res = result;
++ // Loading status and module_start's return value are separate ABI results.
+  return static_cast<KernelModule>(reinterpret_cast<intptr_t>(handle));
+ }
+ 
+ int APS5_VABI sceKernelStopUnloadModule(KernelModule handle, size_t args, const void* argp, uint32_t flags, const KernelUnloadModuleOpt* opt, int* res) {
+- (void)args;
+- (void)argp;
+- (void)flags;
+- (void)opt;
+  if (res) *res = 0;
+- return dlclose_nid_postfix(reinterpret_cast<void*>(static_cast<intptr_t>(handle))) == 0 ? 0 : SCE_KERNEL_ERROR_ESRCH;
++ if (const int error = ValidateLifecycleArguments(args, argp, flags, opt)) return error;
++ void* nativeHandle = reinterpret_cast<void*>(static_cast<intptr_t>(handle));
++ int result = 0;
++ if (const int error = ModuleLifecycle_nid_no_patch(nativeHandle, true, args, argp, &result)) return error;
++ if (res) *res = result;
++ // A module that refuses to stop remains loaded; its wrapper preserves the result.
++ if (result != 0) return result;
++ return dlclose_nid_postfix(nativeHandle) == 0 ? 0 : SCE_KERNEL_ERROR_ESRCH;
+ }
+ 
+ }
+diff --git a/core/libs/tests/GuestKernelModuleLifecycle.cpp b/core/libs/tests/GuestKernelModuleLifecycle.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/GuestKernelModuleLifecycle.cpp
+@@ -0,0 +1,181 @@
++#include "GuestKernelModuleLifecycleFixture.hpp"
++#include "SceTypes.hpp"
++#include "prx/libkernel/KernelErrors.hpp"
++#include <atomic>
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <future>
++#include <limits>
++#include <thread>
++extern "C" {
++void* APS5_VABI dlopen_nid_postfix(const char*, int);
++void* APS5_VABI dlsym_nid_postfix(void*, const char*);
++int APS5_VABI dlclose_nid_postfix(void*);
++KernelModule APS5_VABI sceKernelLoadStartModule(const char*, std::size_t, const void*, std::uint32_t, const KernelLoadModuleOpt*, int*);
++int APS5_VABI sceKernelStopUnloadModule(KernelModule, std::size_t, const void*, std::uint32_t, const KernelUnloadModuleOpt*, int*);
++}
++static void Check(bool value, int line) {
++    if (!value) { std::fprintf(stderr, "kernel lifecycle contract failed at line %d\n", line); std::abort(); }
++}
++#define Require(value) Check((value), __LINE__)
++using namespace std::chrono_literals;
++struct Observation {
++    std::atomic<int> starts{0};
++    std::atomic<int> stops{0};
++    std::size_t expectedArgs = 0;
++    const void* expectedArgp = nullptr;
++    const char* reentryPath = nullptr;
++    std::int32_t startResult = 0;
++    std::int32_t stopResult = 0;
++    std::int32_t startStatus = 0;
++    std::int32_t stopStatus = 0;
++    bool blockStop = false;
++    std::promise<void> entered;
++    std::promise<void> release;
++    std::shared_future<void> released = release.get_future().share();
++};
++static std::uint64_t Packed(std::int32_t status, std::int32_t result) {
++    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(status)) << 32) |
++        static_cast<std::uint32_t>(result);
++}
++static std::uint64_t APS5_VABI Observe(void* opaque, bool stop, std::size_t args, const void* argp) {
++    auto& observation = *static_cast<Observation*>(opaque);
++    Require(args == observation.expectedArgs && argp == observation.expectedArgp);
++    if (stop) {
++        ++observation.stops;
++        if (observation.blockStop) {
++            observation.entered.set_value();
++            Require(observation.released.wait_for(5s) == std::future_status::ready);
++        }
++        return Packed(observation.stopStatus, observation.stopResult);
++    }
++    ++observation.starts;
++    if (observation.reentryPath) {
++        void* nested = dlopen_nid_postfix(observation.reentryPath, 2);
++        Require(nested != nullptr);
++        Require(dlsym_nid_postfix(nested, "GuestLifecycleNativeMarker") != nullptr);
++        Require(dlclose_nid_postfix(nested) == 0);
++    }
++    return Packed(observation.startStatus, observation.startResult);
++}
++static void* Handle(KernelModule module) { return reinterpret_cast<void*>(static_cast<std::intptr_t>(module)); }
++int main(int argc, char** argv) {
++    Require(argc == 4);
++    // A callback reentering all three loader APIs must complete without a registry-lock deadlock.
++    Observation observation;
++    KernelModuleLifecyclePayload payload{Observe, &observation, nullptr};
++    observation.expectedArgs = sizeof(payload);
++    observation.expectedArgp = &payload;
++    observation.reentryPath = argv[3];
++    int result = -1;
++    auto loading = std::async(std::launch::async, [&] {
++        return sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result);
++    });
++    Require(loading.wait_for(5s) == std::future_status::ready);
++    KernelModule module = loading.get();
++    Require(module > 0 && result == 0 && observation.starts == 1);
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == 0);
++    Require(result == 0 && observation.stops == 1);
++    Require(sceKernelStopUnloadModule(module, 0, nullptr, 0, nullptr, &result) == SCE_KERNEL_ERROR_ESRCH);
++
++    // Module return values are distinct from the loader's handle/status, including positive returns.
++    observation.reentryPath = nullptr;
++    observation.startResult = 17;
++    module = sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result);
++    Require(module > 0 && result == 17 && observation.starts == 2);
++    observation.stopResult = 23;
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == 23);
++    Require(result == 23 && dlsym_nid_postfix(Handle(module), "__anyps5_guest_start_v1") != nullptr);
++    observation.stopResult = -91;
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == -91);
++    Require(result == -91 && dlsym_nid_postfix(Handle(module), "__anyps5_guest_start_v1") != nullptr);
++    // The synthetic fixture has no once guard; the relinker suite tests the real generated guards.
++    Require(dlclose_nid_postfix(Handle(module)) == 0);
++    observation.startResult = -31;
++    observation.stopResult = 0;
++    module = sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result);
++    Require(module > 0 && result == -31);
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, nullptr) == 0);
++
++    // A module's negative SCE value is never heuristically classified as a guard status.
++    observation.startResult = SCE_KERNEL_ERROR_EBUSY;
++    module = sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result);
++    Require(module > 0 && result == SCE_KERNEL_ERROR_EBUSY);
++    observation.stopResult = SCE_KERNEL_ERROR_EBUSY;
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == SCE_KERNEL_ERROR_EBUSY);
++    Require(result == SCE_KERNEL_ERROR_EBUSY && dlsym_nid_postfix(Handle(module), "__anyps5_guest_start_v1") != nullptr);
++    observation.stopResult = 0;
++    observation.stopStatus = SCE_KERNEL_ERROR_EBUSY;
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == SCE_KERNEL_ERROR_EBUSY);
++    Require(result == 0 && dlsym_nid_postfix(Handle(module), "__anyps5_guest_start_v1") != nullptr);
++    observation.stopStatus = 0;
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == 0);
++    observation.startResult = 0;
++    static std::atomic<int> busyImageUnloads{0};
++    payload.imageUnloads = &busyImageUnloads;
++    observation.startStatus = SCE_KERNEL_ERROR_EBUSY;
++    Require(sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result) == SCE_KERNEL_ERROR_EBUSY && result == 0);
++#ifdef _WIN32
++    Require(busyImageUnloads == 1); // Failed LoadStart releases its newly loaded reference.
++#endif
++    observation.startStatus = SCE_KERNEL_ERROR_EINVAL;
++    Require(sceKernelLoadStartModule(argv[1], sizeof(payload), &payload, 0, nullptr, &result) == SCE_KERNEL_ERROR_EINVAL && result == 0);
++#ifdef _WIN32
++    Require(busyImageUnloads == 2);
++#endif
++    observation.startStatus = 0;
++    payload.imageUnloads = nullptr;
++
++    // Invalid requests are rejected before any guest callback or image load.
++    const int starts = observation.starts;
++    const int stops = observation.stops;
++    KernelLoadModuleOpt loadOpt{sizeof(loadOpt)};
++    KernelUnloadModuleOpt stopOpt{sizeof(stopOpt)};
++    Require(sceKernelLoadStartModule(nullptr, 0, nullptr, 0, nullptr, &result) == SCE_KERNEL_ERROR_EFAULT && result == 0);
++    Require(sceKernelLoadStartModule("", 0, nullptr, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_EINVAL);
++    Require(sceKernelLoadStartModule(argv[1], 1, nullptr, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_EFAULT);
++    Require(sceKernelLoadStartModule(argv[1], 2, reinterpret_cast<const void*>(std::numeric_limits<std::uintptr_t>::max()), 0, nullptr, nullptr) == SCE_KERNEL_ERROR_EFAULT);
++    Require(sceKernelLoadStartModule(argv[1], 0, nullptr, 1, nullptr, nullptr) == SCE_KERNEL_ERROR_EINVAL);
++    Require(sceKernelLoadStartModule(argv[1], 0, nullptr, 0, &loadOpt, nullptr) == SCE_KERNEL_ERROR_EOPNOTSUPP);
++    Require(sceKernelLoadStartModule("anyps5-missing-kernel-module.prx", 0, nullptr, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_ENOENT);
++    Require(sceKernelLoadStartModule(argv[2], sizeof(payload), &payload, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_ENOEXEC);
++    Require(sceKernelStopUnloadModule(-1, 0, nullptr, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_ESRCH);
++    Require(sceKernelStopUnloadModule(0, 1, nullptr, 0, nullptr, nullptr) == SCE_KERNEL_ERROR_EFAULT);
++    Require(sceKernelStopUnloadModule(0, 0, nullptr, 1, nullptr, nullptr) == SCE_KERNEL_ERROR_EINVAL);
++    Require(sceKernelStopUnloadModule(0, 0, nullptr, 0, &stopOpt, nullptr) == SCE_KERNEL_ERROR_EOPNOTSUPP);
++    Require(observation.starts == starts && observation.stops == stops);
++
++    // A native/HLE module may depend on a guest image: only its own raw wrappers count.
++    module = sceKernelLoadStartModule(argv[3], sizeof(payload), &payload, 0, nullptr, &result);
++    Require(module > 0 && result == 0 && observation.starts == starts);
++    Require(sceKernelStopUnloadModule(module, sizeof(payload), &payload, 0, nullptr, &result) == 0);
++    Require(result == 0 && observation.stops == stops);
++
++    // Hold a guest stop callback across removal of its last registry handle.
++    // A copied function pointer without a shared module owner would execute unmapped code on return.
++    Observation pinned;
++    static std::atomic<int> imageUnloads{0};
++    KernelModuleLifecyclePayload pinnedPayload{Observe, &pinned, &imageUnloads};
++    pinned.expectedArgs = sizeof(pinnedPayload);
++    pinned.expectedArgp = &pinnedPayload;
++    pinned.blockStop = true;
++    module = sceKernelLoadStartModule(argv[1], sizeof(pinnedPayload), &pinnedPayload, 0, nullptr, &result);
++    Require(module > 0 && result == 0);
++    auto entered = pinned.entered.get_future();
++    auto stopping = std::async(std::launch::async, [&] {
++        return sceKernelStopUnloadModule(module, sizeof(pinnedPayload), &pinnedPayload, 0, nullptr, &result);
++    });
++    Require(entered.wait_for(5s) == std::future_status::ready);
++    Require(stopping.wait_for(0s) == std::future_status::timeout);
++    Require(dlclose_nid_postfix(Handle(module)) == 0);
++    // This also observes pin lifetime without relying on a stale code pointer fault.
++    Require(imageUnloads == 0);
++    pinned.release.set_value();
++    Require(stopping.wait_for(5s) == std::future_status::ready);
++    Require(stopping.get() == SCE_KERNEL_ERROR_ESRCH && result == 0 && pinned.stops == 1);
++#ifdef _WIN32
++    // The product host unloads the fixture at its last native reference. macOS may retain dylibs.
++    Require(imageUnloads == 1);
++#endif
++}
+diff --git a/core/libs/tests/GuestKernelModuleLifecycleFixture.cpp b/core/libs/tests/GuestKernelModuleLifecycleFixture.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/GuestKernelModuleLifecycleFixture.cpp
+@@ -0,0 +1,33 @@
++#include "GuestKernelModuleLifecycleFixture.hpp"
++#ifdef _WIN32
++#define MODULE_EXPORT __declspec(dllexport)
++#else
++#define MODULE_EXPORT __attribute__((visibility("default")))
++#endif
++#ifdef KERNEL_MODULE_FIXTURE_NATIVE
++extern "C" int GuestLifecycleDependencyMarker();
++// Force a dependency that owns wrappers: dlsym must not mistake them for ours.
++extern "C" MODULE_EXPORT int GuestLifecycleNativeMarker() { return GuestLifecycleDependencyMarker(); }
++#else
++extern "C" MODULE_EXPORT int GuestLifecycleDependencyMarker() { return 42; }
++struct UnloadNotice {
++    std::atomic<int>* count = nullptr;
++    ~UnloadNotice() { if (count) ++*count; }
++};
++static UnloadNotice unloadNotice;
++static std::uint64_t Invoke(bool stop, std::size_t args, const void* argp) {
++    if (!args && !argp) return 0;
++    if (args < sizeof(KernelModuleLifecyclePayload) || !argp) return static_cast<std::uint32_t>(-77);
++    const auto& payload = *static_cast<const KernelModuleLifecyclePayload*>(argp);
++    if (!stop) unloadNotice.count = payload.imageUnloads;
++    return payload.callback ? payload.callback(payload.context, stop, args, argp) : static_cast<std::uint32_t>(-78);
++}
++extern "C" MODULE_EXPORT std::uint64_t APS5_VABI __anyps5_guest_start_v1(std::size_t args, const void* argp) {
++    return Invoke(false, args, argp);
++}
++#ifndef KERNEL_MODULE_FIXTURE_INCOMPLETE
++extern "C" MODULE_EXPORT std::uint64_t APS5_VABI __anyps5_guest_stop_v1(std::size_t args, const void* argp) {
++    return Invoke(true, args, argp);
++}
++#endif
++#endif
+diff --git a/core/libs/tests/GuestKernelModuleLifecycleFixture.hpp b/core/libs/tests/GuestKernelModuleLifecycleFixture.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/GuestKernelModuleLifecycleFixture.hpp
+@@ -0,0 +1,13 @@
++#ifndef TESTS_GUEST_KERNEL_MODULE_LIFECYCLE_FIXTURE_HPP
++#define TESTS_GUEST_KERNEL_MODULE_LIFECYCLE_FIXTURE_HPP
++#include "prx/libc/include/general/VabiMacros.hpp"
++#include <cstddef>
++#include <atomic>
++#include <cstdint>
++struct KernelModuleLifecyclePayload {
++    using Callback = std::uint64_t (APS5_VABI *)(void*, bool, std::size_t, const void*);
++    Callback callback;
++    void* context;
++    std::atomic<int>* imageUnloads;
++};
++#endif

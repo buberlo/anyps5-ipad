@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "date": "2026-10-10",
+  "milestone": "Combined-runtime EXEC-aware proof including MRTZ and exact ordered message",
+  "upstreamPin": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "patch": "0004-no-vintrp-exec-aware-input-liveness.patch",
+  "patchSha256": "e2cb8569c5a52c4e37a93c7aa88479391917210e632240fd9aa947832ab82075",
+  "headerSha256": "1ca82d723dcfc49e13c18b02efce1afc57091ff77ac2f721ddc793c0ead34edb",
+  "sourcePromoted": true,
+  "compilerReceiptSha256": "89dab0a36012198f2077ec34064bce662d7d670a420012e1d34523ec7f4fcefa",
+  "sourceFreezeSha256": "a89a6f282e00b99c6e7d44882712c3dd6b9864db9c3b92cbe8427832aaf2cd2d",
+  "syntheticCasesPassed": 45,
+  "totalStagedCasesPassed": 46,
+  "exactPrivateRequestStagedPassed": true,
+  "finalSpirvAndBindingsEquivalent": true,
+  "originalP1P2BodyUnchanged": true,
+  "allCompilerSourceAndRuntimeInputsUnchanged": true,
+  "semanticReceiptSha256": "d6cd4688593ece9e4f477090956f88eb1db310fd527a5bfcfec5237b7a2df30a",
+  "semanticRuns": [
+    {
+      "name": "native-arm64",
+      "status": "passed",
+      "exitCode": 0,
+      "binarySha256": "c544f9caf41c4ad02e0f23816f376f6907140e42f0f02267f5795bcd33632910",
+      "logSha256": "6d04a3ddd6867ca528093f92ae50f38480085e1d47bbc9f664d764c9e71a91f9",
+      "acceptedPrograms": 640,
+      "rejectedPrograms": 640,
+      "rawInputComparisons": 921600,
+      "rejectedProgramsWithConcreteDependency": 608,
+      "acceptedProgramsWithDependency": 0,
+      "orderedEventOnlyCounterexamples": 32
+    },
+    {
+      "name": "native-arm64-sanitized",
+      "status": "passed",
+      "exitCode": 0,
+      "binarySha256": "5229d43fd8e76b137e0993a9103187ded20253a3aa2bb9970a510f6cbbdbb888",
+      "logSha256": "6d04a3ddd6867ca528093f92ae50f38480085e1d47bbc9f664d764c9e71a91f9",
+      "acceptedPrograms": 640,
+      "rejectedPrograms": 640,
+      "rawInputComparisons": 921600,
+      "rejectedProgramsWithConcreteDependency": 608,
+      "acceptedProgramsWithDependency": 0,
+      "orderedEventOnlyCounterexamples": 32
+    }
+  ],
+  "semanticModel": {
+    "lanes": 64,
+    "programTemplates": 40,
+    "constantVariantsPerTemplate": 32,
+    "observations": [
+      "MRT0 color values and visible-lane status",
+      "enabled uncompressed MRTZ depth and sample-mask bits",
+      "ordered-message reachability and per-invocation event order"
+    ],
+    "orderedObservationIsPhysicalGpuInterlock": false,
+    "scope": [
+      "Synthetic decoded CFGs only; not full RDNA ISA conformance",
+      "No IMAGE_LOAD, FP conversion/arithmetic, LLVM, FEX or physical GPU execution in this independent model",
+      "Final shader compiler/request replay and physical execution remain separate gates"
+    ]
+  },
+  "mutationControls": [
+    {
+      "name": "unsafe-entry-mask",
+      "status": "detected_concrete_export_dependency",
+      "exitCode": 1,
+      "mutation": "EntryMask returns true for subset-only writes",
+      "productionEdited": false,
+      "logSha256": "b17d054926bb3a92b02242ecc941597f66abfb4ae8dcbfe38bb87eae6c076ab2"
+    },
+    {
+      "name": "missing-mrtz-reads",
+      "status": "detected_concrete_export_dependency",
+      "exitCode": 1,
+      "mutation": "Footprint ignores all enabled MRTZ reads",
+      "productionEdited": false,
+      "logSha256": "d7725aeba2c097392b839d88985c10d7a3a788e65dedd08567f9d0472e0ac65c"
+    },
+    {
+      "name": "missing-ordered-reachability-read",
+      "status": "detected_concrete_ordered_event_dependency",
+      "exitCode": 1,
+      "mutation": "Footprint omits raw VCC compare source, permitting raw-dependent message reachability",
+      "productionEdited": false,
+      "logSha256": "3b983fff9df41e17218df8dde729355a13e3c7287fe8b098d129f59467020883"
+    }
+  ],
+  "combinedProductionHlePackageBuilt": true,
+  "historical30CaseEvidencePreserved": "anyps5-unused-barycentric-proof-20261009.json",
+  "deviceActions": false,
+  "physicalGpuRenderingQualified": false,
+  "gameplayQualified": false,
+  "githubActions": false
+}

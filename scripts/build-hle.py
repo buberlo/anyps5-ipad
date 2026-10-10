@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,19 +24,53 @@ TOOLCHAIN_SHA = 'a914feafd7462126637d4b8196a31f3fb856ad929768ceb092c99969b43675b
 FFMPEG_COMMIT = '9ac4cfd195f1'
 FFMPEG_SHA = 'e4be9938b321da5f53e248d8ae947c984390e09d0f59fb6855644a972126e26b'
 PYTHON_SHA = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3'
-TESTS = ('windows_exception_tests', 'guest_formatting_tests', 'host_thread_local_tests',
+TESTS = ('raw_log_output_tests', 'windows_exception_tests', 'exception_personality_tests',
+         'guest_formatting_tests', 'host_thread_local_tests',
          'guest_environment_tests', 'file_position_tests', 'guest_math_tests',
-         'guest_json_tests', 'guest_json2_initialization_tests', 'guest_compatibility_api_tests',
+         'guest_json_tests', 'guest_json2_initialization_tests', 'guest_json2_virtual_allocator_tests',
+         'guest_compatibility_api_tests',
+         'guest_hmd_tests', 'guest_player_review_dialog_tests', 'guest_ulobjmgr_tests',
+         'guest_audio3d_parameters_tests', 'guest_audio3d_port_tests',
+         'guest_audio3d_object_attributes_tests',
+         'guest_kernel_module_lifecycle_tests',
+         'savedata_memory_growth_tests', 'savedata_memory_metadata_tests',
+         'savedata_native_write_replacement_tests', 'savedata_replace_file_failure_tests',
          'guest_filesystem_tests', 'guest_pthread_attr_tests', 'guest_shader_alignment_tests',
-         'guest_memory_tests', 'guest_raise_exception_tests',
+         'guest_memory_tests', 'guest_raise_exception_tests', 'agc_driver_graphics_tests',
+         'agc_unused_barycentric_tests',
+         'agc_write_tracking_tests', 'agc_profile_output_tests',
+         'agc_shader_device_profile_tests', 'agc_shader_disk_cache_tests',
          'uniform_wave_branch_tests', 'wave32_wide_subgroup_tests',
          'audio_out2_pad_mix_tests', 'audio_out_mix_level_pad_spk_tests',
          'audio_out_last_output_time_tests', 'audio_out2_latency_tests',
          'audio_out2_port_layouts_tests', 'audio_out2_timing_tests')
+CTEST_CONTRACTS = {
+    'guest_kernel_module_lifecycle_tests': (('guest_kernel_module_lifecycle',), 20),
+    'savedata_memory_growth_tests': (('savedata_memory_growth', 'savedata_memory_growth_read_failure'), 45),
+}
 
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def runtime_input_hashes(build_directory, toolchain_directory):
+    """Identify actual host-test binaries and their compiler runtime inputs."""
+    paths = {path.resolve() for path in build_directory.rglob('*')
+             if path.is_file() and path.suffix.lower() in ('.exe', '.dll', '.prx')}
+    for name in ('libgcc_s_seh-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll'):
+        path = (toolchain_directory / 'bin' / name).resolve()
+        if not path.is_file():
+            raise ValueError('Missing compiler runtime input: ' + str(path))
+        paths.add(path)
+    result = {}
+    for path in sorted(paths):
+        try:
+            name = str(path.relative_to(ROOT))
+        except ValueError:
+            name = str(path)
+        result[name] = digest(path)
+    return result
 
 
 def fetch(url, destination, expected):
@@ -56,13 +91,73 @@ def choose_targets(source, explicit, manifest):
     if manifest:
         with zipfile.ZipFile(manifest) as archive:
             info = json.loads(archive.read('hle-manifest.json'))
-        targets += [Path(name).stem for name in info['files'] if name.startswith('unpatched/') and name.endswith('.prx')]
+        for name in info['files']:
+            if name.startswith('unpatched/') and name.endswith('.prx'):
+                if len(name.split('/')) != 2:
+                    raise ValueError('Unsafe PRX manifest path: ' + name)
+                targets.append(name[len('unpatched/'):-len('.prx')])
     if not targets:
         targets = sorted(available)
     for name in targets:
-        if not re.fullmatch(r'lib[A-Za-z0-9_.-]+', name) or name not in available:
+        if (name != 'ulobjmgr' and not re.fullmatch(r'lib[A-Za-z0-9_.-]+', name)) or name not in available:
             raise ValueError('Unknown PRX target: ' + name)
     return sorted(set(targets) | {'libc', 'libkernel'})
+
+
+def quote(value):
+    value = str(value)
+    if re.search(r'[\r\n"%!^&|<>]', value):
+        raise ValueError('Unsupported command character: ' + value)
+    return '"' + value + '"'
+
+
+def ctest_pattern(target):
+    return CTEST_CONTRACTS[target][0][0]
+
+
+def validate_ctest_inventory(target, text):
+    expected = CTEST_CONTRACTS[target][0]
+    names = [test['name'] for test in json.loads(text)['tests']]
+    if len(names) != len(expected) or set(names) != set(expected):
+        raise ValueError('Unexpected CTest selection for ' + target + ': ' + repr(names))
+
+
+def ctest_case_results(target, report):
+    expected = CTEST_CONTRACTS[target][0]
+    cases = ET.parse(report).getroot().findall('.//testcase')
+    names = [case.get('name') for case in cases]
+    if len(names) != len(expected) or set(names) != set(expected):
+        raise ValueError('Unexpected CTest results for ' + target + ': ' + repr(names))
+    results = {}
+    for case in cases:
+        name = case.get('name')
+        if case.find('failure') is not None or case.find('error') is not None:
+            raise ValueError('Failed CTest contract: ' + name)
+        skipped = case.find('skipped')
+        if skipped is not None:
+            if name != 'savedata_memory_growth_read_failure':
+                raise ValueError('Required CTest contract was skipped: ' + name)
+            results[name] = {'status': 'skipped', 'reason': skipped.get('message', 'CTest skip return code'),
+                             'configured_skip_return_code': 77}
+        else:
+            if case.get('status', 'run') != 'run':
+                raise ValueError('Required CTest contract did not run: ' + name)
+            results[name] = {'status': 'passed'}
+    return results
+
+
+def host_test_command(target, build_directory, win):
+    if target not in TESTS:
+        raise ValueError('Unknown host test target: ' + target)
+    # CTest supplies lifecycle fixture paths and the SaveData read-denial argument.
+    # The selected JSON inventory is checked separately before execution. Avoid
+    # caret regex anchors, which are deliberately rejected by batch quoting.
+    if target in CTEST_CONTRACTS:
+        timeout = CTEST_CONTRACTS[target][1]
+        return ['ctest', '--test-dir', win(build_directory), '-R', ctest_pattern(target),
+                '--no-tests=error', '--output-on-failure', '--timeout', str(timeout),
+                '--output-junit', win(build_directory / ('test-' + target + '.xml'))]
+    return [win(build_directory / 'tests' / (target + '.exe'))]
 
 
 def main():
@@ -114,14 +209,12 @@ def main():
         path = Path(path).resolve()
         return str(path) if os.name == 'nt' else 'Z:' + str(path).replace('/', '\\')
 
-    def quote(value):
-        value = str(value)
-        if re.search(r'[\r\n"%!^&|<>]', value):
-            raise ValueError('Unsupported command character: ' + value)
-        return '"' + value + '"'
-
     environment = dict(os.environ)
-    environment['APS5_SOURCE_COMMIT'] = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
+    project_commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
+    anyps5_commit = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+    # The runtime manifest identifies the HLE source, not the wrapper project.
+    # Keep both commits separately so a pin upgrade cannot mislabel its binaries.
+    environment['APS5_SOURCE_COMMIT'] = anyps5_commit
     if os.name != 'nt':
         environment.update(WINEPREFIX=str(ROOT / 'build/toolchains/winlibs-wine-prefix'),
                            WINEDEBUG='-all', WINEDLLOVERRIDES='winemenubuilder.exe=d')
@@ -150,7 +243,9 @@ def main():
                      '-DPython3_EXECUTABLE=' + win(python_home / 'python.exe')])
     run('build', ['cmake', '--build', win(args.build), '--target', 'relinker', 'nid_patcher',
                   *targets, *TESTS, '--parallel', str(args.jobs)])
+    runtime_inputs_before = runtime_input_hashes(args.build, args.toolchain) if not args.skip_tests else None
     passed = []
+    case_results = {}
     # These CPU/API contracts need an address arena, not the full console map.
     # Reserve 8–12 GiB lazily; an explicit caller setting is still respected.
     test_arena = {name: environment.get(name, value) for name, value in {
@@ -159,23 +254,41 @@ def main():
     }.items()}
     if not args.skip_tests:
         for target in TESTS:
-            run('test-' + target, [win(args.build / 'tests' / (target + '.exe'))],
-                [args.build / 'core/libs/libs/unpatched', args.build / 'tests'], test_arena, args.build, timeout=45)
+            if target in CTEST_CONTRACTS:
+                run('inventory-' + target,
+                    ['ctest', '--test-dir', win(args.build), '-R', ctest_pattern(target), '--show-only=json-v1'],
+                    working_directory=args.build, timeout=45)
+                validate_ctest_inventory(target, (args.build / ('inventory-' + target + '.log')).read_text())
+            command = host_test_command(target, args.build, win)
+            run('test-' + target, command,
+                [args.build / 'core/libs/libs/unpatched', args.build / 'tests'], test_arena, args.build,
+                timeout=100 if target == 'savedata_memory_growth_tests' else 45)
+            if target in CTEST_CONTRACTS:
+                case_results.update(ctest_case_results(target, args.build / ('test-' + target + '.xml')))
             passed.append(target)
+    runtime_inputs_after = runtime_input_hashes(args.build, args.toolchain) if not args.skip_tests else None
+    if runtime_inputs_before != runtime_inputs_after:
+        changed = sorted(name for name in set(runtime_inputs_before) | set(runtime_inputs_after)
+                         if runtime_inputs_before.get(name) != runtime_inputs_after.get(name))
+        raise ValueError('Host runtime inputs changed during selected tests: ' + repr(changed))
     provenance = {
         'schema': 1, 'kind': 'local_anyps5_hle_build', 'targets': targets,
-        'project_commit': environment['APS5_SOURCE_COMMIT'],
+        'project_commit': project_commit,
         'compiler_archive_sha256': TOOLCHAIN_SHA, 'ffmpeg_archive_sha256': FFMPEG_SHA,
         'python_archive_sha256': PYTHON_SHA,
         'compiler_files': {str(p.relative_to(args.toolchain)): digest(p)
                            for p in sorted(args.toolchain.rglob('*.exe'))
                            if p.name in ('g++.exe', 'gcc.exe', 'cc1.exe', 'cc1plus.exe', 'collect2.exe', 'ld.exe', 'cmake.exe', 'ninja.exe')},
         'ffmpeg_libraries': {p.name: digest(p) for p in sorted((args.ffmpeg / 'lib').glob('*.a'))},
-        'anyps5_commit': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
+        'anyps5_commit': anyps5_commit,
         'patches': {p.name: digest(p) for p in sorted((ROOT / 'patches/anyps5').glob('*.patch'))},
         'anyps5_diff_sha256': hashlib.sha256(subprocess.check_output(['git', '-C', str(source), 'diff', 'HEAD'])).hexdigest(),
         'flags': {'build_type': 'Release', 'APS5_SLIM': True, 'APS5_ENABLE_TIMING_LOG': False, 'APS5_AGC_CREATE_LOG': False},
         'host_tests_passed': passed, 'host_test_runtime': 'Windows' if os.name == 'nt' else 'local Wine',
+        'host_test_case_results': case_results,
+        'host_test_cases_skipped': sorted(name for name, result in case_results.items() if result['status'] == 'skipped'),
+        'host_test_runtime_inputs': runtime_inputs_before,
+        'host_test_runtime_inputs_verified_unchanged': runtime_inputs_before is not None,
         'host_test_arena': test_arena if passed else None,
         'device_or_gameplay_verified': False,
     }

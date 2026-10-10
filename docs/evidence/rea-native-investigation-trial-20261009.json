@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "recordedUtc": "2026-10-09T08:30:40.991027+00:00",
+  "status": "synthetic_native_navigation_qualified_sysv_pseudocode_unqualified",
+  "tools": {
+    "rea": "6.1.0",
+    "ghidra": "12.1.4",
+    "jdk": "Temurin21.0.8+9",
+    "host": "macOS_arm64",
+    "matchingNativeDecompilerBuiltLocally": true,
+    "localSwiftModuleCacheArgumentAdded": true,
+    "localHelperBeforeSha256": "e4dfc2afe1066b3d0fa71da382f2d243f3cc990142419166017e00e1b5b69b80",
+    "localHelperAfterSha256": "1223f638ba9321f5a04566c532ce1867048c3bfcd96ec591076417a9761b32b4",
+    "ownershipValidationPreserved": true
+  },
+  "storage": {
+    "scope": "ignored_project_local_tool_folder",
+    "regularFileBytes": 1462907764,
+    "approvedMaximumBytes": 2147483648,
+    "withinApprovedLimit": true,
+    "globalToolInstallation": false
+  },
+  "fixture": {
+    "kind": "source_owned_synthetic_relinked_PE",
+    "bytes": 116224,
+    "sha256": "1bebfbce4535c685d7ebd9f8551ef55722c09d7fdb320c1f639a7f8dc1b19935",
+    "startRva": "0x18000",
+    "stopRva": "0x180d6",
+    "expectedCallingConvention": "SysV_x86_64",
+    "argcRegister": "RDI_64",
+    "payloadRegister": "RSI_64",
+    "callbackOffsetBytes": 8,
+    "returnRegister": "RAX_64"
+  },
+  "observations": {
+    "assemblyAgreesWithGroundTruth": true,
+    "initializerCallbackAtPayloadPlus8Observed": true,
+    "packedResultConstantsRecovered": true,
+    "automaticWindowsCallingConvention": true,
+    "automaticStartPrototype": "ulonglong __fastcall __anyps5_guest_start_v1(void)",
+    "automaticStartParametersRecovered": 0,
+    "pseudocodeCanDefineGuestApiContract": false,
+    "callersCalleesAndReferenceNavigationAvailable": true
+  },
+  "timing": {
+    "units": "seconds",
+    "separateFunctionCommandRuns": [
+      15.247,
+      14.867
+    ],
+    "retainedSessionQueries": [
+      {
+        "operation": "analyze_function",
+        "procedure": "__anyps5_guest_start_v1",
+        "seconds": 13.297010291000001,
+        "ok": true
+      },
+      {
+        "operation": "analyze_function",
+        "procedure": "0x140011100",
+        "seconds": 0.006248792000000321,
+        "ok": true
+      },
+      {
+        "operation": "analyze_function",
+        "procedure": "__anyps5_guest_stop_v1",
+        "seconds": 0.014027999999998429,
+        "ok": true
+      }
+    ],
+    "retainedSessionClientIncludingClose": 13.891155333,
+    "retainedSessionWholeCommand": 14.549,
+    "scope": "small_synthetic_module_only",
+    "overallProjectSpeedMeasured": false,
+    "gameFpsMeasured": false,
+    "closePromiseCompleted": true,
+    "closeResultRecorded": false
+  },
+  "snapshot": {
+    "functionReplayEntries": 0,
+    "instructionReplayEntries": 0,
+    "evidencePersistenceObserved": true,
+    "cacheAccelerationObserved": false
+  },
+  "provenance": {
+    "trialPlanSha256": "04173a4d5bbd5b089ea2af9f9afa43290b7e84638f2211c0a72b90802a06dd58",
+    "successfulFunctionReceiptSha256": "9139075b89a59acb44d174218d2d7f1a21671af5b039f4a3f40c4caace1c3d51",
+    "retainedSessionResultSha256": "0fbaaaa9cd0911f669765d80521274cf5092822dddbd74005450a16e0c7855ec",
+    "retainedSessionReceiptSha256": "d1c32cd6b0182305629698f476153c054d70f8704bac90f5f17f098c8c42d592",
+    "finalTrialReceiptSha256": "6555e642d98a185e608e2ccfda1fcccf7ec2dc708910fa240daeaf651bd4b4aa"
+  },
+  "limits": {
+    "originalPS5ElfLoaderQualified": false,
+    "il2cppMetadataDecoded": false,
+    "privateGameBytesUsed": false,
+    "physicalDeviceActions": false,
+    "persistentCodexConfigurationChanged": false,
+    "runtimeBuildDependencyAdded": false,
+    "githubActionsUsed": false
+  },
+  "cleanup": {
+    "matchingLiveTrialProcesses": 0,
+    "independentlyInspected": true,
+    "initialFailedRuntimePreserved": true,
+    "deviceOrUnrelatedProcessesAffected": false
+  }
+}

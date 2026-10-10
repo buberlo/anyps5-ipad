@@ -32,19 +32,8 @@ function(configure_windows_unwind target)
             VERBATIM)
     endif()
 endfunction()
-# The full project publishes this catalog from core/libs before configuring
-# the relinker. Derive the same directory catalog without building guest HLE
-# or its SDL/FFmpeg dependencies in this native host-tools project.
-set(ANYPS5_REPLACEMENT_MODULES libc.prx)
-file(GLOB module_dirs LIST_DIRECTORIES true "${ANYPS5_SOURCE}/core/libs/prx/*")
-foreach(module_dir IN LISTS module_dirs)
-    if(IS_DIRECTORY "${module_dir}")
-        get_filename_component(module_name "${module_dir}" NAME)
-        if(NOT module_name STREQUAL "libc")
-            list(APPEND ANYPS5_REPLACEMENT_MODULES "${module_name}.prx")
-        endif()
-    endif()
-endforeach()
+# Current upstream preserves every guest init/fini entry; no replacement-module
+# catalog is needed by this standalone tools build.
 add_subdirectory("${ANYPS5_SOURCE}/core/relinker" relinker)
 file(GLOB nid_sources "${ANYPS5_SOURCE}/core/libs/nid/src/*.cpp")
 add_executable(nid_patcher ${nid_sources})

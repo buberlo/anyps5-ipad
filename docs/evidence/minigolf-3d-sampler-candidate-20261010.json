@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "status": "isolated_plain_3d_sample_candidate_native_cpu_qualified_not_promoted_not_prx_or_gpu_qualified",
+  "evidenceRole": "sanitized_public_evidence_candidate_for_review",
+  "recordedUtc": "2026-10-10T00:09:12.880554+00:00",
+  "upstreamRevision": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "source": {
+    "baseHeaderSha256": "4c3b1144ca75aff928a573ee1930e08d26c370bef010ef37013a9d9cfad879a5",
+    "baseFixtureSha256": "777f1d797f58738cc5a8ae28cb68d6345ed85ab643c4e2493d6a642ef42fbcfa",
+    "candidateHeaderSha256": "1877d198f792c2381be21b03df8a8c33346a0a2b3eef1e0e61eda12cb3c99cf9",
+    "candidateFixtureSha256": "7257709463141051735cb91d74df893ef91e6eedef444638b5050efdd5cf7a4d",
+    "unchangedInterpolationWrapperSha256": "13a53cadc1acfac534a4a4f3cd6136c2ac83766a842ced4c8e49aa2f43bc4a39",
+    "candidatePatchSha256": "3be3ed02d02e861c077bef0256fa3e54333db7f50fa41ba28c21b848a1b5d49e",
+    "sourceDeltaReceiptSha256": "1a6d337c0b095e8c04bdc29bd0a213c400545c51ee0067ee032a13931b60b044",
+    "forwardReverseApplyCheckReceiptSha256": "f3dd5c556685a17ecb295d51c554b8a1d4872c97d9010f65b660a44ad6ac08cc",
+    "forwardApplyCheckPassed": true,
+    "reverseApplyCheckPassed": true,
+    "canonicalSourcesModified": false,
+    "scope": [
+      "Admit only exact unmodified implicit-LOD 2D and 3D sample effects with two or three complete coordinate words.",
+      "Require encoded and decoded dimensions, coordinate width, descriptor ranges and complete return-word metadata to agree.",
+      "Apply the existing same-quad scoped helper-coordinate obligation to all admitted coordinate words, including the third.",
+      "Preserve mask, alias, complete-write, operand-modifier and straight-line whole-quad restrictions.",
+      "No new named inline helper, runtime feature advertisement, production ABI exclusion or GPU rendering implementation."
+    ]
+  },
+  "nativeQualification": {
+    "receiptSha256": "791bbef20caeace72c964b4fd387ae94b46c09e32b6520711d1e582d651bcca7",
+    "status": "passed_native_decoder_cpu_semantics_and_fixture_syntax_not_gpu",
+    "architecture": "arm64",
+    "runnerSha256": "3945f77291842be9ca061b6129436d416e85dc4bfb7c990028f8ec99a513e31e",
+    "inputsUnchanged": true,
+    "nativeModelSha256": "44d826df49625961b5123f7eed51ced00bcfcd032c5c1654b73b0eeb71428f75",
+    "controlOnlyNativeModelSha256": "ffbb9bace2db79dc21dbad0e57a01e734c5cbf7ac3f4b2802ed0907470aca492",
+    "nativeRunProvenance": {
+      "reusedFromEarlierAttempt": true,
+      "earlierReceiptSha256": "0b56a8992a54a7ad499fff2ad9929ba144af799473e5c048540e553d84ccf9cd",
+      "earlierWholeQualificationPassed": false,
+      "earlierFailureScope": "Later full-fixture syntax check used the canonical quoted sibling wrapper alongside the isolated header, causing duplicate definitions.",
+      "reusedScope": "Only the genuinely passed optimized and sanitizer native runs; their exact inputs, binaries and logs were revalidated. The failed whole qualification is not described as passed."
+    },
+    "runs": [
+      {
+        "name": "optimized",
+        "evidenceReused": true,
+        "cases": 81,
+        "accepted": 8,
+        "rejected": 73,
+        "pairedRawInputComparisons": 32256,
+        "negativeDependencyWitnesses": 15,
+        "conservativeNonWitnessRejections": 5,
+        "quadMaskReferenceChecks": 262144,
+        "acceptedDependencyFailures": 0
+      },
+      {
+        "name": "address_and_undefined_behavior_sanitizers",
+        "evidenceReused": true,
+        "cases": 81,
+        "accepted": 8,
+        "rejected": 73,
+        "pairedRawInputComparisons": 32256,
+        "negativeDependencyWitnesses": 15,
+        "conservativeNonWitnessRejections": 5,
+        "quadMaskReferenceChecks": 262144,
+        "acceptedDependencyFailures": 0
+      }
+    ],
+    "fullFixture": {
+      "preservedPublicCaseCount": 121,
+      "additionalSyntheticCaseCount": 23,
+      "intendedPublicCaseCount": 144,
+      "syntaxCheck": "passed",
+      "syntaxCheckRerunInFinalQualification": true,
+      "all144CasesExecuted": false,
+      "actualStagedShaderCompilerExecutionPerformed": false,
+      "actualProductionPrxExecutionPerformed": false,
+      "scope": "The complete 144-case source passed native syntax checking with an exact unchanged shadow interpolation wrapper. This is not execution of all 144 staged cases. Synthetic 3D staging cases declare a 3D image descriptor. Nonstandard raw-register sets remain decoder and CPU-model controls."
+    },
+    "thirdHelperCoordinateControl": {
+      "scope": "A separate control-only entry-mask overwrite leaves omitted third-coordinate words in helper lanes; an implicit sample observes their contribution to the modeled exported result.",
+      "unmutatedCandidateRejectedDependentCase": true,
+      "unmutatedControlExitCode": 0,
+      "mutation": "Truncate only the derivative-coordinate guard to two words while preserving the three-word ordinary read footprint.",
+      "mutatedHeaderSha256": "24b95e531cd7fc9151ffaf3cddb9b913f9b9abbfcb6c2205a28e7eeb8dda91c2",
+      "mutationDetectedActualExportDependencyInCpuModel": true,
+      "mutantExitCode": 1,
+      "physicalImageFilteringClaim": false
+    },
+    "secondFailedAttempt": {
+      "receiptSha256": "7995ffc6a30b97e54e3cc9afb0761022a8420be9b0684981c5a47bc02cb92f94",
+      "wholeQualificationPassed": false,
+      "syntaxPassed": true,
+      "failureScope": "The earlier selected mutation case was independently rejected by the ordinary read check, so it did not establish the special third-helper-coordinate obligation. The final control uses a separate entry-only case with a concrete dependency witness."
+    }
+  },
+  "independentGeometricReview": {
+    "receiptSha256": "488d77ebb6ec9af4badc7f4606f50de8c2ebf3b3396b77c53f2aa429744dbe3b",
+    "status": "passed_independent_3d_cpu_derivative_witness_not_gpu",
+    "candidateHeaderSha256": "1877d198f792c2381be21b03df8a8c33346a0a2b3eef1e0e61eda12cb3c99cf9",
+    "modelSha256": "a367bae3ef963e7eb9cb3ba0c945deb393c98cf6eaa7754182d017af48c750d6",
+    "runnerSha256": "b55ba332121f7dca1e7024f8a2048953207057168698bd9ffeb216ea351415f3",
+    "lanes": 64,
+    "quads": 16,
+    "entryMasks": 12,
+    "nonzeroRawVariants": 8,
+    "model": "Independent finite binary32 sum of squared horizontal and vertical differences of all three coordinates, captured before output writes. Inactive complete register words are preserved; concrete execution contains no proof state or transfer rules.",
+    "nativeAndSanitizerRuns": {
+      "eachRunPassed": true,
+      "casesPerRun": 5,
+      "acceptedPerRun": 2,
+      "rejectedPerRun": 3,
+      "comparisonsPerRun": 480,
+      "thirdCoordinateCounterexamplesPerRun": 2,
+      "footprintControlsPerRun": 16,
+      "acceptedDependencyFailures": 0
+    },
+    "mutationControls": [
+      {
+        "name": "third_derivative_gate_truncated_to_two",
+        "detected": true,
+        "scope": "The broken candidate admits an exported gradient dependency on helper third-coordinate words."
+      },
+      {
+        "name": "encoded_dimension_metadata_guard_removed",
+        "detected": true,
+        "scope": "The broken candidate admits mismatched encoded 3D and decoded 2D effect metadata."
+      }
+    ],
+    "inputsUnchanged": true,
+    "decoderExecutionPerformed": false,
+    "shaderCompilerExecutionPerformed": false,
+    "descriptorResourceMaterializationPerformed": false,
+    "physicalGpuExecutionPerformed": false
+  },
+  "acceptanceBoundary": {
+    "candidateProductionSourcePromoted": false,
+    "candidateProductionPrxBuiltOrExecuted": false,
+    "candidateFullRuntimeQualified": false,
+    "candidateGpuExecuted": false,
+    "candidateInstalledOrLaunchedOnDevice": false,
+    "gameplayQualified": false,
+    "limitations": [
+      "Synthetic CPU dependency witnesses do not emulate physical image filtering or prove Vulkan or Metal pixel equivalence.",
+      "Native proof execution, complete fixture syntax, loaded production PRX materialization, physical rendering and gameplay are separate qualification stages.",
+      "This candidate retains honest rejection of unknown operands, unsupported dimensions, incomplete definitions and uncertain mask or helper-cohort participation."
+    ]
+  },
+  "publication": {
+    "containsGameAssets": false,
+    "containsRawShaderOrLogExcerpts": false,
+    "containsPrivateFilePaths": false,
+    "containsNetworkIdentifiers": false,
+    "candidateOnlyRequiresReviewBeforePublicCopy": true
+  }
+}

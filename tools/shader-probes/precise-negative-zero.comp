@@ -1,0 +1,64 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Original fixture; inputs come from the host so signed zeros are not folded.
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) buffer Results { uint bits[]; } results;
+layout(std430, binding = 1) readonly buffer Inputs { float values[]; } inputs;
+
+void main()
+{
+    float pz = inputs.values[0], nz = inputs.values[1];
+    float one = inputs.values[2], neg = inputs.values[3], two = inputs.values[4];
+    precise float scalar0 = neg * pz;
+    precise float scalar1 = one * pz;
+    precise float scalar2 = one * nz;
+    precise float scalar3 = two * neg;
+    results.bits[0] = floatBitsToUint(scalar0);
+    results.bits[1] = floatBitsToUint(scalar1);
+    results.bits[2] = floatBitsToUint(scalar2);
+    results.bits[3] = floatBitsToUint(scalar3);
+    precise vec4 vectorProduct = vec4(pz) * vec4(neg, one, neg, one);
+    for (int i = 0; i < 4; i++) results.bits[4 + i] = floatBitsToUint(vectorProduct[i]);
+    mat2 negativeMatrix = mat2(vec2(neg), vec2(neg));
+    mat2 zeroMatrix = mat2(vec2(pz), vec2(pz));
+    precise vec2 matrixVector = negativeMatrix * vec2(pz);
+    precise vec2 vectorMatrix = vec2(pz) * negativeMatrix;
+    precise mat2 matrixMatrix = zeroMatrix * negativeMatrix;
+    precise mat2 finiteMatrix = mat2(vec2(two), vec2(two)) * negativeMatrix;
+    for (int i = 0; i < 2; i++) {
+        results.bits[8 + i] = floatBitsToUint(matrixVector[i]);
+        results.bits[10 + i] = floatBitsToUint(vectorMatrix[i]);
+        for (int j = 0; j < 2; j++) {
+            results.bits[12 + 2 * i + j] = floatBitsToUint(matrixMatrix[i][j]);
+            results.bits[16 + 2 * i + j] = floatBitsToUint(finiteMatrix[i][j]);
+        }
+    }
+
+    float16_t hpz = float16_t(pz), hnz = float16_t(nz);
+    float16_t hone = float16_t(one), hneg = float16_t(neg), htwo = float16_t(two);
+    precise float16_t hscalar0 = hneg * hpz;
+    precise float16_t hscalar1 = hone * hpz;
+    precise float16_t hscalar2 = hone * hnz;
+    precise float16_t hscalar3 = htwo * hneg;
+    results.bits[20] = floatBitsToUint(float(hscalar0));
+    results.bits[21] = floatBitsToUint(float(hscalar1));
+    results.bits[22] = floatBitsToUint(float(hscalar2));
+    results.bits[23] = floatBitsToUint(float(hscalar3));
+    precise f16vec4 hvector = f16vec4(hpz) * f16vec4(hneg, hone, hneg, hone);
+    for (int i = 0; i < 4; i++) results.bits[24 + i] = floatBitsToUint(float(hvector[i]));
+    f16mat2x2 hnegative = f16mat2x2(f16vec2(hneg), f16vec2(hneg));
+    f16mat2x2 hzero = f16mat2x2(f16vec2(hpz), f16vec2(hpz));
+    precise f16vec2 hmatrixVector = hnegative * f16vec2(hpz);
+    precise f16vec2 hvectorMatrix = f16vec2(hpz) * hnegative;
+    precise f16mat2x2 hmatrixMatrix = hzero * hnegative;
+    precise f16mat2x2 hfinite = f16mat2x2(f16vec2(htwo), f16vec2(htwo)) * hnegative;
+    for (int i = 0; i < 2; i++) {
+        results.bits[28 + i] = floatBitsToUint(float(hmatrixVector[i]));
+        results.bits[30 + i] = floatBitsToUint(float(hvectorMatrix[i]));
+        for (int j = 0; j < 2; j++) {
+            results.bits[32 + 2 * i + j] = floatBitsToUint(float(hmatrixMatrix[i][j]));
+            results.bits[36 + 2 * i + j] = floatBitsToUint(float(hfinite[i][j]));
+        }
+    }
+}

@@ -1,0 +1,920 @@
+{
+  "schema": 1,
+  "date": "2026-10-10",
+  "qualification_created_utc": "2026-10-09T16:52:55.961576+00:00",
+  "status": "passed_with_internal_skip",
+  "upstream_pin": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "patch_hashes_sha256": {
+    "0003-valid-image-descriptor-policy.patch": "149cdd10bfe66bb49515463a228540a1100dbcfb5305838368f4e5ae83207eb0",
+    "0062-bounded-legacy-audioout-ingress-trace.patch": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+    "0065-audioout-frame-pacing.patch": "d119e02b7edec8ffeba6edc035fea3fca504e7e39a84b4c7fc360f227947bd95",
+    "0001-ipad-runtime-compatibility.patch": "3d7ab29f13efb669f99736baf1594caf456720e5d79d244ea615f05f9ed61acc",
+    "0002-bounded-exception-logging.patch": "19824fccb822111fda3cd5887d3cd855cbd02cc5c3e14d49995a043eaf3766cc",
+    "0004-no-vintrp-exec-aware-input-liveness.patch": "e2cb8569c5a52c4e37a93c7aa88479391917210e632240fd9aa947832ab82075"
+  },
+  "build": {
+    "compiler": "WinLibs GCC 15.2.0 posix-SEH UCRT r7",
+    "configuration": "Release",
+    "prx_libraries": 47,
+    "compiler_runtime_dlls": 3,
+    "archive_payload_files": 50,
+    "copied_old_project_objects": false,
+    "fresh_project_objects_compiled": 630,
+    "source_files_byte_and_mode_matched": 1771,
+    "fresh_tree_continuation_after_preserved_failed_attempts": true
+  },
+  "selected_test_targets": [
+    "raw_log_output_tests",
+    "windows_exception_tests",
+    "exception_personality_tests",
+    "guest_formatting_tests",
+    "host_thread_local_tests",
+    "guest_environment_tests",
+    "file_position_tests",
+    "guest_math_tests",
+    "guest_json_tests",
+    "guest_json2_initialization_tests",
+    "guest_json2_virtual_allocator_tests",
+    "guest_compatibility_api_tests",
+    "guest_hmd_tests",
+    "guest_player_review_dialog_tests",
+    "guest_ulobjmgr_tests",
+    "guest_audio3d_parameters_tests",
+    "guest_audio3d_port_tests",
+    "guest_audio3d_object_attributes_tests",
+    "guest_kernel_module_lifecycle_tests",
+    "savedata_memory_growth_tests",
+    "savedata_memory_metadata_tests",
+    "savedata_native_write_replacement_tests",
+    "savedata_replace_file_failure_tests",
+    "guest_filesystem_tests",
+    "guest_pthread_attr_tests",
+    "guest_shader_alignment_tests",
+    "guest_memory_tests",
+    "guest_raise_exception_tests",
+    "agc_driver_graphics_tests",
+    "agc_unused_barycentric_tests",
+    "agc_write_tracking_tests",
+    "agc_profile_output_tests",
+    "agc_shader_device_profile_tests",
+    "agc_shader_disk_cache_tests",
+    "uniform_wave_branch_tests",
+    "wave32_wide_subgroup_tests",
+    "audio_out2_pad_mix_tests",
+    "audio_out_mix_level_pad_spk_tests",
+    "audio_out_last_output_time_tests",
+    "audio_out2_latency_tests",
+    "audio_out2_port_layouts_tests",
+    "audio_out2_timing_tests"
+  ],
+  "additional_test_targets": [
+    "guest_pthread_key_tests",
+    "guest_thread_callback_abi_tests",
+    "guest_demangle_tests",
+    "guest_path_case_tests",
+    "guest_dynamic_loader_tests",
+    "guest_unwind_module_info_tests",
+    "guest_http2_tests",
+    "guest_offline_imports_tests",
+    "guest_savedata_search_tests",
+    "guest_savedata_mount_status_tests"
+  ],
+  "positive_case_count": 53,
+  "failure_count": 0,
+  "ctest_skip_count": 0,
+  "case_count_note": "52 test executables produce 53 distinct cases because savedata_memory_growth also exercises read failure.",
+  "positive_cases": [
+    {
+      "case": "raw_log_output",
+      "target": "raw_log_output_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "02bc6bbe2b8f7538ce14cd503f74620bce56189bb896c08fd0a91e1da9179c9e",
+      "machine": "0x8664",
+      "log_sha256": "49d619ea870ab4af6a9320b8fb0d216462f1374a18e19e90f09b4ade0882061a"
+    },
+    {
+      "case": "windows_exceptions",
+      "target": "windows_exception_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "f14f3a7ec072bb1a4b17d9d4ccf9f41bd0339751a1e1d2bddb733a7bb65e3911",
+      "machine": "0x8664",
+      "log_sha256": "b656e4571fc6c6c305c10f42b50d6e95d818919442c68e2a0ed9a7dacc6cbcc3"
+    },
+    {
+      "case": "exception_personality",
+      "target": "exception_personality_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "a04fb9ac99d3e4917228e7f91808ff96c964c9b5bf60894b3bc46842217a0c44",
+      "machine": "0x8664",
+      "log_sha256": "2988d0790635f6656ab8f2f70160e250c3166641d7309152d82c76f9b9cb9588"
+    },
+    {
+      "case": "guest_formatting",
+      "target": "guest_formatting_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "0c9808393b4c35df9c67c40b6cec665b2406053c3e69e2c1f95043381f94c8b0",
+      "machine": "0x8664",
+      "log_sha256": "d86665858c4fc871a5936de689b4e0e80c48246c0a222d38f5312614fb0ed29f"
+    },
+    {
+      "case": "host_thread_local",
+      "target": "host_thread_local_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "36c818a730e8fae342604d6cec8243b2c751ff5bcf150effdf8896fb02175041",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_environment",
+      "target": "guest_environment_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "c4f9f9f0e87a42be72a9cff8bf61f7837723c4edbe8646242d86dc801aa7eb87",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "file_position",
+      "target": "file_position_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "33e1858e0e085c7b63a8517ac59377211650a26eb017f9463438de8a869db5b1",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_math",
+      "target": "guest_math_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "eb0f47afe11ff3c0706b174dc03207808ed866b308b2d2125ba45e21c54ef8ec",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_json",
+      "target": "guest_json_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "d24284873fca2fb9d8d9354e7848f9e766d9c02d3ec867b2061538e568b708e4",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_json2_initialization",
+      "target": "guest_json2_initialization_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "8e32611b2033b7a9a2cc6718e88cd07e27577bf4c241eb964cbc140d8f6a8c65",
+      "machine": "0x8664",
+      "log_sha256": "a37e88b2fb3b5a61be58f1a063f3b72ad271ec4c57fbfb0d1b7d2933fce74a57"
+    },
+    {
+      "case": "guest_json2_virtual_allocator",
+      "target": "guest_json2_virtual_allocator_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "9ade5c9753809c9b29a6d8edcd1986dc5c4e586ac4a970349319322620c9c910",
+      "machine": "0x8664",
+      "log_sha256": "8cc8d27f013d02b67343e3ec5a49531294bca4af41f76bb2c082c36b2ea57f54"
+    },
+    {
+      "case": "guest_compatibility_apis",
+      "target": "guest_compatibility_api_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "29e70098b1a9cb7879ecd6f3aa0efc4b2f832c26b2bad288d20163ea3c3df074",
+      "machine": "0x8664",
+      "log_sha256": "6771edebe0330fb2f538b97cf3f7298bf929fbb36f2d5eccf0670ef258050994"
+    },
+    {
+      "case": "guest_hmd",
+      "target": "guest_hmd_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "6a9c466544ec175e3c4aea7a20a0b96b64ec004e5053cc184032af1e00a4f891",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_player_review_dialog",
+      "target": "guest_player_review_dialog_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "ea6708ddf9850f318bd6471a299a9e1961b95967554ea9d0ac2bb1ca257ab388",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_ulobjmgr",
+      "target": "guest_ulobjmgr_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "47f09468ad24eb59a1604437c0f0ceb5dc5ba249218cb52f5fe0f0d991abf915",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_audio3d_parameters",
+      "target": "guest_audio3d_parameters_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "07550cd73f9b5f464b57b8ba7d983fa4163dbf9b5cc188f0fe00b17ee3f0bb11",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_audio3d_port",
+      "target": "guest_audio3d_port_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "69f2197c78a4d73ee4ea8703b3866b52d06da7ddf5b4fb28983fc0fdc5248a8d",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_audio3d_object_attributes",
+      "target": "guest_audio3d_object_attributes_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "f11bec18bbf3145ef3fa200ec2fc7376a9e2e5006561a0930a4e3e6c959fed07",
+      "machine": "0x8664",
+      "log_sha256": "3400f2613d959d08445ef8cfda21e991847e072c5b9435069946e482f5336e03"
+    },
+    {
+      "case": "guest_kernel_module_lifecycle",
+      "target": "guest_kernel_module_lifecycle_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "eea5da4022a36a8cfc1ffa02f99227633720ddfb6a2a95a883027ec41654fb65",
+      "machine": "0x8664",
+      "log_sha256": "d8ebe92694b95fb9c8401358356c4186d0d9ec69ff20871ca8d3832b2a6f183c"
+    },
+    {
+      "case": "savedata_memory_growth",
+      "target": "savedata_memory_growth_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "709f737ae4d8f58b89b9b2876356718ae582ecf1a0318c567ccc0998c78df3d6",
+      "machine": "0x8664",
+      "log_sha256": "b63fedf718cb77f596134d87b7ab4c469c0fb0eee033967679d608a5f5d9b6ad"
+    },
+    {
+      "case": "savedata_memory_growth_read_failure",
+      "target": "savedata_memory_growth_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "709f737ae4d8f58b89b9b2876356718ae582ecf1a0318c567ccc0998c78df3d6",
+      "machine": "0x8664",
+      "log_sha256": "b63fedf718cb77f596134d87b7ab4c469c0fb0eee033967679d608a5f5d9b6ad"
+    },
+    {
+      "case": "savedata_memory_metadata",
+      "target": "savedata_memory_metadata_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "7f4ea39defba542dde009ca43e276bdfaebd5e15735c982d05c127387a759d60",
+      "machine": "0x8664",
+      "log_sha256": "71e64001cd04ffdceae74337da697187dcae4ad65f9e6b9a8a0236b44313af4f"
+    },
+    {
+      "case": "savedata_native_write_replacement",
+      "target": "savedata_native_write_replacement_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "b503be8588000c973db9eaf6a4a86fab72416339203746443d0451b1452d0419",
+      "machine": "0x8664",
+      "log_sha256": "3093899ed26388c9a56fcf5c8de431f864f0bfd6cdb4bb5ff5edc66125b61710"
+    },
+    {
+      "case": "savedata_replace_file_failure",
+      "target": "savedata_replace_file_failure_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "d73e8e4e0a605cd03c31347520cc5b4ac6f8835bd69cfc47792363e59dae171b",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_filesystem",
+      "target": "guest_filesystem_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "57280e0a24ab5acf2cc7b903bf2d5497d324becdcc27179730215a0e69ad25a7",
+      "machine": "0x8664",
+      "log_sha256": "42048b246e6b209cbd91d57f195ea9dccc6b195a982835c5075ebcd92575d895"
+    },
+    {
+      "case": "guest_pthread_attr",
+      "target": "guest_pthread_attr_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "051ff10b473afdbe50903e991e7f78f696e735511704cc209a9c399af0e3bb19",
+      "machine": "0x8664",
+      "log_sha256": "654d805a8d0258041417ea15df75a0e08979142a22e0b4eb5c17c8eff52574dc"
+    },
+    {
+      "case": "guest_shader_alignment",
+      "target": "guest_shader_alignment_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "a23d27ca7b10a9c20beb5eb50581884d99cdccc082ff3af42bdc5f15479b3e2c",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "guest_memory",
+      "target": "guest_memory_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "c5913a1bb619e7b521b906edd7998ae92ec13847d418cf95f9c718bbf47d2746",
+      "machine": "0x8664",
+      "log_sha256": "40b4674025698ff21656ef26335355bb4ed569c113ad9d585e02711c8d13260b"
+    },
+    {
+      "case": "guest_raise_exception",
+      "target": "guest_raise_exception_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "b77ac77604006ce2e66f66dd6cde9b44a1440b9dffd5c81996c5e913dd3b3250",
+      "machine": "0x8664",
+      "log_sha256": "9b08fe9eacc27f7fd466d2451056cf018cdce7421bb0ac6bf9a65b5cc4c908c0"
+    },
+    {
+      "case": "agc_driver_graphics",
+      "target": "agc_driver_graphics_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "5e8ed3cc69839e8781719f7fe7e99b3e1ac4131e1188afb6969a815b18cc3dd1",
+      "machine": "0x8664",
+      "log_sha256": "45ce6690e16b3c2150d1558af6006e8f0ae55e2ea2dd22b0d00337108530e67f"
+    },
+    {
+      "case": "agc_unused_barycentric",
+      "target": "agc_unused_barycentric_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "91b89f7795602397c662b0aa196039664e951cfebf960f91f6f766f11f9d0802",
+      "machine": "0x8664",
+      "log_sha256": "e1a0a4e5c178459af6f0d3969500b84e78b0799b533c42f2af08aa9646ff6acf"
+    },
+    {
+      "case": "agc_write_tracking",
+      "target": "agc_write_tracking_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "e1e4e8988930067acc9b5640fd19cda64effbd57030235e1fee897d2cdb740f7",
+      "machine": "0x8664",
+      "log_sha256": "0ce956a7a1db4c92ae205e5c1b8bac9ad5e420572669d9e9e335773b89d2a6a7"
+    },
+    {
+      "case": "agc_profile_output",
+      "target": "agc_profile_output_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "c2a2665dba8a782020abeecbe138620a81f10a08936337d679822e3f16e54991",
+      "machine": "0x8664",
+      "log_sha256": "a1eb0f277419f66925759e934e8f88598b66d7f60712abd34e6319190c0b878d"
+    },
+    {
+      "case": "agc_shader_device_profile",
+      "target": "agc_shader_device_profile_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "d1aeaabefc3325f88a2a79d779e51461bf6c78378db8f31bf89c0d8a936b275b",
+      "machine": "0x8664",
+      "log_sha256": "aeae9027f90e205abadba811f92a8ba55d02979c928a1f360883506af765a1d7"
+    },
+    {
+      "case": "agc_shader_disk_cache",
+      "target": "agc_shader_disk_cache_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "de821a2a6d2374207a6f38e41875a5554f61f9adaf7d2c945e5fa196e0807840",
+      "machine": "0x8664",
+      "log_sha256": "8d340a3a6245cbaca3bd399aa3778f4efb4ae914d4d1c81b34025ec44f31a995"
+    },
+    {
+      "case": "uniform_wave_branch",
+      "target": "uniform_wave_branch_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "b4bda95c59d724c8d49823178634676716669dd6ef84c0f6bb78d9f8761399f6",
+      "machine": "0x8664",
+      "log_sha256": "9a28415f88189c833607b4bebee8c145ca174f3a6fdc394fcb43378c07134cde"
+    },
+    {
+      "case": "wave32_wide_subgroup",
+      "target": "wave32_wide_subgroup_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "404886fd0cce5e230135b83d49e6d774c518157609101d8d595a2fc8a8087051",
+      "machine": "0x8664",
+      "log_sha256": "dc639c84ee4136a6b2af9b2d16c7aa9e973d89f65b741786fc424219eb44ce00"
+    },
+    {
+      "case": "audio_out2_pad_mix",
+      "target": "audio_out2_pad_mix_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "1bffeb8c71c0cca91d04d4ea4f6af0b95a065840c69ade60c7fa46dfb3a14746",
+      "machine": "0x8664",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "audio_out_mix_level_pad_spk",
+      "target": "audio_out_mix_level_pad_spk_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "c5f7662bd789214553fbf771452cd810554a2e919f0079ae91ee6b37d9a90649",
+      "machine": "0x8664",
+      "log_sha256": "7427b4941331cae15590c9218383113f2a52a06f34967528ff8d0bb23b739ccd"
+    },
+    {
+      "case": "audio_out_last_output_time",
+      "target": "audio_out_last_output_time_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "66cd3272936e1c8745baad4814c3a23e970dd0e5db2f51c381be3d060cc7abff",
+      "machine": "0x8664",
+      "log_sha256": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104"
+    },
+    {
+      "case": "audio_out2_latency",
+      "target": "audio_out2_latency_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "dbf1c1787cec2c37d286147a22a09bc9b395256329bc2aca77e04a7457d04eda",
+      "machine": "0x8664",
+      "log_sha256": "3da5cdc78e6bec501dbab6ae234db78a34714139a6ba04ad6a5c3ec755efc104"
+    },
+    {
+      "case": "audio_out2_port_layouts",
+      "target": "audio_out2_port_layouts_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "a83f4a17f99c685ba8312ae8a499c1ad4d838ed8662b3bb871e2228117afffeb",
+      "machine": "0x8664",
+      "log_sha256": "f7d44135e28a4d9cbd2e840177a7c6615fff88e9b950abf444936763657db175"
+    },
+    {
+      "case": "audio_out2_timing",
+      "target": "audio_out2_timing_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "8e6479f6be98db68f52484f350d59d98ee39932daad905f3586627e544fc9266",
+      "machine": "0x8664",
+      "log_sha256": "9d03525a3d053f565d2ca997dd555d4b7def9fbed343c6bc2f2ac4bd3d3907c6"
+    },
+    {
+      "case": "guest_offline_imports",
+      "target": "guest_offline_imports_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "1a0f8d64a1b48470cf2d9b3d1ff8e47957f01b3557b0dc7b86da7f7aa6bdae88",
+      "machine": "0x8664",
+      "log_sha256": "db079c5302f1d55951f0d6ec2db451c4faedee4baaf962c1b0547b9140600c32"
+    },
+    {
+      "case": "guest_path_case",
+      "target": "guest_path_case_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "87407dcfa880c8288dc66d4dd06e4dc47ef858fc00fab73e93008c11c83bd039",
+      "machine": "0x8664",
+      "log_sha256": "3b504dc1e94e653eb340f4b817bb2a8ecb4933e8715b8b32485fa81ad1dbb0f7"
+    },
+    {
+      "case": "guest_thread_callback_abi",
+      "target": "guest_thread_callback_abi_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "7ca5264636446ea9b2af23e349e3b199eccd646dd2fa7d39fb3b120cf5d54747",
+      "machine": "0x8664",
+      "log_sha256": "95081dd900129867e2eb75c1fa00623a3ea45ee719777355f012eea2001cc261"
+    },
+    {
+      "case": "guest_demangle",
+      "target": "guest_demangle_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "7fcbfd6ba62c951255e5675c023ccbe1364078f5e2622b6c1e38d0a0bd8f0857",
+      "machine": "0x8664",
+      "log_sha256": "08f0effacf5db85d9f89169b17179946e80bb7fa11a66b921387a9888237d7ae"
+    },
+    {
+      "case": "guest_http2",
+      "target": "guest_http2_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "54d84540963f9161fb692b89fb67f3eff53495fcb6211bb5f8334b48784d54fd",
+      "machine": "0x8664",
+      "log_sha256": "0062aad24b3b0296ea759a074be40dc8b6142a4c79f3e54895efb55354e832cd"
+    },
+    {
+      "case": "guest_savedata_search",
+      "target": "guest_savedata_search_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "9ed3e71907268aa029570431356fb86f6f985222a0fa759207df9cfc5a969150",
+      "machine": "0x8664",
+      "log_sha256": "fa46b4d4fa19ace88fbc4007969b867444918d2ea4c0131ea91f26a1426783f3"
+    },
+    {
+      "case": "guest_savedata_mount_status",
+      "target": "guest_savedata_mount_status_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "52d060c1512422cb65f303ca9f64df94d05156639611b456619f033befcc446a",
+      "machine": "0x8664",
+      "log_sha256": "636defa0146e463f2234841ccf84f1441a5ff441f4e4865595dbf92f132d1702"
+    },
+    {
+      "case": "guest_dynamic_loader",
+      "target": "guest_dynamic_loader_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "7ee0133a0290c4089f81755515d94358397a2cd897283814a6f33f424006f6a2",
+      "machine": "0x8664",
+      "log_sha256": "5b0969ecfc2a287fbf8db6aaf44b590d4ce64e9184f01b95aa59b499eb8904ba"
+    },
+    {
+      "case": "guest_pthread_key",
+      "target": "guest_pthread_key_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "28660337a9bf4b39089b99b6cd007682103726c6d7f3e33e30f09319213b3575",
+      "machine": "0x8664",
+      "log_sha256": "cef502061ead8a03d7b40d25cb15bf9f4f8865bb383f217b365a4ea888e0e601"
+    },
+    {
+      "case": "guest_unwind_module_info",
+      "target": "guest_unwind_module_info_tests",
+      "status": "passed",
+      "exit_code": 0,
+      "executable_sha256": "ae399a5f262ce50bc62ce7f85770ec10c2c4bbb37f615b62e51ed9559df65f2f",
+      "machine": "0x8664",
+      "log_sha256": "8c1d0ee95fe0442b3ec2edc6be4bff1198614d050ecfee03fd76602e75dea945"
+    }
+  ],
+  "internal_skips": [
+    {
+      "case": "guest_raise_exception",
+      "subtest": "async_avx_context",
+      "reason": "Local Wine host does not expose AVX despite explicit AVX opt-in; this is not FEX/iPad AVX execution",
+      "delivered_exception_count": 451,
+      "evidence_log_sha256": "9b08fe9eacc27f7fd466d2451056cf018cdce7421bb0ac6bf9a65b5cc4c908c0"
+    }
+  ],
+  "libraries": [
+    {
+      "sha256": "fe6f2b9fc59d8327144713c8d7b8666bde13849b77e9af0cc8b49d9d5a4fdfc0",
+      "machine": "0x8664",
+      "exports_count": 290,
+      "target": "libSceAgc"
+    },
+    {
+      "sha256": "a6a6633810419fd3225aa041a4e08f63bf458ce381aea5980803a341c6507189",
+      "machine": "0x8664",
+      "exports_count": 3692,
+      "target": "libSceAgcDriver"
+    },
+    {
+      "sha256": "7cb4fc234ea33965582487afd0820a60534365003826455376bc4f3499421ac9",
+      "machine": "0x8664",
+      "exports_count": 4793,
+      "target": "libSceAjm.native"
+    },
+    {
+      "sha256": "9d2ab367688683d7f836e9617513de46390fbd47bb6a88de637b250e9b1fea4b",
+      "machine": "0x8664",
+      "exports_count": 119,
+      "target": "libSceAmpr"
+    },
+    {
+      "sha256": "befcb0c68b2357d671c4a906b324b3f038735597d51b9b5b73d9bc95b6b25537",
+      "machine": "0x8664",
+      "exports_count": 46,
+      "target": "libSceAppContent"
+    },
+    {
+      "sha256": "d680103866fa4f5a2f4c4015f4ff1cacd1f6e52c5e09d1f27ab3a6f7c346cdd3",
+      "machine": "0x8664",
+      "exports_count": 28,
+      "target": "libSceAudio3d"
+    },
+    {
+      "sha256": "fd7fa5780625d359f46b1962cd2fe8c1761fc3b59d6fdea34574313d80a01e96",
+      "machine": "0x8664",
+      "exports_count": 8,
+      "target": "libSceAudioIn"
+    },
+    {
+      "sha256": "4a70611fe43ac5bdddcc039b0c7cd138ccb43a399b2a39a593ce661b9f6c2054",
+      "machine": "0x8664",
+      "exports_count": 2869,
+      "target": "libSceAudioOut"
+    },
+    {
+      "sha256": "18e87494710d5695dc4d8c70227ac2eca50798e2704236dbb6623be4a5d9e196",
+      "machine": "0x8664",
+      "exports_count": 5802,
+      "target": "libSceAvPlayer.native"
+    },
+    {
+      "sha256": "459d557e80596a36ac277d833bb59a4ae05cadca270a0452100c9097ececd142",
+      "machine": "0x8664",
+      "exports_count": 11,
+      "target": "libSceCdlgPlayerReview"
+    },
+    {
+      "sha256": "38c900be9f9d3cfbae72a8666ddb27d4ba9042e523b15a5a2ea6084f8321cc39",
+      "machine": "0x8664",
+      "exports_count": 2,
+      "target": "libSceCommonDialog"
+    },
+    {
+      "sha256": "e93faff25624967276205ae479e003b24074fc9dc9ef4ff3c2aa456e39f57612",
+      "machine": "0x8664",
+      "exports_count": 9,
+      "target": "libSceHmd"
+    },
+    {
+      "sha256": "30f95fc8b6ed0f0a44585efe86f93ffc98e56e959f2e5a8fde09da90dc24ad8d",
+      "machine": "0x8664",
+      "exports_count": 66,
+      "target": "libSceHttp"
+    },
+    {
+      "sha256": "41b95ecd5c0e2d4175ca2215da6895f5d0077fe195646d473a73d21fc7f9049d",
+      "machine": "0x8664",
+      "exports_count": 51,
+      "target": "libSceHttp2"
+    },
+    {
+      "sha256": "f5b946e4fbe028a79aa9bfa924a7c3f570705af9df91676f404150c97baf6702",
+      "machine": "0x8664",
+      "exports_count": 23,
+      "target": "libSceIme"
+    },
+    {
+      "sha256": "bee45647a918dcdde39e98051e1587254e0788978b26e2a4f5a9683812c8c46a",
+      "machine": "0x8664",
+      "exports_count": 8,
+      "target": "libSceImeDialog"
+    },
+    {
+      "sha256": "b88fcd4077af8bf624bf2e004ce69bb968b8797fa997a955b84c94ba51be640a",
+      "machine": "0x8664",
+      "exports_count": 107,
+      "target": "libSceJson2"
+    },
+    {
+      "sha256": "a977cadcd97e53fa173d651c51069596d7d98357e06d3b9f6b76014f60d67ffe",
+      "machine": "0x8664",
+      "exports_count": 14,
+      "target": "libSceKeyboard"
+    },
+    {
+      "sha256": "b4228af540a27d3f1deaeef6d869e0094be816eb75587d940251c0d2d8da2c4d",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceLibcInternal"
+    },
+    {
+      "sha256": "949b72816edafccd5d3187c5ddb604ba7947ecb2bd9a7740eceda20c12b15ac2",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceMouse"
+    },
+    {
+      "sha256": "e4766b1cc0b2c9aa1d8895df783e1ec240b9409aaaffe48410c163c16a0564ce",
+      "machine": "0x8664",
+      "exports_count": 11,
+      "target": "libSceMsgDialog.native"
+    },
+    {
+      "sha256": "0d52e6e54a792e2b0247aec04b23d3b006820e94735a32fd0236fdb495111575",
+      "machine": "0x8664",
+      "exports_count": 71,
+      "target": "libSceNet"
+    },
+    {
+      "sha256": "e10de5e79d0d5e929c90efdd745bfd810c60853268738745a5320b3f5894979a",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceNetCtl"
+    },
+    {
+      "sha256": "bd24c630e44bfe0cc9cc65bc5accbfb56fd2f2387bc90e6067cdcfb30163b907",
+      "machine": "0x8664",
+      "exports_count": 8,
+      "target": "libSceNpAuth"
+    },
+    {
+      "sha256": "264c9fdf6b2b5c51c8183502944ff407d3706274defd2acebf41d51208e78dc6",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceNpCommerce"
+    },
+    {
+      "sha256": "24ec0f80d5bbb08796007cd7d1e1255f7765cc8732f56c6f74892379f9e21277",
+      "machine": "0x8664",
+      "exports_count": 59,
+      "target": "libSceNpEntitlementAccess"
+    },
+    {
+      "sha256": "fb835b4eeca20850044e61b7fced99fe2904b776cd21d8853e596b57ccc454f5",
+      "machine": "0x8664",
+      "exports_count": 11,
+      "target": "libSceNpGameIntent"
+    },
+    {
+      "sha256": "063727a4d80a9906504c0567e501b39e7f628a9b2d134883cb50226f50cf8adf",
+      "machine": "0x8664",
+      "exports_count": 32,
+      "target": "libSceNpManager"
+    },
+    {
+      "sha256": "bfb7dce1146ab65c8ad88a50eaefb471c71710cd7810a28fb85ca7150f5f2fff",
+      "machine": "0x8664",
+      "exports_count": 16,
+      "target": "libSceNpSessionSignaling"
+    },
+    {
+      "sha256": "6d951e0b988905276c4f8b936a95c5b5b20fe76bd6063653eb6c6b1f6fa6ee81",
+      "machine": "0x8664",
+      "exports_count": 28,
+      "target": "libSceNpTrophy2"
+    },
+    {
+      "sha256": "dcd853913a3eb5594504f37c452f3fbe1c658f97b68713aeea1e6492b153bbf8",
+      "machine": "0x8664",
+      "exports_count": 49,
+      "target": "libSceNpUniversalDataSystem"
+    },
+    {
+      "sha256": "ff27a5daac08aa2f4f1fc3a99b3688765dd396fd3bd1e41e20bb4aeccb998a63",
+      "machine": "0x8664",
+      "exports_count": 25,
+      "target": "libSceNpWebApi2"
+    },
+    {
+      "sha256": "2ea90e95d77e4eae331a837aeb20bc482e8af5a423dca285cd68bf57e2ed6413",
+      "machine": "0x8664",
+      "exports_count": 54,
+      "target": "libScePad"
+    },
+    {
+      "sha256": "653754182ad0b05430c4e4095cc1218a11b64e5fa42df1fa714a204817205a1e",
+      "machine": "0x8664",
+      "exports_count": 9,
+      "target": "libSceRazorCpu"
+    },
+    {
+      "sha256": "e6c45da992ce60a9ce178177a40630e46ba70a0c4a735d818c56b09e40b7589f",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceRemoteplay"
+    },
+    {
+      "sha256": "d464db43dca4d3f63eb9b968366d09ead017136ba49ffe1bf2ec255a1f10d5dd",
+      "machine": "0x8664",
+      "exports_count": 34,
+      "target": "libSceRtc"
+    },
+    {
+      "sha256": "584c5f49fb75090cb2fa7b916bb59ce75205498f64daea536739376eeb91a6bd",
+      "machine": "0x8664",
+      "exports_count": 75,
+      "target": "libSceSaveData.native"
+    },
+    {
+      "sha256": "baaac5afb5ba8c231d427624b49ce3f8b006e41b4e8f3ce3709a0cb054fc54fb",
+      "machine": "0x8664",
+      "exports_count": 10,
+      "target": "libSceSaveDataDialog.native"
+    },
+    {
+      "sha256": "13d1d27a0e3df587cc29930240f1d7d8363edafc79911be1c031651a38edc210",
+      "machine": "0x8664",
+      "exports_count": 21,
+      "target": "libSceSsl"
+    },
+    {
+      "sha256": "e509b1cefc2992b2348bf72af61e669f43e84d33575d1ef389cff0f13ae9305a",
+      "machine": "0x8664",
+      "exports_count": 18,
+      "target": "libSceSysmodule"
+    },
+    {
+      "sha256": "bc242f0cad57357c09ccf17b9dc3de60af04481754e95051061b8f358756aad6",
+      "machine": "0x8664",
+      "exports_count": 24,
+      "target": "libSceSystemService"
+    },
+    {
+      "sha256": "3fab6d2f10deb09f0dac318ce5d0ef6509693ad63e8e24b8652f4efda48f93e0",
+      "machine": "0x8664",
+      "exports_count": 21,
+      "target": "libSceUserService"
+    },
+    {
+      "sha256": "57fdea3142aef262b6e38664d4215b782957a14ce0311c6b96718355ba8847f0",
+      "machine": "0x8664",
+      "exports_count": 3033,
+      "target": "libSceVideoOut"
+    },
+    {
+      "sha256": "8c09a503a0156388a99c08815849641bf2a010023a7c997a6ca0b0314774d22f",
+      "machine": "0x8664",
+      "exports_count": 14,
+      "target": "libSceWebBrowserDialog"
+    },
+    {
+      "sha256": "73f72b8153f9ec2b7e2d6cd2bb5eb19b31751febfd61115273cd5e2af773d86a",
+      "machine": "0x8664",
+      "exports_count": 952,
+      "target": "libc"
+    },
+    {
+      "sha256": "0acd44f488b62ea0b48edd2ddb2662ac833321b5d9ee64fb5c29e6c7edc8ecd0",
+      "machine": "0x8664",
+      "exports_count": 707,
+      "target": "libkernel"
+    },
+    {
+      "sha256": "07efbdadca7b8cb7197b4e990244137a27704382da319bff144ee191abf909a7",
+      "machine": "0x8664",
+      "exports_count": 2,
+      "target": "ulobjmgr"
+    }
+  ],
+  "test_and_dependency_inputs_verified_unchanged": true,
+  "arena": {
+    "APS5_GUEST_ARENA_LAZY": "1",
+    "APS5_GUEST_ARENA_BASE": "0x7400000000",
+    "APS5_GUEST_ARENA_SIZE": "0x100000000",
+    "APS5_GUEST_ARENA_CHUNK": "0x10000000",
+    "APS5_PRESERVE_ASYNC_AVX": "1",
+    "APS5_PRESERVE_ASYNC_FLAGS": "1"
+  },
+  "source_and_receipt_hashes_sha256": {
+    "runtime_qualification": "7aceb441ec940784ce288b2da84dabe4c652b15336747fb55d819d0a846cda20",
+    "source_freeze": "a89a6f282e00b99c6e7d44882712c3dd6b9864db9c3b92cbe8427832aaf2cd2d",
+    "source_snapshot": "64398cae8c299e4bfcac0563d995a9641286ef9361b7c0d34e3da826fcba9bbd",
+    "selected_run": "72dcbe39c64b19a50a45d5f78473bf3a9bec0849f231c8b9e0968750d3e2ce65",
+    "additional_run": "86b733d3cb17b07069c1394540e87e3913068879ac524d9a5d4258b08a9b95be",
+    "staged_compiler_proof": "89dab0a36012198f2077ec34064bce662d7d670a420012e1d34523ec7f4fcefa",
+    "independent_semantic_proof": "d6cd4688593ece9e4f477090956f88eb1db310fd527a5bfcfec5237b7a2df30a"
+  },
+  "sealed_export": {
+    "provenance_sha256": "e72860b8fe6c795f8194974cb84989290dabe249c679b7bc94f51b6f07e279e2",
+    "archive_sha256": "7e875a91bce89dda0302fe149d77b13b93568a3324bd0078fba4e90859a35747",
+    "sealing_receipt_sha256": "deab868cdec4458fe597d1a5398cfb01833cc18ee110264a1dae558f7fa151ae",
+    "prefinal_provenance_sha256": "6f370bb4624979fe6f780840f69ddf96ae24f9939a7a95d6b1f3cc02d04eb33e",
+    "prefinal_archive_sha256": "7a38b4ce2f5d40a07debc352dea223330b870f3b0b0c7eaa6ed5dc0d20cd31dd",
+    "embedded_provenance_equals_outer_without_archive_hash": true,
+    "verified_archive_payload_files": 50,
+    "qualification_immutable_during_seal": true,
+    "qualified_binary_inputs_unchanged_during_seal": true,
+    "mutual_hash_links": false,
+    "dag": "immutable prefinal build snapshots -> qualification -> final provenance -> archive -> separate sealing receipt"
+  },
+  "preserved_failed_attempts": [
+    {
+      "attempt": 1,
+      "failure": "raw_log_output_tests lacked libc unwind-personality linkage",
+      "repair": "Link libc and configure Windows unwind for that test target only"
+    },
+    {
+      "attempt": 2,
+      "failure": "conservative depth-export fixture rejected uncompressed MRTZ",
+      "repair": "Bounded proof of enabled MRTZ depth/sample-mask operand reads; all prior guards retained"
+    },
+    {
+      "attempt": 3,
+      "failure": "ordered fragment fixture rejected exact S_SENDMSG 7",
+      "repair": "Admit only exact no-register-side-effect ordered message, retaining operand/control-flow liveness guards"
+    }
+  ],
+  "historical_foundation_manifest": "anyps5-main-integration-20261009.json",
+  "acceptance_boundaries": {
+    "cpu_mock_vulkan_only": true,
+    "fresh_combined_runtime_native_windows_execution_verified": false,
+    "fex_execution_verified": false,
+    "physical_ipad_execution_verified": false,
+    "physical_gpu_execution_verified": false,
+    "minigolf_gameplay_verified": false,
+    "solitaire_regression_verified": false,
+    "performance_improvement_verified": false
+  },
+  "github_actions_used": false,
+  "device_actions_performed": false,
+  "public_artifact_scope": "Source, patch, library/test identities, opaque hashes and sanitized results only. No game assets, private paths, raw diagnostics or shader-request contents."
+}

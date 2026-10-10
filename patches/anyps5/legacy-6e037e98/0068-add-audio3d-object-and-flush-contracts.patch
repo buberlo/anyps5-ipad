@@ -1,0 +1,451 @@
+diff --git a/core/libs/SceTypes.hpp b/core/libs/SceTypes.hpp
+--- a/core/libs/SceTypes.hpp
++++ b/core/libs/SceTypes.hpp
+@@ -532,6 +532,21 @@
+     std::uint32_t buffer_mode;
+     std::uint32_t pad;
+     std::uint32_t num_beds;
++};
++
++struct Audio3dAttribute {
++    std::uint32_t attribute_id;
++    std::uint32_t pad;
++    const void* value;
++    std::uint64_t value_size;
++};
++
++struct Audio3dPcm {
++    std::uint32_t format;
++    std::uint32_t pad;
++    const void* sample_buffer;
++    std::uint32_t num_samples;
++    std::uint32_t pad_end;
+ };
+ 
+ using AudioPropagationHandle = std::uint64_t;
+diff --git a/core/libs/prx/libSceAudio3d/Export.cpp b/core/libs/prx/libSceAudio3d/Export.cpp
+--- a/core/libs/prx/libSceAudio3d/Export.cpp
++++ b/core/libs/prx/libSceAudio3d/Export.cpp
+@@ -3,6 +3,7 @@
+ #include <cstddef>
+ #include <cstring>
+ #include <deque>
++#include <limits>
+ #include <mutex>
+ #include <set>
+ #include <stdexcept>
+@@ -18,6 +19,7 @@
+ constexpr int AUDIO3D_ERROR_INVALID_PARAMETER = static_cast<int>(0x80EA0004);
+ constexpr int AUDIO3D_ERROR_OUT_OF_RESOURCES = static_cast<int>(0x80EA0006);
+ constexpr int AUDIO3D_ERROR_NOT_READY = static_cast<int>(0x80EA0007);
++constexpr int AUDIO3D_ERROR_NOT_SUPPORTED = static_cast<int>(0x80EA0008);
+ 
+ constexpr int AUDIO3D_USER_ID_SYSTEM = 0xFF;
+ constexpr std::uint32_t AUDIO3D_PORT_ID = 0;
+@@ -27,6 +29,9 @@
+ constexpr std::uint32_t AUDIO3D_BUFFER_ADVANCE_AND_PUSH = 2;
+ constexpr std::uint32_t AUDIO3D_BLOCKING_ASYNC = 0;
+ constexpr std::uint32_t AUDIO3D_BLOCKING_SYNC = 1;
++constexpr std::uint32_t AUDIO3D_ATTRIBUTE_PCM = 1;
++constexpr std::uint32_t AUDIO3D_ATTRIBUTE_GAIN = 3;
++constexpr std::uint32_t AUDIO3D_ATTRIBUTE_RESET_STATE = 9;
+ constexpr std::uint32_t AUDIO3D_ATTRIBUTE_LATE_REVERB_LEVEL = 0x10001;
+ constexpr std::uint32_t AUDIO3D_ATTRIBUTE_DOWNMIX_SPREAD_RADIUS = 0x10002;
+ constexpr std::uint32_t AUDIO3D_ATTRIBUTE_DOWNMIX_SPREAD_HEIGHT_AWARE = 0x10003;
+@@ -59,6 +64,19 @@
+ std::uint32_t QueueLevel(Clock::time_point now) {
+     while (!g_port.playing.empty() && g_port.playing.front() <= now) g_port.playing.pop_front();
+     return g_port.advanced + static_cast<std::uint32_t>(g_port.playing.size());
++}
++
++void SubmitAdvanced(Clock::time_point now) {
++    Clock::time_point end = g_port.playing.empty() ? now : g_port.playing.back();
++    for (; g_port.advanced != 0; --g_port.advanced) {
++        end += g_port.frame_duration;
++        g_port.playing.push_back(end);
++    }
++}
++
++bool AddressRangeFits(const void* pointer, std::uint64_t size) {
++    return pointer != nullptr && size <= std::numeric_limits<std::uintptr_t>::max() -
++        reinterpret_cast<std::uintptr_t>(pointer);
+ }
+ 
+ }
+@@ -159,13 +177,26 @@
+         }
+         const Clock::time_point now = Clock::now();
+         const std::uint32_t level = QueueLevel(now);
+-        Clock::time_point end = g_port.playing.empty() ? now : g_port.playing.back();
+-        for (; g_port.advanced != 0; --g_port.advanced) {
+-            end += g_port.frame_duration;
+-            g_port.playing.push_back(end);
+-        }
++        SubmitAdvanced(now);
+         if (blocking == AUDIO3D_BLOCKING_ASYNC || level < g_port.queue_depth) return 0;
+         wait_until = g_port.playing[level - g_port.queue_depth];
++    }
++    while (Clock::now() < wait_until) std::this_thread::sleep_until(wait_until);
++    return 0;
++}
++
++int APS5_VABI sceAudio3dPortFlush(uint32_t port_id) {
++    Clock::time_point wait_until;
++    {
++        std::lock_guard lock(g_mutex);
++        if (!PortIsOpen(port_id)) return AUDIO3D_ERROR_INVALID_PORT;
++        const Clock::time_point now = Clock::now();
++        QueueLevel(now);
++        SubmitAdvanced(now);
++        if (g_port.playing.empty()) return 0;
++        // Flush drains every pending frame, including those not submitted by PortPush yet.
++        // This port currently schedules empty frames; it has no PCM renderer or audio sink.
++        wait_until = g_port.playing.back();
+     }
+     while (Clock::now() < wait_until) std::this_thread::sleep_until(wait_until);
+     return 0;
+@@ -207,4 +238,50 @@
+     return 0;
+ }
+ 
+-}
++int APS5_VABI sceAudio3dObjectSetAttributes(uint32_t port_id, uint32_t object_id,
++                                           uint64_t num_attributes, const Audio3dAttribute* attributes) {
++    static_assert(sizeof(Audio3dAttribute) == 0x18 && offsetof(Audio3dAttribute, value) == 8 &&
++                  offsetof(Audio3dAttribute, value_size) == 0x10);
++    static_assert(sizeof(Audio3dPcm) == 0x18 && offsetof(Audio3dPcm, sample_buffer) == 8 &&
++                  offsetof(Audio3dPcm, num_samples) == 0x10);
++    std::lock_guard lock(g_mutex);
++    if (!PortIsOpen(port_id)) return AUDIO3D_ERROR_INVALID_PORT;
++    if (!g_port.objects.contains(object_id)) return AUDIO3D_ERROR_INVALID_OBJECT;
++    if (num_attributes == 0 || num_attributes > std::numeric_limits<std::uint64_t>::max() / sizeof(Audio3dAttribute) ||
++        !AddressRangeFits(attributes, num_attributes * sizeof(Audio3dAttribute))) return AUDIO3D_ERROR_INVALID_PARAMETER;
++
++    bool needs_renderer = false;
++    for (std::uint64_t i = 0; i < num_attributes; ++i) {
++        Audio3dAttribute attribute;
++        std::memcpy(&attribute, reinterpret_cast<const unsigned char*>(attributes) + i * sizeof(attribute), sizeof(attribute));
++        if (attribute.attribute_id == AUDIO3D_ATTRIBUTE_RESET_STATE) {
++            // RESET_STATE consumes no payload, including when its ignored fields are nonzero.
++            continue;
++        }
++        if (attribute.value_size == 0 || !AddressRangeFits(attribute.value, attribute.value_size)) {
++            return AUDIO3D_ERROR_INVALID_PARAMETER;
++        }
++        if (attribute.attribute_id == AUDIO3D_ATTRIBUTE_PCM) {
++            if (attribute.value_size < sizeof(Audio3dPcm)) return AUDIO3D_ERROR_INVALID_PARAMETER;
++            Audio3dPcm pcm;
++            std::memcpy(&pcm, attribute.value, sizeof(pcm));
++            if (pcm.format > 1 || pcm.num_samples == 0 ||
++                !AddressRangeFits(pcm.sample_buffer, std::uint64_t{pcm.num_samples} * (pcm.format == 0 ? 2 : 4))) {
++                return AUDIO3D_ERROR_INVALID_PARAMETER;
++            }
++            if ((reinterpret_cast<std::uintptr_t>(pcm.sample_buffer) & (pcm.format == 0 ? 1 : 3)) != 0) {
++                return AUDIO3D_ERROR_INVALID_PARAMETER;
++            }
++        } else if (attribute.attribute_id == AUDIO3D_ATTRIBUTE_GAIN && attribute.value_size < sizeof(float)) {
++            return AUDIO3D_ERROR_INVALID_PARAMETER;
++        }
++        // Do not consume PCM or accept render parameters until object mixing exists.
++        needs_renderer = true;
++    }
++    if (needs_renderer) return AUDIO3D_ERROR_NOT_SUPPORTED;
++    // Only RESET_STATE remains. Reserved objects have no accepted PCM or persistent render
++    // attributes, so their audio state is already empty; their reservation must survive reset.
++    return 0;
++}
++
++}
+diff --git a/core/libs/prx/libSceAudio3d/CMakeLists.txt b/core/libs/prx/libSceAudio3d/CMakeLists.txt
+--- a/core/libs/prx/libSceAudio3d/CMakeLists.txt
++++ b/core/libs/prx/libSceAudio3d/CMakeLists.txt
+@@ -21,4 +21,13 @@
+         set_tests_properties(guest_audio3d_port PROPERTIES ENVIRONMENT_MODIFICATION
+             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudio3d>")
+     endif()
++    add_test_executable(guest_audio3d_object_attributes_tests ${LIBS_INCLUDE_DIR}/tests/GuestAudio3dObjectAttributes.cpp)
++    target_include_directories(guest_audio3d_object_attributes_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(guest_audio3d_object_attributes_tests PRIVATE libSceAudio3d libc)
++    configure_windows_unwind(guest_audio3d_object_attributes_tests)
++    add_test(NAME guest_audio3d_object_attributes COMMAND guest_audio3d_object_attributes_tests)
++    if(WIN32)
++        set_tests_properties(guest_audio3d_object_attributes PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudio3d>")
++    endif()
+ endif()
+diff --git a/core/libs/tests/GuestAudio3dObjectAttributes.cpp b/core/libs/tests/GuestAudio3dObjectAttributes.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/GuestAudio3dObjectAttributes.cpp
+@@ -0,0 +1,259 @@
++#include "SceTypes.hpp"
++#include <array>
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <future>
++#include <limits>
++#include <thread>
++
++extern "C" {
++void APS5_VABI sceAudio3dGetDefaultOpenParameters(Audio3dOpenParameters* parameters);
++int APS5_VABI sceAudio3dInitialize(std::int64_t reserved);
++int APS5_VABI sceAudio3dTerminate();
++int APS5_VABI sceAudio3dPortOpen(int user_id, const Audio3dOpenParameters* parameters, std::uint32_t* id);
++int APS5_VABI sceAudio3dPortClose(std::uint32_t port_id);
++int APS5_VABI sceAudio3dPortAdvance(std::uint32_t port_id);
++int APS5_VABI sceAudio3dPortPush(std::uint32_t port_id, std::uint32_t blocking);
++int APS5_VABI sceAudio3dPortFlush(std::uint32_t port_id);
++int APS5_VABI sceAudio3dPortGetQueueLevel(std::uint32_t port_id, std::uint32_t* level, std::uint32_t* available);
++int APS5_VABI sceAudio3dObjectReserve(std::uint32_t port_id, std::uint32_t* object_id);
++int APS5_VABI sceAudio3dObjectUnreserve(std::uint32_t port_id, std::uint32_t object_id);
++int APS5_VABI sceAudio3dObjectSetAttributes(std::uint32_t port_id, std::uint32_t object_id,
++                                          std::uint64_t num_attributes, const Audio3dAttribute* attributes);
++}
++
++static_assert(sizeof(Audio3dAttribute) == 24 && alignof(Audio3dAttribute) == 8);
++static_assert(offsetof(Audio3dAttribute, attribute_id) == 0);
++static_assert(offsetof(Audio3dAttribute, value) == 8 && offsetof(Audio3dAttribute, value_size) == 16);
++static_assert(sizeof(Audio3dPcm) == 24 && alignof(Audio3dPcm) == 8);
++static_assert(offsetof(Audio3dPcm, format) == 0);
++static_assert(offsetof(Audio3dPcm, sample_buffer) == 8 && offsetof(Audio3dPcm, num_samples) == 16);
++
++namespace {
++constexpr int INVALID_PORT = static_cast<int>(0x80EA0002);
++constexpr int INVALID_OBJECT = static_cast<int>(0x80EA0003);
++constexpr int INVALID_PARAMETER = static_cast<int>(0x80EA0004);
++constexpr int OUT_OF_RESOURCES = static_cast<int>(0x80EA0006);
++constexpr int NOT_READY = static_cast<int>(0x80EA0007);
++constexpr int NOT_SUPPORTED = static_cast<int>(0x80EA0008);
++constexpr Audio3dAttribute RESET{9, 0xa5a5a5a5, nullptr, 0};
++using Clock = std::chrono::steady_clock;
++
++void Require(bool value, const char* message) {
++    if (value) return;
++    std::fprintf(stderr, "%s\n", message);
++    std::abort();
++}
++
++int Set(std::uint32_t object, const Audio3dAttribute& attribute) {
++    return sceAudio3dObjectSetAttributes(0, object, 1, &attribute);
++}
++
++void CheckQueue(std::uint32_t level, std::uint32_t available, const char* message) {
++    std::uint32_t got_level = 99, got_available = 99;
++    Require(sceAudio3dPortGetQueueLevel(0, &got_level, &got_available) == 0 &&
++            got_level == level && got_available == available, message);
++}
++
++void CheckValidation(std::uint32_t object) {
++    Require(sceAudio3dPortFlush(1) == INVALID_PORT, "flush rejects nonexistent port");
++    Require(sceAudio3dObjectSetAttributes(1, object, 1, &RESET) == INVALID_PORT, "attributes reject nonexistent port");
++    Require(Set(0, RESET) == INVALID_OBJECT && Set(0xffffffff, RESET) == INVALID_OBJECT &&
++            Set(object + 1, RESET) == INVALID_OBJECT, "attributes require a reserved object");
++    Require(sceAudio3dObjectSetAttributes(0, object, 0, &RESET) == INVALID_PARAMETER, "empty attribute batch");
++    Require(sceAudio3dObjectSetAttributes(0, object, 1, nullptr) == INVALID_PARAMETER, "null attribute batch");
++    Require(sceAudio3dObjectSetAttributes(0, object, UINT64_MAX, &RESET) == INVALID_PARAMETER, "attribute count overflow");
++    const auto* overflowing = reinterpret_cast<const Audio3dAttribute*>(std::numeric_limits<std::uintptr_t>::max() - 7);
++    Require(sceAudio3dObjectSetAttributes(0, object, 1, overflowing) == INVALID_PARAMETER, "attribute address overflow before dereference");
++    Audio3dAttribute bad = RESET;
++    bad.value_size = 4;
++    bad.value = reinterpret_cast<const void*>(std::numeric_limits<std::uintptr_t>::max());
++    Require(Set(object, bad) == 0, "reset ignores its unused payload without dereferencing it");
++    float gain = 0.5f;
++    bad = Audio3dAttribute{3, 0, nullptr, sizeof(gain)};
++    Require(Set(object, bad) == INVALID_PARAMETER, "null render payload");
++    bad.value = &gain;
++    bad.value_size = 0;
++    Require(Set(object, bad) == INVALID_PARAMETER, "empty render payload");
++    bad.value_size = 3;
++    Require(Set(object, bad) == INVALID_PARAMETER, "gain ABI size");
++    bad.value_size = sizeof(gain);
++    bad.value = reinterpret_cast<const void*>(std::numeric_limits<std::uintptr_t>::max() - 1);
++    Require(Set(object, bad) == INVALID_PARAMETER, "render payload address overflow");
++    Require(Set(object, RESET) == 0, "reset accepts a reserved object and ignores padding");
++    std::array<unsigned char, sizeof(Audio3dAttribute) + 1> unaligned{};
++    std::memcpy(unaligned.data() + 1, &RESET, sizeof(RESET));
++    Require(sceAudio3dObjectSetAttributes(0, object, 1,
++            reinterpret_cast<const Audio3dAttribute*>(unaligned.data() + 1)) == 0, "attribute records are read without unaligned access");
++}
++
++void CheckUnsupportedRendering(std::uint32_t object) {
++    std::array<std::int16_t, 256> samples{};
++    Audio3dPcm pcm{0, 0xa5a5a5a5, samples.data(), static_cast<std::uint32_t>(samples.size()), 0xa5a5a5a5};
++    Audio3dAttribute attribute{1, 0, &pcm, sizeof(pcm)};
++    Require(Set(object, attribute) == NOT_SUPPORTED, "valid PCM must not pretend to render");
++    pcm.format = 1;
++    std::array<float, 256> float_samples{};
++    pcm.sample_buffer = float_samples.data();
++    Require(Set(object, attribute) == NOT_SUPPORTED, "valid float PCM must not pretend to render");
++    pcm.format = 2;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "invalid PCM format");
++    pcm.format = 0;
++    pcm.num_samples = 0;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "empty PCM");
++    pcm.num_samples = 256;
++    pcm.sample_buffer = nullptr;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "null PCM samples");
++    pcm.sample_buffer = reinterpret_cast<const void*>(std::numeric_limits<std::uintptr_t>::max() - 1);
++    Require(Set(object, attribute) == INVALID_PARAMETER, "PCM sample address overflow");
++    pcm.sample_buffer = samples.data();
++    pcm.sample_buffer = reinterpret_cast<const unsigned char*>(samples.data()) + 1;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "S16 samples must be aligned");
++    pcm.format = 1;
++    pcm.sample_buffer = reinterpret_cast<const unsigned char*>(float_samples.data()) + 2;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "float samples must be aligned");
++    pcm.format = 0;
++    pcm.sample_buffer = samples.data();
++    attribute.value_size = sizeof(pcm) - 1;
++    Require(Set(object, attribute) == INVALID_PARAMETER, "PCM ABI size");
++    struct ExtendedPcm { Audio3dPcm pcm; std::uint64_t ignored; } extended{pcm, 0};
++    attribute = Audio3dAttribute{1, 0, &extended, sizeof(extended)};
++    Require(Set(object, attribute) == NOT_SUPPORTED, "extended PCM payload retains explicit unsupported result");
++    float gain = 0.25f;
++    Audio3dAttribute gain_attribute{3, 0, &gain, sizeof(gain)};
++    Require(Set(object, gain_attribute) == NOT_SUPPORTED, "gain needs a renderer");
++    std::array<float, 3> position{1, 2, 3};
++    Audio3dAttribute position_attribute{2, 0, position.data(), sizeof(position)};
++    Require(Set(object, position_attribute) == NOT_SUPPORTED, "position needs spatial rendering");
++    Audio3dAttribute unknown{0x7fffffff, 0, &gain, sizeof(gain)};
++    Require(Set(object, unknown) == NOT_SUPPORTED, "unknown attributes must not silently succeed");
++    const std::array mixed{RESET, gain_attribute};
++    Require(sceAudio3dObjectSetAttributes(0, object, mixed.size(), mixed.data()) == NOT_SUPPORTED, "reset does not hide an unsupported render attribute");
++    const std::array resets{RESET, RESET};
++    Require(sceAudio3dObjectSetAttributes(0, object, resets.size(), resets.data()) == 0, "reset-only batch");
++    CheckQueue(0, 3, "rejected PCM and attributes must not enqueue audio");
++}
++
++void CheckFlush(std::uint32_t object) {
++    Require(sceAudio3dPortFlush(0) == 0, "empty flush");
++    CheckQueue(0, 3, "empty flush does not add frames");
++    Require(sceAudio3dPortAdvance(0) == 0 && sceAudio3dPortAdvance(0) == 0, "advance two pending frames");
++    CheckQueue(2, 1, "advanced frames before flush");
++    Require(Set(object, RESET) == 0, "object reset while port frames are pending");
++    CheckQueue(2, 1, "object reset must preserve port frames");
++    auto start = Clock::now();
++    Require(sceAudio3dPortFlush(0) == 0, "flush submits and drains advanced frames");
++    Require(Clock::now() - start >= std::chrono::milliseconds(62), "flush must wait for both 32 ms frames");
++    CheckQueue(0, 3, "flush drains all pending frames");
++
++    Require(sceAudio3dPortAdvance(0) == 0 && sceAudio3dPortAdvance(0) == 0, "advance frames for async push");
++    start = Clock::now();
++    Require(sceAudio3dPortPush(0, 0) == 0 && sceAudio3dPortAdvance(0) == 0, "already playing plus advanced frame");
++    Require(sceAudio3dPortFlush(0) == 0, "flush drains playing and advanced frames together");
++    Require(Clock::now() - start >= std::chrono::milliseconds(94), "flush must wait for every 32 ms frame");
++    CheckQueue(0, 3, "full drain after async push");
++    Require(Set(object, RESET) == 0, "flush preserves object reservation");
++    std::uint32_t other = 0;
++    Require(sceAudio3dObjectReserve(0, &other) == OUT_OF_RESOURCES, "flush preserves object limit usage");
++    Require(sceAudio3dTerminate() == NOT_READY, "flush leaves the initialized port open");
++    Require(sceAudio3dObjectUnreserve(0, object) == 0, "flush preserves unreserve lifecycle");
++    Require(Set(object, RESET) == INVALID_OBJECT, "unreserved object rejects attributes");
++    Require(sceAudio3dObjectReserve(0, &other) == 0 && other > object, "flush preserves object ID generation");
++    Require(sceAudio3dPortAdvance(0) == 0 && sceAudio3dPortFlush(0) == 0, "drained port remains reusable");
++    CheckQueue(0, 3, "second drain");
++}
++
++void OpenConcurrentPort() {
++    Audio3dOpenParameters parameters{};
++    sceAudio3dGetDefaultOpenParameters(&parameters);
++    parameters.granularity = 12288; // 256 ms at 48 kHz, leaving time to observe a queue transition.
++    parameters.queue_depth = 3;
++    parameters.max_objects = 2;
++    std::uint32_t port = 99;
++    Require(sceAudio3dPortOpen(0xff, &parameters, &port) == 0 && port == 0, "open concurrent port");
++}
++
++std::future<int> BeginWaitingFlush() {
++    for (unsigned i = 0; i < 3; ++i) Require(sceAudio3dPortAdvance(0) == 0, "prepare concurrent flush");
++    auto result = std::async(std::launch::async, [] { return sceAudio3dPortFlush(0); });
++    const auto deadline = Clock::now() + std::chrono::seconds(2);
++    while (Clock::now() < deadline) {
++        std::uint32_t level = 99;
++        Require(sceAudio3dPortGetQueueLevel(0, &level, nullptr) == 0, "observe concurrent flush queue");
++        // Advanced-only frames never expire. A partial decrease proves Flush submitted the
++        // frames and captured its deadline, without relying on a sleep to schedule the worker.
++        if (level > 0 && level < 3 && result.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
++            return result;
++        }
++        Require(result.wait_for(std::chrono::seconds(0)) != std::future_status::ready,
++                "flush finished before a waiting state could be observed");
++        std::this_thread::yield();
++    }
++    Require(false, "timed out waiting for Flush to submit pending frames");
++    return result;
++}
++
++void FinishFlush(std::future<int>& result) {
++    Require(result.wait_for(std::chrono::seconds(3)) == std::future_status::ready, "concurrent flush must finish without deadlock");
++    Require(result.get() == 0, "concurrent flush result");
++}
++
++void CheckConcurrentCloseReopen() {
++    Require(sceAudio3dPortClose(0) == 0, "close sequential test port");
++    OpenConcurrentPort();
++    std::uint32_t object = 99;
++    Require(sceAudio3dObjectReserve(0, &object) == 0, "reserve old concurrent object");
++    auto result = BeginWaitingFlush();
++    Require(sceAudio3dPortClose(0) == 0, "close while old Flush waits");
++    OpenConcurrentPort();
++    Require(sceAudio3dObjectReserve(0, &object) == 0, "reserve replacement object");
++    Require(sceAudio3dPortAdvance(0) == 0, "replacement frame stays advanced and cannot expire");
++    FinishFlush(result);
++    CheckQueue(1, 2, "old Flush must not erase replacement port frames");
++    Require(Set(object, RESET) == 0, "old Flush must not erase replacement object");
++    std::uint32_t second = 99;
++    Require(sceAudio3dObjectReserve(0, &second) == 0 && second > object, "replacement object allocator survives old Flush");
++    Require(sceAudio3dTerminate() == NOT_READY, "old Flush must not terminate replacement port");
++    Require(sceAudio3dPortClose(0) == 0, "close replacement port");
++}
++
++void CheckConcurrentAdvance() {
++    OpenConcurrentPort();
++    std::uint32_t object = 99;
++    Require(sceAudio3dObjectReserve(0, &object) == 0, "reserve concurrent-advance object");
++    auto result = BeginWaitingFlush();
++    Require(sceAudio3dPortAdvance(0) == 0, "advance after Flush captured its drain deadline");
++    FinishFlush(result);
++    CheckQueue(1, 2, "a later advanced frame must survive the earlier Flush");
++    Require(Set(object, RESET) == 0, "concurrent advance preserves object");
++    Require(sceAudio3dPortFlush(0) == 0, "drain the later advanced frame");
++    CheckQueue(0, 3, "later frame drained by a new Flush");
++}
++}
++
++int main() {
++    Require(sceAudio3dPortFlush(0) == INVALID_PORT, "flush before initialization");
++    Require(Set(1, RESET) == INVALID_PORT, "attributes before initialization");
++    Require(sceAudio3dInitialize(0) == 0, "initialize");
++    Require(sceAudio3dPortFlush(0) == INVALID_PORT, "flush needs an open port");
++    Audio3dOpenParameters parameters{};
++    sceAudio3dGetDefaultOpenParameters(&parameters);
++    parameters.granularity = 1536; // 32 ms at 48 kHz.
++    parameters.queue_depth = 3;
++    parameters.max_objects = 1;
++    std::uint32_t port = 99, object = 99;
++    Require(sceAudio3dPortOpen(0xff, &parameters, &port) == 0 && port == 0, "open");
++    Require(sceAudio3dObjectReserve(0, &object) == 0, "reserve");
++    CheckValidation(object);
++    CheckUnsupportedRendering(object);
++    CheckFlush(object);
++    CheckConcurrentCloseReopen();
++    CheckConcurrentAdvance();
++    Require(sceAudio3dPortClose(0) == 0, "close");
++    Require(sceAudio3dPortFlush(0) == INVALID_PORT && Set(object, RESET) == INVALID_PORT, "closed port rejects new exports");
++    Require(sceAudio3dTerminate() == 0, "terminate");
++    Require(sceAudio3dPortFlush(0) == INVALID_PORT && Set(object, RESET) == INVALID_PORT, "terminated state rejects new exports");
++    std::puts("guest_audio3d_object_attributes: passed");
++}
+diff --git a/docs/dev/TechnicalDebt.md b/docs/dev/TechnicalDebt.md
+--- a/docs/dev/TechnicalDebt.md
++++ b/docs/dev/TechnicalDebt.md
+@@ -25,7 +25,7 @@
+ - [libSceBluetoothHid](../../core/libs/prx/libSceBluetoothHid/Export.cpp) implements only the no-device path: initialization and callback and device registration succeed, the callback is never called because no device connects, and calls that need a connected device throw
+ - [sceVideoOutOpen](../../core/libs/prx/libSceVideoOut/src/Output.cpp) validates the priority and CPU affinity that the open param requests for the VideoOut service thread but does not apply them: the port's present and vblank threads are host threads, and guest priorities and affinities do not reach host scheduling
+ - Without `VK_KHR_fragment_shader_barycentric` the shader recompiler [does not load the barycentric VGPRs](../../core/shader/recompiler/Translation/src/InstructionTranslator.cpp): [`v_interp_p1_f32` is dropped and `v_interp_p2_f32` reads the attribute Vulkan interpolated](../../core/shader/recompiler/Translation/src/AttributeInstructions.cpp), so pixel shaders that use the barycentrics for anything other than `v_interp` get wrong values.
+-- [libSceAudio3d](../../core/libs/prx/libSceAudio3d/Export.cpp) - the port produces no sound: objects can be reserved but the library has no bed exports or `sceAudio3dObjectSetAttributes` to give them audio, so `sceAudio3dPortPush` only paces the queue at `granularity` samples per frame at 48 kHz. `sceAudio3dPortSetAttribute` accepts the late reverb level and the downmix spread attributes and ignores them
++- [libSceAudio3d](../../core/libs/prx/libSceAudio3d/Export.cpp) - the port produces no sound: it has no bed exports, object PCM renderer or mixing sink. `sceAudio3dObjectSetAttributes` validates the batch and the PCM/gain ABI but returns `NOT_SUPPORTED` for rendering attributes; only `RESET_STATE` succeeds on the empty object audio state and preserves its reservation. `sceAudio3dPortPush` paces empty frames at `granularity` samples per frame at 48 kHz, and `sceAudio3dPortFlush` submits any advanced frames and waits for all queued frames to finish. Their ABI, reset and drain semantics follow [shadPS4's Audio3d header/source](https://github.com/shadps4-emu/shadPS4/tree/main/src/core/libraries/audio3d), not a PS5 hardware measurement. `sceAudio3dPortSetAttribute` still accepts the late reverb level and downmix spread attributes and ignores them
+ - [libSceTextToSpeech2](../../core/libs/prx/libSceTextToSpeech2/Export.cpp) has no speech engine: `sceTextToSpeech2Initialize` fails and the other exports throw. PPSA01317 skips its narration set-up when initialization fails
+ - [libSceAvPlayer](../../core/libs/prx/libSceAvPlayer/Export.cpp): `sceAvPlayerSetLogCallback` accepts a callback that is never called, as the player produces no log messages, and `sceAvPlayerSetAvailableBandwidth` has no effect, as it governs HLS sources, which `sceAvPlayerAddSource` does not implement.
+ - [libSceHttp2](../../core/libs/prx/libSceHttp2/Export.cpp) - no request reaches the network, so `sceHttp2SetMinSslVersion` has no TLS connection to restrict and returns success for any `id`, like `sceHttp2SslEnableOption` (prosper returns the invalid-id error for an unknown one)

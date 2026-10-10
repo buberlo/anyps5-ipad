@@ -3,7 +3,7 @@
 # against that ICD. Exit 1 from the tool (a hard requirement missed) is
 # a result, not a script failure. Exit 2 or 3 means the loader did not
 # produce a device and fails this script. Requires Xcode, Homebrew, and
-# a network path to MoltenVK's fetchDependencies clones.
+# already initialized pinned MoltenVK external dependencies.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,11 +20,9 @@ brew install cmake ninja python3 pkgconf vulkan-loader vulkan-headers
 
 git -C "$root" submodule update --init --depth 1 upstreams/MoltenVK
 mvk="$root/upstreams/MoltenVK"
-(
-    cd "$mvk"
-    ./fetchDependencies --macos
-    make macos -j"$(sysctl -n hw.ncpu)"
-)
+# Build after the external patch is applied. fetchDependencies --macos would
+# force-check out SPIRV-Cross and build an unpatched dependency first.
+"$root/scripts/build-moltenvk-local.sh" macos
 
 icd="$(find "$mvk/Package" -name 'MoltenVK_icd.json' | head -1 || true)"
 dylib="$(find "$mvk/Package" -path '*macOS*' -name 'libMoltenVK.dylib' | head -1 || true)"

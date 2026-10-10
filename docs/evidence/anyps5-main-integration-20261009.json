@@ -1,0 +1,1172 @@
+{
+  "schema": 1,
+  "kind": "sanitized_anyps5_full_main_local_qualification",
+  "date": "2026-10-09",
+  "status": "local_host_qualified_with_internal_avx_skip",
+  "source": {
+    "repository": "https://github.com/boykopovar/AnyPS5",
+    "commit": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+    "previous_commit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "upstream_commits_since_previous_pin": 434,
+    "adoption_scope": "Complete merged main source through the pinned commit; not unmerged pull requests",
+    "patches_sha256": {
+      "0001-ipad-runtime-compatibility.patch": "3d7ab29f13efb669f99736baf1594caf456720e5d79d244ea615f05f9ed61acc",
+      "0062-bounded-legacy-audioout-ingress-trace.patch": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+      "0065-audioout-frame-pacing.patch": "d119e02b7edec8ffeba6edc035fea3fca504e7e39a84b4c7fc360f227947bd95"
+    },
+    "compatibility_file_count": 202,
+    "frozen_source_file_count": 1765,
+    "active_source_bytes_and_executable_modes": "matched",
+    "frozen_source_snapshot_sha256": "9756ae735b56918e87991a8b0547095f7b1d7f5d657cb9a90571a7ab24b95200",
+    "shader_instruction_inventory": {
+      "implemented": 1166,
+      "total": 1166,
+      "scope": "Instruction implementation inventory; not physical GPU, shader, or game correctness"
+    },
+    "progress_report_sha256": "d782892f8eb5d9808954c1aa6705995dbba4434acf8748fea7104392b15ee1dd",
+    "shader_request_version": 14,
+    "local_shader_disk_cache_format": 21
+  },
+  "runtime_qualification": {
+    "scope": "Actual Windows Release x86-64 PE libraries and synthetic CPU/mock-Vulkan cases executed under local Wine on macOS",
+    "prx_library_count": 47,
+    "prx_libraries": {
+      "libSceAgc": {
+        "sha256": "10571bdc23370cb824ec2005b9ad068386de65073b07ed768e3271eddf072883",
+        "machine": "0x8664",
+        "exports_count": 290
+      },
+      "libSceAgcDriver": {
+        "sha256": "ff3b908bc85f4ee30b7dbeb3f151f6f5161f6ca3b23afbc86ac3792cca6340e0",
+        "machine": "0x8664",
+        "exports_count": 3679
+      },
+      "libSceAjm.native": {
+        "sha256": "86066a187e0f4c198a64c82e3a14a6bcf7644cfa32b7bb01a932609556dc5c8c",
+        "machine": "0x8664",
+        "exports_count": 4793
+      },
+      "libSceAmpr": {
+        "sha256": "0722d012ce87d019935d82b8a76fde1eb27edcd13e6000477d354ca40dd3ccf7",
+        "machine": "0x8664",
+        "exports_count": 119
+      },
+      "libSceAppContent": {
+        "sha256": "364e9ddfec7ef56dd2c831d0ab3151b93b9c2f0f04c97912081615b97b8fd6d5",
+        "machine": "0x8664",
+        "exports_count": 46
+      },
+      "libSceAudio3d": {
+        "sha256": "5adeb31d39356c18176e482d7e4c3f7e161a02721789636b7629b1201e822031",
+        "machine": "0x8664",
+        "exports_count": 28
+      },
+      "libSceAudioIn": {
+        "sha256": "e20bfaa6b509666461ad9a9c7abfb94757f54a98a7e0bad87241a11a0a5a9abb",
+        "machine": "0x8664",
+        "exports_count": 8
+      },
+      "libSceAudioOut": {
+        "sha256": "e8116096de12f992737c4bb1eddfa5106c376dbe24453220272fa8a089266688",
+        "machine": "0x8664",
+        "exports_count": 2869
+      },
+      "libSceAvPlayer.native": {
+        "sha256": "314dd65be95629b6922008f63e8123fa748761faa5a7e8b9d1d3899d2c60d83f",
+        "machine": "0x8664",
+        "exports_count": 5802
+      },
+      "libSceCdlgPlayerReview": {
+        "sha256": "b545d2ec1542388f5b8fa730a03d5bbdf20f780be42b3154c35aabd01fcef64b",
+        "machine": "0x8664",
+        "exports_count": 11
+      },
+      "libSceCommonDialog": {
+        "sha256": "c0ae16a7b17b9893098809cbeb9827bd1cc91ab3f154ac218a20956bffcf1c0f",
+        "machine": "0x8664",
+        "exports_count": 2
+      },
+      "libSceHmd": {
+        "sha256": "a2cfe9498d17d606aa0e16c391149e029b14850e0e73d32f26e01e428e938136",
+        "machine": "0x8664",
+        "exports_count": 9
+      },
+      "libSceHttp": {
+        "sha256": "0fed466a89a98220c5c0daf194a4a42c33f3a8ae84d236e49cf782aae1c5428a",
+        "machine": "0x8664",
+        "exports_count": 66
+      },
+      "libSceHttp2": {
+        "sha256": "9078f6bdd7e4966a1220dc572f7c120c11d181c73a0e9589b4cfe2f9e4e98132",
+        "machine": "0x8664",
+        "exports_count": 51
+      },
+      "libSceIme": {
+        "sha256": "9b775769fbb9aae7618efa026364a91b63aabaf3582d4befcec9ebc69c4c9a94",
+        "machine": "0x8664",
+        "exports_count": 23
+      },
+      "libSceImeDialog": {
+        "sha256": "006466974daea5b988db20b46df4673eca30246468c9dbcad8de73648911ea57",
+        "machine": "0x8664",
+        "exports_count": 8
+      },
+      "libSceJson2": {
+        "sha256": "d1dbda3ad18aa0718be05e04dfc5081257180d50567b55f820431d4e962e7597",
+        "machine": "0x8664",
+        "exports_count": 107
+      },
+      "libSceKeyboard": {
+        "sha256": "d067fdd371f32611b2d9db904404f0becbff124050078502b1c6560096a893de",
+        "machine": "0x8664",
+        "exports_count": 14
+      },
+      "libSceLibcInternal": {
+        "sha256": "ddb026f002644399cb1c5ebc87aeeaa605457fa9829c3dca0cda1f4a5465861c",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceMouse": {
+        "sha256": "199a66d48501a09fe66d60067dbbb94523c24d2c5b2ba2d642c7cf2219e2c21f",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceMsgDialog.native": {
+        "sha256": "4b9c47230694e4445c7787461b7e8fc237f7ff2c7b18c17ad3bc64c02cccf807",
+        "machine": "0x8664",
+        "exports_count": 11
+      },
+      "libSceNet": {
+        "sha256": "17db533e5b08c789dc45a91cc2fe1d416f9759d7d25071d42aa76a491155504b",
+        "machine": "0x8664",
+        "exports_count": 71
+      },
+      "libSceNetCtl": {
+        "sha256": "c2a6865af5c3577e6eb42b46eb864a146eb9ee437a43dac11a32f2b0ce2e93b1",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceNpAuth": {
+        "sha256": "cf3a899ed085e1d26d2cf6ab89d1903aa3646456fa0f8d18ef594fbebf404b27",
+        "machine": "0x8664",
+        "exports_count": 8
+      },
+      "libSceNpCommerce": {
+        "sha256": "a606f9e101236cc9564a7f82bb53810bf0be8942b5bc2f5bfa18f20ec6c1f075",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceNpEntitlementAccess": {
+        "sha256": "f78e391c6d60808f4737b1fb78167e28dd1be9b840b3c4d1d2d5db6035499396",
+        "machine": "0x8664",
+        "exports_count": 59
+      },
+      "libSceNpGameIntent": {
+        "sha256": "d4049e3c445aa1853c7549a753aa2963941a0b2c1f0892242c96eb2869cfb774",
+        "machine": "0x8664",
+        "exports_count": 11
+      },
+      "libSceNpManager": {
+        "sha256": "84b4bdf0da18ff1160486a7561a197637ae0cf41afb07b980084d418bdf46b16",
+        "machine": "0x8664",
+        "exports_count": 32
+      },
+      "libSceNpSessionSignaling": {
+        "sha256": "65aeb4829cd6ef1f154435a483b25714b5cafb74586c4376352d082b4fb40c34",
+        "machine": "0x8664",
+        "exports_count": 16
+      },
+      "libSceNpTrophy2": {
+        "sha256": "88f07ce0360c5f0f51263b677efaca353df79bc6d700e639420a24148ffc4427",
+        "machine": "0x8664",
+        "exports_count": 28
+      },
+      "libSceNpUniversalDataSystem": {
+        "sha256": "599bb5dc20304f13b21c3a3a4e253287efd2a299243c997403032ae84ccab597",
+        "machine": "0x8664",
+        "exports_count": 49
+      },
+      "libSceNpWebApi2": {
+        "sha256": "1bdd8592e1d1908cbfa6c2dc7603968776e2bf51872e1acd38389cc19f63a7bf",
+        "machine": "0x8664",
+        "exports_count": 25
+      },
+      "libScePad": {
+        "sha256": "abafb56d24d0193acb0d2012dc0097e040e9333d86ba1d761a9f1fbdbc56e03e",
+        "machine": "0x8664",
+        "exports_count": 54
+      },
+      "libSceRazorCpu": {
+        "sha256": "da6a20ec83e9ac6a6a30264f3b10cd19428fd4fa9235f341b5456892b7eb3ee8",
+        "machine": "0x8664",
+        "exports_count": 9
+      },
+      "libSceRemoteplay": {
+        "sha256": "b8738a466214a0a59964317e9e876ef153cdf47225da52b4a2ef63dc38b00910",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceRtc": {
+        "sha256": "5e39e4ba27a16335c995f8fce55a9631695b0ea65530a3e1dbffc664aef4b701",
+        "machine": "0x8664",
+        "exports_count": 34
+      },
+      "libSceSaveData.native": {
+        "sha256": "fadf8687b145d31ba8715c38faa98833e17b1e37eecb9c3b133c9aae9e6d32cd",
+        "machine": "0x8664",
+        "exports_count": 75
+      },
+      "libSceSaveDataDialog.native": {
+        "sha256": "2dd1e327bd230479559cef57ae87962f144bee0f9733159ca9d87b8c09a43b42",
+        "machine": "0x8664",
+        "exports_count": 10
+      },
+      "libSceSsl": {
+        "sha256": "b78f39b4cc79c39311bcfc2c0db855e1a4c173b3fa270b37a99532fc1dc6ac9b",
+        "machine": "0x8664",
+        "exports_count": 21
+      },
+      "libSceSysmodule": {
+        "sha256": "d3f09ea2ad4769271af6e1c3c1fef115c0dcc479cd6f47d1a130b2a413c09f98",
+        "machine": "0x8664",
+        "exports_count": 18
+      },
+      "libSceSystemService": {
+        "sha256": "4abb44cecd68bc3ba3c8cf9273952f68a1f4f6f2d3cc00f11d68abba98c372b9",
+        "machine": "0x8664",
+        "exports_count": 24
+      },
+      "libSceUserService": {
+        "sha256": "96720550ea1be44d3d2b3f986954dccd85118d0fbc333a309cb4a9b5b1214d99",
+        "machine": "0x8664",
+        "exports_count": 21
+      },
+      "libSceVideoOut": {
+        "sha256": "0af55e17de5c183fe062cd54419a1e4897cd2df88e48b16b0f14b5c324b97d94",
+        "machine": "0x8664",
+        "exports_count": 3033
+      },
+      "libSceWebBrowserDialog": {
+        "sha256": "41b97299908b874217d85b837b0e7d53650f3d8de5b9bbc3a2feef34333dfe85",
+        "machine": "0x8664",
+        "exports_count": 14
+      },
+      "libc": {
+        "sha256": "8f600f1d302451ec5df27b8156adcc4aff96a4c53541bab405869facfec560bf",
+        "machine": "0x8664",
+        "exports_count": 952
+      },
+      "libkernel": {
+        "sha256": "526e18f41e0fda7864b81f5592a93a35d391fa80cccf1c069b358badb4027e43",
+        "machine": "0x8664",
+        "exports_count": 707
+      },
+      "ulobjmgr": {
+        "sha256": "ec4a48e723e0e822e1144bfb068f4f20b1ef03a1f239f7a5dc5c9c1830553d86",
+        "machine": "0x8664",
+        "exports_count": 2
+      }
+    },
+    "helper_selected_targets": [
+      "windows_exception_tests",
+      "exception_personality_tests",
+      "guest_formatting_tests",
+      "host_thread_local_tests",
+      "guest_environment_tests",
+      "file_position_tests",
+      "guest_math_tests",
+      "guest_json_tests",
+      "guest_json2_initialization_tests",
+      "guest_json2_virtual_allocator_tests",
+      "guest_compatibility_api_tests",
+      "guest_hmd_tests",
+      "guest_player_review_dialog_tests",
+      "guest_ulobjmgr_tests",
+      "guest_audio3d_parameters_tests",
+      "guest_audio3d_port_tests",
+      "guest_audio3d_object_attributes_tests",
+      "guest_kernel_module_lifecycle_tests",
+      "savedata_memory_growth_tests",
+      "savedata_memory_metadata_tests",
+      "savedata_native_write_replacement_tests",
+      "savedata_replace_file_failure_tests",
+      "guest_filesystem_tests",
+      "guest_pthread_attr_tests",
+      "guest_shader_alignment_tests",
+      "guest_memory_tests",
+      "guest_raise_exception_tests",
+      "agc_driver_graphics_tests",
+      "agc_write_tracking_tests",
+      "agc_profile_output_tests",
+      "agc_shader_device_profile_tests",
+      "agc_shader_disk_cache_tests",
+      "uniform_wave_branch_tests",
+      "wave32_wide_subgroup_tests",
+      "audio_out2_pad_mix_tests",
+      "audio_out_mix_level_pad_spk_tests",
+      "audio_out_last_output_time_tests",
+      "audio_out2_latency_tests",
+      "audio_out2_port_layouts_tests",
+      "audio_out2_timing_tests"
+    ],
+    "helper_selected_targets_passed": 40,
+    "helper_selected_executable_hashes": {
+      "windows_exception_tests": "b25c4d2d8033cd8f1856c37b35b1182abbad669743b29accb1eeaaa056f8c40d",
+      "exception_personality_tests": "93a19877ea4ab6c4d42dc69b03d524dde480a2a40ee8d8923c835b2441cb2634",
+      "guest_formatting_tests": "5043fe3ef0654862aecfaf87e6f385e6616c7383c03272977d5ee969e311e3bd",
+      "host_thread_local_tests": "eac732fe0f043ed4e83a78a076680ef47354cb19bef084821af44a48a90eb9a5",
+      "guest_environment_tests": "8f20727fa0d632ef4a4ffbc64add8941b892748f8144e618dca4489858ff5224",
+      "file_position_tests": "aa8b6f4e1536e8a71f5c9f48cb4e976e9ab3bff57598cec35da7b0c38cced6a7",
+      "guest_math_tests": "2e2efd5dc7d8dde741afa710718b0e822c3fe38d16317d54c6ca71f572fae58b",
+      "guest_json_tests": "ac58b4561e1c72237e08dff05e138e54c53a1337a530586181a9dca443bf8101",
+      "guest_json2_initialization_tests": "e8981f59c3ef6076ffec912511313ed0836d969d630b81b759482b519efb5f1a",
+      "guest_json2_virtual_allocator_tests": "77a8a2b4a1ea18fa3bddff77c752aefd0cabacf7fb31ffd153c1af3e1784b1fa",
+      "guest_compatibility_api_tests": "a116e4ff87345bf37a9ca594404e813ca42cf3c33039446b6b49f390ed534e29",
+      "guest_hmd_tests": "73682554f5e171b2a28b5697f160b0f01eee689394161d3f4c2bbebefcddf83e",
+      "guest_player_review_dialog_tests": "a03a7f3b76d3c83c2be397f0ddbe05f77766e41ce094ac1727ff2bee04d5115b",
+      "guest_ulobjmgr_tests": "0bbcd173ab21dfd3c1381ad3a2632ead5a93c6d54e8fdf55eee1579ebe3564dc",
+      "guest_audio3d_parameters_tests": "738c6abb4be604fb195ffeaf427451723a3728c0cf0760b53d8ad2620e400162",
+      "guest_audio3d_port_tests": "4ce0f2138cdd92335c63084ef15f1041933ab784a44d1485bce0ff98d1e7e05f",
+      "guest_audio3d_object_attributes_tests": "a03bd32668c1f16087cebd024c1d031c1469efbbf3af9b1b6b923c5d01eb2243",
+      "guest_kernel_module_lifecycle_tests": "f55114165a3bd44d2131dbea5c1de9dffe2c9ea25d7faeacd1dd14e7dff350e1",
+      "savedata_memory_growth_tests": "e98da2456138d0293ff5290621609b1baf01842b0876e0e539d69443d67a8294",
+      "savedata_memory_metadata_tests": "0feacf508f1ae9d8e78f3fc639f43d9d6cf83546b9f860f22b63b6808974caea",
+      "savedata_native_write_replacement_tests": "ad3803ada495a4f07b91d1fc79f6a46bfbd06f019c1e1c7cd68bef64ff0e4c42",
+      "savedata_replace_file_failure_tests": "bce452e10a3ceb227bbda551a2d64d4adf1b1e448f33f959825c7119a62ba415",
+      "guest_filesystem_tests": "0bdf7b4783b300b456b8256b6cc8a3b0c47ae7dec60556f0aeeadc76cee7787c",
+      "guest_pthread_attr_tests": "6393855160e85585296a6e44e72d46f7daa4c9a43b499411a84b14017ced5142",
+      "guest_shader_alignment_tests": "6d8dd933edbdeb919f65965f9b00ea8ba36844188265ae86713d148c61790ca2",
+      "guest_memory_tests": "7ae28f1a2a914b18d639e14a49a6c1d83d2476a68b342af0a47b6b1146e5b8f2",
+      "guest_raise_exception_tests": "cac9c7017ef90d43dd1667632bf99d48cd1c1a31741eb7dd0492960a1648caa5",
+      "agc_driver_graphics_tests": "ce221c8e989437877ccb12248c03af9225ace608f5a0275c22f7366ce00cac99",
+      "agc_write_tracking_tests": "72fc46c7a50a43d36e0fe6b45f632476d1cf350148c13fbf0bd212e3c260cc3c",
+      "agc_profile_output_tests": "489399ce6b805de280eeb65f8e592a99ff4f3b9fd9adf6ae79123b7a586db29c",
+      "agc_shader_device_profile_tests": "8cef1ac9ae8a5c0f9c3c17ba994564d538221a88c84393e3e876a5dcf4666c15",
+      "agc_shader_disk_cache_tests": "8e7d54c74fa495d7667acc55fcf1539589c1f55dcc9d2098cf5f5be7ad98ca76",
+      "uniform_wave_branch_tests": "4b42a0bde1390e840301e5541cf222261a016c5e3b0937f2c95064ddeacc6ea9",
+      "wave32_wide_subgroup_tests": "8454377d7425e7a322ceb96fb3848bbd8eb2a137b6de398a46af10823cddf943",
+      "audio_out2_pad_mix_tests": "a7527dcdf0dfaba2ccff82790db38bde14dc1055c732f4a1858df62e2279da81",
+      "audio_out_mix_level_pad_spk_tests": "a1ff55289b3ab69500320c35e80acb3631d6d63ddecaa835d6def144340127e3",
+      "audio_out_last_output_time_tests": "08b432c86b81bf4ef23f2408deb91bf9c2da4853746b74f671426cd53544adb6",
+      "audio_out2_latency_tests": "6a23f2a75980f1ed121b66be4ed4a763195ac7a4cccc65baa44e6a8142f6189b",
+      "audio_out2_port_layouts_tests": "55ee417e60b5f033dd36a6411e919300b8556ff17aa0737ba86f64563f611ea1",
+      "audio_out2_timing_tests": "a50d6ddd6d543656bfcc8428434018df6ad91d4c118c5f13b30475c23a546159"
+    },
+    "additional_targets": [
+      "guest_pthread_key_tests",
+      "guest_thread_callback_abi_tests",
+      "guest_demangle_tests",
+      "guest_path_case_tests",
+      "guest_dynamic_loader_tests",
+      "guest_unwind_module_info_tests",
+      "guest_http2_tests",
+      "guest_offline_imports_tests",
+      "guest_savedata_search_tests",
+      "guest_savedata_mount_status_tests"
+    ],
+    "additional_targets_passed": 10,
+    "additional_executable_hashes": {
+      "guest_pthread_key_tests": "ba771bf41686d6ca2828a9d6282b65d21fbadd65f7809e21fd66cf0e695ca93e",
+      "guest_thread_callback_abi_tests": "da94f06ca696359b8b45047a2638418eb1e7a5cea17af9edb2c99c5e935d270f",
+      "guest_demangle_tests": "4baf1483b7487cc0eed4a77749402be782ce1c6a9e62783addccdad2469dd832",
+      "guest_path_case_tests": "8a1a793c980be4c03efb9d47748e9cd0b23df295cea59768ebbfba1049c59942",
+      "guest_dynamic_loader_tests": "4ce8483d70034115109e1ad28bc14bdabb973f79b304c7fa39ec8a2e508d4f2f",
+      "guest_unwind_module_info_tests": "0954168c6310685a5f272f75622f37117ce34f5951c6da34a676414fd746ad7e",
+      "guest_http2_tests": "2ee2a42a288fdeb919342d12f38fb852f6320fb086794ffcf55c841c84c99285",
+      "guest_offline_imports_tests": "19bc36bf6d776a05a97a44ef0700e0004fb5a7b61c4dee181629a1edb025db12",
+      "guest_savedata_search_tests": "8a1a6dee37dab90416bd5aaca6c7e82fc9d191a02f06b4e168f36e3c0a84c44f",
+      "guest_savedata_mount_status_tests": "c9657d9dce5859f997c36ade7c7fd338d66ca0d49b883e5fb5dd97d3a2691a44"
+    },
+    "positive_case_count": 53,
+    "positive_cases": [
+      {
+        "case": "guest_offline_imports",
+        "target": "guest_offline_imports_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "19bc36bf6d776a05a97a44ef0700e0004fb5a7b61c4dee181629a1edb025db12",
+        "machine": "0x8664",
+        "log_sha256": "6730e55fb9281c877eeb9a83dc5f4434148269b9317723b7ac5078352039808c",
+        "internal_skips": []
+      },
+      {
+        "case": "savedata_memory_metadata",
+        "target": "savedata_memory_metadata_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "0feacf508f1ae9d8e78f3fc639f43d9d6cf83546b9f860f22b63b6808974caea",
+        "machine": "0x8664",
+        "log_sha256": "661cb4089684a337188a5aecec005d5022f7d83c38c4473cd992b9a492b00356",
+        "internal_skips": []
+      },
+      {
+        "case": "savedata_memory_growth",
+        "target": "savedata_memory_growth_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "e98da2456138d0293ff5290621609b1baf01842b0876e0e539d69443d67a8294",
+        "machine": "0x8664",
+        "log_sha256": "7fc54c27ddb626e6715132ddab973d5dffc5dd644516873345b182c26c49fdfb",
+        "internal_skips": []
+      },
+      {
+        "case": "savedata_memory_growth_read_failure",
+        "target": "savedata_memory_growth_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "e98da2456138d0293ff5290621609b1baf01842b0876e0e539d69443d67a8294",
+        "machine": "0x8664",
+        "log_sha256": "3b03f3796f0ceb942e0223a1008fa53022fe439b450af68c9e0b591ce3752665",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_compatibility_apis",
+        "target": "guest_compatibility_api_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a116e4ff87345bf37a9ca594404e813ca42cf3c33039446b6b49f390ed534e29",
+        "machine": "0x8664",
+        "log_sha256": "361a1d4de45b50e0a46264007a5ffb3377d9da9440157a461dc561a956d2d11b",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_path_case",
+        "target": "guest_path_case_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8a1a793c980be4c03efb9d47748e9cd0b23df295cea59768ebbfba1049c59942",
+        "machine": "0x8664",
+        "log_sha256": "704ca018a14c348b23f23aafb288d48e9b817034ef9106d83a9110139ed726e1",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_thread_callback_abi",
+        "target": "guest_thread_callback_abi_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "da94f06ca696359b8b45047a2638418eb1e7a5cea17af9edb2c99c5e935d270f",
+        "machine": "0x8664",
+        "log_sha256": "4b004b479c85f0a6b7ef972a0fe45d03eb4e7e3ee53efc112b6c2b16c78d0a64",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_demangle",
+        "target": "guest_demangle_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "4baf1483b7487cc0eed4a77749402be782ce1c6a9e62783addccdad2469dd832",
+        "machine": "0x8664",
+        "log_sha256": "ac429991d80db55f10b3b3b62f841ff3e632e4c83b8d2256601eb27d44e6a4df",
+        "internal_skips": []
+      },
+      {
+        "case": "exception_personality",
+        "target": "exception_personality_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "93a19877ea4ab6c4d42dc69b03d524dde480a2a40ee8d8923c835b2441cb2634",
+        "machine": "0x8664",
+        "log_sha256": "7ee96576b221448b494cd6ff66a02b35a066706f36ca79eeeb670fb964664b4b",
+        "internal_skips": []
+      },
+      {
+        "case": "windows_exceptions",
+        "target": "windows_exception_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "b25c4d2d8033cd8f1856c37b35b1182abbad669743b29accb1eeaaa056f8c40d",
+        "machine": "0x8664",
+        "log_sha256": "76ad53d4e381a1b2d5d936f3358e6a68c5749fbc60fa7365aac3b96c8d3bcb5e",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_http2",
+        "target": "guest_http2_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "2ee2a42a288fdeb919342d12f38fb852f6320fb086794ffcf55c841c84c99285",
+        "machine": "0x8664",
+        "log_sha256": "41286ed25505b951f0bc5a59847fdba98f9f26c38faf7eee2ea6fa7698e1b725",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_json",
+        "target": "guest_json_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "ac58b4561e1c72237e08dff05e138e54c53a1337a530586181a9dca443bf8101",
+        "machine": "0x8664",
+        "log_sha256": "ceb0bedd77c75d194097472f5c5e827d950f2edd5a710a4230dfc9a47e934794",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_json2_virtual_allocator",
+        "target": "guest_json2_virtual_allocator_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "77a8a2b4a1ea18fa3bddff77c752aefd0cabacf7fb31ffd153c1af3e1784b1fa",
+        "machine": "0x8664",
+        "log_sha256": "98afa07be7c9936820a549d71e9f82134b11683a7400d10a438fefb886086d99",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_json2_initialization",
+        "target": "guest_json2_initialization_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "e8981f59c3ef6076ffec912511313ed0836d969d630b81b759482b519efb5f1a",
+        "machine": "0x8664",
+        "log_sha256": "f9836969a3e2cd1e3ae629ba0e8a66236bb1d89a9d357d3ea5ad4a98ec6df9bb",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_savedata_search",
+        "target": "guest_savedata_search_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8a1a6dee37dab90416bd5aaca6c7e82fc9d191a02f06b4e168f36e3c0a84c44f",
+        "machine": "0x8664",
+        "log_sha256": "b091116d85461b6ceb985dd5b7bdd0c5a49731206231d9b194c74a33a91eec9e",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_savedata_mount_status",
+        "target": "guest_savedata_mount_status_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "c9657d9dce5859f997c36ade7c7fd338d66ca0d49b883e5fb5dd97d3a2691a44",
+        "machine": "0x8664",
+        "log_sha256": "a35a1f24b5903042c16b15dd5a1ecd6432a9cce63cbc7ec451d40304251fa344",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_dynamic_loader",
+        "target": "guest_dynamic_loader_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "4ce8483d70034115109e1ad28bc14bdabb973f79b304c7fa39ec8a2e508d4f2f",
+        "machine": "0x8664",
+        "log_sha256": "a1feabc1caf218011c754cdda7558f72ca83214f9ec9e2479844f4e9a677b10c",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_pthread_attr",
+        "target": "guest_pthread_attr_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "6393855160e85585296a6e44e72d46f7daa4c9a43b499411a84b14017ced5142",
+        "machine": "0x8664",
+        "log_sha256": "f3d978634881b713c53144f3c0dc8d63b24b640d783cf7fc0fbf280e99ba932e",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_pthread_key",
+        "target": "guest_pthread_key_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "ba771bf41686d6ca2828a9d6282b65d21fbadd65f7809e21fd66cf0e695ca93e",
+        "machine": "0x8664",
+        "log_sha256": "ec042467b18c68585bc52056001856ca50107fa79ac900acc79515c9a01c8bc9",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_raise_exception",
+        "target": "guest_raise_exception_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "cac9c7017ef90d43dd1667632bf99d48cd1c1a31741eb7dd0492960a1648caa5",
+        "machine": "0x8664",
+        "log_sha256": "689503128b03ef2e9d4b560dce48d729ccc0e2d43f4bbd98409910a75fb39bd9",
+        "internal_skips": [
+          {
+            "subtest": "async_avx_context",
+            "reason": "Local Wine host does not expose AVX despite explicit AVX opt-in; this is not FEX/iPad AVX execution"
+          }
+        ]
+      },
+      {
+        "case": "guest_unwind_module_info",
+        "target": "guest_unwind_module_info_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "0954168c6310685a5f272f75622f37117ce34f5951c6da34a676414fd746ad7e",
+        "machine": "0x8664",
+        "log_sha256": "25a04d421876b9711babf558f5053b3d768af301955ffef5ba18ac44b66cc752",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_memory",
+        "target": "guest_memory_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "7ae28f1a2a914b18d639e14a49a6c1d83d2476a68b342af0a47b6b1146e5b8f2",
+        "machine": "0x8664",
+        "log_sha256": "dc0eea5f287c25d2d8a84eb35d902afe036742d985f3883334fb75f1b44df8cf",
+        "internal_skips": []
+      },
+      {
+        "case": "host_thread_local",
+        "target": "host_thread_local_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "eac732fe0f043ed4e83a78a076680ef47354cb19bef084821af44a48a90eb9a5",
+        "machine": "0x8664",
+        "log_sha256": "9de828a58d7d0ec9dcf6e9ef2c5669c763dc187247fb9fcb93d3138c4553b832",
+        "internal_skips": []
+      },
+      {
+        "case": "savedata_native_write_replacement",
+        "target": "savedata_native_write_replacement_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "ad3803ada495a4f07b91d1fc79f6a46bfbd06f019c1e1c7cd68bef64ff0e4c42",
+        "machine": "0x8664",
+        "log_sha256": "96cb923fc16e90619697ce6854ae6dd9a121d35fc99c7462014fad0d93aab28b",
+        "internal_skips": []
+      },
+      {
+        "case": "savedata_replace_file_failure",
+        "target": "savedata_replace_file_failure_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "bce452e10a3ceb227bbda551a2d64d4adf1b1e448f33f959825c7119a62ba415",
+        "machine": "0x8664",
+        "log_sha256": "6f76b27e5d9820cbb2a9c710138a672af7378970af5441f60c724de6904c36dd",
+        "internal_skips": []
+      },
+      {
+        "case": "file_position",
+        "target": "file_position_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "aa8b6f4e1536e8a71f5c9f48cb4e976e9ab3bff57598cec35da7b0c38cced6a7",
+        "machine": "0x8664",
+        "log_sha256": "c8e4e779d9246ecb32b590f7858b29adb5adab3d7bbc7d7255bcaf5bfd8426ec",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_math",
+        "target": "guest_math_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "2e2efd5dc7d8dde741afa710718b0e822c3fe38d16317d54c6ca71f572fae58b",
+        "machine": "0x8664",
+        "log_sha256": "9d08dee11d2fea94a2536bbdb3bc54a5aca70d6d966b89dfebdcdaee8294ec8e",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_environment",
+        "target": "guest_environment_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8f20727fa0d632ef4a4ffbc64add8941b892748f8144e618dca4489858ff5224",
+        "machine": "0x8664",
+        "log_sha256": "450fe691c0d3964574ef767a7987276183668f69957e4b25b6a73bca8ffd934a",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_formatting",
+        "target": "guest_formatting_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "5043fe3ef0654862aecfaf87e6f385e6616c7383c03272977d5ee969e311e3bd",
+        "machine": "0x8664",
+        "log_sha256": "0af971f173f5b8980ef355406045209b680637d5fb288354e03b31c2e9fc9eef",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_shader_alignment",
+        "target": "guest_shader_alignment_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "6d8dd933edbdeb919f65965f9b00ea8ba36844188265ae86713d148c61790ca2",
+        "machine": "0x8664",
+        "log_sha256": "524a1fe76f929557dac7c946923fc7af06f897eeb511e1fb807468a1c3063282",
+        "internal_skips": []
+      },
+      {
+        "case": "uniform_wave_branch",
+        "target": "uniform_wave_branch_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "4b42a0bde1390e840301e5541cf222261a016c5e3b0937f2c95064ddeacc6ea9",
+        "machine": "0x8664",
+        "log_sha256": "7ef0fb17630ae77dc9ee6fdcf3e7c249dde8f535c939431fc21bd250db8df53f",
+        "internal_skips": []
+      },
+      {
+        "case": "wave32_wide_subgroup",
+        "target": "wave32_wide_subgroup_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8454377d7425e7a322ceb96fb3848bbd8eb2a137b6de398a46af10823cddf943",
+        "machine": "0x8664",
+        "log_sha256": "fe0f095d10865567a680239a893c0b38be93f6031bf67f4f49ecc7b199e9b622",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_audio3d_parameters",
+        "target": "guest_audio3d_parameters_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "738c6abb4be604fb195ffeaf427451723a3728c0cf0760b53d8ad2620e400162",
+        "machine": "0x8664",
+        "log_sha256": "8962c74d67d258bce435753452b3361e4e92996ebf5b812cbb5c7094f4f0117f",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_audio3d_port",
+        "target": "guest_audio3d_port_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "4ce0f2138cdd92335c63084ef15f1041933ab784a44d1485bce0ff98d1e7e05f",
+        "machine": "0x8664",
+        "log_sha256": "664504f83b5ff7e57bd55f79ae6bf6c5e7f12049d1a986fe607311c320cd98bc",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_audio3d_object_attributes",
+        "target": "guest_audio3d_object_attributes_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a03bd32668c1f16087cebd024c1d031c1469efbbf3af9b1b6b923c5d01eb2243",
+        "machine": "0x8664",
+        "log_sha256": "5268c1bddd9f2db6d4008a010a75a3110efc12727ff8c72678feeb1b28b885a6",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out2_pad_mix",
+        "target": "audio_out2_pad_mix_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a7527dcdf0dfaba2ccff82790db38bde14dc1055c732f4a1858df62e2279da81",
+        "machine": "0x8664",
+        "log_sha256": "a14c62226e1ecd5ae7917766b64bbae0b75f37aa6c1c5a08ea5eb648ce86f061",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out_mix_level_pad_spk",
+        "target": "audio_out_mix_level_pad_spk_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a1ff55289b3ab69500320c35e80acb3631d6d63ddecaa835d6def144340127e3",
+        "machine": "0x8664",
+        "log_sha256": "352c3340f263fa0572ebddb8186316d4f2448be33c53f23854ce353d0345ca78",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out_last_output_time",
+        "target": "audio_out_last_output_time_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "08b432c86b81bf4ef23f2408deb91bf9c2da4853746b74f671426cd53544adb6",
+        "machine": "0x8664",
+        "log_sha256": "06f78065c691166fa04a666249d2237c29db1e1ba4da783beb4fe7c68f5e6c97",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out2_latency",
+        "target": "audio_out2_latency_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "6a23f2a75980f1ed121b66be4ed4a763195ac7a4cccc65baa44e6a8142f6189b",
+        "machine": "0x8664",
+        "log_sha256": "6cd188c89a2228f090bed1dc0ab2c5ec5209cf1b453a343e6109b671c7227633",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out2_port_layouts",
+        "target": "audio_out2_port_layouts_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "55ee417e60b5f033dd36a6411e919300b8556ff17aa0737ba86f64563f611ea1",
+        "machine": "0x8664",
+        "log_sha256": "69616cab7579e6445d862fc11ef0e911ef49106bad5abf875450408a4875c001",
+        "internal_skips": []
+      },
+      {
+        "case": "audio_out2_timing",
+        "target": "audio_out2_timing_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a50d6ddd6d543656bfcc8428434018df6ad91d4c118c5f13b30475c23a546159",
+        "machine": "0x8664",
+        "log_sha256": "38aeb448b064aefefd4cb64db29832653043e9f12ba17c731e55b9ffb0ccdf9b",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_player_review_dialog",
+        "target": "guest_player_review_dialog_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "a03a7f3b76d3c83c2be397f0ddbe05f77766e41ce094ac1727ff2bee04d5115b",
+        "machine": "0x8664",
+        "log_sha256": "342b761a262230da188cc100e20b621dcb40f98b3dd00fb0ad3be4fb38d420e0",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_hmd",
+        "target": "guest_hmd_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "73682554f5e171b2a28b5697f160b0f01eee689394161d3f4c2bbebefcddf83e",
+        "machine": "0x8664",
+        "log_sha256": "92dab639fb408e235cab434c9c43b83e2725b0b287b6590ddec9af58d2cb3016",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_kernel_module_lifecycle",
+        "target": "guest_kernel_module_lifecycle_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "f55114165a3bd44d2131dbea5c1de9dffe2c9ea25d7faeacd1dd14e7dff350e1",
+        "machine": "0x8664",
+        "log_sha256": "ebcf5ec27ed7f669e19ed3544a76cbd8bab175aca07ad899e300a7f9e78a73fe",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_filesystem",
+        "target": "guest_filesystem_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "0bdf7b4783b300b456b8256b6cc8a3b0c47ae7dec60556f0aeeadc76cee7787c",
+        "machine": "0x8664",
+        "log_sha256": "938940bcbaad55334fd900fb52d208d5325dbb469a520d1d474dd79b6f8ea7e1",
+        "internal_skips": []
+      },
+      {
+        "case": "guest_ulobjmgr",
+        "target": "guest_ulobjmgr_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "0bbcd173ab21dfd3c1381ad3a2632ead5a93c6d54e8fdf55eee1579ebe3564dc",
+        "machine": "0x8664",
+        "log_sha256": "90bde03255d65d4eae0a6146a5d2fd19ce23e3fa25cad07d75cbfcf701041214",
+        "internal_skips": []
+      },
+      {
+        "case": "graphics",
+        "target": "agc_driver_graphics_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "ce221c8e989437877ccb12248c03af9225ace608f5a0275c22f7366ce00cac99",
+        "machine": "0x8664",
+        "log_sha256": "2dee932227766ae46af00681f37c8d2bcae51a53a12e7927809295519570809a",
+        "internal_skips": []
+      },
+      {
+        "case": "write-tracking",
+        "target": "agc_write_tracking_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "72fc46c7a50a43d36e0fe6b45f632476d1cf350148c13fbf0bd212e3c260cc3c",
+        "machine": "0x8664",
+        "log_sha256": "0ce956a7a1db4c92ae205e5c1b8bac9ad5e420572669d9e9e335773b89d2a6a7",
+        "internal_skips": []
+      },
+      {
+        "case": "write-tracking-bulk",
+        "target": "agc_write_tracking_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "72fc46c7a50a43d36e0fe6b45f632476d1cf350148c13fbf0bd212e3c260cc3c",
+        "machine": "0x8664",
+        "log_sha256": "f0c22bb34595f876689ef7c2846655f22ee5f232d9681438d4011eb86a2c38ea",
+        "internal_skips": []
+      },
+      {
+        "case": "profile-default-off",
+        "target": "agc_profile_output_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "489399ce6b805de280eeb65f8e592a99ff4f3b9fd9adf6ae79123b7a586db29c",
+        "machine": "0x8664",
+        "log_sha256": "a1eb0f277419f66925759e934e8f88598b66d7f60712abd34e6319190c0b878d",
+        "internal_skips": []
+      },
+      {
+        "case": "profile-runtime-on",
+        "target": "agc_profile_output_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "489399ce6b805de280eeb65f8e592a99ff4f3b9fd9adf6ae79123b7a586db29c",
+        "machine": "0x8664",
+        "log_sha256": "a1eb0f277419f66925759e934e8f88598b66d7f60712abd34e6319190c0b878d",
+        "internal_skips": []
+      },
+      {
+        "case": "shader-device-profile",
+        "target": "agc_shader_device_profile_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8cef1ac9ae8a5c0f9c3c17ba994564d538221a88c84393e3e876a5dcf4666c15",
+        "machine": "0x8664",
+        "log_sha256": "aeae9027f90e205abadba811f92a8ba55d02979c928a1f360883506af765a1d7",
+        "internal_skips": []
+      },
+      {
+        "case": "shader-disk-cache-normal",
+        "target": "agc_shader_disk_cache_tests",
+        "status": "passed",
+        "exit_code": 0,
+        "executable_sha256": "8e7d54c74fa495d7667acc55fcf1539589c1f55dcc9d2098cf5f5be7ad98ca76",
+        "machine": "0x8664",
+        "log_sha256": "a21ded7bbd28af697e8d32e5d62185a2e624d06041c1f833b961dadd0812b63b",
+        "internal_skips": []
+      }
+    ],
+    "ctest_skips": [],
+    "unexpected_failures": [],
+    "internal_skips": [
+      {
+        "case": "guest_raise_exception",
+        "subtest": "async_avx_context",
+        "reason": "Local Wine host does not expose AVX despite explicit AVX opt-in; this is not FEX/iPad AVX execution",
+        "delivered_exception_count": 451,
+        "log_sha256": "689503128b03ef2e9d4b560dce48d729ccc0e2d43f4bbd98409910a75fb39bd9",
+        "windows_reference_pending": true,
+        "ipad_fex_execution_pending": true
+      }
+    ],
+    "all_final_test_and_dependency_inputs_unchanged": true,
+    "build_phases": [
+      {
+        "phase": "runtime",
+        "status": "passed",
+        "exit_code": 0,
+        "log_sha256": "2fd20a2e30ec9a95d98f36469b29dc4e14d380e127df7350d9f5cb75eda2cf70"
+      },
+      {
+        "phase": "remaining-selected",
+        "status": "passed",
+        "exit_code": 0,
+        "log_sha256": "9fa9df5e8d86849b09175b1d8952ed053bd23e2badf997b81db281bee90f5962"
+      },
+      {
+        "phase": "all47-prx",
+        "status": "passed",
+        "exit_code": 0,
+        "log_sha256": "c10f39e8d905df755df0a3e8d48cd296ebea3484fb2514161f6f66f2ffb5e1cc"
+      }
+    ]
+  },
+  "relinker_qualification": {
+    "scope": "Native host relinker/NID tools and emitted synthetic Windows lifecycle images under isolated local Wine",
+    "native_ctest_cases_passed": 37,
+    "native_ctest_cases": [
+      {
+        "case": "autorun_exit_status",
+        "status": "passed"
+      },
+      {
+        "case": "cli_args",
+        "status": "passed"
+      },
+      {
+        "case": "buffer_bounds",
+        "status": "passed"
+      },
+      {
+        "case": "amd64_only_converter",
+        "status": "passed"
+      },
+      {
+        "case": "elf_offsets",
+        "status": "passed"
+      },
+      {
+        "case": "dynamic_segment",
+        "status": "passed"
+      },
+      {
+        "case": "rela_size",
+        "status": "passed"
+      },
+      {
+        "case": "optional_plt",
+        "status": "passed"
+      },
+      {
+        "case": "empty_tls",
+        "status": "passed"
+      },
+      {
+        "case": "tls_function_coverage",
+        "status": "passed"
+      },
+      {
+        "case": "tls_diagnostics",
+        "status": "passed"
+      },
+      {
+        "case": "linux_load_alignment",
+        "status": "passed"
+      },
+      {
+        "case": "linux_eh_frame_header",
+        "status": "passed"
+      },
+      {
+        "case": "linux_dynamic_strings",
+        "status": "passed"
+      },
+      {
+        "case": "executable_segments",
+        "status": "passed"
+      },
+      {
+        "case": "linux_entry_argv",
+        "status": "passed"
+      },
+      {
+        "case": "windows_gui",
+        "status": "passed"
+      },
+      {
+        "case": "windows_address_space",
+        "status": "passed"
+      },
+      {
+        "case": "windows_icon",
+        "status": "passed"
+      },
+      {
+        "case": "guest_intel_trampolines",
+        "status": "passed"
+      },
+      {
+        "case": "guest_tls",
+        "status": "passed"
+      },
+      {
+        "case": "guest_optional_notes",
+        "status": "passed"
+      },
+      {
+        "case": "guest_needed_modules",
+        "status": "passed"
+      },
+      {
+        "case": "guest_module_directories",
+        "status": "passed"
+      },
+      {
+        "case": "guest_symbol_names",
+        "status": "passed"
+      },
+      {
+        "case": "guest_host_libc",
+        "status": "passed"
+      },
+      {
+        "case": "guest_init_fini",
+        "status": "passed"
+      },
+      {
+        "case": "guest_deferred_lifecycle",
+        "status": "passed"
+      },
+      {
+        "case": "guest_absolute_symbols",
+        "status": "passed"
+      },
+      {
+        "case": "windows_import_modules",
+        "status": "passed"
+      },
+      {
+        "case": "elf_header",
+        "status": "passed"
+      },
+      {
+        "case": "input_magic",
+        "status": "passed"
+      },
+      {
+        "case": "string_table_bounds",
+        "status": "passed"
+      },
+      {
+        "case": "call_registry",
+        "status": "passed"
+      },
+      {
+        "case": "jmprel_table_bounds",
+        "status": "passed"
+      },
+      {
+        "case": "windows_icon_resource",
+        "status": "passed"
+      },
+      {
+        "case": "strict_nid_filter",
+        "status": "passed"
+      }
+    ],
+    "native_ctest_log_sha256": "985732b158de5b6e375cfedeb7cdfb6c5440c7ad0ee1803dae42cdd61a3c724e",
+    "native_relinker_sha256": "c12566d7e178016158cba5f75f9942fee384a8be1cfa5e07775adef327f19927",
+    "synthetic_windows_host_sha256": "2f99db21991a6740558f4c8b14ee08348970c6353267e69a543364435bcfd160",
+    "synthetic_windows_runner_sha256": "d9ec06c65354cea5de59c790ce007fc54c37bc0765c51e485d24d68906718907",
+    "windows_lifecycle_tests": {
+      "test_guest_init_fini.py": {
+        "sourceSha256": "1cfeedc0b1f9ae6c2641afeb198311cef422301ed27efc6876e8c8ee707f6811",
+        "logSha256": "0e94fadc704aa5d03f6e334c618517ac20a84caef35f91ba69e6edb3d6389ee0"
+      },
+      "test_guest_deferred_lifecycle.py": {
+        "sourceSha256": "b03e066823d2d118eb5d52d3cceb3e025d114c598946b812faa7a60d8e0ceb89",
+        "logSha256": "5b842d1c4a63d2e552ba63baa0d5b66cd39232e2feca974a0fb7c91e98a9c21c"
+      }
+    },
+    "deferred_lifecycle_scenarios": [
+      "normal",
+      "failed-start",
+      "failed-stop",
+      "concurrent",
+      "guest-error-busy"
+    ]
+  },
+  "msaa_disk_cache_qualification": {
+    "scope": "CPU shader translation and cache contracts; no physical GPU execution",
+    "positive_case": "shader-disk-cache-normal",
+    "normal_status": "passed",
+    "normal_log_sha256": "a21ded7bbd28af697e8d32e5d62185a2e624d06041c1f833b961dadd0812b63b",
+    "coverage": [
+      "RDNA IMAGE_LOAD programs",
+      "2/4/8 samples",
+      "plain and array modes",
+      "prepared descriptor materialization",
+      "fresh-process disk cache loads"
+    ],
+    "negative_control": {
+      "case": "shader-disk-cache-lost-policy",
+      "status": "expected_failure",
+      "exit_code": 1,
+      "counted_as_positive_case": false,
+      "log_sha256": "c747b209fe99f7095967411595717a5791d0eae2346a4659d3ead7134c01a91a",
+      "mutation": "Reconstruct runtime modes with group0 instead of the saved sample-group policy"
+    },
+    "production_validation_preserved": true
+  },
+  "receipt_hashes_sha256": {
+    "runtime_qualification": "f47b6e117ac7a08cd0a301f6a0bd9bcec5ec2cd9cd1a191be810ffec928fba25",
+    "frozen_source_snapshot": "9756ae735b56918e87991a8b0547095f7b1d7f5d657cb9a90571a7ab24b95200",
+    "relinker_qualification": "726685d7763a4850175ba0618875c4e9df32d344a179fa8faf83be8f07dbf8e7",
+    "windows_lifecycle": "72481eed36363e5ab0c07a53635b9abb59cbc8cdfff067b940385657adc28e2d",
+    "graphics_cpu_mock_vulkan": "2a521810eeb94e6a727c7f1d082a4f15b2c0261f4859a9fc7f962277e19d92b6",
+    "msaa_disk_cache": "c12a5f3e0b0e15fc99cc33ec1b9dc54410c1c0d83e031354ae4a31a0e4c4d9d7",
+    "activation": "7654d6d33cdeb97bc7232ab4a241b78fe12c039f534dc1b2bd93fa5eba7089ba"
+  },
+  "acceptance_boundaries": {
+    "fex_execution_verified": false,
+    "physical_ipad_execution_verified": false,
+    "physical_gpu_rendering_verified": false,
+    "minigolf_gameplay_verified": false,
+    "solitaire_regression_verified": false,
+    "fps_or_performance_improvement_verified": false,
+    "async_avx_windows_reference_pending": true,
+    "new_app_and_matching_private_game_package_require_device_qualification": true
+  },
+  "github_actions_used": false,
+  "device_actions_performed": false,
+  "public_artifact_scope": "Source identities, library/test names, hashes, and sanitized results only; game dumps/assets, pairing/signing data, and raw diagnostics remain private"
+}

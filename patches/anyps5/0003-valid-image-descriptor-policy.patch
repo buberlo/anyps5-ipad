@@ -1,0 +1,759 @@
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/include/ShaderDeviceProfile.hpp b/core/libs/prx/libSceAgcDriver/Execution/include/ShaderDeviceProfile.hpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/include/ShaderDeviceProfile.hpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/include/ShaderDeviceProfile.hpp
+@@ -16,6 +16,7 @@
+     ShaderRecompiler::SpirvTarget Target() const { return target; }
+     const VkPhysicalDeviceLimits& Limits() const { return limits; }
+     bool NullDescriptors() const { return nullDescriptors; }
++    ShaderRecompiler::ImageDescriptorPolicy ImagePolicy() const { return target.imageDescriptorPolicy; }
+ 
+ private:
+     ShaderRecompiler::SpirvTarget target;
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/ShaderDeviceProfile.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/ShaderDeviceProfile.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/ShaderDeviceProfile.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/ShaderDeviceProfile.cpp
+@@ -34,7 +34,7 @@
+     Require(target.bdaAbiVersion == ShaderRecompiler::BdaAbi::Version, "shader device profile has an incompatible BDA ABI");
+     Require(bda != nullptr && bda->bufferDeviceAddress == VK_TRUE && core.shaderInt64 == VK_TRUE, "shader runtime requires enabled bufferDeviceAddress and shaderInt64");
+     Require(bytes != nullptr && bytes->storageBuffer8BitAccess == VK_TRUE, "shader runtime requires enabled storageBuffer8BitAccess");
+-    Require(nullDescriptors, "shader runtime requires enabled nullDescriptor");
++    this->target.imageDescriptorPolicy = ShaderRecompiler::ImageDescriptorPolicyFor(nullDescriptors);
+     Require(core.vertexPipelineStoresAndAtomics == VK_TRUE && core.fragmentStoresAndAtomics == VK_TRUE, "shader runtime requires enabled graphics stores and atomics");
+     Require(limits.maxPushConstantsSize >= ShaderRecompiler::RuntimeAbi::PushConstantDwords * sizeof(std::uint32_t) && limits.maxBoundDescriptorSets > ShaderRecompiler::RuntimeAbi::DescriptorSet, "shader runtime ABI exceeds device limits");
+     Require(limits.maxStorageBufferRange >= sizeof(ShaderRecompiler::RuntimeAbi::ShaderData), "shader runtime ShaderData exceeds device limits");
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -1200,17 +1200,21 @@
+     }
+     bdaFeatures.pNext = &byteFeatures;
+     VkPhysicalDeviceRobustness2FeaturesEXT robustness2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT};
+-    Graphics::Require(hasExtension(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME), "shader runtime requires VK_EXT_robustness2");
+-    VkPhysicalDeviceFeatures2 queried{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &robustness2};
+-    state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &queried);
+-    Graphics::Require(robustness2.nullDescriptor == VK_TRUE, "shader runtime requires nullDescriptor");
+-    robustness2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT};
+-    robustness2.nullDescriptor = VK_TRUE;
+-    robustness2.pNext = bdaFeatures.pNext;
+-    bdaFeatures.pNext = &robustness2;
+-    deviceExtensions.push_back(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+-    deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
+-    deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
++    const bool robustness2Present = hasExtension(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
++    if (robustness2Present) {
++        VkPhysicalDeviceFeatures2 queried{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &robustness2};
++        state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &queried);
++    }
++    robustness2 = Graphics::NativeNullDescriptorFeatures(robustness2Present, robustness2.nullDescriptor);
++    if (robustness2.nullDescriptor == VK_TRUE) {
++        robustness2.pNext = bdaFeatures.pNext;
++        bdaFeatures.pNext = &robustness2;
++        deviceExtensions.push_back(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
++        deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
++        deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
++    }
++    std::fprintf(stderr, "[gpu] image descriptor policy=%s nativeNullDescriptor=%u\n",
++                 robustness2.nullDescriptor == VK_TRUE ? "native-null" : "requires-valid-images", robustness2.nullDescriptor);
+     deviceInfo.pNext = &bdaFeatures;
+     // Portability devices require both the extension and the explicitly enabled
+     // array-image feature; image creation succeeding alone cannot replace this.
+@@ -2677,6 +2681,7 @@
+     context.sampleLocations = state->sampleLocations;
+     context.sampleLocationProperties = state->sampleLocationProperties;
+     context.nullDescriptors = state->shaderProfile != nullptr && state->shaderProfile->NullDescriptors();
++    context.imageDescriptorPolicy = state->shaderProfile != nullptr ? state->shaderProfile->ImagePolicy() : ShaderRecompiler::ImageDescriptorPolicy::RequiresValidImages;
+     context.primitiveListRestart = state->primitiveListRestart;
+     context.imageViewMinLod = state->imageViewMinLod;
+     context.pipelineExecutableInfo = state->pipelineExecutableInfo;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+@@ -5,6 +5,7 @@
+ #define VK_NO_PROTOTYPES
+ #endif
+ #include <vulkan/vulkan.h>
++#include "ImageDescriptorPolicy.hpp"
+ #include <cstdint>
+ #include <memory>
+ #include <stdexcept>
+@@ -153,7 +154,9 @@
+     bool separateStencilMaskRef = true;
+     bool sampleLocations = false;
+     VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT};
++    // Actual enabled Vulkan feature; policy cannot turn unsupported native nulls on.
+     bool nullDescriptors = false;
++    ShaderRecompiler::ImageDescriptorPolicy imageDescriptorPolicy = ShaderRecompiler::ImageDescriptorPolicy::RequiresValidImages;
+     bool primitiveListRestart = false;
+     bool imageViewMinLod = false;
+     bool pipelineExecutableInfo = false;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp
+@@ -4,6 +4,14 @@
+ #include <vulkan/vulkan.h>
+ 
+ namespace AgcDriver::Graphics {
++
++// Only query support may enable native null descriptors. Other robustness2
++// features are deliberately left disabled, preserving their separate contracts.
++inline VkPhysicalDeviceRobustness2FeaturesEXT NativeNullDescriptorFeatures(bool extensionPresent, VkBool32 available) {
++    VkPhysicalDeviceRobustness2FeaturesEXT enabled{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT};
++    enabled.nullDescriptor = extensionPresent && available == VK_TRUE ? VK_TRUE : VK_FALSE;
++    return enabled;
++}
+ 
+ inline bool StorageBufferUpdateAfterBindSupported(VkBool32 available, VkBool32 robustBufferAccess, const VkPhysicalDeviceDescriptorIndexingPropertiesEXT& properties) {
+     return available == VK_TRUE && (robustBufferAccess == VK_FALSE || properties.robustBufferAccessUpdateAfterBind == VK_TRUE);
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ImageDescriptorValidation.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ImageDescriptorValidation.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ImageDescriptorValidation.hpp
+@@ -0,0 +1,40 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_IMAGEDESCRIPTORVALIDATION_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_IMAGEDESCRIPTORVALIDATION_HPP
++#include "prx/libSceAgcDriver/Graphics/include/Context.hpp"
++#include "Recompiler.hpp"
++#include <span>
++namespace AgcDriver::Graphics {
++inline void ValidateImageDescriptorPolicy(const Context& context) {
++    Require(ShaderRecompiler::ValidImageDescriptorPolicy(context.imageDescriptorPolicy), "invalid image descriptor policy");
++    Require(context.imageDescriptorPolicy == ShaderRecompiler::ImageDescriptorPolicyFor(context.nullDescriptors), "image descriptor policy disagrees with enabled native nullDescriptor");
++}
++// Validate the compact, selected physical heap, including present zero/padded
++// entries. Empty/inactive heaps are removed by DescriptorBindingBuilder, not by
++// treating a zero guest address as inactive here.
++inline void ValidateGuestImageDescriptors(const Context& context, const ShaderRecompiler::DescriptorBinding& binding, VkShaderStageFlags stages) {
++    ValidateImageDescriptorPolicy(context);
++    if (binding.kind == ShaderRecompiler::DescriptorKind::Sampler || context.imageDescriptorPolicy == ShaderRecompiler::ImageDescriptorPolicy::NativeNull) return;
++    Require(binding.role == ShaderRecompiler::DescriptorRole::GuestImages, "image policy requires a guest image binding");
++    Require(binding.guestDescriptor.size() == static_cast<std::size_t>(binding.count) * 8u, "image policy requires 8-dword guest descriptors");
++    for (std::uint32_t element = 0u; element < binding.count; ++element) {
++        const auto* words = binding.guestDescriptor.data() + static_cast<std::size_t>(element) * 8u;
++        if (words[0] == 0u && (words[1] & 0xffu) == 0u) {
++            throw std::runtime_error("AGC graphics: requires-valid-images rejects zero guest image descriptor (stages=" + std::to_string(stages) + ", set=" + std::to_string(binding.descriptorSet) + ", binding=" + std::to_string(binding.binding) + ", element=" + std::to_string(element) + ", kind=" + std::to_string(static_cast<std::uint32_t>(binding.kind)) + ", shape=" + (binding.imageShape.has_value() ? std::to_string(static_cast<std::uint32_t>(*binding.imageShape)) : "unspecified") + ")");
++        }
++    }
++}
++// Defense in depth before initial writes and deep-captured write replay. This
++// checks the actual Vulkan view, independently of the guest base validation.
++inline void ValidateImageDescriptorWrites(const Context& context, std::span<const VkWriteDescriptorSet> writes) {
++    ValidateImageDescriptorPolicy(context);
++    if (context.imageDescriptorPolicy == ShaderRecompiler::ImageDescriptorPolicy::NativeNull) return;
++    for (const auto& write : writes) {
++        if (write.descriptorType != VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && write.descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && write.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && write.descriptorType != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) continue;
++        Require(write.pImageInfo != nullptr, "image descriptor write is missing image info");
++        for (std::uint32_t element = 0u; element < write.descriptorCount; ++element) {
++            Require(write.pImageInfo[element].imageView != VK_NULL_HANDLE, "requires-valid-images rejects null Vulkan image view (binding=" + std::to_string(write.dstBinding) + ", element=" + std::to_string(write.dstArrayElement + element) + ")");
++        }
++    }
++}
++}
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp
+@@ -598,6 +598,7 @@
+         key.push_back(static_cast<std::uint32_t>(value >> 32u));
+     };
+     append64(reinterpret_cast<std::uint64_t>(context.device));
++    key.push_back(static_cast<std::uint32_t>(context.imageDescriptorPolicy));
+     key.push_back(static_cast<std::uint32_t>(shaders.size()));
+     for (const auto& shader : shaders) {
+         const auto part = ShaderResources::ContentKey(shader, true, MovableBuffers());
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+@@ -4,6 +4,7 @@
+ #include "ThreadOwned.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/DepthSurface.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ImageDescriptorValidation.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Recorder.hpp"
+ #include <algorithm>
+ #include <atomic>
+@@ -899,6 +900,7 @@
+ ShaderResources::ShaderResources(const Context& context, const ShaderRecompiler::RecompileResult& vertex, const ShaderRecompiler::RecompileResult& fragment, const ColorTarget& target, std::uint64_t indexAddress, std::size_t indexBytes) : ShaderResources(context, std::array<CompiledShader, 2>{{{ShaderRecompiler::ShaderStage::Vertex, &vertex, 0}, {ShaderRecompiler::ShaderStage::Fragment, &fragment, static_cast<std::uint32_t>(vertex.pushConstants.size())}}}, target, indexAddress, indexBytes) {}
+ 
+ ShaderResources::ShaderResources(const Context& context, std::span<const CompiledShader> shaders, const ColorTarget& target, std::uint64_t indexAddress, std::size_t indexBytes, std::span<const GuestMemorySnapshot> snapshots) : context(context), guestMemory(context) {
++    ValidateImageDescriptorPolicy(context);
+     prepareAddressBindings(shaders, snapshots);
+     build(shaders, &target, indexAddress, indexBytes);
+ }
+@@ -916,6 +918,7 @@
+ }
+ 
+ ShaderResources::ShaderResources(const Context& context, const CompiledShader& compute, std::span<const GuestMemorySnapshot> snapshots, bool deferred) : context(context), guestMemory(context), deferredCompute(compute), deferredSnapshots(snapshots) {
++    ValidateImageDescriptorPolicy(context);
+     Require(compute.stage == ShaderRecompiler::ShaderStage::Compute, "compute resources require a compute shader");
+     // Every use of a compute build is a recorded dispatch that calls MarkGpuWrites, which staged
+     // buffers need (a synchronous draw's use would not).
+@@ -1347,7 +1350,10 @@
+                     case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                         write.pImageInfo = images.data() + images.size();
+                         for (const auto index : binding.imageAllocations) {
+-                            if (index == std::numeric_limits<std::size_t>::max()) images.push_back({VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL});
++                            if (index == std::numeric_limits<std::size_t>::max()) {
++                                Require(context.nullDescriptors && context.imageDescriptorPolicy == ShaderRecompiler::ImageDescriptorPolicy::NativeNull, "null image allocation requires enabled native nullDescriptor");
++                                images.push_back({VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL});
++                            }
+                             else images.push_back({VK_NULL_HANDLE, textureFirstLayer[index] ? textures[index]->FirstLayerView() : textures[index]->View(), textures[index]->Layout()});
+                         }
+                         Require(binding.imageAllocations.size() == binding.layout.descriptorCount, "descriptor allocations disagree with compact binding");
+@@ -1355,7 +1361,10 @@
+                     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                         write.pImageInfo = images.data() + images.size();
+                         for (const auto index : binding.imageAllocations) {
+-                            if (index == std::numeric_limits<std::size_t>::max()) images.push_back({VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL});
++                            if (index == std::numeric_limits<std::size_t>::max()) {
++                                Require(context.nullDescriptors && context.imageDescriptorPolicy == ShaderRecompiler::ImageDescriptorPolicy::NativeNull, "null image allocation requires enabled native nullDescriptor");
++                                images.push_back({VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL});
++                            }
+                             else images.push_back({VK_NULL_HANDLE, storageAtomic64[index] ? storageTextures[index]->Atomic64View(storageMips[index], storageFirstLayer[index]) : storageAtomic[index] ? storageTextures[index]->AtomicView(storageMips[index], storageFirstLayer[index]) : storageTextures[index]->StorageView(storageMips[index], storageFirstLayer[index]), VK_IMAGE_LAYOUT_GENERAL});
+                         }
+                         Require(binding.imageAllocations.size() == binding.layout.descriptorCount, "descriptor allocations disagree with compact binding");
+@@ -1369,6 +1378,7 @@
+                 }
+                 writes.push_back(write);
+             }
++            ValidateImageDescriptorWrites(context, writes);
+             context.Resolved(&DeviceFunctions::updateDescriptorSets, "vkUpdateDescriptorSets")(context.device, static_cast<std::uint32_t>(writes.size()), writes.data(), 0, nullptr);
+             initialDescriptorWrites = CaptureInitialDrawDescriptors(writes);
+         }
+@@ -2717,7 +2727,7 @@
+     const bool sampledHeap = localBinding >= ShaderRecompiler::RuntimeAbi::FirstImageBinding && localBinding < ShaderRecompiler::RuntimeAbi::FirstStorageImageBinding;
+     const bool storageHeap = localBinding >= ShaderRecompiler::RuntimeAbi::FirstStorageImageBinding && localBinding < static_cast<std::uint32_t>(ShaderRecompiler::RuntimeAbi::Binding::Samplers);
+     Require((binding.kind == ShaderRecompiler::DescriptorKind::SampledImage && sampledHeap) || (binding.kind == ShaderRecompiler::DescriptorKind::StorageImage && storageHeap) || (binding.kind == ShaderRecompiler::DescriptorKind::Sampler && heap == ShaderRecompiler::RuntimeAbi::Binding::Samplers), "resource class disagrees with typed descriptor heap");
+-    Require(binding.kind == ShaderRecompiler::DescriptorKind::Sampler || context.nullDescriptors, "typed image heaps require enabled nullDescriptor");
++    ValidateGuestImageDescriptors(context, binding, flags);
+     if (binding.kind == ShaderRecompiler::DescriptorKind::StorageImage) {
+         // Storage images are guest textures the shader writes (looked up in stage B).
+         Require(binding.role == ShaderRecompiler::DescriptorRole::GuestImages, "storage image binding has a non-image role");
+@@ -3155,6 +3165,7 @@
+         Require(initialDescriptorWrites != nullptr && initialDescriptorWrites->Size() == bindings.size(),
+                 "explicit draw descriptors lack the complete initial write plan");
+         const auto initialWrites = initialDescriptorWrites->ForSet(result->allocation.set);
++        ValidateImageDescriptorWrites(context, initialWrites);
+         update(context.device, static_cast<std::uint32_t>(initialWrites.size()), initialWrites.data(), 0, nullptr);
+         static std::atomic<bool> reported{false};
+         if (!reported.exchange(true, std::memory_order_relaxed))
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -1,4 +1,6 @@
+ #include "prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/ImageDescriptorValidation.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/InitialDescriptorWrites.hpp"
+ #include "BdaTests.hpp"
+ #include "GraphicsTests.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Pipeline.hpp"
+@@ -1400,6 +1402,9 @@
+     std::uint32_t count;
+     VkDescriptorType type;
+     std::vector<VkDescriptorBufferInfo> buffers;
++    std::vector<VkDescriptorImageInfo> images;
++    VkDescriptorSet set = VK_NULL_HANDLE;
++    std::uint32_t arrayElement = 0;
+ };
+ 
+ struct MockVulkan {
+@@ -1553,7 +1558,15 @@
+     Require(copyCount == 0, "descriptor copies are not expected");
+     for (std::uint32_t i = 0; i < count; ++i) {
+         MockDescriptorWrite write{writes[i].dstBinding, writes[i].descriptorCount, writes[i].descriptorType, {}};
+-        write.buffers.assign(writes[i].pBufferInfo, writes[i].pBufferInfo + writes[i].descriptorCount);
++        write.set = writes[i].dstSet;
++        write.arrayElement = writes[i].dstArrayElement;
++        if (writes[i].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
++            Require(writes[i].pBufferInfo != nullptr, "mock buffer write is missing infos");
++            write.buffers.assign(writes[i].pBufferInfo, writes[i].pBufferInfo + writes[i].descriptorCount);
++        } else {
++            Require(writes[i].pImageInfo != nullptr, "mock image write is missing infos");
++            write.images.assign(writes[i].pImageInfo, writes[i].pImageInfo + writes[i].descriptorCount);
++        }
+         mock.writes.push_back(write);
+     }
+ }
+@@ -1673,6 +1686,7 @@
+     context.limits.maxBoundDescriptorSets = 1;
+     context.limits.maxStorageBufferRange = 16384;
+     context.nullDescriptors = true;
++    context.imageDescriptorPolicy = ShaderRecompiler::ImageDescriptorPolicy::NativeNull;
+     context.limits.maxPerStageDescriptorStorageBuffers = 16;
+     context.limits.maxPerStageResources = 128;
+     context.limits.maxDescriptorSetStorageBuffers = 32;
+@@ -1760,6 +1774,139 @@
+     const auto color = AgcDriver::Graphics::DecodeState(makeState()).color;
+     { AgcDriver::Graphics::ShaderResources resources(context, vertex, fragment, color, 0, 0); }
+     Require(mock.live == 0, std::string(what) + " leaked Vulkan objects");
++}
++
++void imageDescriptorPolicyTests() {
++    using namespace AgcDriver::Graphics;
++    using ShaderRecompiler::ImageDescriptorPolicy;
++    auto native = mockContext();
++    auto allBound = native;
++    allBound.nullDescriptors = false;
++    allBound.imageDescriptorPolicy = ImageDescriptorPolicy::RequiresValidImages;
++    ValidateImageDescriptorPolicy(native);
++    ValidateImageDescriptorPolicy(allBound);
++    auto mismatch = allBound;
++    mismatch.imageDescriptorPolicy = ImageDescriptorPolicy::NativeNull;
++    expectFailure([&] { ValidateImageDescriptorPolicy(mismatch); }, "disagrees with enabled native nullDescriptor");
++    mismatch = native;
++    mismatch.imageDescriptorPolicy = ImageDescriptorPolicy::RequiresValidImages;
++    expectFailure([&] { ValidateImageDescriptorPolicy(mismatch); }, "disagrees with enabled native nullDescriptor");
++    for (const bool extension : {false, true}) {
++        for (const VkBool32 available : {VK_FALSE, VK_TRUE}) {
++            const auto enabled = NativeNullDescriptorFeatures(extension, available);
++            Require(enabled.nullDescriptor == (extension && available == VK_TRUE ? VK_TRUE : VK_FALSE), "native null feature enabled without queried extension support");
++            Require(enabled.robustBufferAccess2 == VK_FALSE && enabled.robustImageAccess2 == VK_FALSE && enabled.pNext == nullptr, "null descriptor selection changed unrelated robustness features");
++        }
++    }
++    const auto imageBinding = [](Kind kind, std::uint32_t count, std::vector<std::uint32_t> words) {
++        ShaderRecompiler::DescriptorBinding result;
++        result.kind = kind;
++        result.role = Role::GuestImages;
++        result.descriptorSet = 0;
++        const auto local = kind == Kind::SampledImage ? ShaderRecompiler::RuntimeAbi::FirstImageBinding + 2u : ShaderRecompiler::RuntimeAbi::FirstStorageImageBinding + 2u;
++        result.binding = ShaderRecompiler::RuntimeAbi::BindingNumber(ShaderRecompiler::RuntimeAbi::Stage::Main, static_cast<ShaderRecompiler::RuntimeAbi::Binding>(local));
++        result.count = count;
++        result.imageShape = ShaderRecompiler::DescriptorImageShape::Image2D;
++        result.guestDescriptor = std::move(words);
++        return result;
++    };
++    const std::vector<std::uint32_t> present{0x100u, 0u, 0u, 0u, 0u, 0u, 0u, 0u};
++    const std::vector<std::uint32_t> zero(8u);
++    auto partiallyZero = zero;
++    partiallyZero[1] = 0xdeadbe00u; // Non-address descriptor bits do not make the 40-bit base non-null.
++    partiallyZero[3] = 0x11223344u;
++    for (const auto kind : {Kind::SampledImage, Kind::StorageImage}) {
++        const auto valid = imageBinding(kind, 1u, present);
++        ValidateGuestImageDescriptors(allBound, valid, VK_SHADER_STAGE_COMPUTE_BIT);
++        auto highBase = present;
++        highBase[0] = 0u;
++        highBase[1] = 1u;
++        ValidateGuestImageDescriptors(allBound, imageBinding(kind, 1u, highBase), VK_SHADER_STAGE_COMPUTE_BIT);
++        ValidateGuestImageDescriptors(native, imageBinding(kind, 1u, zero), VK_SHADER_STAGE_COMPUTE_BIT);
++        for (const auto& words : {zero, partiallyZero}) {
++            const auto binding = imageBinding(kind, 1u, words);
++            ShaderRecompiler::RecompileResult program;
++            program.bindings.push_back(binding);
++            // Resource construction must validate a deserialized/cached artifact too.
++            program.cacheHit = true;
++            const auto cachedProgram = program;
++            const CompiledShader shader{ShaderRecompiler::ShaderStage::Compute, &cachedProgram, 0u};
++            mock = MockVulkan{};
++            const auto location = "stages=" + std::to_string(VK_SHADER_STAGE_COMPUTE_BIT) + ", set=0, binding=" + std::to_string(binding.binding) + ", element=0";
++            expectFailure([&] { ShaderResources resources(allBound, shader); }, location);
++            Require(mock.writes.empty() && mock.live == 0, "null guest image reached a Vulkan descriptor update or leaked an allocation");
++        }
++        const auto padded = imageBinding(kind, 2u, join(present, zero));
++        ShaderRecompiler::RecompileResult paddedProgram;
++        paddedProgram.bindings.push_back(padded);
++        const CompiledShader paddedShader{ShaderRecompiler::ShaderStage::Compute, &paddedProgram, 0u};
++        mock = MockVulkan{};
++        expectFailure([&] { ShaderResources resources(allBound, paddedShader); }, "element=1");
++        Require(mock.writes.empty() && mock.live == 0, "a padded compact null slot reached a Vulkan update");
++        ShaderRecompiler::RecompileResult validProgram;
++        validProgram.bindings.push_back(valid);
++        const CompiledShader validShader{ShaderRecompiler::ShaderStage::Compute, &validProgram, 0u};
++        auto changedProgram = validProgram;
++        changedProgram.bindings[0].guestDescriptor = zero;
++        const CompiledShader changedShader{ShaderRecompiler::ShaderStage::Compute, &changedProgram, 0u};
++        Require(ShaderResources::ContentKey(validShader, true, false) != ShaderResources::ContentKey(changedShader, true, false), "valid-to-null guest image reused the materialized resource content key");
++    }
++    // Fully compacted inactive heaps have no physical binding and do not require null support.
++    mock = MockVulkan{};
++    {
++        const ShaderRecompiler::RecompileResult empty;
++        const CompiledShader shader{ShaderRecompiler::ShaderStage::Compute, &empty, 0u};
++        ShaderResources resources(allBound, shader);
++    }
++    Require(mock.writes.empty() && mock.live == 0, "an empty compact heap created descriptor writes");
++
++    const auto sampledView = reinterpret_cast<VkImageView>(std::uintptr_t{0x1234});
++    const auto storageView = reinterpret_cast<VkImageView>(std::uintptr_t{0x5678});
++    const auto sampler = reinterpret_cast<VkSampler>(std::uintptr_t{0x9abc});
++    const auto set = reinterpret_cast<VkDescriptorSet>(std::uintptr_t{0xabcd});
++    std::array<VkDescriptorImageInfo, 3> infos{{
++        {VK_NULL_HANDLE, sampledView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
++        {VK_NULL_HANDLE, storageView, VK_IMAGE_LAYOUT_GENERAL},
++        {sampler, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED}
++    }};
++    std::array<VkWriteDescriptorSet, 3> writes{};
++    const std::array types{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLER};
++    for (std::uint32_t i = 0u; i < writes.size(); ++i) {
++        writes[i] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
++        writes[i].dstSet = set;
++        writes[i].dstBinding = 70u + i;
++        writes[i].dstArrayElement = 3u;
++        writes[i].descriptorCount = 1u;
++        writes[i].descriptorType = types[i];
++        writes[i].pImageInfo = &infos[i];
++    }
++    ValidateImageDescriptorWrites(allBound, writes);
++    InitialDescriptorWrites captured(writes);
++    infos[0].imageView = VK_NULL_HANDLE;
++    infos[1].imageView = VK_NULL_HANDLE;
++    const auto replay = captured.ForSet(set);
++    ValidateImageDescriptorWrites(allBound, replay);
++    mock = MockVulkan{};
++    mockUpdateDescriptorSets(allBound.device, static_cast<std::uint32_t>(replay.size()), replay.data(), 0u, nullptr);
++    Require(mock.writes.size() == 3u && mock.writes[0].images[0].imageView == sampledView && mock.writes[1].images[0].imageView == storageView && mock.writes[2].images[0].sampler == sampler, "deep-captured image/sampler payload was not preserved through Vulkan replay");
++    Require(mock.writes[0].set == set && mock.writes[0].arrayElement == 3u, "replayed descriptor destination changed");
++    for (std::uint32_t i = 0u; i < 2u; ++i) {
++        const std::span<const VkWriteDescriptorSet> one(&writes[i], 1u);
++        ValidateImageDescriptorWrites(native, one);
++        const InitialDescriptorWrites capturedNull(one);
++        const auto nullReplay = capturedNull.ForSet(set);
++        mock = MockVulkan{};
++        const auto guardedUpdate = [&](std::span<const VkWriteDescriptorSet> update) {
++            ValidateImageDescriptorWrites(allBound, update);
++            mockUpdateDescriptorSets(allBound.device, static_cast<std::uint32_t>(update.size()), update.data(), 0u, nullptr);
++        };
++        expectFailure([&] { guardedUpdate(one); }, "binding=" + std::to_string(writes[i].dstBinding) + ", element=3");
++        expectFailure([&] { guardedUpdate(nullReplay); }, "null Vulkan image view");
++        Require(mock.writes.empty(), "a null initial/captured Vulkan view bypassed the update guard");
++        mockUpdateDescriptorSets(native.device, static_cast<std::uint32_t>(nullReplay.size()), nullReplay.data(), 0u, nullptr);
++        Require(mock.writes.size() == 1u && mock.writes[0].images[0].imageView == VK_NULL_HANDLE, "enabled native null image descriptor was changed");
++    }
++    std::cout << "all-bound image policy passed: guest, compact padding, cached content, Vulkan payload, deep replay; mock only\n";
+ }
+ 
+ void pushConstantTests() {
+@@ -3281,6 +3428,10 @@
+     setenv("APS5_PIN_WAIT_MS", "200", 1);
+ #endif
+     try {
++        if (argc == 2 && std::string_view(argv[1]) == "--image-descriptor-policy-only") {
++            imageDescriptorPolicyTests();
++            return 0;
++        }
+         if (argc == 2 && std::string_view(argv[1]) == "--descriptor-update-after-bind-only") {
+             descriptorUpdateAfterBindTests();
+             resourceTests();
+@@ -3363,6 +3514,7 @@
+         InitialContextTests();
+         pushConstantTests();
+         resourceTests();
++        imageDescriptorPolicyTests();
+         descriptorUpdateAfterBindTests();
+         descriptorCacheTests();
+         misalignedShaderDataTests();
+diff --git a/core/libs/prx/libSceAgcDriver/tests/ShaderDeviceProfile.cpp b/core/libs/prx/libSceAgcDriver/tests/ShaderDeviceProfile.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/ShaderDeviceProfile.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/ShaderDeviceProfile.cpp
+@@ -1,4 +1,5 @@
+ #include "prx/libSceAgcDriver/Execution/include/ShaderDeviceProfile.hpp"
++#include "prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp"
+ #include "BdaAbi.hpp"
+ #include "Optimization/BindingAllocator.hpp"
+ #include <spirv/unified1/spirv.hpp>
+@@ -69,7 +70,7 @@
+     Require(target.supportedCapabilities.size() == 4u && std::ranges::is_sorted(target.supportedCapabilities), "profile capabilities were not frozen");
+     Require(std::ranges::find(target.supportedExtensions, "SPV_KHR_physical_storage_buffer") != target.supportedExtensions.end(), "profile extension storage is borrowed");
+     Require(profile.Limits().maxPushConstantsSize == 128u, "profile limits were not frozen");
+-    Require(profile.NullDescriptors(), "profile null descriptor support was not frozen");
++    Require(profile.NullDescriptors() && profile.ImagePolicy() == ShaderRecompiler::ImageDescriptorPolicy::NativeNull && profile.Target().imageDescriptorPolicy == profile.ImagePolicy(), "profile null descriptor support or policy was not frozen");
+     static_assert(!std::is_copy_constructible_v<AgcDriver::ShaderDeviceProfile> && !std::is_move_constructible_v<AgcDriver::ShaderDeviceProfile>);
+     const auto invalid = [](auto mutate, const char* expected) {
+         ProfileInput candidate;
+@@ -81,8 +82,17 @@
+     invalid([](auto& value) { value.device.pNext = nullptr; }, "bufferDeviceAddress");
+     invalid([](auto& value) { value.core.shaderInt64 = VK_FALSE; }, "shaderInt64");
+     invalid([](auto& value) { value.bytes.storageBuffer8BitAccess = VK_FALSE; }, "storageBuffer8BitAccess");
+-    invalid([](auto& value) { value.robustness.nullDescriptor = VK_FALSE; }, "nullDescriptor");
+-    invalid([](auto& value) { value.indexing.pNext = nullptr; }, "nullDescriptor");
++    for (const bool missingChain : {false, true}) {
++        ProfileInput validOnly;
++        validOnly.robustness.nullDescriptor = VK_FALSE;
++        if (missingChain) validOnly.indexing.pNext = nullptr;
++        auto requested = validOnly.Target();
++        requested.imageDescriptorPolicy = ShaderRecompiler::ImageDescriptorPolicy::NativeNull;
++        const AgcDriver::ShaderDeviceProfile frozen(requested, validOnly.device, validOnly.limits);
++        Require(!frozen.NullDescriptors() && frozen.ImagePolicy() == ShaderRecompiler::ImageDescriptorPolicy::RequiresValidImages && frozen.Target().imageDescriptorPolicy == frozen.ImagePolicy(), "all-bound profile fabricated native null support");
++        validOnly.robustness.nullDescriptor = VK_TRUE;
++        Require(!frozen.NullDescriptors() && frozen.ImagePolicy() == ShaderRecompiler::ImageDescriptorPolicy::RequiresValidImages, "all-bound profile borrowed the enabled feature chain");
++    }
+     invalid([](auto& value) { value.core.fragmentStoresAndAtomics = VK_FALSE; }, "graphics stores and atomics");
+     invalid([](auto& value) { value.limits.maxPushConstantsSize = 127u; }, "exceeds device limits");
+     invalid([](auto& value) { value.limits.maxBoundDescriptorSets = 0u; }, "exceeds device limits");
+@@ -102,6 +112,17 @@
+     enabled.indexing.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+     const AgcDriver::ShaderDeviceProfile accepted(enabled.Target(), enabled.device, enabled.limits);
+     Require(accepted.Target().supportedCapabilities.size() == 6u, "enabled descriptor indexing was rejected");
++}
++
++void CheckNullFeatureSetup() {
++    for (const bool extensionPresent : {false, true}) {
++        for (const auto available : {VK_FALSE, VK_TRUE}) {
++            const auto enabled = AgcDriver::Graphics::NativeNullDescriptorFeatures(extensionPresent, available);
++            Require(enabled.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT && enabled.pNext == nullptr, "native-null feature selection changed the feature chain");
++            Require(enabled.nullDescriptor == (extensionPresent && available == VK_TRUE ? VK_TRUE : VK_FALSE), "native-null feature selection ignored queried support");
++            Require(enabled.robustBufferAccess2 == VK_FALSE && enabled.robustImageAccess2 == VK_FALSE, "native-null selection enabled unrelated robustness guarantees");
++        }
++    }
+ }
+ 
+ void CheckAbi() {
+@@ -174,6 +195,7 @@
+         CheckAbi();
+         CheckHeaps();
+         CheckProfile();
++        CheckNullFeatureSetup();
+         std::cout << "shader runtime ABI and device profile tests passed\n";
+         return 0;
+     } catch (const std::exception& error) {
+diff --git a/core/libs/prx/libSceAgcDriver/tests/ShaderDiskCache.cpp b/core/libs/prx/libSceAgcDriver/tests/ShaderDiskCache.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/ShaderDiskCache.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/ShaderDiskCache.cpp
+@@ -19,6 +19,7 @@
+ #include <iostream>
+ #include <map>
+ #include <random>
++#include <set>
+ #include <stdexcept>
+ #include <string>
+ #include <string_view>
+@@ -390,6 +391,7 @@
+     changes("non-constant texel offsets", [](SampleRequest& sample) { sample.request.target.nonConstantImageOffsets = true; });
+     changes("the sRGB formats decoded in the shader", [](SampleRequest& sample) { sample.request.target.srgbDecodeFormats = 2u; });
+     changes("the narrow subgroup clock", [](SampleRequest& sample) { sample.request.target.narrowSubgroupClock = true; });
++    changes("the image descriptor policy", [](SampleRequest& sample) { sample.request.target.imageDescriptorPolicy = ImageDescriptorPolicy::NativeNull; });
+     changes("the workgroup size limit", [](SampleRequest& sample) { sample.request.target.maxWorkgroupSize[2] = 128; });
+     changes("the invocation limit", [](SampleRequest& sample) { sample.request.target.maxWorkgroupInvocations = 512; });
+     changes("the shared memory limit", [](SampleRequest& sample) { sample.request.target.maxWorkgroupSharedMemoryBytes = 32768; });
+@@ -474,6 +476,74 @@
+     require(back.request.context.floatMode == mode, "the float mode did not survive serialization");
+ }
+ 
++std::vector<std::uint8_t> requestBytes(std::string_view text) {
++    constexpr std::string_view alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++    std::vector<std::uint8_t> bytes;
++    std::uint32_t word = 0u;
++    std::uint32_t bits = 0u;
++    for (const char c : text) {
++        if (c == '=') break;
++        const auto value = alphabet.find(c);
++        require(value != std::string_view::npos, "invalid base64 in serializer fixture");
++        word = (word << 6u) | static_cast<std::uint32_t>(value);
++        bits += 6u;
++        if (bits >= 8u) { bits -= 8u; bytes.push_back(static_cast<std::uint8_t>(word >> bits)); }
++    }
++    return bytes;
++}
++
++std::string requestText(std::span<const std::uint8_t> bytes) {
++    constexpr std::string_view alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++    std::string text;
++    std::uint32_t word = 0u;
++    std::uint32_t bits = 0u;
++    for (const auto byte : bytes) {
++        word = (word << 8u) | byte;
++        bits += 8u;
++        while (bits >= 6u) { bits -= 6u; text += alphabet[(word >> bits) & 63u]; }
++    }
++    if (bits != 0u) text += alphabet[(word << (6u - bits)) & 63u];
++    while (text.size() % 4u != 0u) text += '=';
++    return text;
++}
++
++void verifyImagePolicySerialization() {
++    SampleRequest sample;
++    const RequestSerializer serializer;
++    std::set<std::vector<std::uint64_t>> interfaces;
++    std::set<std::uint64_t> sourceMemos;
++    std::set<std::vector<std::byte>> diskKeys;
++    for (const auto policy : {ImageDescriptorPolicy::RequiresValidImages, ImageDescriptorPolicy::NativeNull}) {
++        sample.request.target.imageDescriptorPolicy = policy;
++        const auto decoded = serializer.Deserialize(serializer.Serialize(sample.request));
++        require(decoded.request.target.imageDescriptorPolicy == policy, "image descriptor policy was lost during request serialization");
++        std::vector<std::uint64_t> key;
++        RecompileCacheKey::BuildInterface(sample.request, key);
++        interfaces.insert(key);
++        sourceMemos.insert(RecompileCacheKey::ContextHash(sample.request));
++        diskKeys.insert(sample.Key());
++    }
++    require(interfaces.size() == 2u && sourceMemos.size() == 2u && diskKeys.size() == 2u, "native-null and all-bound policies shared a cache identity");
++    sample.request.target.imageDescriptorPolicy = ImageDescriptorPolicy::NativeNull;
++    const auto encoded = serializer.Serialize(sample.request);
++    auto bytes = requestBytes(encoded);
++    require(requestText(bytes) == encoded && bytes.size() >= 12u && bytes[4] == 15u, "serializer fixture does not describe version15");
++    bytes[bytes.size() - 4u] = 2u;
++    bool badDecodedPolicy = false;
++    try { static_cast<void>(serializer.Deserialize(requestText(bytes))); }
++    catch (const std::runtime_error& error) { badDecodedPolicy = std::string(error.what()).find("invalid recompile image descriptor policy") != std::string::npos; }
++    require(badDecodedPolicy, "unknown decoded image descriptor policy was accepted");
++    bytes.resize(bytes.size() - 4u); // Actual old layout: the policy field did not exist.
++    bytes[4] = 14u;
++    const auto legacy = serializer.Deserialize(requestText(bytes));
++    require(legacy.request.target.imageDescriptorPolicy == ImageDescriptorPolicy::RequiresValidImages, "version14 request fabricated native-null policy");
++    sample.request.target.imageDescriptorPolicy = static_cast<ImageDescriptorPolicy>(2u);
++    bool rejected = false;
++    try { static_cast<void>(serializer.Serialize(sample.request)); }
++    catch (const std::runtime_error& error) { rejected = std::string(error.what()).find("invalid recompile image descriptor policy") != std::string::npos; }
++    require(rejected, "unknown image descriptor policy was serialized");
++}
++
+ void verifyStore() {
+     require(ShaderDiskCache::Enabled(), "the disk cache is not enabled");
+     SampleRequest sample;
+@@ -616,6 +686,7 @@
+         builder.Populate(allocation, variant.bindings, plan, variant.info.userDataBase, snapshot, {});
+         const auto binding = std::ranges::find_if(allocation.bindings, [](const auto& value) { return value.role == DescriptorRole::GuestImages; });
+         require(binding != allocation.bindings.end() && binding->count == 1u && binding->kind == DescriptorKind::SampledImage, "MSAA materialization lost its sampled typed heap");
++        require(std::ranges::count_if(allocation.bindings, [](const auto& value) { return value.role == DescriptorRole::GuestImages; }) == 1u, "inactive typed image heaps survived compact binding selection");
+         require(binding->imageShape == expectedShape && binding->imageLogicalSamples == std::vector<std::uint32_t>{samples} && binding->imageNativeSamples == std::vector<std::uint32_t>{expectedNative}, "MSAA cache produced incorrect image shape or sample metadata");
+         require(binding->guestDescriptor == std::vector<std::uint32_t>(sample.userData.begin() + 4, sample.userData.end()), "MSAA materialization reused a stale guest descriptor");
+ 
+@@ -629,6 +700,9 @@
+             const auto op = static_cast<spv::Op>(materialized.spirv[cursor] & 0xffffu);
+             require(count != 0u && count <= materialized.spirv.size() - cursor, "MSAA specialization emitted a truncated SPIR-V instruction");
+             if (op == spv::OpImageFetch) fetch = true;
++            if (op == spv::OpDecorate && count >= 4u && materialized.spirv[cursor + 2u] == spv::DecorationBinding) {
++                require(std::ranges::any_of(materialized.bindings, [&](const auto& value) { return value.binding == materialized.spirv[cursor + 3u]; }), "specialized shader references an inactive descriptor heap");
++            }
+             if (op == spv::OpTypeImage && count >= 9u && materialized.spirv[cursor + 3u] == spv::Dim2D && materialized.spirv[cursor + 6u] == 1u && materialized.spirv[cursor + 7u] == 1u && materialized.spirv[cursor + 5u] == (sample.arrayed || grouped ? 1u : 0u)) imageType = true;
+             cursor += count;
+         }
+@@ -637,6 +711,14 @@
+         fresh.SetSamples(samples);
+         requireSameResult(Recompile(fresh.request), materialized, "MSAA cached against uncached emission");
+     }
++}
++
++void verifyImagePolicyEmission() {
++    MsaaRequest sample(0u, false, false);
++    const auto allBound = Recompile(sample.request);
++    sample.request.target.imageDescriptorPolicy = ImageDescriptorPolicy::NativeNull;
++    const auto nativeNull = Recompile(sample.request);
++    requireSameResult(allBound, nativeNull, "all-bound policy changed valid-image shader semantics");
+ }
+ 
+ int runMsaaLoadingProcess() {
+@@ -1177,9 +1259,11 @@
+         verifyArtifactStorageIsolation();
+         verifyKeySensitivity();
+         verifyFloatModeSerialization();
++        verifyImagePolicySerialization();
+         verifyStore();
+         verifyAcrossProcesses(argv[0]);
+         verifyMsaaAcrossProcesses(argv[0]);
++        verifyImagePolicyEmission();
+         verifyEmissionFailureMemo();
+         verifyFailureMemoSwitch(argv[0]);
+         verifyInvocationIsolation();
+diff --git a/core/shader/recompiler/CMakeLists.txt b/core/shader/recompiler/CMakeLists.txt
+--- a/core/shader/recompiler/CMakeLists.txt
++++ b/core/shader/recompiler/CMakeLists.txt
+@@ -212,6 +212,10 @@
+             DebugProbeActive
+             DepthBitsTextureWidth
+             HashBytes
++            # Pure host descriptor-policy derivation/validation. The actual policy
++            # is carried in RecompileRequest::target and every cache identity.
++            ImageDescriptorPolicyFor
++            ValidImageDescriptorPolicy
+             PixelInput
+             PixelInputBit
+             RayTracingStrict
+diff --git a/core/shader/recompiler/CacheKey.hpp b/core/shader/recompiler/CacheKey.hpp
+--- a/core/shader/recompiler/CacheKey.hpp
++++ b/core/shader/recompiler/CacheKey.hpp
+@@ -56,6 +56,7 @@
+         appendMesh(key, request);
+         // Source memo owners do not fix the grouped sampled-image representation.
+         append(key, request.target.groupedMsaaMaxSamples);
++        append(key, request.target.imageDescriptorPolicy);
+         appendTessellation(key, request);
+         std::uint64_t hash = 0xcbf29ce484222325ull;
+         for (const auto value : key) {
+@@ -242,6 +243,7 @@
+         append(key, value.srgbDecodeFormats);
+         append(key, value.groupedMsaaMaxSamples);
+         append(key, value.narrowSubgroupClock);
++        append(key, value.imageDescriptorPolicy);
+     }
+ };
+ 
+diff --git a/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp b/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
+--- a/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
++++ b/core/shader/recompiler/ControlFlow/src/RequestSerializer.cpp
+@@ -714,7 +714,7 @@
+     std::string buffer;
+     Writer writer(buffer);
+     writer.WriteU32(0x41505335u);
+-    writer.WriteU32(14u);
++    writer.WriteU32(15u);
+     writeShaderBinary(writer, request.shader);
+     writeGuestContext(writer, request.context);
+     writeSpirvTarget(writer, request.target);
+@@ -734,6 +734,8 @@
+     if (request.context.compute.has_value()) writer.WriteU32(request.context.compute->scratchDwords);
+     writer.WriteBool(request.target.narrowSubgroupClock);
+     writer.WriteU32(request.target.groupedMsaaMaxSamples);
++    if (!ValidImageDescriptorPolicy(request.target.imageDescriptorPolicy)) throw std::runtime_error("invalid recompile image descriptor policy");
++    writer.WriteU32(static_cast<std::uint32_t>(request.target.imageDescriptorPolicy));
+     return base64Encode(buffer);
+ }
+ 
+@@ -742,7 +744,7 @@
+     Reader reader(decoded);
+     if (reader.ReadU32() != 0x41505335u) throw std::runtime_error("invalid recompile request signature");
+     const auto version = reader.ReadU32();
+-    if (version < 1u || version > 14u) throw std::runtime_error("unsupported recompile request serialization version");
++    if (version < 1u || version > 15u) throw std::runtime_error("unsupported recompile request serialization version");
+     DeserializedRequest result{};
+     result.request.shader = readShaderBinary(reader, result.shaderCode, result.shaderHeader);
+     result.request.context = readGuestContext(reader, result, version);
+@@ -763,6 +765,8 @@
+     if (version >= 10u && result.request.context.compute.has_value()) result.request.context.compute->scratchDwords = reader.ReadU32();
+     if (version >= 12u) result.request.target.narrowSubgroupClock = reader.ReadBool();
+     if (version >= 14u) result.request.target.groupedMsaaMaxSamples = reader.ReadU32();
++    if (version >= 15u) result.request.target.imageDescriptorPolicy = static_cast<ImageDescriptorPolicy>(reader.ReadU32());
++    if (!ValidImageDescriptorPolicy(result.request.target.imageDescriptorPolicy)) throw std::runtime_error("invalid recompile image descriptor policy");
+     return result;
+ }
+ 
+diff --git a/core/shader/recompiler/ImageDescriptorPolicy.hpp b/core/shader/recompiler/ImageDescriptorPolicy.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/shader/recompiler/ImageDescriptorPolicy.hpp
+@@ -0,0 +1,18 @@
++#ifndef CORE_SHADER_RECOMPILER_IMAGEDESCRIPTORPOLICY_HPP
++#define CORE_SHADER_RECOMPILER_IMAGEDESCRIPTORPOLICY_HPP
++#include <cstdint>
++namespace ShaderRecompiler {
++// Host descriptor legality policy. This does not advertise a SPIR-V capability
++// or emulate null image accesses; shader instructions remain unchanged.
++enum class ImageDescriptorPolicy : std::uint32_t {
++    RequiresValidImages = 0u,
++    NativeNull = 1u,
++};
++inline bool ValidImageDescriptorPolicy(ImageDescriptorPolicy policy) {
++    return policy == ImageDescriptorPolicy::RequiresValidImages || policy == ImageDescriptorPolicy::NativeNull;
++}
++inline ImageDescriptorPolicy ImageDescriptorPolicyFor(bool enabledNativeNull) {
++    return enabledNativeNull ? ImageDescriptorPolicy::NativeNull : ImageDescriptorPolicy::RequiresValidImages;
++}
++}
++#endif
+diff --git a/core/shader/recompiler/Recompiler.hpp b/core/shader/recompiler/Recompiler.hpp
+--- a/core/shader/recompiler/Recompiler.hpp
++++ b/core/shader/recompiler/Recompiler.hpp
+@@ -2,6 +2,7 @@
+ #define CORE_SHADER_RECOMPILIER_INCLUDE_SHADER_RECOMPILIER_RECOMPILER_HPP
+ 
+ #include "RuntimeAbi.hpp"
++#include "ImageDescriptorPolicy.hpp"
+ #include "PipelineSpecialization.hpp"
+ #include <array>
+ #include <cstddef>
+@@ -219,6 +220,7 @@
+     // 0: native sampled MSAA. 4: group logical samples in MSAA array layers.
+     std::uint32_t groupedMsaaMaxSamples = 0;
+     bool narrowSubgroupClock = false;
++    ImageDescriptorPolicy imageDescriptorPolicy = ImageDescriptorPolicy::RequiresValidImages;
+ };
+ 
+ struct BindingLayout {

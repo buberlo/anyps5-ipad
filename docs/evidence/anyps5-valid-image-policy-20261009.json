@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "milestone": "strict valid-image policy for devices without native null descriptors",
+  "upstreamPin": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "patch": "0003-valid-image-descriptor-policy.patch",
+  "patchSha256": "149cdd10bfe66bb49515463a228540a1100dbcfb5305838368f4e5ae83207eb0",
+  "candidateReceiptSha256": "64a945ce67a1f14dda24fa3eab43726284e4a455ae95a842886a614d605c5d6e",
+  "sourcePromoted": true,
+  "combinedProductionHlePackageBuilt": false,
+  "tests": {
+    "device-profile": {
+      "exitCode": 0,
+      "durationSeconds": 10.5867255,
+      "markerPresent": true,
+      "logSha256": "9d28df3d38b274f4fdda904034a6c6e902b76eda4e758d78190a3bb8959d1f82",
+      "log": "device-profile.log"
+    },
+    "image-policy": {
+      "exitCode": 0,
+      "durationSeconds": 0.5534479579999996,
+      "markerPresent": true,
+      "logSha256": "0a3e98311712a298b67ed347e59ddc137b939f767f65db8731865dfa050542f0",
+      "log": "image-policy.log"
+    },
+    "graphics-full": {
+      "exitCode": 0,
+      "durationSeconds": 7.300143458000001,
+      "markerPresent": true,
+      "logSha256": "45ce6690e16b3c2150d1558af6006e8f0ae55e2ea2dd22b0d00337108530e67f",
+      "log": "graphics-full.log"
+    },
+    "disk-cache-full": {
+      "exitCode": 0,
+      "durationSeconds": 1.6065231660000023,
+      "markerPresent": true,
+      "logSha256": "6d2707cf8e27623be3bc5f54fdc480db5f05584ce6019db369c75a3e085a57f8",
+      "log": "disk-cache-full.log"
+    }
+  },
+  "testExecution": "Windows x86-64 binaries under local macOS Wine; Vulkan calls mocked",
+  "productionDeviceObjectCompiled": true,
+  "nullImageEmulation": false,
+  "serializerVersion": 15,
+  "legacySerializerPolicy": "RequiresValidImages",
+  "deviceActions": false,
+  "physicalGpuRenderingQualified": false,
+  "gameplayQualified": false,
+  "githubActions": false
+}

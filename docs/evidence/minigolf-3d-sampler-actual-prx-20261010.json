@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "kind": "sanitized_isolated_actual_plain_3d_prx_evidence_candidate",
+  "status": "passed_isolated_cpu_prx_experiment_after_terminal_cleanup_reconciliation_not_production_not_gpu_not_device",
+  "source": {
+    "baseHeaderSha256": "4c3b1144ca75aff928a573ee1930e08d26c370bef010ef37013a9d9cfad879a5",
+    "basePublicFixtureSha256": "777f1d797f58738cc5a8ae28cb68d6345ed85ab643c4e2493d6a642ef42fbcfa",
+    "candidateHeaderSha256": "1877d198f792c2381be21b03df8a8c33346a0a2b3eef1e0e61eda12cb3c99cf9",
+    "candidateFixtureSha256": "7257709463141051735cb91d74df893ef91e6eedef444638b5050efdd5cf7a4d",
+    "sourceDeltaReceiptSha256": "1a6d337c0b095e8c04bdc29bd0a213c400545c51ee0067ee032a13931b60b044",
+    "nativeQualificationReceiptSha256": "791bbef20caeace72c964b4fd387ae94b46c09e32b6520711d1e582d651bcca7",
+    "independentGeometricReceiptSha256": "488d77ebb6ec9af4badc7f4606f50de8c2ebf3b3396b77c53f2aa429744dbe3b",
+    "preservedPublicCaseCount": 121,
+    "addedPublicCaseCount": 23
+  },
+  "receiptProvenance": {
+    "originalFailedReceiptSha256": "688dec32c1bf18e9016ad36ef39058912300b9f895cb7d4b0c897f39a3137033",
+    "terminalReconciliationReceiptSha256": "2800fee4817f53a5cd36b29f566a3625f610a175e3845e56705db628ab8a8259",
+    "reviewedBindingSha256": "c2c2c6b447a83a823427b0e3aa162a916d4929d6590c4598edad7d71ce51a9ec",
+    "exactHistoricalRecipeSha256": "52861f9d98536e18658e0387d0582aa555728901fec84c535d4abf5480d75082",
+    "reconciliationScriptSha256": "e3e64666dfd416cfdaa587ac67ee033c433bb9a0bef0354d16b6db52ef1e1295",
+    "originalFailedReceiptRetainedUnmodified": true,
+    "substantiveResultsReusedWithExactInputAndLogHashes": true,
+    "buildRerunDuringReconciliation": false,
+    "substantiveTestsRerunDuringReconciliation": false,
+    "originalFrozenInputCountRehashed": 2293,
+    "originalArtifactCountRehashed": 66,
+    "allFrozenInputsAndArtifactsUnchanged": true
+  },
+  "substantiveCommands": {
+    "count": 31,
+    "allMatchedTheirExpectedExitCode": true,
+    "positiveExpectedZeroCount": 29,
+    "intentionalNegativeExpectedOneCount": 2,
+    "allOwnedDirectChildrenWaited": true,
+    "passedResultCount": 11,
+    "failuresWereNotConvertedToSuccess": true
+  },
+  "tests": {
+    "regressionsPassed": [
+      "agc_driver_graphics_tests",
+      "agc_shader_disk_cache_tests"
+    ],
+    "actualLoadedPrxPublicCaseCount": 144,
+    "actualLoadedPrxPublicCasesPassed": true,
+    "fourImportedPublicPlusPrivateRuns": {
+      "runCount": 4,
+      "casesPerRun": 145,
+      "scope": "Each run includes the same 144 distinct public cases plus one exact retained private staged request; these counts are repeated runs, not 580 distinct public cases."
+    },
+    "completePrivatePrepareCaptureMaterializeRequestCount": 4,
+    "completePrivateRequestsPassed": true,
+    "serializer14RequestCount": 1,
+    "serializer15RequestCount": 3,
+    "serializer14MigrationExplicit": true,
+    "allSerializer15OriginalSerializationsMatched": true,
+    "oldQuadDriverNegativeControlsPassed": {
+      "newPublic3dStagingRejected": true,
+      "newCompletePrivate3dRequestRejected": true,
+      "expectedExitCode": 1
+    },
+    "positivePublic3dStagingUsesRealSynthetic3dDescriptor": true
+  },
+  "archiveAndLink": {
+    "baselineArchiveSha256": "2b0e234f0c3fe680eeb8213710d8b10844a2196d77cabbcf1d99b8084b451203",
+    "candidateArchiveSha256": "59cd9fc220db387c695cce8a20e4d6bc88bedfc834691d074dc5a34f3291c805",
+    "archiveMemberCount": 106,
+    "changedMemberCount": 1,
+    "changedMember": "InstructionTranslator.cpp.obj",
+    "changedMemberBeforeSha256": "c57cbd9f694486d50dd30d64bd91f314afcb79be0ff24da41f597e513d1d6622",
+    "changedMemberAfterSha256": "8da3316a795b7d01ce0d50a204d620d83f3e7ef26bf0e3517361402d00bc9e56",
+    "allOtherMemberPayloadsAndOrderIdentical": true,
+    "retainedProductionDriverObjectCount": 107,
+    "fullFreshProjectObjectRebuild": false,
+    "historicalGeneratedCacheAbiUsedOnlyForIsolatedExperiment": true,
+    "everyTestUsedFreshCache": true
+  },
+  "abi": {
+    "rawDriverSha256": "eb4fa670fff1fe2d1a5a5a9ca30763d9be1d9f215485a1a8ec9ad0980b2a44c6",
+    "rawExportCount": 3692,
+    "rawNamesOrdinalsForwardersIdentical": true,
+    "rawNativeImportsIdentical": true,
+    "nidPatchedDriverSha256": "3f25c6bddd7b97117b54bba5655121011f5d099c4265d066c2200e49438c0efe",
+    "patchedNamesOrdinalsForwardersIdentical": true,
+    "nativeImportConsumerCountChecked": 62,
+    "unresolvedNativeImportCount": 0
+  },
+  "terminalCleanupReconciliation": {
+    "originalSoleFailure": "The original cleanup required compiler-prefix wineserver -k exit 0 even though that server was already absent. The original compiler-prefix -w completed with exit 0. All semantic commands had matched expected outcomes.",
+    "newReconciliationAcceptsOnlyStopZeroOrOneAndSuccessfulTerminalWait": true,
+    "bothOwnedPrefixStopWaitExitCodes": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "exactOwnedPrefixLocksUnlockedBeforeAndAfter": true,
+    "exactOwnedServerSocketsAbsentBeforeAndAfter": true,
+    "exactOwnedProcessMatchesAbsentBeforeAndAfter": true,
+    "noRetrospectiveOriginalProcessGroupClosureClaim": true
+  },
+  "qualificationBoundaries": {
+    "candidatePromotedToCanonicalSource": false,
+    "fullProductionRebuild": false,
+    "newProductionShaderCacheVersionGenerated": false,
+    "physicalGpuExecution": false,
+    "exactMoltenVkPipelineCreation": false,
+    "fexExecution": false,
+    "ipadExecution": false,
+    "gameplay": false,
+    "githubActionsUsed": false,
+    "rawPrivateCodeLogsOrPathsPublished": false,
+    "mslTranslationPerformedByThisExperiment": false
+  },
+  "limits": [
+    "This is an isolated one-translation-unit actual Windows PRX CPU experiment with retained historical production objects and cache ABI. It is not the fresh full 47-library production qualification.",
+    "Complete shader metadata and SPIR-V materialization passed through the loaded candidate PRX; physical texture sampling, helper-lane execution and rendering remain unqualified.",
+    "The terminal reconciliation is a separate immutable receipt. It preserves the failed original run and reuses only hash-verified successful semantic results."
+  ]
+}

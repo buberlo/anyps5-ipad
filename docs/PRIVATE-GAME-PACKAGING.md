@@ -60,6 +60,48 @@ syscalls; no deprecated skip switches are enabled. Assets are copied into
 `app0/`, including the runtime VFS `~INDEX`; this is a game asset, not a
 dumper sidecar. The converted bundled `libc` remains a guest module.
 
+Patch0067 handles an omitted producer `PT_NOTE` only when its flags, virtual
+address and memory size are all zero. This metadata has no runtime mapping and
+neither output writer consumes it. File bounds remain strict for mapped notes,
+LOAD, DYNAMIC and TLS segments and for symbol, relocation and initialization
+tables. No missing bytes are padded or invented. The synthetic relinker test
+checks both Windows and Linux output, with negative controls for truncated
+runtime segments and invalid imports, exports and initializers.
+
+Runtime-started guest modules can be selected explicitly with repeated
+`--defer-guest-lifecycle NAME` options. Each name must be an exact, unique
+discovered PRX basename; paths, globs, duplicates and unknown modules are
+rejected, as are the main executable, excluded modules and non-Windows relinking.
+The preparer records this selection in the private manifest and
+passes it to the matching relinker. Use it only after establishing the game's
+real module-start call and arguments. A declared ELF dependency alone does not
+prove that its module-start callback should run before the game's loader.
+All module conversion, binding, TLS and ELF bounds checks remain in place;
+the default preparation keeps the existing eager initialization policy. An eager
+guest module depending on a selected deferred provider is rejected.
+
+Use matched tools and HLE from patches0069–0070 for this option, then prepare a
+new output directory. The generated guest PE's reserved versioned start/stop
+exports share state between bootstrap and the kernel APIs. A selected lifecycle
+receives the game's actual full-width argument count and argument pointer;
+mapping the image alone does not start it. Successful callbacks run once, busy
+callbacks return an operational error, and failed callbacks preserve their exact
+result. Native/HLE images without guest lifecycle exports retain their ordinary
+load behavior. The preparer does not supply a synthetic argument block or infer
+module-start ownership from an import list.
+
+The loader keeps an image alive while a callback runs and calls outside its
+registry lock. Module-start results and loader/guard errors remain separate;
+a returned load handle alone does not prove that the guest start result was zero.
+A failed stop prevents unload and is cached without repeating finalizers.
+Because reverse fini arrays run before the stop callback, a failed stop may have
+partially finalized guest state; rollback and restart are not supported.
+
+The lifecycle patches pass native and synthetic Wine contracts, including
+constructor ordering, real payload forwarding, failure, concurrency and rejected
+negative controls. Those checks do not establish a fresh HLE/package build or a
+game/device result. See [patch behavior and validation](PATCHES.md#explicit-guest-module-lifecycle-anyps5-00690070).
+
 The script recursively packages real native dependencies, NID-patches fresh HLE
 copies, validates their PE imports/forwarders and checks the generated guest NIDs
 against the exact handles searched by the relinker. The Windows TLS resolver is

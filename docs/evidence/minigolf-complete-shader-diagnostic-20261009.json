@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "status": "native_windows_logging_candidate_gates_passed_complete_shader_captured_game_guard_failed",
+  "title_id": "PPSA03647",
+  "upstream": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "archive_sha256": "a76aec3e4d79ece6c02986241c01cd29e2eb8042e9226722ffc318e7f304e4af",
+  "logging_overlay_sha256": "ccda340f1c887153d23c3828cb4160c9231d08d5a5b8f29680e5aef89e48287e",
+  "manifest_sha256": "9b7f56d499842120f71bb365ca9b45ab14f1fb45cd03206a74079a1774e6ddf9",
+  "candidate_game_libc_sha256": "7b6b03152d837a43ac0f554bce9877f666a4d1f95907dad1c2e081bf7c6a5eb2",
+  "candidate_raw_libc_sha256": "51ebf4dfcf3b795ca73abe38bb07690057919c13fd741726300d5d92cb50bad1",
+  "unchanged_game_files": 168,
+  "native_cpu_tests_passed": 4,
+  "native_logging_tests_passed": 12,
+  "native_avx_deliveries": 553,
+  "avx_vectors_each_mode": 64,
+  "avx_modes": [
+    "preserve",
+    "mutate",
+    "reset-avx"
+  ],
+  "avx_errors": 0,
+  "native_cpu_internal_skips": [],
+  "physical_gpu": "AMD Radeon780M Graphics",
+  "physical_gpu_actual_readbacks": [
+    "bda_8bit_readback",
+    "bc1_sample_readback"
+  ],
+  "game_started": true,
+  "game_seconds": 11.125029,
+  "game_exit_code": -1073740791,
+  "first_fatal": "fixed-function interpolation guard pc56",
+  "swapchain_extent": [
+    837,
+    471
+  ],
+  "swapchain_images_requested_actual": [
+    3,
+    3
+  ],
+  "game_visibility": "No screenshot; exited before20-second capture. Foreground/gameplay not established.",
+  "complete_shader_request": {
+    "base64_chars": 3108,
+    "decoded_bytes": 2331,
+    "exact_roundtrip": true,
+    "original_guard_reproduced": true,
+    "replay_receipt_sha256": "ceab0983cd74234a300f88da320e54a771aaa2d5079389fda39dd79e75b5149b",
+    "serializer_version": 14,
+    "sha256": "7b776d22936822932af3c7619e20c9ff09a2ebeae03d09bab1e101559f5ca998"
+  },
+  "all_own_trees_stopped": true,
+  "github_actions": false,
+  "iPad_actions": false,
+  "returned_game_assets": false,
+  "device_acceptance": false,
+  "msaa_execution_proven": false,
+  "security_network_config_changes": false,
+  "created_utc": "2026-10-09T14:47:11.461106+00:00",
+  "scope": "Logging-only native Windows MiniGolf comparison and exact local shader replay; no iPad rendering acceptance",
+  "qualification_sha256": "aff55bc6a24a355b40b9c77c7eef5f2297ec015c79c9ce4f0fc397da1094050a",
+  "productionLoggingPatchSha256": "b5fb8772ba710ce71ccab8fee1cf362290a9852ac6b027ee4745abd0e9f3a8f9",
+  "sourcePromoted": true,
+  "combinedProductionHlePackageBuilt": false
+}

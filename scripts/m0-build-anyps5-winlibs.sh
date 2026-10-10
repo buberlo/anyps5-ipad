@@ -27,7 +27,7 @@ if [ -n "${APS5_HLE_TARGETS_FILE:-}" ]; then
     while IFS= read -r library || [ -n "$library" ]; do
         library="${library%$'\r'}"
         [ -n "$library" ] || continue
-        if [[ ! "$library" =~ ^lib[A-Za-z0-9_.]+$ ]]; then
+        if [[ "$library" != ulobjmgr && ! "$library" =~ ^lib[A-Za-z0-9_.]+$ ]]; then
             echo "Unknown or unsafe HLE target: $library" >&2
             exit 1
         fi
@@ -125,12 +125,17 @@ fi
 "$cmake_bin" --build "$build" --target relinker nid_patcher "${libraries[@]}" --parallel "$jobs"
 
 if [ "${APS5_HLE_TESTS:-OFF}" = ON ]; then
-    tests=(guest_json_tests guest_json2_initialization_tests guest_compatibility_api_tests
+    tests=(raw_log_output_tests guest_json_tests guest_json2_initialization_tests guest_json2_virtual_allocator_tests guest_compatibility_api_tests
+        guest_hmd_tests guest_player_review_dialog_tests guest_ulobjmgr_tests
+        guest_audio3d_parameters_tests guest_audio3d_port_tests guest_audio3d_object_attributes_tests
+        guest_kernel_module_lifecycle_tests
+        savedata_memory_growth_tests savedata_memory_metadata_tests
+        savedata_native_write_replacement_tests savedata_replace_file_failure_tests
         guest_filesystem_tests guest_pthread_attr_tests guest_memory_tests guest_math_tests
-        guest_raise_exception_tests agc_driver_graphics_tests uniform_wave_branch_tests wave32_wide_subgroup_tests
+        guest_raise_exception_tests agc_driver_graphics_tests agc_unused_barycentric_tests uniform_wave_branch_tests wave32_wide_subgroup_tests
         audio_out2_pad_mix_tests audio_out_mix_level_pad_spk_tests
         audio_out_last_output_time_tests audio_out2_latency_tests
-        audio_out2_port_layouts_tests audio_out2_timing_tests windows_exception_tests)
+        audio_out2_port_layouts_tests audio_out2_timing_tests windows_exception_tests exception_personality_tests)
     "$cmake_bin" --build "$build" --target "${tests[@]}" --parallel "$jobs"
     # Run actual linked, unpatched HLE contracts; the game's assets never enter tests.
     export PATH="$build/core/libs/libs/unpatched:$build/tests:$PATH"
@@ -140,8 +145,8 @@ if [ "${APS5_HLE_TESTS:-OFF}" = ON ]; then
     export APS5_GUEST_ARENA_SIZE="${APS5_GUEST_ARENA_SIZE:-0x100000000}"
     export APS5_GUEST_ARENA_CHUNK="${APS5_GUEST_ARENA_CHUNK:-0x10000000}"
     "$cmake_bin" -E chdir "$build" ctest --output-on-failure \
-        --timeout 45 \
-        -R '^(guest_json|guest_json2_initialization|guest_compatibility_apis|guest_filesystem|guest_pthread_attr|guest_memory|guest_math|guest_raise_exception|agc_driver_graphics|uniform_wave_branch|wave32_wide_subgroup|audio_out2_pad_mix|audio_out_mix_level_pad_spk|audio_out_last_output_time|audio_out2_latency|audio_out2_port_layouts|audio_out2_timing)$'
+        --timeout 45 --no-tests=error \
+        -R '^(raw_log_output|guest_json|guest_json2_initialization|guest_json2_virtual_allocator|guest_compatibility_apis|guest_hmd|guest_player_review_dialog|guest_ulobjmgr|guest_audio3d_parameters|guest_audio3d_port|guest_audio3d_object_attributes|guest_kernel_module_lifecycle|savedata_memory_growth(_read_failure)?|savedata_memory_metadata|savedata_native_write_replacement|savedata_replace_file_failure|guest_filesystem|guest_pthread_attr|guest_memory|guest_math|guest_raise_exception|exception_personality|agc_driver_graphics|agc_unused_barycentric|uniform_wave_branch|wave32_wide_subgroup|audio_out2_pad_mix|audio_out_mix_level_pad_spk|audio_out_last_output_time|audio_out2_latency|audio_out2_port_layouts|audio_out2_timing)$'
     # The wait-exit race needs repeated full runs, not one successful delivery.
     "$cmake_bin" -E chdir "$build" ctest --output-on-failure --timeout 45 \
         -R '^guest_raise_exception$' --repeat until-fail:20

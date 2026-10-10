@@ -1,0 +1,117 @@
+Subject: Preserve the smallest normal exp2 output on Apple GPUs
+Upstream: https://github.com/boykopovar/AnyPS5/pull/1571
+Reviewed-head: 847bd9f49613e3cd6431640c66c233010676551b
+Adapted to the project's patched AnyPS5 sources.
+
+diff --git a/core/shader/recompiler/Translation/src/FloatInstructions.cpp b/core/shader/recompiler/Translation/src/FloatInstructions.cpp
+--- a/core/shader/recompiler/Translation/src/FloatInstructions.cpp
++++ b/core/shader/recompiler/Translation/src/FloatInstructions.cpp
+@@ -101,6 +101,7 @@
+         const IrU1 overflow(ir.LogicalAnd(ir.IEqual(sign.Value(), ir.Constant(0u)), ir.UGreaterThan(magnitude.Value(), ir.Constant(0x42ffffffu))));
+         const IrU1 underflow(ir.LogicalAnd(negative.Value(), ir.UGreaterThan(magnitude.Value(), ir.Constant(0x42fc0000u))));
+         value = pick(overflow, ir.Constant(0x7f800000u), value);
++        value = IrU32(ir.Emit(IrOpcode::UMax32, IrType::U32, {&value.Value(), &ir.Constant(0x00800000u)}));
+         value = pick(underflow, ir.Constant(0u), value);
+         value = pick(zero, ir.Constant(0x3f800000u), value);
+         break;
+diff --git a/core/libs/prx/libSceAgcDriver/tests/CheckExp2Boundary.py b/core/libs/prx/libSceAgcDriver/tests/CheckExp2Boundary.py
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/tests/CheckExp2Boundary.py
+@@ -0,0 +1,96 @@
++#!/usr/bin/env python3
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++import tempfile
++
++SOURCE = Path(__file__).resolve().parents[5] / 'core/shader/recompiler/Translation/src/FloatInstructions.cpp'
++source = SOURCE.read_text()
++function = source[source.index('std::pair<IrF32, IrU1> TranslationContext::unaryFloatSpecials'):]
++prelude = function[function.index('    const IrU32 bits'):function.index('    const IrU32 signedInfinity')]
++pick = next(line for line in function.splitlines() if 'const auto pick = ' in line)
++branch = function[function.index('    case IrOpcode::FPExp2: {'):function.index('    case IrOpcode::FPFract32: {')]
++branch = branch[branch.index('{') + 1:branch.rindex('}')].replace('        break;', '')
++clamp = '        value = IrU32(ir.Emit(IrOpcode::UMax32, IrType::U32, {&value.Value(), &ir.Constant(0x00800000u)}));'
++if branch.count(clamp) != 1:
++    raise SystemExit('Production FPExp2 normal-boundary correction is absent or ambiguous')
++program = r'''
++#include <algorithm>
++#include <array>
++#include <cstdint>
++#include <deque>
++#include <cstdio>
++#include <initializer_list>
++#include <stdexcept>
++struct IrValue { std::uint32_t bits; };
++struct IrU32 { mutable IrValue value; explicit IrU32(IrValue& v):value(v){} IrValue& Value()const{return value;} };
++using IrU1=IrU32;
++using IrF32=IrU32;
++enum class IrOpcode { FPRecip32, FPRecipIFlag32, FPRecipSqrt32, FPSqrt, FPLog2, FPExp2, UMax32 };
++enum class IrType { U32 };
++struct IR {
++    std::deque<IrValue> values;
++    IrValue& result(std::uint32_t v){values.push_back({v});return values.back();}
++    IrValue& Constant(std::uint32_t v){return result(v);}
++    IrValue& BitCastU32(IrValue& v){return result(v.bits);}
++    IrValue& BitwiseAnd(IrValue& a,IrValue& b){return result(a.bits&b.bits);}
++    IrValue& IEqual(IrValue& a,IrValue& b){return result(a.bits==b.bits);}
++    IrValue& INotEqual(IrValue& a,IrValue& b){return result(a.bits!=b.bits);}
++    IrValue& ULessThan(IrValue& a,IrValue& b){return result(a.bits<b.bits);}
++    IrValue& UGreaterThan(IrValue& a,IrValue& b){return result(a.bits>b.bits);}
++    IrValue& LogicalAnd(IrValue& a,IrValue& b){return result(a.bits&&b.bits);}
++    IrValue& LogicalNot(IrValue& a){return result(!a.bits);}
++    IrValue& Select(IrValue& c,IrValue& a,IrValue& b){return result(c.bits?a.bits:b.bits);}
++    IrValue& Emit(IrOpcode opcode,IrType,std::initializer_list<IrValue*> values){
++        if(opcode!=IrOpcode::UMax32||values.size()!=2)throw std::runtime_error("unexpected IR opcode");
++        auto first=values.begin();return result(std::max((*first)->bits,(*(first+1))->bits));
++    }
++};
++std::uint32_t productionExp2(std::uint32_t input,std::uint32_t host){
++    IR ir;
++    const auto opcode=IrOpcode::FPExp2;
++    IrF32 argument(ir.Constant(input));
++    IrF32 result(ir.Constant(host));
++PRELUDE
++    static_cast<void>(infinite);
++PICK
++    IrU32 value(ir.BitCastU32(result.Value()));
++BRANCH
++    return value.Value().bits;
++}
++int main(){
++    const std::array<std::array<std::uint32_t,3>,12> cases{{
++        {0xc2fc0000,0,0x00800000},
++        {0xc2fc0000,0x007ffffe,0x00800000},
++        {0xc2fc0000,0x00800000,0x00800000},
++        {0xc2fbffff,0x00800008,0x00800008},
++        {0xc2fc0001,0x00800001,0},
++        {0xff800000,0,0},
++        {0x7f800000,0x7f800000,0x7f800000},
++        {0,0x3f800000,0x3f800000},
++        {0x80000000,0x3f800000,0x3f800000},
++        {0xc2f00000,0x037ffffe,0x037ffffe},
++        {0x43000000,0x7f800000,0x7f800000},
++        {0x42ffffff,0x7f7fffd3,0x7f7fffd3}
++    }};
++    unsigned failed=0;
++    for(const auto& test:cases){
++        const auto actual=productionExp2(test[0],test[1]);
++        if(actual!=test[2]){std::printf("input=%08x host=%08x actual=%08x expected=%08x\n",test[0],test[1],actual,test[2]);++failed;}
++    }
++    std::printf("production FPExp2 boundary fixtures=%zu failures=%u\n",cases.size(),failed);
++    return failed?1:0;
++}
++'''.replace('PRELUDE', prelude).replace('PICK', pick).replace('BRANCH', branch)
++with tempfile.TemporaryDirectory(prefix='anyps5-exp2-boundary-') as folder:
++    folder = Path(folder)
++    for name, code, expected in [('production', program, 0), ('omitted-clamp', program.replace(clamp, ''), 1)]:
++        cpp, binary = folder / (name + '.cpp'), folder / name
++        cpp.write_text(code)
++        subprocess.run(['c++', '-std=c++20', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined', str(cpp), '-o', str(binary)], check=True)
++        execution = subprocess.run([str(binary)], check=False, text=True, capture_output=True)
++        print(execution.stdout, end='')
++        if execution.returncode != expected:
++            raise SystemExit(name + ' returned ' + str(execution.returncode) + ': ' + execution.stderr)
++print(json.dumps({'scope': 'Production FPExp2 IR branch evaluated by a deterministic host IR adapter', 'productionSourceSHA256': hashlib.sha256(source.encode()).hexdigest(), 'fixtures': 12, 'omittedClampNegativeControl': 'rejected', 'GPUExecution': False}))

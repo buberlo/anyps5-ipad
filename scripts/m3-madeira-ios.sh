@@ -83,6 +83,7 @@ bash "$root/upstreams/Madeira/build/winevulkan-unix/build.sh"
 app_dir="$root/upstreams/Madeira/app/Madeira"
 moltenvk="${APS5_MOLTENVK_LIBRARY:-$root/upstreams/MoltenVK/Package/Release/MoltenVK/static/MoltenVK.xcframework/ios-arm64/libMoltenVK.a}"
 [ -f "$moltenvk" ] || { echo "Missing iPhoneOS MoltenVK archive: $moltenvk" >&2; exit 1; }
+python3 "$root/scripts/check-moltenvk-package.py" --library "$moltenvk"
 cp "$moltenvk" "$app_dir/libMoltenVK.a"
 mkdir -p "$root/build/ios-runtime"
 xcrun -sdk iphoneos clang -arch arm64 -isysroot "$sdk" -miphoneos-version-min=17.0 \

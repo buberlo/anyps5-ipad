@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "status": "source_integrated_production_translation_and_native_mac_metal_passed",
+  "upstream": {
+    "url": "https://github.com/KhronosGroup/SPIRV-Cross/pull/2704",
+    "stateAtReview": "open",
+    "head": "51648cae36ebcb24442333ea3dd074b0c4ea66ae",
+    "author": "Zheorgyan"
+  },
+  "moltenvkPin": "67b2682699d7903606b97a0392061d85d27d49e6",
+  "spirvCrossPin": "aa217aeb6c9f0ace7a0ab233b28807edf45eb165",
+  "integration": {
+    "series": "spirv-cross",
+    "patch": "0001-precise-multiply-negative-zero.patch",
+    "patchSha256": "ea7cdcb861de92521a2750bad5d078739b06418f26de7374f1b280e1a5a1c966",
+    "upstreamFilesChanged": 7,
+    "emitterChanges": 4,
+    "referenceFilesChanged": 6,
+    "dependencyPinChanged": false,
+    "applyIdempotencePassed": true,
+    "reverseApplyCheckPassed": true,
+    "buildWrapper": "scripts/build-moltenvk-local.sh",
+    "buildWrapperSha256": "88676f36da928c3b51a3efc7d99c2f3a46a5ba234bcc3b99f88fee2489badb55",
+    "buildOrder": "validate initialized pins; apply external series; build ExternalDependencies; package external XCFrameworks; build platform MoltenVK package",
+    "fetchOrForcedCheckout": false,
+    "githubActionsUsed": false
+  },
+  "regression": {
+    "producer": "scripts/check-precise-negative-zero.py",
+    "producerSha256": "dbdd6fe4971d4d10354924a0c418a62dfa5e6066a00da22014b1dbe51d223c59",
+    "fixture": "tools/shader-probes/precise-negative-zero.comp",
+    "fixtureSha256": "dd82acf544784c87df6e3b2ba0ea039ceac08fbea8a5a2346d40e2fb219f756f",
+    "driver": "tools/shader-probes/spirv_msl_translate.cpp",
+    "driverSha256": "05cc9ae6e290263c8442190e1417bf0fbd59bc78961fd8b0c5e4c07fecd49e5d",
+    "nativeHost": "tools/shader-probes/precise_negative_zero_metal.mm",
+    "nativeHostSha256": "61431192d6f4143bf9c9b039f647e029ef79bbcba8414667368e39d64f3a3ea8",
+    "compiler": "actual MoltenVK External/SPIRV-Cross CompilerMSL with MVK_spirv_cross namespace",
+    "compilerSourceSha256": "09513cde0adb5b83af9e2cad5eaaa889bc7a2174d356b0347299b1364e0fe4e8",
+    "compilerLibraries": [
+      {
+        "name": "libspirv-cross-msl.a",
+        "sha256": "24cebd8c02d65e02fc0154975242ab0ae45ff91da010cbb50c6c2f7d40d51aea"
+      },
+      {
+        "name": "libspirv-cross-glsl.a",
+        "sha256": "695f2b3545d6a826b75193d777e6222dff28f50b07f699de159395cadfb5f133"
+      },
+      {
+        "name": "libspirv-cross-core.a",
+        "sha256": "eaaede5c3c21205e20bf328b750e6e7d09a79b77773ca6c1974953c1391816a4"
+      }
+    ],
+    "translatorSha256": "2cd19d3e5c9de218f3f302610ab112b120f625bb4a74987338083bc565305af0",
+    "spirvSha256": "af481baffe33c2ed7cc5f5816e067a025a1bca2ba6a061bf2143d28113e0a5c1",
+    "generatedMslSha256": "2270e8429b6c1b87cb7e55abe0c4697c3ac14d05f5186bf3eb9031e04a0e5bdd",
+    "spirvValTarget": "vulkan1.1",
+    "spirvValPassed": true,
+    "noContractionDecorations": 18,
+    "correctedHelperCount": 4,
+    "overwrittenVectorMatrixTemporaryLeftUnchanged": true,
+    "nativeMetal": {
+      "executed": true,
+      "device": "Apple M3 Pro",
+      "channels": 40,
+      "floatAndHalf": true,
+      "scalarVectorMatrix": true,
+      "patchedFailures": 0,
+      "positiveZeroControlFailures": 24,
+      "positiveZeroControlFailedExactlyNegativeZeroChannels": true,
+      "fastMathEnabled": false
+    },
+    "channelGroups": [
+      "float scalar",
+      "float vector",
+      "float matrix-vector",
+      "float vector-matrix",
+      "float matrix-matrix",
+      "half scalar",
+      "half vector",
+      "half matrix-vector",
+      "half vector-matrix",
+      "half matrix-matrix"
+    ],
+    "nativePatchedLogSha256": "67067aa579f6666618fef010d420bdd9006101ac1fe1973923971a39934b8a14",
+    "nativePositiveZeroControlLogSha256": "1f92d207a68f9234b80ab88c046795a366b958f9308484f49b2d763687199f95",
+    "receiptSha256": "8c598da0708e58397ebf1f0ffb7e0ed3f74f754153f82f18234719ab457245e6"
+  },
+  "acceptanceBoundary": {
+    "sourceIntegrated": true,
+    "productionTranslatorBuilt": true,
+    "nativeMacGpuExecuted": true,
+    "freshIosMoltenvkArchiveBuiltByThisRegression": false,
+    "nativeAppRebuiltOrInstalledByThisRegression": false,
+    "physicalIpadExecuted": false,
+    "minigolfRenderingOrGameplayQualified": false,
+    "fpsBenefitMeasured": false,
+    "remaining": "A fresh iPhoneOS MoltenVK archive, native app rebuild/install and physical iPad validation are required. HLE-only updates cannot deliver this static native shader converter."
+  }
+}

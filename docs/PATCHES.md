@@ -1,11 +1,40 @@
 # Patch status
 
-The current FEX stack is consolidated into two release-based patches:
+The active AnyPS5 series targets full upstream main `d70b8998`: one consolidated
+iPad/runtime compatibility patch, bounded exception logging in patch0002,
+strict valid-image descriptor policy in patch0003, EXEC-aware unused-input
+proof in patch0004, then unchanged patches0062 and0065. The combined six-patch
+Windows baseline build passes all 42 selected and ten additional targets (53 distinct
+cases) with 47 rebuilt HLE PRXs. That no-VINTRP proof covers enabled
+uncompressed MRTZ operands and the exact no-register-side-effect ordered
+message, with 45 public staged cases plus the private shader. The final package
+is prepared; physical execution remains unqualified.
+[Combined build evidence](evidence/anyps5-combined-runtime-20261010.json).
+Patch0004 additionally includes guarded scalar-buffer/packed conversion,
+straight-line WQM/implicit sampling, 3D sampling, lane arithmetic, array/MSAA
+loads and MRT0–7 color-export footprints. The cumulative implementation passes
+302 public cases and seven complete private shader requests through an actual
+isolated PRX. Six retained SPIR-V/layout pairs remain byte-identical; export
+names, ordinals, forwarders and native imports are unchanged. These source
+repairs are integrated in the patch; their fresh complete runtime rebuild,
+source-derived cache identity and device execution remain pending. The preceding
+quad-mask source snapshot has a separate successful full build; that evidence
+does not qualify this expanded snapshot.
+[Latest shader qualification](evidence/minigolf-mrt-export-candidate-20261010.json),
+[preceding full build](evidence/minigolf-quad-mask-full-production-20261010.json).
+All 434 upstream commits since `6e037e98` are included. The previous 75-patch
+series is archived under `patches/anyps5/legacy-6e037e98/`; the numbered
+qualifications below describe those historical builds, not tests of the new
+source. See [full main integration](ANYPS5-MAIN-INTEGRATION.md) for its current
+build/test scope and shader coverage.
+
+The current FEX stack has two consolidated release-based patches plus the
+default-off invalidation diagnostics patch0002:
 [0000 iOS port and 0001 allocator](../patches/fex/README.md), applied to official
 FEX-2610. Historical patch numbers/results below describe their original builds.
 Madeira0046 adapts the native bridge to FEX's new API; Madeira0047 preserves the
-native process-name lifetime after an embedded Wine session. The latest AnyPS5
-pin retains all 33 reconciled local patches. Patches0034–0039 add multisample
+native process-name lifetime after an embedded Wine session. The earlier AnyPS5
+refresh retained 33 reconciled local patches. Patches0034–0039 add multisample
 layouts, transfers, resource allocation and shader eligibility.
 Patches0040–0044 connect an experimental grouped-sample renderer in source.
 It is default-off (`APS5_ENABLE_SAMPLE_GROUPS=1` opts in). The full 50-PRX HLE
@@ -117,6 +146,9 @@ source, build, device and unqualified-path states.
 | 0062 | Default-off bounded fingerprints before legacy AudioOut preparation and immediately before SDL enqueue, preserving original queue behavior | Actual old/new queue, format, pacing and error contracts pass sanitizer checks; exclusive exports and a missing-hook negative pass. Full combined 63-patch rebuild passes. A bounded iPad run completes exports and worker closure; recurring input fingerprints are already present before SDL. Audio cause/quality and general DLL detach remain unqualified. [Focused checks](evidence/audioout-ingress-trace-focused-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [device result](evidence/ipad-solitaire-audioout-ingress-20261009.json). |
 | 0063 | Default-off pixel-owned eight-sample color tiling with immutable per-owner variant and distinct specialization/cache keys | 99 paired compute and 60 paired raster chains match independent AMD bytes and seeded padding. Shader, cache, failure, descriptor and negative controls pass; full combined HLE and 25 host suites pass. An enabled M2 iPad run selects Golf and opens its full board. A fully decoded native cache contains the expected converted Metal variant; raw SPIR-V dumps remain absent. Speed, audio and complete gameplay remain unqualified. [Native checks](evidence/color-sample-pixel-owned-native-20261009.json), [build checkpoint](evidence/pixel-owned-and-audio-ingress-build-20261009.json), [enabled device checkpoint](evidence/ipad-solitaire-pixel-owned-controls-20261009.json). |
 | 0065 | Default-off per-port legacy AudioOut cadence before guest-input preparation; rational deadlines, one-time startup budget and successful-enqueue commit | Strict and sanitizer host mocks cover actual queue/API bodies, legacy default-off parity, errors and long 48/44.1-kHz runs. The isolated AudioOut library links and current named-import/NID closure passes. A bounded iPad pair changes four-packet groups to single packets and removes recurring raw/native patterns in the captured windows. Original strict log-parser failures remain preserved; audible quality, causality, gameplay and FPS are not accepted. [Option and checks](AUDIOOUT-FRAME-PACING.md), [sanitized evidence](evidence/audioout-frame-pacing-20261010.json). |
+| 0069 | Explicit per-module guest lifecycle deferral with shared versioned start/stop wrappers, exact argument forwarding and separate 16-KiB state/code pages | Fresh native host-tools suite passes 34 tests; five emitted-wrapper Wine scenarios and retained-libc constructor/allocation ordering pass. Three negative controls reject argument truncation, false stop success and mixed status/result values. A matched package reaches Vulkan initialization on iPad; the startup overlay remains and gameplay is unqualified. |
+| 0070 | Forward real LoadStart/StopUnload arguments to the image's own lifecycle exports while pinning the native module outside the registry lock | Native ASan/UBSan contracts and the new Windows lifecycle test pass; the full matched HLE build passes 29 contracts. The two-minute MiniGolf retry passes the original null read and creates a swapchain; it does not verify a game picture. |
+| 0071 | Admit bounded 32-MiB native save-memory slots while retaining atomic writes and user/slot isolation | Five local sanitizer checks and two negative controls qualify the source change. These use a disclosed Mac timestamp compatibility copy. The actual Windows HLE rebuild passes 33 host test targets, including growth and separate read failure without a skip. iPad save/load remains unqualified. |
 
 ## Optional host thread priorities: Wine0004 and AnyPS50064
 
@@ -1043,7 +1075,7 @@ builds run locally.
 
 ## Compiled inside the Linux AnyPS5 build
 
-- `patches/anyps5/0002-vulkan-portability.patch` is in
+- `patches/anyps5/legacy-6e037e98/0002-vulkan-portability.patch` is in
   `VulkanDevice.cpp.o` and in `libSceAgcDriver.prx`. The object file
   contains the strings `VK_KHR_portability_enumeration` and
   `VK_KHR_portability_subset`. `libSceAgcDriver` is `EXCLUDE_FROM_ALL`;
@@ -1051,7 +1083,7 @@ builds run locally.
   `cmake --build build/anyps5 --target libSceAgcDriver` did. Nothing
   created a `VkDevice` from that library on this run. The patch enables
   the two extensions only when the ICD advertises them.
-- `patches/anyps5/0001-guest-arena-lazy.patch`: `GuestArena.cpp` compiled
+- `patches/anyps5/legacy-6e037e98/0001-guest-arena-lazy.patch`: `GuestArena.cpp` compiled
   into `libc.prx` on Linux. The Windows constructor, including
   `ReadArenaLimits` and the lazy `Reserve` loop, is under `#ifdef _WIN32`,
   so the Release Linux object does not contain the `APS5_GUEST_ARENA_*`
@@ -1078,11 +1110,11 @@ builds run locally.
   reference is not enough for Apple ld. The Apple link is what
   `winevulkan-ios` runs; the weak definitions are not measured there
   yet. `vulkan_ios.c` and `vulkan_metal_ios.c` were not compiled.
-- `patches/anyps5/0001-guest-arena-lazy.patch` inside the MinGW libc
+- `patches/anyps5/legacy-6e037e98/0001-guest-arena-lazy.patch` inside the MinGW libc
   objects: `GuestArena.cpp.obj` contains `APS5_GUEST_ARENA_BASE`,
   `APS5_GUEST_ARENA_SIZE`, `APS5_GUEST_ARENA_CHUNK`, and
   `APS5_GUEST_ARENA_LAZY`. That object is SjLj and is not in a linked
-  `libc.prx`. `patches/anyps5/0003-mingw11-getthreaddescription.patch`
+  `libc.prx`. `patches/anyps5/legacy-6e037e98/0003-mingw11-getthreaddescription.patch`
   supplies the prototype mingw-w64 11 headers omit;
   `CrashReport.cpp` compiled after that. The import lib already had the
   symbol.
@@ -1624,3 +1656,155 @@ Solitaire menu, 18 controls and FPS-only overlay remain. This component check
 does not qualify touch gameplay, listening quality or an FPS improvement.
 Its log reports a serious-to-critical thermal transition; this is not a
 controlled-temperature performance comparison.
+
+## HMD test registration and omitted producer notes (AnyPS5 0066–0067)
+
+Patch0066 gives the existing HMD library its ordinary explicit CMake target and
+registers `guest_hmd_tests`. Its export source, include paths and unwind flags
+match the previous generic target; no HMD API behavior changes. The local HLE
+helpers now select this test together with the existing player-review-dialog
+and object-manager contracts and accept the exact `ulobjmgr` target name without
+weakening source-directory or path validation.
+
+Patch0067 permits an omitted inert `PT_NOTE` whose flags, virtual address and
+memory size are all zero. It retains all runtime segment and dynamic-table
+checks. The native host-tools suite passes 33 tests, including 26 Linux/Windows
+conversions covering valid imports/exports/initializers, omitted ancillary
+metadata and rejection of truncated or unmapped runtime data. This repair allows
+all twelve MiniGolf ELFs to relink; it does not establish HLE closure or gameplay.
+
+## Audio3d object validation and queue drain (AnyPS5 0068)
+
+Patch0068 adds the two Audio3d exports required by MiniGolf's static imports.
+`sceAudio3dObjectSetAttributes` checks the 64-bit batch count, 24-byte records,
+reserved object, payload layout, alignment and address overflow. Reset-only
+batches preserve the object's reservation. Valid PCM and rendering attributes
+return `NOT_SUPPORTED`: there is still no object mixer or spatial audio sink,
+and this patch does not report successful playback for unsupported data.
+
+`sceAudio3dPortFlush` submits advanced frames and waits for the captured queue to
+drain using the existing 48-kHz clock scheduler. Waiting occurs outside the
+mutex, with no port mutation afterward, so later advances and a replacement
+port survive the old flush. Three native ASan/UBSan contracts pass, including
+synchronized close/reopen and concurrent-advance cases. Negative controls reject
+fake PCM success, discard-without-wait and destructive post-wait cleanup.
+
+The ABI and drain behavior follow the primary
+[shadPS4 Audio3d implementation](https://github.com/shadps4-emu/shadPS4/tree/main/src/core/libraries/audio3d).
+This is an implementation reference, not PS5 hardware or audible-output evidence.
+
+## Explicit guest module lifecycle (AnyPS5 0069–0070)
+
+[Patch0069](../patches/anyps5/legacy-6e037e98/0069-defer-guest-module-lifecycle.patch) adds repeated
+`--defer-guest-lifecycle NAME` selection for Windows guest modules. A selection
+must identify one discovered input basename; paths, duplicates, unknown names,
+the main executable, excluded modules and non-Windows use are rejected. Modules
+remain converted, mapped and bound with their existing TLS and strict ELF checks.
+Only their guest lifecycle waits for the game's real module-start call. A linked
+module may be selected because ELF linkage alone does not establish callback
+timing; an eager guest module depending on a deferred provider is rejected.
+Without a selection, the existing eager initialization and callback-return policy
+are preserved.
+
+Each converted lifecycle-owning PE exports `__anyps5_guest_start_v1` and
+`__anyps5_guest_stop_v1`. Bootstrap and kernel APIs share its atomic state, so
+successful start and finalization callbacks run once, active callbacks reject
+reentry, and failed starts retain their original result without retry. Explicitly
+deferred Sony modules use the integer-return start/stop contract; default eager
+ELF callbacks may return void and retain their previous treatment. Reverse fini
+arrays still run before `DT_FINI`. If that selected stop callback fails, the
+state records terminal failed stop and caches its exact result. Partial
+finalization cannot roll back; it is not reported as a successful stop or retried.
+
+The raw SysV ABI preserves full `size_t args` and `const void* argp`. Its 64-bit
+return stores operational status in the high 32 bits and the exact guest callback
+result in the low 32 bits. This distinguishes an active-wrapper `EBUSY` from a
+guest callback that returns the same value. Mutable `.gstate`, executable
+`.glife` and following metadata occupy separate complete 16-KiB host pages; the
+writer's contiguous-section and protection checks remain unchanged.
+
+[Patch0070](../patches/anyps5/legacy-6e037e98/0070-forward-kernel-module-lifecycle-arguments.patch)
+makes `sceKernelLoadStartModule` and `sceKernelStopUnloadModule` invoke that
+image's own reserved export pair with the caller's arguments. Native modules
+with neither export retain their previous behavior; an incomplete pair fails.
+The loader pins the module and releases its registry lock before calling guest
+code, permitting callback reentry without unloading an active image. Load
+operational errors are returned separately from module-start results: a valid
+load returns its handle and writes the exact guest result to `res`. Stop errors
+retain the image and exact result; unloading follows only a successful stop.
+
+The fresh native suite passes 34 tests. Five synthetic emitted-PE scenarios under
+local Wine cover full-width arguments and payloads, once-only start/stop,
+failed start, failed stop and concurrent guard status. The retained-libc
+allocation fixture preserves constructor/finalizer ordering. Private mutated
+PE controls reject truncated arguments, fabricated stop success and a guard
+status placed in the guest-result field. The kernel half also passes native
+ASan/UBSan contracts and controls for result separation and module pinning.
+These are local contract results. MiniGolf's rebuilt package clears the first
+SaveData startup null read on iPad. The subsequent 32-MiB save-memory request
+and JSON allocator failure are separate contracts; neither swapchain creation
+nor native process continuity proves a displayed game picture. See
+[MiniGolf status](MINIGOLF.md) and [private packaging](PRIVATE-GAME-PACKAGING.md).
+
+## Bounded native save-memory growth (AnyPS5 0071)
+
+[Patch0071](../patches/anyps5/legacy-6e037e98/0071-native-save-memory-32mib.patch) admits the
+observed 32-MiB request in the native provider, matching the existing other
+provider's bound. It retains size/offset checks, per-user/slot isolation and
+atomic write replacement. This is a bounded compatibility change, not a claim
+about the console's maximum save-memory capacity.
+
+Five local sanitizer checks and two rejected mutation controls cover growth,
+tail access, persistence, isolation and write failures. The actual Windows
+runtime passes 33 host targets and the separate read-denial case without skips.
+The fresh package's iPad trace confirms setup and readiness return zero for the
+same user/slot. Gameplay save/load remains unqualified.
+
+## Guest virtual JSON allocator (AnyPS5 0072)
+
+[Patch0072](../patches/anyps5/legacy-6e037e98/0072-dispatch-json-virtual-allocators.patch) implements
+the custom `MemAllocator` path that MiniGolf requests after save-memory setup.
+Original guest relocations establish two destructor entries followed by
+allocation, release and error notification. Typed SysV calls forward the
+allocator object and user context; custom allocation failure notifies the guest
+and never falls back to a native allocator. Each block retains its creating
+release function/object/context across policy changes and termination. Guest
+callbacks execute outside the policy mutex; the guest owns its allocator.
+
+The original `InitParameter2` layout remains unknown. Its observed consumer
+accesses the parameter only through imported methods. The existing 24-byte HLE
+representation remains bounded, with an explicit setter selecting virtual or
+RTTI mode in an allocator-alignment bit. RTTI callback copying and full-width
+file-buffer settings are preserved. This does not qualify arbitrary inline
+access to the SDK class, object/code lifetime violations, or a file-parser API.
+The base notification is diagnostic only; deleting a bare base object remains
+an explicit unsupported ownership case. The observed title overrides both.
+
+Three native ASan/UBSan suites pass. Three mutation controls reject wrong `this`,
+release through the current policy and silent allocation fallback. All 34 actual
+Windows host targets pass locally through Wine, including the explicit five-slot
+guest-ABI fixture with reentrancy and concurrent policy publication. These are
+contract results; an iPad retry is still required to clear the title's fatal
+allocator rejection. [Investigation workflow](BINARY-INVESTIGATION.md).
+
+## Apple upstream integration (AnyPS5 0073–0075 and SPIRV-Cross 0001)
+
+Patch0073 separates the SysV guest C personality export from the Microsoft-ABI
+host wrapper and routes both through unwind dispatch. Actual NID-patched library
+calls distinguish the old wrong-ABI result from the new valid cleanup result.
+Patch0074 retains the smallest normal exp2 result before existing underflow and
+NaN handling. Patch0075 adds conditional storage-buffer update-after-bind with
+robust-access compatibility, per-stage/per-set checks, separate cache/pool flags
+and the existing descriptor lifetime rules.
+
+The SPIRV-Cross series is applied to MoltenVK's separately initialized pinned
+dependency before rebuilding its static iOS archive. Precise multiplication
+uses a negative-zero FMA addend; matrix accumulators start at negative zero.
+The app build checks both archive provenance and compiled helper emitters.
+Original synthetic shaders qualify 40 exact float/half outputs through Metal
+on the Mac; iPad execution is a separate gate.
+
+Git diff/new-file metadata in patches0069, 0070 and 0072 was normalized without
+changing their source hunks. The ordered patch checker now also covers
+SPIRV-Cross and verifies every touched source byte against the checkout before
+reversing to pristine files. [Implementation, exclusions and build evidence](APPLE-UPSTREAM-INTEGRATION.md).

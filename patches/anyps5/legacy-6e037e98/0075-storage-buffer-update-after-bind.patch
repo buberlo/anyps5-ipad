@@ -1,0 +1,626 @@
+Subject: Support storage-buffer descriptor update-after-bind with validated device limits
+Upstream: https://github.com/boykopovar/AnyPS5/pull/1580
+Reviewed-head: 910a777f6539f2c5f774080217cefa9de1dd879f
+Adapted to the project's patched AnyPS5 sources.
+
+diff --git a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+--- a/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
++++ b/core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp
+@@ -1,6 +1,7 @@
+ #ifndef VK_ENABLE_BETA_EXTENSIONS
+ #define VK_ENABLE_BETA_EXTENSIONS
+ #endif
++#include "prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/ProfileOutput.hpp"
+ #include "prx/libSceAgcDriver/Execution/include/CaptureTrace.hpp"
+ #include "BdaAbi.hpp"
+@@ -217,6 +218,8 @@
+     // VK_EXT_descriptor_indexing with non-uniform image array indexing (bindless image tables in
+     // graphics stages, and compute workgroups wider than a wave).
+     bool descriptorIndexing = false;
++    bool storageBufferUpdateAfterBind = false;
++    VkPhysicalDeviceDescriptorIndexingPropertiesEXT descriptorIndexingProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT};
+     bool imageInt64Atomics = false;
+     bool primitiveListRestart = false;
+     bool depthClipControl = false;
+@@ -1026,17 +1029,24 @@
+         VkPhysicalDeviceFeatures2 features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &descriptorIndexingFeatures};
+         state->InstanceFunction<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2")(selected, &features);
+         state->descriptorIndexing = descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing == VK_TRUE && descriptorIndexingFeatures.shaderStorageImageArrayNonUniformIndexing == VK_TRUE;
++        state->storageBufferUpdateAfterBind = descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind == VK_TRUE;
++        if (state->storageBufferUpdateAfterBind) {
++            VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &state->descriptorIndexingProperties};
++            state->InstanceFunction<PFN_vkGetPhysicalDeviceProperties2>("vkGetPhysicalDeviceProperties2")(selected, &properties);
++            state->storageBufferUpdateAfterBind = Graphics::StorageBufferUpdateAfterBindSupported(descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind, enabled.robustBufferAccess, state->descriptorIndexingProperties);
++        }
+     }
+     descriptorIndexingFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT};
++    if (state->descriptorIndexing || state->storageBufferUpdateAfterBind) deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+     if (state->descriptorIndexing) {
+         descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+         descriptorIndexingFeatures.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+-        deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+         state->capabilities.push_back(spv::CapabilityShaderNonUniform);
+         state->capabilities.push_back(spv::CapabilitySampledImageArrayNonUniformIndexing);
+         state->capabilities.push_back(spv::CapabilityStorageImageArrayNonUniformIndexing);
+         state->spirvExtensions.push_back("SPV_EXT_descriptor_indexing");
+     }
++    descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = state->storageBufferUpdateAfterBind ? VK_TRUE : VK_FALSE;
+     state->samplerAnisotropy = true;
+     state->textureCompressionBC = true;
+     deviceInfo.pEnabledFeatures = &enabled;
+@@ -1084,7 +1094,7 @@
+         imageRobustnessFeatures.pNext = byteFeatures.pNext;
+         byteFeatures.pNext = &imageRobustnessFeatures;
+     }
+-    if (state->descriptorIndexing) {
++    if (state->descriptorIndexing || state->storageBufferUpdateAfterBind) {
+         descriptorIndexingFeatures.pNext = byteFeatures.pNext;
+         byteFeatures.pNext = &descriptorIndexingFeatures;
+     }
+@@ -2593,6 +2603,8 @@
+     context.copiedWriters = state->copiedWriters.get();
+     context.functions = state->functionsReady ? &state->deviceFunctions : nullptr;
+     context.descriptorIndexing = state->descriptorIndexing;
++    context.storageBufferUpdateAfterBind = state->storageBufferUpdateAfterBind;
++    context.descriptorIndexingLimits = state->descriptorIndexingProperties;
+     context.imageInt64Atomics = state->imageInt64Atomics;
+     context.geometryShader = state->geometryShader;
+     context.sampleRateShading = state->sampleRateShading;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/Context.hpp
+@@ -138,6 +138,8 @@
+     // VK_EXT_descriptor_indexing with non-uniform sampled/storage image array indexing enabled
+     // (bindless image tables in graphics stages).
+     bool descriptorIndexing = false;
++    bool storageBufferUpdateAfterBind = false;
++    VkPhysicalDeviceDescriptorIndexingPropertiesEXT descriptorIndexingLimits{};
+     bool imageInt64Atomics = false;
+     bool geometryShader = false;
+     bool sampleRateShading = false;
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/ShaderResources.hpp
+@@ -56,7 +56,7 @@
+ 
+     // The layout for `key` (binding, type, count, stage flags per binding, as ShaderResources builds
+     // it from `bindings`), created on first use.
+-    VkDescriptorSetLayout Layout(std::span<const std::uint32_t> key, std::span<const VkDescriptorSetLayoutBinding> bindings);
++    VkDescriptorSetLayout Layout(std::span<const std::uint32_t> key, std::span<const VkDescriptorSetLayoutBinding> bindings, bool updateAfterBind = false);
+     struct SetAllocation {
+         VkDescriptorSet set = VK_NULL_HANDLE;
+         VkDescriptorPool pool = VK_NULL_HANDLE;
+@@ -64,7 +64,7 @@
+     // A set of `layout` needing `sizes` descriptors from the pool chain, opening a pool when no pool
+     // has room; a null set when the needs exceed what one chain pool holds (the caller then makes a
+     // dedicated pool, as before).
+-    SetAllocation Allocate(VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> sizes);
++    SetAllocation Allocate(VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> sizes, bool updateAfterBind = false);
+     void Free(const SetAllocation& allocation) noexcept;
+     // APS5_PROFILE_DRAW counters: layouts served from the map / created, sets allocated, pools opened.
+     struct Stats {
+@@ -83,6 +83,7 @@
+     mutable std::mutex mutex;
+     std::map<std::vector<std::uint32_t>, VkDescriptorSetLayout> layouts;
+     std::vector<VkDescriptorPool> pools;
++    std::vector<VkDescriptorPool> updateAfterBindPools;
+     Stats stats;
+ };
+ 
+@@ -454,6 +455,7 @@
+     };
+     std::vector<DeferredImages> deferredImages;
+     std::uint64_t storageBuffers = 0;
++    bool updateAfterBind = false;
+     std::uint32_t plannedSampledImages = 0;
+     std::uint32_t plannedStorageImages = 0;
+     // The compute constructor's shader and captured regions: the caller's objects, valid only until
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp b/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp
+@@ -0,0 +1,14 @@
++#ifndef CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DESCRIPTORFEATUREPOLICY_HPP
++#define CORE_LIBS_PRX_LIBSCEAGCDRIVER_GRAPHICS_INCLUDE_DESCRIPTORFEATUREPOLICY_HPP
++
++#include <vulkan/vulkan.h>
++
++namespace AgcDriver::Graphics {
++
++inline bool StorageBufferUpdateAfterBindSupported(VkBool32 available, VkBool32 robustBufferAccess, const VkPhysicalDeviceDescriptorIndexingPropertiesEXT& properties) {
++    return available == VK_TRUE && (robustBufferAccess == VK_FALSE || properties.robustBufferAccessUpdateAfterBind == VK_TRUE);
++}
++
++}
++
++#endif
+diff --git a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+--- a/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
++++ b/core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp
+@@ -812,6 +812,75 @@
+ // arrays of its own and merges them into the shared totals every 1000 of its builds (and when it
+ // ends), so no build takes the shared mutex per phase; the totals lag by up to 999 builds per
+ // worker.
++std::uint32_t SetDescriptorLimit(const Context& context, VkDescriptorType type, bool updateAfterBind) {
++    if (updateAfterBind) Require(context.storageBufferUpdateAfterBind, "storage buffer update-after-bind is unavailable");
++    switch (type) {
++    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
++        return updateAfterBind ? context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageBuffers : context.limits.maxDescriptorSetStorageBuffers;
++    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return updateAfterBind ? std::min(context.limits.maxDescriptorSetSampledImages, context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSampledImages) : context.limits.maxDescriptorSetSampledImages;
++    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return updateAfterBind ? std::min(context.limits.maxDescriptorSetStorageImages, context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageImages) : context.limits.maxDescriptorSetStorageImages;
++    case VK_DESCRIPTOR_TYPE_SAMPLER: return updateAfterBind ? std::min(context.limits.maxDescriptorSetSamplers, context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSamplers) : context.limits.maxDescriptorSetSamplers;
++    default: Require(false, "unsupported descriptor pool type"); return 0;
++    }
++}
++
++void ValidateDescriptorLayout(const Context& context, std::span<const VkDescriptorSetLayoutBinding> bindings, bool updateAfterBind) {
++    if (updateAfterBind) Require(context.storageBufferUpdateAfterBind, "storage buffer update-after-bind is unavailable");
++    const auto maxResources = updateAfterBind ? context.descriptorIndexingLimits.maxPerStageUpdateAfterBindResources : context.limits.maxPerStageResources;
++    const auto maxBuffers = updateAfterBind ? context.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageBuffers : context.limits.maxPerStageDescriptorStorageBuffers;
++    std::map<VkDescriptorType, std::uint64_t> totals;
++    std::map<std::pair<VkShaderStageFlags, VkDescriptorType>, std::uint64_t> stageTotals;
++    std::map<VkShaderStageFlags, std::uint64_t> resources;
++    for (const auto& binding : bindings) {
++        Require(binding.descriptorCount != 0, "empty descriptor binding");
++        const auto total = totals[binding.descriptorType] += binding.descriptorCount;
++        Require(total <= SetDescriptorLimit(context, binding.descriptorType, updateAfterBind), "descriptor set exceeds the device's per-set descriptor limit");
++        for (unsigned bit = 0; bit < 32; ++bit) {
++            const VkShaderStageFlags stage = VkShaderStageFlags(1u) << bit;
++            if ((binding.stageFlags & stage) == 0) continue;
++            const auto count = stageTotals[{stage, binding.descriptorType}] += binding.descriptorCount;
++            const auto all = resources[stage] += binding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ? 0u : binding.descriptorCount;
++            Require(all <= maxResources, "shader descriptors exceed per-stage resource limits");
++            switch (binding.descriptorType) {
++            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: Require(count <= maxBuffers, "shader descriptors exceed per-stage limits"); break;
++            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: Require(count <= context.limits.maxPerStageDescriptorSampledImages && (!updateAfterBind || count <= context.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSampledImages), "shader sampled-image descriptors exceed per-stage limits"); break;
++            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: Require(count <= context.limits.maxPerStageDescriptorStorageImages && (!updateAfterBind || count <= context.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageImages), "shader storage-image descriptors exceed per-stage limits"); break;
++            case VK_DESCRIPTOR_TYPE_SAMPLER: Require(count <= context.limits.maxPerStageDescriptorSamplers && (!updateAfterBind || count <= context.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSamplers), "shader sampler descriptors exceed per-stage limits"); break;
++            default: Require(false, "unsupported descriptor layout type");
++            }
++        }
++    }
++}
++
++VkDescriptorSetLayout CreateSetLayout(const Context& context, std::span<const VkDescriptorSetLayoutBinding> bindings, bool updateAfterBind) {
++    ValidateDescriptorLayout(context, bindings, updateAfterBind);
++    std::vector<VkDescriptorBindingFlags> flags;
++    for (const auto& binding : bindings) flags.push_back(updateAfterBind && binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ? VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT : 0);
++    VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
++    bindingFlags.bindingCount = static_cast<std::uint32_t>(flags.size());
++    bindingFlags.pBindingFlags = flags.data();
++    VkDescriptorSetLayoutCreateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
++    info.pNext = updateAfterBind ? &bindingFlags : nullptr;
++    info.flags = updateAfterBind ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
++    info.bindingCount = static_cast<std::uint32_t>(bindings.size());
++    info.pBindings = bindings.data();
++    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
++    Check(context.Function<PFN_vkCreateDescriptorSetLayout>("vkCreateDescriptorSetLayout")(context.device, &info, nullptr, &layout), "vkCreateDescriptorSetLayout");
++    return layout;
++}
++
++VkDescriptorPool CreateSetPool(const Context& context, std::span<const VkDescriptorPoolSize> sizes, bool updateAfterBind) {
++    for (const auto& size : sizes) Require(size.descriptorCount <= SetDescriptorLimit(context, size.type, updateAfterBind), "descriptor set exceeds the device's per-set descriptor limit");
++    VkDescriptorPoolCreateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
++    info.flags = updateAfterBind ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT : 0;
++    info.maxSets = 1;
++    info.poolSizeCount = static_cast<std::uint32_t>(sizes.size());
++    info.pPoolSizes = sizes.data();
++    VkDescriptorPool pool = VK_NULL_HANDLE;
++    Check(context.Function<PFN_vkCreateDescriptorPool>("vkCreateDescriptorPool")(context.device, &info, nullptr, &pool), "vkCreateDescriptorPool");
++    return pool;
++}
++
+ constexpr std::size_t BuildPhaseCount = static_cast<std::size_t>(ShaderResources::BuildPhase::Count);
+ constexpr std::array<const char*, BuildPhaseCount> BuildPhaseNames{"bindings", "precollect", "guest memory upload", "descriptors", "stage A", "images", "bda", "stage B"};
+ 
+@@ -905,6 +974,12 @@
+             std::int64_t shaderData = -1;
+             const auto firstSampler = samplers.size();
+             const auto firstDeferred = deferredImages.size();
++            const auto requireStageLimits = [&] {
++                if (stageStorageBuffers <= context.limits.maxPerStageDescriptorStorageBuffers && stageResources <= context.limits.maxPerStageResources) return;
++                const auto& limits = context.descriptorIndexingLimits;
++                Require(context.storageBufferUpdateAfterBind && stageStorageBuffers <= limits.maxPerStageDescriptorUpdateAfterBindStorageBuffers && stageResources <= limits.maxPerStageUpdateAfterBindResources, "shader descriptors exceed per-stage limits");
++                updateAfterBind = true;
++            };
+             for (const auto& binding : shader.program->bindings) {
+                 Require(binding.descriptorSet == 0, "unexpected descriptor set: every shader resource must use descriptor set zero");
+                 Require(occupied.insert(binding.binding).second, "duplicate shader binding");
+@@ -913,7 +988,7 @@
+                 const bool imageRole = binding.role == ShaderRecompiler::DescriptorRole::GuestImages || binding.role == ShaderRecompiler::DescriptorRole::GuestSamplers;
+                 if (imageRole) {
+                     if (binding.kind == ShaderRecompiler::DescriptorKind::SampledImage || binding.kind == ShaderRecompiler::DescriptorKind::StorageImage) stageResources += binding.count;
+-                    Require(stageResources <= context.limits.maxPerStageResources, "shader descriptors exceed per-stage limits");
++                    requireStageLimits();
+                     addImageBinding(binding, flags);
+                     continue;
+                 }
+@@ -924,7 +999,7 @@
+                 stageStorageBuffers += binding.count;
+                 stageResources += binding.count;
+                 storageBuffers += binding.count;
+-                Require(stageStorageBuffers <= context.limits.maxPerStageDescriptorStorageBuffers && stageResources <= context.limits.maxPerStageResources, "shader descriptors exceed per-stage limits");
++                requireStageLimits();
+                 Binding item{{binding.binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, binding.count, flags, nullptr}, {}};
+                 if (binding.role == ShaderRecompiler::DescriptorRole::GuestBuffers) {
+                     Require(binding.guestDescriptor.size() == static_cast<std::uint64_t>(binding.count) * 4, "guest buffer descriptor must contain four DWORDs per array element");
+@@ -968,7 +1043,10 @@
+                 deferredImages[index].samplerCount = samplers.size() - firstSampler;
+             }
+         }
+-        Require(storageBuffers <= context.limits.maxDescriptorSetStorageBuffers, "pipeline descriptors exceed device limits");
++        if (storageBuffers > context.limits.maxDescriptorSetStorageBuffers) {
++            Require(context.storageBufferUpdateAfterBind && storageBuffers <= context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageBuffers, "pipeline descriptors exceed device limits");
++            updateAfterBind = true;
++        }
+         timing.bindingsMs = phase(BuildPhase::Bindings);
+         // For every build, locked ones included: their stage B then takes the fast path too, and the
+         // collects cost the same wherever they run.
+@@ -980,15 +1058,13 @@
+             description.push_back(binding.layout);
+             layoutKey.insert(layoutKey.end(), {binding.layout.binding, static_cast<std::uint32_t>(binding.layout.descriptorType), binding.layout.descriptorCount, binding.layout.stageFlags});
+         }
++        if (updateAfterBind) layoutKey.push_back(VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT);
+         static const bool noLayoutCache = std::getenv("APS5_NO_LAYOUT_CACHE") != nullptr;
+         static const bool noPoolCache = std::getenv("APS5_NO_POOL_CACHE") != nullptr;
+         if (context.descriptorCache != nullptr && !noLayoutCache) {
+-            _layout = context.descriptorCache->Layout(layoutKey, description);
++            _layout = context.descriptorCache->Layout(layoutKey, description, updateAfterBind);
+         } else {
+-            VkDescriptorSetLayoutCreateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+-            info.bindingCount = static_cast<std::uint32_t>(description.size());
+-            info.pBindings = description.data();
+-            Check(context.Function<PFN_vkCreateDescriptorSetLayout>("vkCreateDescriptorSetLayout")(context.device, &info, nullptr, &_layout), "vkCreateDescriptorSetLayout");
++            _layout = CreateSetLayout(context, description, updateAfterBind);
+             ownsLayout = true;
+         }
+         if (!bindings.empty()) {
+@@ -1000,16 +1076,12 @@
+             if (plannedStorageImages != 0) sizes.push_back({VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, plannedStorageImages});
+             if (!samplers.empty()) sizes.push_back({VK_DESCRIPTOR_TYPE_SAMPLER, static_cast<std::uint32_t>(samplers.size())});
+             if (context.descriptorCache != nullptr && !noPoolCache) {
+-                const auto allocated = context.descriptorCache->Allocate(_layout, sizes);
++                const auto allocated = context.descriptorCache->Allocate(_layout, sizes, updateAfterBind);
+                 _set = allocated.set;
+                 cachePool = allocated.pool;
+             }
+             if (_set == VK_NULL_HANDLE) {
+-                VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+-                poolInfo.maxSets = 1;
+-                poolInfo.poolSizeCount = static_cast<std::uint32_t>(sizes.size());
+-                poolInfo.pPoolSizes = sizes.data();
+-                Check(context.Function<PFN_vkCreateDescriptorPool>("vkCreateDescriptorPool")(context.device, &poolInfo, nullptr, &pool), "vkCreateDescriptorPool");
++                pool = CreateSetPool(context, sizes, updateAfterBind);
+                 VkDescriptorSetAllocateInfo allocation{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+                 allocation.descriptorPool = pool;
+                 allocation.descriptorSetCount = 1;
+@@ -2104,22 +2176,20 @@
+ 
+ DescriptorCache::~DescriptorCache() {
+     for (const auto pool : pools) destroyPool(context.device, pool, nullptr);
++    for (const auto pool : updateAfterBindPools) destroyPool(context.device, pool, nullptr);
+     for (const auto& [key, layout] : layouts) destroyLayout(context.device, layout, nullptr);
+ }
+ 
+-VkDescriptorSetLayout DescriptorCache::Layout(std::span<const std::uint32_t> key, std::span<const VkDescriptorSetLayoutBinding> bindings) {
++VkDescriptorSetLayout DescriptorCache::Layout(std::span<const std::uint32_t> key, std::span<const VkDescriptorSetLayoutBinding> bindings, bool updateAfterBind) {
+     std::lock_guard lock(mutex);
+     std::vector<std::uint32_t> keyCopy(key.begin(), key.end());
++    keyCopy.push_back(updateAfterBind ? 1u : 0u);
+     if (const auto found = layouts.find(keyCopy); found != layouts.end()) {
+         ++stats.layoutHits;
+         return found->second;
+     }
+     ++stats.layoutMisses;
+-    VkDescriptorSetLayoutCreateInfo info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+-    info.bindingCount = static_cast<std::uint32_t>(bindings.size());
+-    info.pBindings = bindings.data();
+-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+-    Check(context.Function<PFN_vkCreateDescriptorSetLayout>("vkCreateDescriptorSetLayout")(context.device, &info, nullptr, &layout), "vkCreateDescriptorSetLayout");
++    const auto layout = CreateSetLayout(context, bindings, updateAfterBind);
+     layouts.emplace(std::move(keyCopy), layout);
+     return layout;
+ }
+@@ -2131,8 +2201,9 @@
+ constexpr std::array<VkDescriptorPoolSize, 4> ChainPoolCreateSizes{{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4096 + 2}, {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1024}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1024}, {VK_DESCRIPTOR_TYPE_SAMPLER, 512}}};
+ }
+ 
+-DescriptorCache::SetAllocation DescriptorCache::Allocate(VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> sizes) {
++DescriptorCache::SetAllocation DescriptorCache::Allocate(VkDescriptorSetLayout layout, std::span<const VkDescriptorPoolSize> sizes, bool updateAfterBind) {
+     for (const auto& size : sizes) {
++        Require(size.descriptorCount <= SetDescriptorLimit(context, size.type, updateAfterBind), "descriptor set exceeds the device's per-set descriptor limit");
+         const auto capacity = std::find_if(ChainPoolSizes.begin(), ChainPoolSizes.end(), [&](const auto& item) { return item.type == size.type; });
+         if (capacity == ChainPoolSizes.end() || size.descriptorCount > capacity->descriptorCount) return {};
+     }
+@@ -2143,7 +2214,8 @@
+     allocation.pSetLayouts = &layout;
+     // Newest pool first: it has the most room; a full or fragmented pool is left for its sets to
+     // drain and tried again later.
+-    for (auto it = pools.rbegin(); it != pools.rend(); ++it) {
++    auto& chain = updateAfterBind ? updateAfterBindPools : pools;
++    for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+         allocation.descriptorPool = *it;
+         VkDescriptorSet set = VK_NULL_HANDLE;
+         const auto result = allocate(context.device, &allocation, &set);
+@@ -2154,13 +2226,13 @@
+         if (result != VK_ERROR_OUT_OF_POOL_MEMORY && result != VK_ERROR_FRAGMENTED_POOL) Check(result, "vkAllocateDescriptorSets");
+     }
+     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+-    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
++    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | (updateAfterBind ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT : 0);
+     poolInfo.maxSets = ChainPoolSets;
+     poolInfo.poolSizeCount = static_cast<std::uint32_t>(ChainPoolCreateSizes.size());
+     poolInfo.pPoolSizes = ChainPoolCreateSizes.data();
+     VkDescriptorPool pool = VK_NULL_HANDLE;
+     Check(context.Function<PFN_vkCreateDescriptorPool>("vkCreateDescriptorPool")(context.device, &poolInfo, nullptr, &pool), "vkCreateDescriptorPool");
+-    pools.push_back(pool);
++    chain.push_back(pool);
+     ++stats.pools;
+     allocation.descriptorPool = pool;
+     VkDescriptorSet set = VK_NULL_HANDLE;
+@@ -2791,7 +2863,7 @@
+     std::vector<VkDescriptorPoolSize> sizes;
+     for (const auto& [type, count] : counts) sizes.push_back({type, count});
+     result->cache = context.descriptorCache;
+-    result->allocation = result->cache->Allocate(_layout, sizes);
++    result->allocation = result->cache->Allocate(_layout, sizes, updateAfterBind);
+     Require(result->allocation.set != VK_NULL_HANDLE, "draw snapshot descriptor allocation failed");
+     const auto update = context.Resolved(&DeviceFunctions::updateDescriptorSets, "vkUpdateDescriptorSets");
+     if (ExplicitDrawDescriptorsEnabled()) {
+diff --git a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+--- a/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
++++ b/core/libs/prx/libSceAgcDriver/tests/Graphics.cpp
+@@ -1,3 +1,4 @@
++#include "prx/libSceAgcDriver/Graphics/include/DescriptorFeaturePolicy.hpp"
+ #include "BdaTests.hpp"
+ #include "GraphicsTests.hpp"
+ #include "prx/libSceAgcDriver/Graphics/include/Pipeline.hpp"
+@@ -1253,8 +1254,17 @@
+     std::map<VkBuffer, VkDeviceMemory> bufferMemory;
+     std::map<VkDeviceMemory, std::vector<std::byte>> memories;
+     std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
++    VkDescriptorSetLayoutCreateFlags layoutFlags = 0;
++    std::vector<VkDescriptorBindingFlags> layoutBindingFlags;
++    std::map<VkDescriptorSetLayout, VkDescriptorSetLayoutCreateFlags> layouts;
++    std::map<VkDescriptorPool, VkDescriptorPoolCreateFlags> pools;
++    std::map<VkDescriptorSet, VkDescriptorPool> sets;
++    unsigned freedSets = 0;
++    bool failPoolCreate = false;
++    bool failSetAllocate = false;
+     std::vector<VkDescriptorPoolSize> poolSizes;
+     std::uint32_t poolMaxSets = 0;
++    VkDescriptorPoolCreateFlags poolFlags = 0;
+     std::vector<MockDescriptorWrite> writes;
+     std::uint32_t boundSets = 0;
+     std::uint32_t boundFirst = 0;
+@@ -1325,29 +1335,60 @@
+ VKAPI_ATTR VkResult VKAPI_CALL mockCreateDescriptorSetLayout(VkDevice, const VkDescriptorSetLayoutCreateInfo* info, const VkAllocationCallbacks*, VkDescriptorSetLayout* layout) {
+     *layout = makeHandle<VkDescriptorSetLayout>();
+     mock.layoutBindings.assign(info->pBindings, info->pBindings + info->bindingCount);
++    mock.layoutFlags = info->flags;
++    mock.layouts.emplace(*layout, info->flags);
++    const auto* bindingFlags = static_cast<const VkDescriptorSetLayoutBindingFlagsCreateInfo*>(info->pNext);
++    if (bindingFlags != nullptr) {
++        Require(bindingFlags->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO && bindingFlags->bindingCount == info->bindingCount, "descriptor binding flags are malformed");
++        mock.layoutBindingFlags.assign(bindingFlags->pBindingFlags, bindingFlags->pBindingFlags + bindingFlags->bindingCount);
++    } else mock.layoutBindingFlags.clear();
+     ++mock.live;
+     return VK_SUCCESS;
+ }
+ 
+-VKAPI_ATTR void VKAPI_CALL mockDestroyDescriptorSetLayout(VkDevice, VkDescriptorSetLayout, const VkAllocationCallbacks*) {
++VKAPI_ATTR void VKAPI_CALL mockDestroyDescriptorSetLayout(VkDevice, VkDescriptorSetLayout layout, const VkAllocationCallbacks*) {
++    Require(mock.layouts.erase(layout) == 1, "descriptor layout freed twice");
+     --mock.live;
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL mockCreateDescriptorPool(VkDevice, const VkDescriptorPoolCreateInfo* info, const VkAllocationCallbacks*, VkDescriptorPool* pool) {
++    if (mock.failPoolCreate) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+     *pool = makeHandle<VkDescriptorPool>();
++    mock.pools.emplace(*pool, info->flags);
++    mock.poolFlags = info->flags;
+     mock.poolSizes.assign(info->pPoolSizes, info->pPoolSizes + info->poolSizeCount);
+     mock.poolMaxSets = info->maxSets;
+     ++mock.live;
+     return VK_SUCCESS;
+ }
+ 
+-VKAPI_ATTR void VKAPI_CALL mockDestroyDescriptorPool(VkDevice, VkDescriptorPool, const VkAllocationCallbacks*) {
++VKAPI_ATTR void VKAPI_CALL mockDestroyDescriptorPool(VkDevice, VkDescriptorPool pool, const VkAllocationCallbacks*) {
++    Require(mock.pools.erase(pool) == 1, "descriptor pool freed twice");
++    for (auto it = mock.sets.begin(); it != mock.sets.end();) {
++        if (it->second == pool) it = mock.sets.erase(it);
++        else ++it;
++    }
+     --mock.live;
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL mockAllocateDescriptorSets(VkDevice, const VkDescriptorSetAllocateInfo* info, VkDescriptorSet* sets) {
+     Require(info->descriptorSetCount == 1, "exactly one descriptor set must be allocated");
++    if (mock.failSetAllocate) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
++    const auto layoutFlags = mock.layouts.at(info->pSetLayouts[0]);
++    const auto poolFlags = mock.pools.at(info->descriptorPool);
++    Require((layoutFlags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT) == 0 || (poolFlags & VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT) != 0, "update-after-bind layout used an ordinary pool");
+     sets[0] = makeHandle<VkDescriptorSet>();
++    mock.sets.emplace(sets[0], info->descriptorPool);
++    return VK_SUCCESS;
++}
++
++VKAPI_ATTR VkResult VKAPI_CALL mockFreeDescriptorSets(VkDevice, VkDescriptorPool pool, std::uint32_t count, const VkDescriptorSet* sets) {
++    Require((mock.pools.at(pool) & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT) != 0, "descriptor set freed from a nonfree pool");
++    for (std::uint32_t index = 0; index < count; ++index) {
++        Require(mock.sets.at(sets[index]) == pool, "descriptor set freed through the wrong pool");
++        mock.sets.erase(sets[index]);
++        ++mock.freedSets;
++    }
+     return VK_SUCCESS;
+ }
+ 
+@@ -1448,6 +1489,7 @@
+         {"vkCreateDescriptorPool", reinterpret_cast<PFN_vkVoidFunction>(mockCreateDescriptorPool)},
+         {"vkDestroyDescriptorPool", reinterpret_cast<PFN_vkVoidFunction>(mockDestroyDescriptorPool)},
+         {"vkAllocateDescriptorSets", reinterpret_cast<PFN_vkVoidFunction>(mockAllocateDescriptorSets)},
++        {"vkFreeDescriptorSets", reinterpret_cast<PFN_vkVoidFunction>(mockFreeDescriptorSets)},
+         {"vkUpdateDescriptorSets", reinterpret_cast<PFN_vkVoidFunction>(mockUpdateDescriptorSets)},
+         {"vkCmdBindDescriptorSets", reinterpret_cast<PFN_vkVoidFunction>(mockCmdBindDescriptorSets)},
+         {"vkCreatePipelineLayout", reinterpret_cast<PFN_vkVoidFunction>(mockCreatePipelineLayout)},
+@@ -1735,6 +1777,138 @@
+         fragment.bindings.front().binding = 1;
+         fragment.bindings.front().guestDescriptor = vsharp(guestFirst.data(), 16);
+     }
++}
++
++void descriptorUpdateAfterBindTests() {
++    VkPhysicalDeviceDescriptorIndexingPropertiesEXT properties{};
++    Require(!AgcDriver::Graphics::StorageBufferUpdateAfterBindSupported(VK_FALSE, VK_FALSE, properties), "unavailable descriptor update-after-bind was enabled");
++    Require(AgcDriver::Graphics::StorageBufferUpdateAfterBindSupported(VK_TRUE, VK_FALSE, properties), "update-after-bind without robust access was rejected");
++    Require(!AgcDriver::Graphics::StorageBufferUpdateAfterBindSupported(VK_TRUE, VK_TRUE, properties), "update-after-bind broke robust buffer access");
++    properties.robustBufferAccessUpdateAfterBind = VK_TRUE;
++    Require(AgcDriver::Graphics::StorageBufferUpdateAfterBindSupported(VK_TRUE, VK_TRUE, properties), "compatible robust update-after-bind was rejected");
++    Require(!AgcDriver::Graphics::StorageBufferUpdateAfterBindSupported(VK_FALSE, VK_TRUE, properties), "robust capability spoofed unavailable update-after-bind");
++    auto context = mockContext();
++    context.storageBufferUpdateAfterBind = true;
++    context.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageBuffers = 17;
++    context.descriptorIndexingLimits.maxPerStageUpdateAfterBindResources = 128;
++    context.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageBuffers = 34;
++    const auto state = AgcDriver::Graphics::DecodeState(makeState());
++    ShaderRecompiler::RecompileResult vertex;
++    ShaderRecompiler::RecompileResult fragment;
++    std::vector<std::uint32_t> manyBuffers;
++    for (unsigned index = 0; index < 17; ++index) manyBuffers = join(std::move(manyBuffers), vsharp(guestThird.data(), 8));
++    vertex.bindings.push_back(makeBinding(Role::GuestBuffers, 0, 17, manyBuffers));
++    const auto clean = [] { Require(mock.live == 0 && mock.layouts.empty() && mock.pools.empty() && mock.sets.empty(), "descriptor update-after-bind objects leaked"); };
++    mock = MockVulkan{};
++    {
++        AgcDriver::Graphics::ShaderResources resources(context, vertex, fragment, state.color, 0, 0);
++        Require(mock.layoutFlags == VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT, "extended buffers lack an update-after-bind layout");
++        Require(mock.layoutBindingFlags.size() == 1 && mock.layoutBindingFlags[0] == VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, "extended buffers lack an update-after-bind binding");
++        Require(mock.poolFlags == VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT && mock.poolMaxSets == 1, "extended buffers lack an owned update-after-bind pool");
++    }
++    clean();
++    for (unsigned failure = 0; failure < 4; ++failure) {
++        auto invalid = context;
++        if (failure == 0) invalid.storageBufferUpdateAfterBind = false;
++        if (failure == 1) invalid.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageBuffers = 16;
++        if (failure == 2) invalid.descriptorIndexingLimits.maxPerStageUpdateAfterBindResources = 16;
++        if (failure == 3) invalid.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageBuffers = 16;
++        mock = MockVulkan{};
++        expectFailure([&] { AgcDriver::Graphics::ShaderResources resources(invalid, vertex, fragment, state.color, 0, 0); }, failure == 3 ? "per-set descriptor limit" : "per-stage limits");
++        clean();
++    }
++    fragment.bindings.push_back(makeBinding(Role::GuestBuffers, 1, 17, manyBuffers));
++    mock = MockVulkan{};
++    {
++        AgcDriver::Graphics::ShaderResources resources(context, vertex, fragment, state.color, 0, 0);
++        Require(mock.poolSizes[0].descriptorCount == 34, "extended per-set descriptors were lost");
++    }
++    clean();
++    auto invalidSet = context;
++    invalidSet.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageBuffers = 33;
++    mock = MockVulkan{};
++    expectFailure([&] { AgcDriver::Graphics::ShaderResources resources(invalidSet, vertex, fragment, state.color, 0, 0); }, "pipeline descriptors exceed device limits");
++    clean();
++    fragment.bindings.clear();
++    for (const bool poolFailure : {false, true}) {
++        mock = MockVulkan{};
++        mock.failPoolCreate = poolFailure;
++        mock.failSetAllocate = !poolFailure;
++        expectFailure([&] { AgcDriver::Graphics::ShaderResources resources(context, vertex, fragment, state.color, 0, 0); }, poolFailure ? "vkCreateDescriptorPool" : "vkAllocateDescriptorSets");
++        clean();
++    }
++    vertex.bindings[0] = makeBinding(Role::GuestBuffers, 0, 1, vsharp(guestThird.data(), 8));
++    mock = MockVulkan{};
++    {
++        AgcDriver::Graphics::ShaderResources resources(context, vertex, fragment, state.color, 0, 0);
++        Require(mock.layoutFlags == 0 && mock.layoutBindingFlags.empty() && mock.poolFlags == 0, "ordinary buffers unexpectedly require update-after-bind");
++    }
++    clean();
++    auto mixedContext = context;
++    mixedContext.limits.maxPerStageDescriptorSampledImages = mixedContext.limits.maxPerStageDescriptorStorageImages = mixedContext.limits.maxPerStageDescriptorSamplers = 4;
++    mixedContext.limits.maxDescriptorSetSampledImages = mixedContext.limits.maxDescriptorSetStorageImages = mixedContext.limits.maxDescriptorSetSamplers = 4;
++    mixedContext.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSampledImages = mixedContext.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageImages = mixedContext.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSamplers = 4;
++    mixedContext.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSampledImages = mixedContext.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageImages = mixedContext.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSamplers = 4;
++    const std::array<VkDescriptorSetLayoutBinding, 4> mixedBindings{{
++        {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 17, VK_SHADER_STAGE_VERTEX_BIT, nullptr},
++        {1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 2, VK_SHADER_STAGE_VERTEX_BIT, nullptr},
++        {2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2, VK_SHADER_STAGE_VERTEX_BIT, nullptr},
++        {3, VK_DESCRIPTOR_TYPE_SAMPLER, 2, VK_SHADER_STAGE_VERTEX_BIT, nullptr}
++    }};
++    const std::array<std::uint32_t, 1> mixedKey{99};
++    mock = MockVulkan{};
++    {
++        AgcDriver::Graphics::DescriptorCache cache(mixedContext);
++        static_cast<void>(cache.Layout(mixedKey, mixedBindings, true));
++        Require(mock.layoutBindingFlags == std::vector<VkDescriptorBindingFlags>{VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, 0, 0, 0}, "non-buffer descriptors acquired unsupported update-after-bind flags");
++    }
++    clean();
++    for (unsigned failure = 0; failure < 9; ++failure) {
++        auto invalid = mixedContext;
++        if (failure == 0) invalid.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSampledImages = 1;
++        if (failure == 1) invalid.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSampledImages = 1;
++        if (failure == 2) invalid.limits.maxPerStageDescriptorSampledImages = 1;
++        if (failure == 3) invalid.limits.maxDescriptorSetSampledImages = 1;
++        if (failure == 4) invalid.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindStorageImages = 1;
++        if (failure == 5) invalid.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindStorageImages = 1;
++        if (failure == 6) invalid.descriptorIndexingLimits.maxPerStageDescriptorUpdateAfterBindSamplers = 1;
++        if (failure == 7) invalid.descriptorIndexingLimits.maxDescriptorSetUpdateAfterBindSamplers = 1;
++        if (failure == 8) invalid.descriptorIndexingLimits.maxPerStageUpdateAfterBindResources = 18;
++        mock = MockVulkan{};
++        {
++            AgcDriver::Graphics::DescriptorCache cache(invalid);
++            expectFailure([&] { static_cast<void>(cache.Layout(mixedKey, mixedBindings, true)); }, failure % 2 == 1 && failure < 8 ? "per-set descriptor limit" : "per-stage");
++        }
++        clean();
++    }
++    mock = MockVulkan{};
++    {
++        AgcDriver::Graphics::DescriptorCache cache(context);
++        const std::array<std::uint32_t, 1> key{0};
++        const std::array<VkDescriptorSetLayoutBinding, 1> bindings{{{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, nullptr}}};
++        const auto ordinary = cache.Layout(key, bindings);
++        const auto extended = cache.Layout(key, bindings, true);
++        Require(ordinary != extended && cache.Layout(key, bindings) == ordinary && cache.Layout(key, bindings, true) == extended, "descriptor cache aliases ordinary and update-after-bind layouts");
++        const std::array<VkDescriptorPoolSize, 1> sizes{{{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}}};
++        const auto first = cache.Allocate(ordinary, sizes);
++        const auto second = cache.Allocate(extended, sizes, true);
++        const auto third = cache.Allocate(extended, sizes, true);
++        Require(first.pool != second.pool && second.pool == third.pool, "descriptor pool chains are not isolated or reusable");
++        cache.Free(first);
++        cache.Free(second);
++        cache.Free(third);
++        Require(mock.freedSets == 3 && mock.sets.empty(), "cached descriptor sets were not released to their own pools");
++        auto cached = context;
++        cached.descriptorCache = &cache;
++        vertex.bindings[0] = makeBinding(Role::GuestBuffers, 0, 17, manyBuffers);
++        {
++            AgcDriver::Graphics::ShaderResources resources(cached, vertex, fragment, state.color, 0, 0);
++            Require((mock.layoutFlags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT) != 0, "cached shader resources lack extended layout");
++        }
++        Require(mock.sets.empty() && mock.freedSets == 4, "cached shader resources did not release their descriptor set");
++    }
++    clean();
++    std::cout << "Descriptor update-after-bind validation tests passed\n";
+ }
+ 
+ void misalignedShaderDataTests() {
+@@ -2618,6 +2792,11 @@
+     setenv("APS5_PIN_WAIT_MS", "200", 1);
+ #endif
+     try {
++        if (argc == 2 && std::string_view(argv[1]) == "--descriptor-update-after-bind-only") {
++            descriptorUpdateAfterBindTests();
++            resourceTests();
++            return 0;
++        }
+         if (argc == 4 && std::string_view(argv[1]) == "--replay-viewport") {
+             ReplayUnobservedViewport(argv[2], argv[3]);
+             return 0;
+@@ -2689,6 +2868,7 @@
+         InitialContextTests();
+         pushConstantTests();
+         resourceTests();
++        descriptorUpdateAfterBindTests();
+         misalignedShaderDataTests();
+         debugBranchTests();
+         meshArgumentTests();

@@ -1,0 +1,424 @@
+diff --git a/core/libs/prx/libc/CMakeLists.txt b/core/libs/prx/libc/CMakeLists.txt
+--- a/core/libs/prx/libc/CMakeLists.txt
++++ b/core/libs/prx/libc/CMakeLists.txt
+@@ -46,6 +46,13 @@
+ endif()
+ 
+ if(BUILD_TESTING)
++    add_test_executable(raw_log_output_tests ${LIBS_INCLUDE_DIR}/tests/RawLogOutput.cpp)
++    target_include_directories(raw_log_output_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(raw_log_output_tests PRIVATE libc)
++    configure_windows_unwind(raw_log_output_tests)
++    add_test(NAME raw_log_output COMMAND raw_log_output_tests)
++    set_tests_properties(raw_log_output PROPERTIES TIMEOUT 20)
++
+     add_test_executable(guest_time_conversion_tests ${LIBS_INCLUDE_DIR}/tests/GuestTimeConversion.cpp)
+     target_include_directories(guest_time_conversion_tests PRIVATE ${LIBS_INCLUDE_DIR})
+     target_link_libraries(guest_time_conversion_tests PRIVATE libc)
+diff --git a/core/libs/prx/libc/src/exception/RawLogOutput.hpp b/core/libs/prx/libc/src/exception/RawLogOutput.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/prx/libc/src/exception/RawLogOutput.hpp
+@@ -0,0 +1,86 @@
++#pragma once
++#include <cstddef>
++#ifdef _WIN32
++#include <windows.h>
++#else
++#include <unistd.h>
++#endif
++
++namespace LibcException::RawLogOutput {
++namespace {
++
++inline constexpr std::size_t MaximumTextBytes = 1024 * 1024;
++inline constexpr std::size_t MaximumChunkBytes = 4096;
++inline constexpr std::size_t MaximumWriteCalls = 65536;
++inline constexpr char TruncationMarker[] = "\n[libc] exception text truncated at 1048576 bytes\n";
++
++enum class Result { Complete, Truncated, WriteFailed };
++
++class StderrWriter {
++#ifdef _WIN32
++    HANDLE handle = GetStdHandle(STD_ERROR_HANDLE);
++#endif
++public:
++    std::ptrdiff_t operator()(const char* data, std::size_t size) noexcept {
++#ifdef _WIN32
++        DWORD written = 0;
++        if (!WriteFile(handle, data, static_cast<DWORD>(size), &written, nullptr)) return -1;
++        return static_cast<std::ptrdiff_t>(written);
++#else
++        return ::write(STDERR_FILENO, data, size);
++#endif
++    }
++};
++
++template<class TWrite>
++static bool WriteBytes(TWrite& write, const char* data, std::size_t size, std::size_t& calls) noexcept {
++    while (size) {
++        if (calls == MaximumWriteCalls) return false;
++        ++calls;
++        const std::size_t request = size < MaximumChunkBytes ? size : MaximumChunkBytes;
++        const auto written = write(data, request);
++        if (written <= 0 || static_cast<std::size_t>(written) > request) return false;
++        data += written;
++        size -= static_cast<std::size_t>(written);
++    }
++    return true;
++}
++
++template<class TWrite>
++static Result WriteText(TWrite& write, const char* text) noexcept {
++    if (!text) text = "(null)";
++    std::size_t offset = 0;
++    std::size_t calls = 0;
++    while (offset < MaximumTextBytes) {
++        const std::size_t remaining = MaximumTextBytes - offset;
++        const std::size_t limit = remaining < MaximumChunkBytes ? remaining : MaximumChunkBytes;
++        std::size_t length = 0;
++        while (length < limit && text[offset + length]) ++length;
++        if (!WriteBytes(write, text + offset, length, calls)) return Result::WriteFailed;
++        offset += length;
++        if (length < limit) return Result::Complete;
++    }
++    if (!text[offset]) return Result::Complete;
++    if (!WriteBytes(write, TruncationMarker, sizeof(TruncationMarker) - 1, calls)) return Result::WriteFailed;
++    return Result::Truncated;
++}
++
++template<class TWrite>
++static Result WriteException(TWrite& write, const char* type, const char* what) noexcept {
++    const char* parts[] = {"terminate called after throwing an instance of '", type, "'\n"};
++    for (const char* part : parts) {
++        const auto result = WriteText(write, part);
++        if (result != Result::Complete) return result;
++    }
++    if (!what) return Result::Complete;
++    const auto prefix = WriteText(write, "  what():  ");
++    if (prefix != Result::Complete) return prefix;
++    const auto result = WriteText(write, what);
++    if (result == Result::WriteFailed) return result;
++    if (WriteText(write, "\n") != Result::Complete) return Result::WriteFailed;
++    return result;
++}
++
++}
++
++}
+diff --git a/core/libs/prx/libc/src/exception/Runtime.cpp b/core/libs/prx/libc/src/exception/Runtime.cpp
+--- a/core/libs/prx/libc/src/exception/Runtime.cpp
++++ b/core/libs/prx/libc/src/exception/Runtime.cpp
+@@ -1,10 +1,8 @@
+ #include "prx/libc/include/exceptions/Runtime.hpp"
++#include "RawLogOutput.hpp"
+ #include <cstdarg>
+ #include <cstdio>
+ #include <limits>
+-#ifdef _WIN32
+-#include <windows.h>
+-#endif
+ 
+ namespace LibcException {
+ 
+@@ -18,12 +16,9 @@
+     va_end(args);
+     if (length <= 0) return;
+     if (length > static_cast<int>(sizeof(buffer)) - 1) length = sizeof(buffer) - 1;
+-#ifdef _WIN32
+-    DWORD written = 0;
+-    WriteFile(GetStdHandle(STD_ERROR_HANDLE), buffer, static_cast<DWORD>(length), &written, nullptr);
+-#else
+-    std::fwrite(buffer, 1, length, stderr);
+-#endif
++    RawLogOutput::StderrWriter writer;
++    std::size_t calls = 0;
++    RawLogOutput::WriteBytes(writer, buffer, static_cast<std::size_t>(length), calls);
+ }
+ 
+ [[noreturn]] static void DefaultTerminate() {
+@@ -47,10 +42,8 @@
+         int status = 0;
+         char* demangled = abi::__cxa_demangle(typeName, nullptr, nullptr, &status);
+         const char* displayName = (status == 0 && demangled) ? demangled : typeName;
+-        if (what)
+-            RawLog("terminate called after throwing an instance of '%s'\n  what():  %s\n", displayName, what);
+-        else
+-            RawLog("terminate called after throwing an instance of '%s'\n", displayName);
++        RawLogOutput::StderrWriter writer;
++        RawLogOutput::WriteException(writer, displayName, what);
+         std::free(demangled);
+     } else {
+         RawLog("terminate called without an active exception\n");
+diff --git a/core/libs/tests/RawLogOutput.cpp b/core/libs/tests/RawLogOutput.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/RawLogOutput.cpp
+@@ -0,0 +1,267 @@
++#include "prx/libc/src/exception/RawLogOutput.hpp"
++#include <algorithm>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <new>
++#include <stdexcept>
++#include <string>
++#include <vector>
++#ifdef _WIN32
++#include <io.h>
++#else
++#include <sys/mman.h>
++#endif
++
++namespace {
++bool forbidAllocation = false;
++int cases = 0;
++void Require(bool condition, const char* message) {
++    if (!condition) throw std::runtime_error(message);
++}
++void Passed(const char* name) {
++    ++cases;
++    std::printf("PASS %s\n", name);
++}
++using namespace LibcException::RawLogOutput;
++
++struct Recorder {
++    char* data;
++    std::size_t capacity, size = 0, calls = 0, maximumRequest = 0, shortLimit = MaximumChunkBytes;
++    int failAt = -1, zeroAt = -1, overAt = -1;
++    std::ptrdiff_t operator()(const char* input, std::size_t requested) noexcept {
++        maximumRequest = std::max(maximumRequest, requested);
++        ++calls;
++        if (static_cast<int>(calls) == failAt) return -1;
++        if (static_cast<int>(calls) == zeroAt) return 0;
++        if (static_cast<int>(calls) == overAt) return static_cast<std::ptrdiff_t>(requested + 1);
++        const auto count = std::min({requested, shortLimit, capacity - size});
++        std::memcpy(data + size, input, count);
++        size += count;
++        return static_cast<std::ptrdiff_t>(count);
++    }
++};
++
++class StderrFile {
++    FILE* file = std::tmpfile();
++#ifdef _WIN32
++    HANDLE original = GetStdHandle(STD_ERROR_HANDLE);
++#else
++    int original = ::dup(STDERR_FILENO);
++#endif
++    bool restored = false;
++public:
++    StderrFile() {
++        Require(file != nullptr, "tmpfile unavailable");
++#ifdef _WIN32
++        Require(SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(file)))) != 0,
++                "SetStdHandle failed");
++#else
++        Require(original >= 0 && ::dup2(fileno(file), STDERR_FILENO) >= 0, "stderr dup failed");
++#endif
++    }
++    void Restore() {
++        if (restored) return;
++#ifdef _WIN32
++        Require(SetStdHandle(STD_ERROR_HANDLE, original) != 0, "restore SetStdHandle failed");
++#else
++        Require(::dup2(original, STDERR_FILENO) >= 0, "restore stderr failed");
++        ::close(original);
++#endif
++        restored = true;
++    }
++    std::string Read() {
++        Restore();
++        Require(std::fseek(file, 0, SEEK_END) == 0, "seek failed");
++        const auto length = std::ftell(file);
++        Require(length >= 0 && std::fseek(file, 0, SEEK_SET) == 0, "read seek failed");
++        std::string output(static_cast<std::size_t>(length), '\0');
++        Require(std::fread(output.data(), 1, output.size(), file) == output.size(), "readback failed");
++        return output;
++    }
++    ~StderrFile() {
++        if (!restored) {
++#ifdef _WIN32
++            SetStdHandle(STD_ERROR_HANDLE, original);
++#else
++            ::dup2(original, STDERR_FILENO); ::close(original);
++#endif
++        }
++        if (file) std::fclose(file);
++    }
++};
++
++void ActualHandleCases() {
++    const std::string request = "ShaderRecompiler::Recompile: synthetic error (pc=56)\nRecompileRequest:\n" +
++        std::string(15336, 'A') + "Qg==";
++    const std::string expected = "terminate called after throwing an instance of 'std::runtime_error'\n  what():  " + request + "\n";
++    {
++        StderrFile file;
++        StderrWriter writer;
++        forbidAllocation = true;
++        const auto result = WriteException(writer, "std::runtime_error", request.c_str());
++        forbidAllocation = false;
++        Require(result == Result::Complete, "long exception incomplete");
++        Require(file.Read() == expected, "actual stderr lost shader request suffix/delimiter");
++        Passed("actual_stderr_full_15340_byte_request_and_framing");
++    }
++    {
++        struct LimitedWriter {
++            StderrWriter writer;
++            std::size_t calls = 0;
++            std::ptrdiff_t operator()(const char* text, std::size_t requested) noexcept {
++                ++calls;
++                return writer(text, std::min(requested, std::size_t(7)));
++            }
++        } writer;
++        StderrFile file;
++        writer.writer = StderrWriter{};
++        forbidAllocation = true;
++        const auto result = WriteException(writer, "std::runtime_error", request.c_str());
++        forbidAllocation = false;
++        Require(result == Result::Complete && writer.calls > 2000,
++                "short OS writes not handled");
++        Require(file.Read() == expected, "short actual OS writes lost bytes");
++        Passed("actual_stderr_repeated_seven_byte_short_writes");
++    }
++    {
++        StderrFile file;
++        StderrWriter writer;
++        Require(WriteText(writer, "UTF-8: \xc3\xa4\xe2\x88\x92\nline two") == Result::Complete, "UTF8 output failed");
++        Require(file.Read() == "UTF-8: \xc3\xa4\xe2\x88\x92\nline two", "UTF8 bytes changed");
++        Passed("actual_stderr_utf8_newline_bytes_preserved");
++    }
++    {
++#ifdef _WIN32
++        const HANDLE previous = GetStdHandle(STD_ERROR_HANDLE);
++        Require(SetStdHandle(STD_ERROR_HANDLE, INVALID_HANDLE_VALUE) != 0, "invalid stderr setup failed");
++        StderrWriter writer;
++        const auto result = WriteText(writer, "test");
++        SetStdHandle(STD_ERROR_HANDLE, previous);
++#else
++        const int previous = ::dup(STDERR_FILENO);
++        Require(previous >= 0, "stderr error setup failed");
++        ::close(STDERR_FILENO);
++        StderrWriter writer;
++        const auto result = WriteText(writer, "test");
++        ::dup2(previous, STDERR_FILENO); ::close(previous);
++#endif
++        Require(result == Result::WriteFailed, "actual failed stderr must report failure");
++        Passed("actual_stderr_invalid_handle_stops");
++    }
++}
++
++void BoundedCases() {
++    std::vector<char> storage(MaximumTextBytes + sizeof(TruncationMarker) + 128);
++    for (const std::size_t size : {std::size_t(0), std::size_t(1023), std::size_t(1024), std::size_t(4096), std::size_t(8193)}) {
++        std::string input(size, 'X');
++        Recorder writer{storage.data(), storage.size()};
++        forbidAllocation = true;
++        const auto result = WriteText(writer, input.c_str());
++        forbidAllocation = false;
++        Require(result == Result::Complete && writer.size == size && std::memcmp(storage.data(), input.data(), size) == 0,
++                "chunk boundary/no-allocation case failed");
++    }
++    Passed("empty_1023_1024_4096_8193_boundaries_no_heap");
++    {
++        std::string input(MaximumTextBytes, 'Z');
++        Recorder writer{storage.data(), storage.size()};
++        forbidAllocation = true; const auto result = WriteText(writer, input.c_str()); forbidAllocation = false;
++        Require(result == Result::Complete && writer.size == input.size(), "exact limit incorrectly truncated");
++        Passed("exact_one_mib_terminator_complete_no_heap");
++    }
++    {
++        std::string input(MaximumTextBytes + 8192, 'Z');
++        Recorder writer{storage.data(), storage.size()};
++        forbidAllocation = true; const auto result = WriteText(writer, input.c_str()); forbidAllocation = false;
++        Require(result == Result::Truncated && writer.size == MaximumTextBytes + sizeof(TruncationMarker) - 1,
++                "explicit bounded truncation size/status failed");
++        Require(std::memcmp(storage.data(), input.data(), MaximumTextBytes) == 0 &&
++                std::memcmp(storage.data() + MaximumTextBytes, TruncationMarker, sizeof(TruncationMarker) - 1) == 0,
++                "explicit truncation marker/content missing");
++        Passed("oversized_one_mib_prefix_and_explicit_marker_no_heap");
++    }
++    for (int kind = 0; kind < 4; ++kind) {
++        Recorder writer{storage.data(), storage.size()};
++        writer.shortLimit = 7;
++        if (kind == 0) writer.failAt = 1;
++        if (kind == 1) writer.failAt = 2;
++        if (kind == 2) writer.zeroAt = 1;
++        if (kind == 3) writer.overAt = 1;
++        Require(WriteText(writer, "0123456789ABCDEF") == Result::WriteFailed, "invalid progress not rejected");
++        Require(writer.calls == (kind == 1 ? 2u : 1u) && writer.size == (kind == 1 ? 7u : 0u),
++                "failed output kept retrying or replayed bytes");
++    }
++    Passed("error_short_then_error_zero_and_overreported_progress_stop");
++    {
++        std::string input(MaximumTextBytes, 'B');
++        Recorder writer{storage.data(), storage.size()}; writer.shortLimit = 1;
++        Require(WriteText(writer, input.c_str()) == Result::WriteFailed && writer.calls == MaximumWriteCalls &&
++                writer.size == MaximumWriteCalls && writer.maximumRequest <= MaximumChunkBytes,
++                "write-call budget not enforced");
++        Passed("65536_call_budget_stops_pathological_short_writes");
++    }
++    {
++        const char text[] = "prefix\0excluded";
++        Recorder writer{storage.data(), storage.size()};
++        Require(WriteText(writer, text) == Result::Complete && writer.size == 6 && std::memcmp(storage.data(), "prefix", 6) == 0,
++                "what C string terminator not respected");
++        Passed("embedded_nul_ends_what_c_string");
++    }
++    {
++        Recorder writer{storage.data(), storage.size()};
++        Require(WriteException(writer, nullptr, nullptr) == Result::Complete, "null type/what framing failed");
++        const std::string expected = "terminate called after throwing an instance of '(null)'\n";
++        Require(writer.size == expected.size() && std::memcmp(storage.data(), expected.data(), writer.size) == 0,
++                "null what printed spurious what prefix");
++        Passed("missing_what_keeps_type_only_framing");
++    }
++    {
++#ifdef _WIN32
++        SYSTEM_INFO info; GetSystemInfo(&info);
++        const std::size_t page = info.dwPageSize;
++        auto* memory = static_cast<char*>(VirtualAlloc(nullptr, page * 2, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
++        Require(memory != nullptr, "guard allocation failed");
++        DWORD previous; Require(VirtualProtect(memory + page, page, PAGE_NOACCESS, &previous) != 0, "guard setup failed");
++#else
++        const std::size_t page = static_cast<std::size_t>(::sysconf(_SC_PAGESIZE));
++        auto* memory = static_cast<char*>(::mmap(nullptr, page * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
++        Require(memory != MAP_FAILED && ::mprotect(memory + page, page, PROT_NONE) == 0, "guard setup failed");
++#endif
++        std::memset(memory + page - 32, 'G', 31); memory[page - 1] = '\0';
++        Recorder writer{storage.data(), storage.size()};
++        Require(WriteText(writer, memory + page - 32) == Result::Complete && writer.size == 31,
++                "CString guard-page boundary failed");
++#ifdef _WIN32
++        VirtualFree(memory, 0, MEM_RELEASE);
++#else
++        ::munmap(memory, page * 2);
++#endif
++        Passed("cstring_last_byte_before_guard_page_no_overread");
++    }
++}
++}
++
++void* operator new(std::size_t size) {
++    if (forbidAllocation) std::abort();
++    if (void* memory = std::malloc(size ? size : 1)) return memory;
++    throw std::bad_alloc();
++}
++void* operator new[](std::size_t size) { return ::operator new(size); }
++void operator delete(void* memory) noexcept { std::free(memory); }
++void operator delete[](void* memory) noexcept { std::free(memory); }
++void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
++void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
++
++int main() {
++    try {
++        ActualHandleCases();
++        BoundedCases();
++        std::printf("ALL %d CASES PASSED\n", cases);
++        return 0;
++    } catch (const std::exception& error) {
++        forbidAllocation = false;
++        std::fprintf(stderr, "FAIL %s\n", error.what());
++        return 1;
++    }
++}

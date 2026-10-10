@@ -1,0 +1,777 @@
+diff --git a/core/libs/prx/libSceJson2/Export.cpp b/core/libs/prx/libSceJson2/Export.cpp
+--- a/core/libs/prx/libSceJson2/Export.cpp
++++ b/core/libs/prx/libSceJson2/Export.cpp
+@@ -22,36 +22,74 @@
+ using JsonDeallocate = void (APS5_VABI*)(void*, void*);
+ using JsonNotify = void (APS5_VABI*)(int, std::size_t, void*);
+ struct AllocParamRtti { JsonAllocate allocate; JsonDeallocate deallocate; JsonNotify notify; };
+-struct JsonAllocationPolicy { AllocParamRtti callbacks{}; void* context = nullptr; };
+-struct InitParameter2 { const AllocParamRtti* allocator = nullptr; void* context = nullptr; std::size_t fileBufferSize = 0; };
++using JsonVirtualAllocate = void* (APS5_VABI*)(void*, std::size_t, void*);
++using JsonVirtualFree = void (APS5_VABI*)(void*, void*, void*);
++using JsonVirtualNotify = void (APS5_VABI*)(void*, int, std::size_t, void*);
++struct JsonAllocationPolicy {
++    AllocParamRtti callbacks{};
++    void* context = nullptr;
++    void* object = nullptr;
++    JsonVirtualAllocate virtualAllocate = nullptr;
++    JsonVirtualFree virtualFree = nullptr;
++    JsonVirtualNotify virtualNotify = nullptr;
++};
++// API-owned compatibility storage, not a claim about the SDK class layout.
++// The observed consumer uses imported constructors/setters/initialize only.
++// Keep the established 24-byte write bound. An explicit setter selects the
++// kind in one otherwise unused pointer-alignment bit; no address-keyed sidecar
++// or heap adapter can outlive a temporary/copy of the parameter.
++constexpr std::uintptr_t JsonVirtualAllocatorTag = 1;
++struct InitParameter2 { std::uintptr_t allocatorToken = 0; void* context = nullptr; std::size_t fileBufferSize = 0; };
+ static_assert(sizeof(InitParameter2) == 24);
+ static_assert(sizeof(AllocParamRtti) == 24);
+ std::mutex allocationMutex;
+ JsonAllocationPolicy allocationPolicy;
+-struct alignas(std::max_align_t) AllocationHeader { JsonDeallocate free; void* context; };
++struct alignas(std::max_align_t) AllocationHeader {
++    JsonDeallocate free;
++    JsonVirtualFree virtualFree;
++    void* context;
++    void* object;
++};
++
++std::uintptr_t JsonAllocatorToken(const void* allocator, bool isVirtual) {
++    const auto address = reinterpret_cast<std::uintptr_t>(allocator);
++    if (address % alignof(void*))
++        throw std::invalid_argument("sce::Json: unaligned allocator");
++    return address ? address | (isVirtual ? JsonVirtualAllocatorTag : 0) : 0;
++}
++void JsonReleaseRaw(void* memory, const JsonAllocationPolicy& policy) {
++    if (policy.object) policy.virtualFree(policy.object, memory, policy.context);
++    else if (policy.callbacks.deallocate) policy.callbacks.deallocate(memory, policy.context);
++    else ::operator delete(memory);
++}
+ 
+ void* JsonAllocateBytes(std::size_t bytes) {
+     JsonAllocationPolicy policy;
+     { std::lock_guard lock(allocationMutex); policy = allocationPolicy; }
+     if (bytes > std::numeric_limits<std::size_t>::max() - sizeof(AllocationHeader)) throw std::bad_alloc();
+     const std::size_t total = bytes + sizeof(AllocationHeader);
+-    void* raw = policy.callbacks.allocate ? policy.callbacks.allocate(total, policy.context) : ::operator new(total);
++    void* raw = policy.object ? policy.virtualAllocate(policy.object, total, policy.context)
++        : policy.callbacks.allocate ? policy.callbacks.allocate(total, policy.context) : ::operator new(total);
+     if (!raw) {
+-        if (policy.callbacks.notify) policy.callbacks.notify(static_cast<int>(0x80848102), total, policy.context);
++        if (policy.object && policy.virtualNotify)
++            policy.virtualNotify(policy.object, static_cast<int>(0x80848102), total, policy.context);
++        else if (policy.callbacks.notify)
++            policy.callbacks.notify(static_cast<int>(0x80848102), total, policy.context);
+         throw std::bad_alloc();
+     }
+     if (reinterpret_cast<std::uintptr_t>(raw) % alignof(AllocationHeader)) {
+-        policy.callbacks.deallocate(raw, policy.context);
++        JsonReleaseRaw(raw, policy);
+         throw std::runtime_error("sce::Json allocator returned unaligned storage");
+     }
+-    auto* header = new (raw) AllocationHeader{policy.callbacks.deallocate, policy.context};
++    auto* header = new (raw) AllocationHeader{policy.callbacks.deallocate, policy.virtualFree, policy.context, policy.object};
+     return header + 1;
+ }
+ void JsonFreeBytes(void* memory) noexcept {
+     if (!memory) return;
+     auto* header = static_cast<AllocationHeader*>(memory) - 1;
+     // Match the allocator that created this block even after terminate/reinitialize.
+-    if (header->free) header->free(header, header->context);
++    if (header->object) header->virtualFree(header->object, header, header->context);
++    else if (header->free) header->free(header, header->context);
+     else ::operator delete(header);
+ }
+ template<class T> struct JsonAllocator {
+@@ -508,16 +546,35 @@
+     }
+ };
+ 
+-[[noreturn]] void APS5_VABI JsonMemAllocatorPureVirtual() {
++[[noreturn]] void* APS5_VABI JsonMemAllocatorPureAllocate(void*, std::size_t, void*) {
+     throw std::runtime_error("sce::Json::MemAllocator: pure virtual function called");
++}
++[[noreturn]] void APS5_VABI JsonMemAllocatorPureFree(void*, void*, void*) {
++    throw std::runtime_error("sce::Json::MemAllocator: pure virtual function called");
++}
++void APS5_VABI JsonMemAllocatorDestroy(void* self);
++[[noreturn]] void APS5_VABI JsonMemAllocatorDeletingDestroy(void*) {
++    // Allocation ownership for deleting a bare base object is not established.
++    // JSON owns neither the supplied allocator object nor its guest storage.
++    throw std::runtime_error("sce::Json::MemAllocator: base deleting destructor ownership is not implemented");
++}
++void APS5_VABI JsonMemAllocatorNotify(void*, int error, std::size_t size, void*) {
++    // The observed title overrides this method. SDK default behavior is unknown;
++    // retain a diagnostic, and allocation failure still throws if it returns.
++    std::fprintf(stderr, "sce::Json::MemAllocator::notifyError: error=0x%08x size=%zu (HLE base diagnostic)\n",
++        static_cast<unsigned>(error), size);
+ }
+ 
+ void* const JsonMemAllocatorVtable[] = {
+     nullptr, nullptr,
+-    reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual), reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual),
+-    reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual), reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual),
+-    reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual), reinterpret_cast<void*>(&JsonMemAllocatorPureVirtual),
++    reinterpret_cast<void*>(&JsonMemAllocatorDestroy), reinterpret_cast<void*>(&JsonMemAllocatorDeletingDestroy),
++    reinterpret_cast<void*>(&JsonMemAllocatorPureAllocate), reinterpret_cast<void*>(&JsonMemAllocatorPureFree),
++    reinterpret_cast<void*>(&JsonMemAllocatorNotify),
+ };
++void APS5_VABI JsonMemAllocatorDestroy(void* self) {
++    if (!self) throw std::invalid_argument("sce::Json::MemAllocator: null self");
++    *static_cast<void* const**>(self) = &JsonMemAllocatorVtable[2];
++}
+ 
+ Value& ObjectEntry(Object& object, const JsonText& key) {
+     for (auto& pair : *object.items)
+@@ -541,7 +598,8 @@
+ void APS5_VABI _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(
+     InitParameter2* self, const AllocParamRtti* allocator, void* context) {
+     if (!self) throw std::invalid_argument("sce::Json::setAllocatorRtti: null self");
+-    self->allocator = allocator;
++    const auto token = JsonAllocatorToken(allocator, false);
++    self->allocatorToken = token;
+     self->context = context;
+ }
+ void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter2* self, std::size_t size) {
+@@ -552,10 +610,31 @@
+     (void)self;
+     if (!parameter) throw std::invalid_argument("sce::Json::initialize: null InitParameter2");
+     JsonAllocationPolicy policy;
+-    if (parameter->allocator) {
+-        policy = {*parameter->allocator, parameter->context};
+-        if (!policy.callbacks.allocate || !policy.callbacks.deallocate)
+-            throw std::invalid_argument("sce::Json::initialize: allocator needs allocate and deallocate callbacks");
++    const auto token = parameter->allocatorToken;
++    if (token) {
++        const auto address = token & ~JsonVirtualAllocatorTag;
++        if (!address || address % alignof(void*))
++            throw std::invalid_argument("sce::Json::initialize: invalid allocator token");
++        policy.context = parameter->context;
++        if (token & JsonVirtualAllocatorTag) {
++            policy.object = reinterpret_cast<void*>(address);
++            void* const* table = nullptr;
++            std::memcpy(&table, policy.object, sizeof(table));
++            if (!table || reinterpret_cast<std::uintptr_t>(table) % alignof(void*))
++                throw std::invalid_argument("sce::Json::initialize: invalid allocator vtable");
++            // Observed guest table: two destructor slots, allocate, free, notify.
++            // Copy code pointers now; keep this allocator's release snapshot in
++            // every block, even after another initialization or termination.
++            policy.virtualAllocate = reinterpret_cast<JsonVirtualAllocate>(table[2]);
++            policy.virtualFree = reinterpret_cast<JsonVirtualFree>(table[3]);
++            policy.virtualNotify = reinterpret_cast<JsonVirtualNotify>(table[4]);
++            if (!policy.virtualAllocate || !policy.virtualFree || !policy.virtualNotify)
++                throw std::invalid_argument("sce::Json::initialize: missing allocator virtual method");
++        } else {
++            policy.callbacks = *reinterpret_cast<const AllocParamRtti*>(address);
++            if (!policy.callbacks.allocate || !policy.callbacks.deallocate)
++                throw std::invalid_argument("sce::Json::initialize: allocator needs allocate and deallocate callbacks");
++        }
+     }
+     // This implementation parses memory buffers only; do not accept a custom
+     // file buffering promise. Nonzero sizes are retained configuration and are
+@@ -609,11 +688,11 @@
+ }
+ 
+ void APS5_VABI _ZN3sce4Json12MemAllocatorC2Ev(void* self) {
+-    *static_cast<void* const**>(self) = &JsonMemAllocatorVtable[2];
++    JsonMemAllocatorDestroy(self);
+ }
+ 
+ void APS5_VABI _ZN3sce4Json12MemAllocatorD2Ev(void* self) {
+-    *static_cast<void* const**>(self) = &JsonMemAllocatorVtable[2];
++    JsonMemAllocatorDestroy(self);
+ }
+ 
+ void APS5_VABI _ZN3sce4Json6StringC1Ev(String* self) { Construct(*self, JsonText()); }
+@@ -890,10 +969,8 @@
+ 
+ void APS5_VABI _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(InitParameter2* self, void* allocator, void* userData) {
+     if (!self) throw std::invalid_argument("sce::Json::setAllocator: null self");
+-    // MemAllocator is an opaque C++ virtual interface, unlike AllocParamRtti.
+-    // Do not reinterpret it as a callback table or silently ignore it.
+-    if (allocator) throw std::runtime_error("sce::Json::MemAllocator virtual ABI is not implemented; use AllocParamRtti");
+-    self->allocator = nullptr;
++    const auto token = JsonAllocatorToken(allocator, true);
++    self->allocatorToken = token;
+     self->context = userData;
+ }
+ 
+@@ -902,9 +979,8 @@
+     Clear(NodeOf(*self));
+ }
+ 
+-int APS5_VABI _ZN3sce4Json12MemAllocator11notifyErrorEimPv(void) {
+-    NotImplemented_nid_no_patch(__func__);
+-    return 0;
+-}
+-
+-}
++void APS5_VABI _ZN3sce4Json12MemAllocator11notifyErrorEimPv(void* self, int error, std::size_t size, void* context) {
++    JsonMemAllocatorNotify(self, error, size, context);
++}
++
++}
+diff --git a/core/libs/prx/libSceJson2/CMakeLists.txt b/core/libs/prx/libSceJson2/CMakeLists.txt
+--- a/core/libs/prx/libSceJson2/CMakeLists.txt
++++ b/core/libs/prx/libSceJson2/CMakeLists.txt
+@@ -15,6 +15,19 @@
+ endif()
+ 
+ if(BUILD_TESTING)
++    add_test_executable(guest_json2_virtual_allocator_tests ${LIBS_INCLUDE_DIR}/tests/GuestJson2VirtualAllocator.cpp)
++    target_include_directories(guest_json2_virtual_allocator_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(guest_json2_virtual_allocator_tests PRIVATE libSceJson2 libc)
++    configure_windows_unwind(guest_json2_virtual_allocator_tests)
++    add_test(NAME guest_json2_virtual_allocator COMMAND guest_json2_virtual_allocator_tests)
++    set_tests_properties(guest_json2_virtual_allocator PROPERTIES TIMEOUT 20)
++    if(WIN32)
++        set_tests_properties(guest_json2_virtual_allocator PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceJson2>")
++    endif()
++endif()
++
++if(BUILD_TESTING)
+     add_test_executable(guest_json2_initialization_tests ${LIBS_INCLUDE_DIR}/tests/GuestJson2Initialization.cpp)
+     target_include_directories(guest_json2_initialization_tests PRIVATE ${LIBS_INCLUDE_DIR})
+     target_link_libraries(guest_json2_initialization_tests PRIVATE libSceJson2 libc)
+diff --git a/core/libs/tests/GuestJson.cpp b/core/libs/tests/GuestJson.cpp
+--- a/core/libs/tests/GuestJson.cpp
++++ b/core/libs/tests/GuestJson.cpp
+@@ -344,14 +344,9 @@
+     alignas(16) std::uint8_t parameter[40];
+     std::memset(parameter, 0xff, sizeof(parameter));
+     _ZN3sce4Json14InitParameter2C1Ev(parameter);
+-    int allocator = 0;
+     int userData = 0;
+-    bool unsupportedAllocator = false;
+-    try { _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, &allocator, &userData); }
+-    catch (const std::runtime_error& error) {
+-        unsupportedAllocator = std::string(error.what()).find("virtual ABI is not implemented") != std::string::npos;
+-    }
+-    Require(unsupportedAllocator);
++    // Virtual callback dispatch is covered by the explicit guest-ABI fixture.
++    // A null allocator selects the default policy and preserves user storage.
+     _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(parameter, nullptr, &userData);
+     _ZN3sce4Json14InitParameter217setFileBufferSizeEm(parameter, 4096);
+     void* stored[3]{};
+diff --git a/core/libs/tests/GuestJson2VirtualAllocator.cpp b/core/libs/tests/GuestJson2VirtualAllocator.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/GuestJson2VirtualAllocator.cpp
+@@ -0,0 +1,503 @@
++#include "prx/libc/include/general/VabiMacros.hpp"
++#include <array>
++#include <atomic>
++#include <chrono>
++#include <condition_variable>
++#include <cstddef>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <mutex>
++#include <new>
++#include <stdexcept>
++#include <thread>
++#include <unordered_map>
++
++// This is the HLE's bounded parameter representation, not a PS5 class declaration.
++// Its allocator word is deliberately opaque to these tests.
++struct InitParameter {
++    std::uintptr_t opaqueAllocator;
++    void* context;
++    std::size_t fileBuffer;
++};
++static_assert(sizeof(InitParameter) == 24);
++static_assert(offsetof(InitParameter, fileBuffer) == 16);
++struct Value { void* node; };
++struct JsonString { void* text; };
++struct AllocParam {
++    void* (APS5_VABI* allocate)(std::size_t, void*);
++    void (APS5_VABI* release)(void*, void*);
++    void (APS5_VABI* notify)(int, std::size_t, void*);
++};
++extern "C" {
++void APS5_VABI _ZN3sce4Json14InitParameter2C1Ev(InitParameter*);
++void APS5_VABI _ZN3sce4Json14InitParameter2C2Ev(InitParameter*);
++void APS5_VABI _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(InitParameter*, void*, void*);
++void APS5_VABI _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(InitParameter*, const AllocParam*, void*);
++void APS5_VABI _ZN3sce4Json14InitParameter217setFileBufferSizeEm(InitParameter*, std::size_t);
++int APS5_VABI _ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(void*, const InitParameter*);
++int APS5_VABI _ZN3sce4Json11Initializer9terminateEv(void*);
++void APS5_VABI _ZN3sce4Json5ValueC1Ev(Value*);
++void APS5_VABI _ZN3sce4Json5ValueD1Ev(Value*);
++int APS5_VABI _ZN3sce4Json6Parser5parseERNS0_5ValueEPKcm(Value*, const char*, std::size_t);
++void APS5_VABI _ZN3sce4Json6StringC1Ev(JsonString*);
++void APS5_VABI _ZN3sce4Json6StringD1Ev(JsonString*);
++int APS5_VABI _ZN3sce4Json5Value9serializeERNS0_6StringE(Value*, JsonString*);
++const char* APS5_VABI _ZNK3sce4Json6String5c_strEv(const JsonString*);
++}
++
++static void Require(bool good, int line) {
++    if (!good) {
++        std::fprintf(stderr, "JSON2 virtual allocator check failed at line %d\n", line);
++        std::abort();
++    }
++}
++#define CHECK(value) Require((value), __LINE__)
++
++static void Initialize(const InitParameter& parameter) {
++    CHECK(_ZN3sce4Json11Initializer10initializeEPKNS0_14InitParameter2E(nullptr, &parameter) == 0);
++}
++static void Terminate() { CHECK(_ZN3sce4Json11Initializer9terminateEv(nullptr) == 0); }
++template<class F> static void ExpectInvalid(F&& function) {
++    bool invalid = false;
++    try { function(); } catch (const std::invalid_argument&) { invalid = true; }
++    CHECK(invalid);
++}
++
++// A blocked callback is a test failure, not an indefinitely waiting test process.
++class Deadline {
++    std::mutex mutex;
++    std::condition_variable changed;
++    bool finished = false;
++    std::thread watchdog;
++public:
++    Deadline() : watchdog([this] {
++        std::unique_lock lock(mutex);
++        if (!changed.wait_for(lock, std::chrono::seconds(15), [this] { return finished; })) {
++            std::fputs("JSON2 virtual allocator callbacks/policy changes exceeded 15 seconds\n", stderr);
++            std::abort();
++        }
++    }) {}
++    ~Deadline() {
++        { std::lock_guard lock(mutex); finished = true; }
++        changed.notify_one();
++        watchdog.join();
++    }
++};
++
++enum class Action { None, Terminate, Initialize };
++struct Tracker {
++    std::mutex mutex;
++    // The returned pointer is the only pointer the HLE is allowed to release.
++    // The backing pointer differs for the intentionally unaligned allocation.
++    std::unordered_map<void*, void*> live;
++    std::atomic<unsigned> attempts{0}, allocations{0}, releases{0}, notifications{0};
++    std::atomic<std::size_t> lastSize{0};
++    bool deny = false;
++    bool unaligned = false;
++    Action onAllocate = Action::None, onRelease = Action::None, onNotify = Action::None;
++    const InitParameter* replacement = nullptr;
++    std::atomic<bool> allocateActionUsed{false}, releaseActionUsed{false}, notifyActionUsed{false};
++
++    void Trigger(Action action, std::atomic<bool>& used) {
++        if (action == Action::None || used.exchange(true)) return;
++        if (action == Action::Terminate) Terminate();
++        else { CHECK(replacement); Initialize(*replacement); }
++    }
++    void* Allocate(std::size_t size) {
++        CHECK(size > 0);
++        ++attempts;
++        lastSize = size;
++        Trigger(onAllocate, allocateActionUsed);
++        if (deny) return nullptr;
++        CHECK(size <= static_cast<std::size_t>(-1) - alignof(std::max_align_t));
++        void* backing = std::malloc(size + (unaligned ? alignof(std::max_align_t) : 0));
++        CHECK(backing);
++        void* returned = unaligned ? static_cast<void*>(static_cast<char*>(backing) + 1) : backing;
++        { std::lock_guard lock(mutex); CHECK(live.emplace(returned, backing).second); }
++        ++allocations;
++        return returned;
++    }
++    void Release(void* returned) {
++        void* backing;
++        {
++            std::lock_guard lock(mutex);
++            const auto found = live.find(returned);
++            CHECK(found != live.end()); // Detect a payload pointer or the wrong allocator owner.
++            backing = found->second;
++            live.erase(found);
++        }
++        ++releases;
++        std::free(backing);
++        Trigger(onRelease, releaseActionUsed);
++    }
++    void Notify(int error, std::size_t size) {
++        CHECK(error == static_cast<int>(0x80848102));
++        CHECK(size > 0 && size == lastSize.load());
++        ++notifications;
++        Trigger(onNotify, notifyActionUsed);
++    }
++    void Balanced() {
++        CHECK(allocations.load() == releases.load());
++        std::lock_guard lock(mutex);
++        CHECK(live.empty());
++    }
++};
++
++struct UserContext {
++    std::uint64_t magic = 0x837291acd5ef6012ULL;
++    Tracker* tracker;
++    void* expectedThis;
++};
++struct VirtualAllocator {
++    void* const* vtable;
++    std::uint64_t magic = 0x0123456789abcdefULL;
++    Tracker* tracker;
++};
++static_assert(alignof(VirtualAllocator) >= 8);
++static std::atomic<unsigned> destructorCalls{0};
++static Tracker& VirtualOwner(void* self, void* user) {
++    CHECK(self && user && self != user);
++    auto& allocator = *static_cast<VirtualAllocator*>(self);
++    auto& context = *static_cast<UserContext*>(user);
++    CHECK(allocator.magic == 0x0123456789abcdefULL);
++    CHECK(context.magic == 0x837291acd5ef6012ULL);
++    CHECK(context.expectedThis == self && context.tracker == allocator.tracker);
++    return *allocator.tracker;
++}
++static Tracker& RttiOwner(void* user) {
++    CHECK(user);
++    auto& context = *static_cast<UserContext*>(user);
++    CHECK(context.magic == 0x837291acd5ef6012ULL && !context.expectedThis);
++    return *context.tracker;
++}
++static void APS5_VABI PoisonDestructor(void*) { ++destructorCalls; CHECK(false); }
++static void* APS5_VABI VirtualAllocate(void* self, std::size_t size, void* user) {
++    return VirtualOwner(self, user).Allocate(size);
++}
++static void APS5_VABI VirtualRelease(void* self, void* memory, void* user) {
++    VirtualOwner(self, user).Release(memory);
++}
++static void APS5_VABI VirtualNotify(void* self, int error, std::size_t size, void* user) {
++    VirtualOwner(self, user).Notify(error, size);
++}
++static void* APS5_VABI PoisonAllocate(void*, std::size_t, void*) { CHECK(false); return nullptr; }
++static void APS5_VABI PoisonRelease(void*, void*, void*) { CHECK(false); }
++static void APS5_VABI PoisonNotify(void*, int, std::size_t, void*) { CHECK(false); }
++static void* APS5_VABI RttiAllocate(std::size_t size, void* user) { return RttiOwner(user).Allocate(size); }
++static void APS5_VABI RttiRelease(void* memory, void* user) { RttiOwner(user).Release(memory); }
++static void APS5_VABI RttiNotify(int error, std::size_t size, void* user) { RttiOwner(user).Notify(error, size); }
++
++// Explicit guest vtable: host Windows C++ vtable construction would test a
++// different destructor layout and calling convention.
++using Vtable = std::array<void*, 5>;
++static Vtable MakeVtable() {
++    return {reinterpret_cast<void*>(&PoisonDestructor), reinterpret_cast<void*>(&PoisonDestructor),
++            reinterpret_cast<void*>(&VirtualAllocate), reinterpret_cast<void*>(&VirtualRelease),
++            reinterpret_cast<void*>(&VirtualNotify)};
++}
++static Vtable MakePoisonVtable() {
++    return {reinterpret_cast<void*>(&PoisonDestructor), reinterpret_cast<void*>(&PoisonDestructor),
++            reinterpret_cast<void*>(&PoisonAllocate), reinterpret_cast<void*>(&PoisonRelease),
++            reinterpret_cast<void*>(&PoisonNotify)};
++}
++struct Fixture {
++    Tracker tracker;
++    Vtable table = MakeVtable();
++    VirtualAllocator allocator{table.data(), 0x0123456789abcdefULL, &tracker};
++    UserContext context{0x837291acd5ef6012ULL, &tracker, &allocator};
++    InitParameter parameter{};
++    Fixture() {
++        _ZN3sce4Json14InitParameter2C2Ev(&parameter);
++        _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(&parameter, &allocator, &context);
++    }
++};
++
++static Value Construct() {
++    Value value{};
++    _ZN3sce4Json5ValueC1Ev(&value);
++    CHECK(value.node);
++    return value;
++}
++static Value ParseAndSerialize() {
++    Value value = Construct();
++    const char text[] = "{\"property long enough to allocate\":[1,true,{\"nested\":\"abcdefghijklmnopqrstuvwxyz0123456789\"}]}";
++    CHECK(_ZN3sce4Json6Parser5parseERNS0_5ValueEPKcm(&value, text, std::strlen(text)) == 0);
++    JsonString output{};
++    _ZN3sce4Json6StringC1Ev(&output);
++    CHECK(_ZN3sce4Json5Value9serializeERNS0_6StringE(&value, &output) == 0);
++    CHECK(std::strstr(_ZNK3sce4Json6String5c_strEv(&output), "abcdefghijklmnopqrstuvwxyz0123456789"));
++    _ZN3sce4Json6StringD1Ev(&output);
++    return value;
++}
++static void Destroy(Value& value) {
++    _ZN3sce4Json5ValueD1Ev(&value);
++    CHECK(!value.node);
++}
++
++static void ParameterBoundsAndCopies() {
++    Fixture owner;
++    struct Guarded {
++        std::uint64_t before = 0x61728394a5b6c7d8ULL;
++        InitParameter parameter;
++        std::uint64_t after = 0xfedc123456789abcULL;
++    } guarded;
++    static_assert(offsetof(Guarded, after) - offsetof(Guarded, parameter) == 24);
++    const auto CheckBounds = [&] {
++        CHECK(guarded.before == 0x61728394a5b6c7d8ULL && guarded.after == 0xfedc123456789abcULL);
++    };
++    std::memset(&guarded.parameter, 0xff, sizeof(guarded.parameter));
++    _ZN3sce4Json14InitParameter2C1Ev(&guarded.parameter);
++    CheckBounds();
++    CHECK(!guarded.parameter.context && !guarded.parameter.fileBuffer);
++    const std::size_t fullSize = (std::size_t{1} << 40) | 0x201;
++    _ZN3sce4Json14InitParameter217setFileBufferSizeEm(&guarded.parameter, fullSize);
++    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(&guarded.parameter, &owner.allocator, &owner.context);
++    CheckBounds();
++    CHECK(guarded.parameter.fileBuffer == fullSize && guarded.parameter.context == &owner.context);
++    InitParameter copied;
++    std::memcpy(&copied, &guarded.parameter, sizeof(copied));
++    _ZN3sce4Json14InitParameter2C2Ev(&guarded.parameter);
++    CheckBounds();
++    Initialize(copied); // A copied parameter cannot depend on the original address.
++    owner.table = MakePoisonVtable(); // Initialization must copy the callable targets.
++    Value value = Construct();
++    Terminate();
++    Destroy(value);
++    CHECK(owner.tracker.allocations == 1 && owner.tracker.releases == 1);
++    owner.tracker.Balanced();
++}
++
++static void CreatingOwnerSurvivesPolicyChanges() {
++    Fixture first, second;
++    Initialize(first.parameter);
++    Value firstValue = ParseAndSerialize();
++    Initialize(second.parameter);
++    Value secondValue = ParseAndSerialize();
++    CHECK(first.tracker.allocations > 5 && second.tracker.allocations > 5);
++    Terminate();
++    first.table = MakePoisonVtable();
++    second.table = MakePoisonVtable();
++    Destroy(firstValue);
++    Destroy(secondValue);
++    first.tracker.Balanced();
++    second.tracker.Balanced();
++}
++
++static void RttiAndVirtualSwitches() {
++    Fixture virtualOwner;
++    Tracker rttiTracker;
++    UserContext rttiContext{0x837291acd5ef6012ULL, &rttiTracker, nullptr};
++    AllocParam callbacks{RttiAllocate, RttiRelease, RttiNotify};
++    Initialize(virtualOwner.parameter);
++    Value virtualValue = Construct();
++    _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(
++        &virtualOwner.parameter, &callbacks, &rttiContext);
++    Initialize(virtualOwner.parameter);
++    callbacks = {}; // The temporary RTTI table must not be retained either.
++    Value rttiValue = ParseAndSerialize();
++    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(
++        &virtualOwner.parameter, &virtualOwner.allocator, &virtualOwner.context);
++    Initialize(virtualOwner.parameter);
++    Value anotherVirtualValue = Construct();
++    Terminate();
++    virtualOwner.table = MakePoisonVtable();
++    Destroy(virtualValue);
++    Destroy(rttiValue);
++    Destroy(anotherVirtualValue);
++    CHECK(virtualOwner.tracker.allocations == 2 && rttiTracker.allocations > 5);
++    virtualOwner.tracker.Balanced();
++    rttiTracker.Balanced();
++}
++
++static void InvalidConfigurationIsAtomic() {
++    Fixture good, bad;
++    Initialize(good.parameter);
++    const auto CheckGoodPolicy = [&] {
++        const auto previous = good.tracker.allocations.load();
++        Value value = Construct();
++        CHECK(good.tracker.allocations == previous + 1);
++        Destroy(value);
++    };
++    bad.allocator.vtable = nullptr;
++    ExpectInvalid([&] { Initialize(bad.parameter); });
++    CheckGoodPolicy();
++    bad.allocator.vtable = bad.table.data();
++    for (std::size_t slot : {2u, 3u, 4u}) {
++        bad.table = MakeVtable();
++        bad.table[slot] = nullptr;
++        ExpectInvalid([&] { Initialize(bad.parameter); });
++        CheckGoodPolicy();
++    }
++    alignas(8) unsigned char unalignedStorage[sizeof(VirtualAllocator) + 8]{};
++    const auto previousParameter = good.parameter;
++    ExpectInvalid([&] {
++        _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(
++            &good.parameter, unalignedStorage + 1, &good.context);
++    });
++    CHECK(std::memcmp(&previousParameter, &good.parameter, sizeof(good.parameter)) == 0);
++    CheckGoodPolicy();
++    ExpectInvalid([&] {
++        _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(
++            &good.parameter, reinterpret_cast<const AllocParam*>(unalignedStorage + 1), &good.context);
++    });
++    CHECK(std::memcmp(&previousParameter, &good.parameter, sizeof(good.parameter)) == 0);
++    CheckGoodPolicy();
++    Tracker unusedRtti;
++    UserContext context{0x837291acd5ef6012ULL, &unusedRtti, nullptr};
++    AllocParam missingRelease{RttiAllocate, nullptr, RttiNotify};
++    _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(&bad.parameter, &missingRelease, &context);
++    ExpectInvalid([&] { Initialize(bad.parameter); });
++    CheckGoodPolicy();
++    CHECK(bad.tracker.attempts == 0 && unusedRtti.attempts == 0);
++    Terminate();
++    good.tracker.Balanced();
++
++    // Explicit null setters select the native allocator and clear the old kind.
++    _ZN3sce4Json14InitParameter212setAllocatorEPNS0_12MemAllocatorEPv(&good.parameter, nullptr, &good.context);
++    Initialize(good.parameter);
++    const auto attempts = good.tracker.attempts.load();
++    Value nativeValue = Construct();
++    Destroy(nativeValue);
++    CHECK(good.tracker.attempts == attempts);
++    _ZN3sce4Json18InitParameterRtti216setAllocatorRttiEPNS0_14AllocParamRttiEPv(&good.parameter, nullptr, &good.context);
++    Initialize(good.parameter);
++    nativeValue = Construct();
++    Destroy(nativeValue);
++    CHECK(good.tracker.attempts == attempts);
++    Terminate();
++}
++
++static void FailureAndAlignmentCleanup() {
++    Fixture denied;
++    denied.tracker.deny = true;
++    Initialize(denied.parameter);
++    // Also exercise failure dispatch after the source table has changed.
++    denied.table = MakePoisonVtable();
++    Value value{};
++    bool oom = false;
++    try { _ZN3sce4Json5ValueC1Ev(&value); } catch (const std::bad_alloc&) { oom = true; }
++    CHECK(oom && !value.node);
++    CHECK(denied.tracker.attempts == 1 && denied.tracker.notifications == 1);
++    CHECK(denied.tracker.allocations == 0 && denied.tracker.releases == 0);
++    Terminate();
++    denied.tracker.Balanced();
++
++    Fixture unaligned;
++    unaligned.tracker.unaligned = true;
++    Initialize(unaligned.parameter);
++    unaligned.table = MakePoisonVtable();
++    bool invalidAlignment = false;
++    try { _ZN3sce4Json5ValueC1Ev(&value); } catch (const std::runtime_error&) { invalidAlignment = true; }
++    CHECK(invalidAlignment && !value.node);
++    CHECK(unaligned.tracker.attempts == 1 && unaligned.tracker.allocations == 1);
++    CHECK(unaligned.tracker.releases == 1 && unaligned.tracker.notifications == 0);
++    Terminate();
++    unaligned.tracker.Balanced();
++}
++
++static void ReentrantCallbacks() {
++    {
++        Fixture owner;
++        owner.tracker.onAllocate = Action::Terminate;
++        Initialize(owner.parameter);
++        Value value = Construct();
++        CHECK(owner.tracker.allocateActionUsed);
++        const auto attempts = owner.tracker.attempts.load();
++        Value nativeValue = Construct();
++        CHECK(owner.tracker.attempts == attempts);
++        Destroy(value);
++        Destroy(nativeValue);
++        owner.tracker.Balanced();
++    }
++    {
++        Fixture owner, replacement;
++        owner.tracker.onRelease = Action::Initialize;
++        owner.tracker.replacement = &replacement.parameter;
++        Initialize(owner.parameter);
++        Value value = Construct();
++        Destroy(value);
++        CHECK(owner.tracker.releaseActionUsed);
++        Value replacementValue = Construct();
++        CHECK(replacement.tracker.allocations == 1);
++        Terminate();
++        Destroy(replacementValue);
++        owner.tracker.Balanced();
++        replacement.tracker.Balanced();
++    }
++    {
++        Fixture owner, replacement;
++        owner.tracker.deny = true;
++        owner.tracker.onNotify = Action::Initialize;
++        owner.tracker.replacement = &replacement.parameter;
++        Initialize(owner.parameter);
++        Value value{};
++        bool oom = false;
++        try { _ZN3sce4Json5ValueC1Ev(&value); } catch (const std::bad_alloc&) { oom = true; }
++        CHECK(oom && !value.node && owner.tracker.notifyActionUsed && owner.tracker.notifications == 1);
++        Value replacementValue = Construct();
++        CHECK(replacement.tracker.allocations == 1);
++        Terminate();
++        Destroy(replacementValue);
++        owner.tracker.Balanced();
++        replacement.tracker.Balanced();
++    }
++}
++
++static void ConcurrentPolicyChanges() {
++    Fixture first, second;
++    Initialize(first.parameter);
++    std::atomic<bool> begin{false};
++    std::atomic<unsigned> outstanding{0};
++    std::atomic<bool> switched{false};
++    const auto AwaitStart = [&] { while (!begin.load()) std::this_thread::yield(); };
++    std::thread publisher([&] {
++        AwaitStart();
++        // Both workers own allocations from A before B is published. This
++        // guarantees a concurrent ownership transition even on a serial host.
++        while (outstanding.load() != 2) std::this_thread::yield();
++        Initialize(second.parameter);
++        switched = true;
++        for (unsigned i = 0; i < 256; ++i) {
++            Initialize((i & 1) ? first.parameter : second.parameter);
++            if ((i % 3) == 0) Terminate();
++            std::this_thread::yield();
++        }
++    });
++    const auto Work = [&] {
++        AwaitStart();
++        Value original = Construct();
++        ++outstanding;
++        while (!switched.load()) std::this_thread::yield();
++        Destroy(original);
++        for (unsigned i = 0; i < 128; ++i) {
++            Value value = Construct();
++            std::this_thread::yield();
++            Destroy(value);
++        }
++    };
++    std::thread worker1(Work), worker2(Work);
++    begin = true;
++    publisher.join();
++    worker1.join();
++    worker2.join();
++    Terminate();
++    CHECK(first.tracker.allocations >= 2);
++    first.tracker.Balanced();
++    second.tracker.Balanced();
++}
++
++int main() {
++    Deadline deadline;
++    Terminate();
++    ParameterBoundsAndCopies();
++    CreatingOwnerSurvivesPolicyChanges();
++    RttiAndVirtualSwitches();
++    InvalidConfigurationIsAtomic();
++    FailureAndAlignmentCleanup();
++    ReentrantCallbacks();
++    ConcurrentPolicyChanges();
++    CHECK(destructorCalls == 0);
++    std::puts("PASS JSON2 virtual SysV slots, bounded parameters, owner lifetime, RTTI switches, failures and reentrant/concurrent policy changes");
++}
+diff --git a/docs/dev/TechnicalDebt.md b/docs/dev/TechnicalDebt.md
+--- a/docs/dev/TechnicalDebt.md
++++ b/docs/dev/TechnicalDebt.md
+@@ -219,7 +219,7 @@
+ - [Shader registration](../../core/libs/prx/libSceAgcDriver/Execution/src/Driver/Shaders/ShaderRegistry.cpp) (libSceAgcDriver) - a shader header is accepted at any address: PPSA26344 passes headers 4 and 1 bytes past an 8-byte boundary; whether the console refuses an alignment is unknown
+ - [sceNgs2VoiceControl sampler filter](../../core/libs/prx/libSceNgs2.native/src/Voice.cpp) (libSceNgs2.native) - param `0x1000000a`, its layout and meaning follow KytyPS5 only: location 1 type 1 is an RBJ low-pass biquad at the system sample rate after resampling, scaled by `level`, a set `channel_mask` bit bypasses that channel, type 0 turns the filter off. Other locations and types throw. The voice keeps playing a filter tail after its last block until the history is zero, with outputs below 1e-20 flushed to zero (a KytyPS5 choice); the console's tail length is unknown
+ - [sceRtcGetDosTime, sceRtcSetDosTime](../../core/libs/prx/libSceRtc/Export.cpp) (libSceRtc) - bit layout from shadPS4 (PS4, the standard FAT date/time). A year outside 1980-2107 makes `GetDosTime` return `INVALID_YEAR` after writing 0 for an earlier one and `0xff9fbf7d` (2107-12-31 23:59:58, the largest encodable time) for a later one, and `SetDosTime` decodes the year as the unsigned 7-bit FAT field (1980-2107) without validating the fields, as the disassembly-derived [fpPS4](https://github.com/red-prig/fpPS4) reimplementation of the PS4 library does; not confirmed on a PS5 title, and shadPS4 instead masks out-of-range years into the packed value and sign-extends the 16-bit date
+-- [sce::Json::InitParameter2](../../core/libs/prx/libSceJson2/Export.cpp) (libSceJson2) - layout inferred, not known: assumed to start with the allocator, its user data and the file buffer size, in that order, and the whole struct is assumed to fit in 40 bytes; `Initializer::initialize(InitParameter2)` ignores them as `initialize(InitParameter)` does
++- [sce::Json::InitParameter2](../../core/libs/prx/libSceJson2/Export.cpp) (libSceJson2) - SDK layout remains unknown. The observed caller reserves a 40-byte span and accesses the parameter only through imported methods. HLE retains its 24-byte API-owned representation; explicit virtual/RTTI setters select distinct policies in an alignment bit of the allocator token. Virtual allocation/free/notify use guest ABI slots 2/3/4 and preserve creating object/context/release code per block. The caller must keep its allocator object and code alive until all its storage is released. Default base notification is diagnostic only, and base deleting-destructor ownership is explicitly unsupported. No file-parser API is implemented; fileBufferSize is retained configuration, not a buffering promise.
+ - [sceAjmBatchJobSetResampleParameters, sceAjmBatchJobGetResampleInfo](../../core/libs/prx/libSceAjm.native/src/Ajm.cpp) (libSceAjm) - the ratio is taken as decoded samples per output sample and num_samples as the decoded samples the resampler holds, both inferred from FMOD (Hades II); the console's interpolation is unknown, a 4-point Catmull-Rom is used. The flags argument is ignored, as in shadPS4 and Kyty
+ - [scePlayerReviewDialogOpen, scePlayerReviewDialogGetResult](../../core/libs/prx/libSceCdlgPlayerReview/Export.cpp) (libSceCdlgPlayerReview) - the PS5-only dialog has no public reference: the parameter is not read and the result is assumed to start with the 32-bit common dialog result, as `sceWebBrowserDialogGetResult` assumes
+ 

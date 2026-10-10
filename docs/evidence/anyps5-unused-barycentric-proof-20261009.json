@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "milestone": "EXEC-aware proof for unused barycentric inputs in no-VINTRP shaders",
+  "upstreamPin": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "patch": "0004-no-vintrp-exec-aware-input-liveness.patch",
+  "patchSha256": "cf21741782846239983ec6e0b7e07e4d708aff8a61eeedb67288f618941f1623",
+  "headerSha256": "8c1fa00f34387990f70765272cda76fb92a7998fb59f196bfc5cc9884aa8b975",
+  "sourcePromoted": true,
+  "compilerReceiptSha256": "d670fc204bc05c98a9a1d8ff35eccce01876b8900865fda31674cf7ae872d0a7",
+  "syntheticCasesPassed": 30,
+  "exactPrivateRequestStagedPassed": true,
+  "finalSpirvAndBindingsEquivalent": true,
+  "originalP1P2BodyUnchanged": true,
+  "guardRemovalControlExpectedExit": 1,
+  "semanticReceiptSha256": "d636d5b95337fe65710593ef04a8ec5ab49c3a17ed7cfc66aab270dd8eb2fd26",
+  "semanticRuns": [
+    {
+      "name": "native-arm64",
+      "exitCode": 0,
+      "acceptedPrograms": 256,
+      "rejectedPrograms": 256,
+      "rawInputComparisons": 368640,
+      "acceptedProgramsWithDependency": 0
+    },
+    {
+      "name": "native-arm64-sanitized",
+      "exitCode": 0,
+      "acceptedPrograms": 256,
+      "rejectedPrograms": 256,
+      "rawInputComparisons": 368640,
+      "acceptedProgramsWithDependency": 0
+    }
+  ],
+  "mutationControlDetectedConcreteDependency": true,
+  "combinedProductionHlePackageBuilt": false,
+  "deviceActions": false,
+  "physicalGpuRenderingQualified": false,
+  "gameplayQualified": false,
+  "githubActions": false
+}

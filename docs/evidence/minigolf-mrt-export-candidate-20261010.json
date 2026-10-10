@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "date": "2026-10-10",
+  "titleId": "PPSA03647",
+  "status": "isolated_mrt_export_candidate_cpu_and_macos_source_libraries_passed_windows_game_and_ipad_pending",
+  "candidate": {
+    "headerSha256": "e336cb81fc2f240d5e00e0d0abd0b7f8f6dc1a4e1782562cc15e1ca1c6c78136",
+    "fixtureSha256": "574b94082ad197d010b9a0f34fc3793b909d1bf04b1feac5c520bf9690fd0f6f",
+    "retainedPublicTestBodiesUnchanged": 234,
+    "newCases": 68,
+    "newAccept": 28,
+    "newReject": 40,
+    "publicCases": 302,
+    "preciseEffects": "Enabled compressed packed pairs and plain color channels for MRT0 through MRT7; exact raw/decoded metadata agreement",
+    "unchanged": [
+      "EXEC transfer",
+      "CFG proof",
+      "whole-quad handling",
+      "interpolation guards",
+      "shader translation",
+      "depth-export restrictions"
+    ]
+  },
+  "native": {
+    "receiptSha256": "5a1a5f8fcfde3a1d48c152d36ef7bb5de236ce67d169a7c83bf3f2da40936733",
+    "distinctNamespaceCasesPerMode": 239,
+    "modes": [
+      "optimized",
+      "ASan/UBSan"
+    ],
+    "negativeMutationsDetected": 3,
+    "privateInstructions": 14,
+    "privateCfgBlocks": 1,
+    "proofPassed": true,
+    "fullFixtureSyntaxOnly": 302
+  },
+  "actualPrx": {
+    "receiptSha256": "f3f592ccdcfa9936504c579f03dad7b1a4ab2bc1295679bbf6adf48b3318ad49",
+    "publicCasesPassed": 302,
+    "completePrivateRequestsMaterialized": 7,
+    "retainedSpirvAndLayoutsByteIdentical": 6,
+    "commands": 37,
+    "resultScopes": 17,
+    "inputs": 2859,
+    "artifacts": 91,
+    "ownedWinePrefixesClosed": 2,
+    "rawDriverSha256": "9fc65bcc81e1a417d35cc3f60c81df841af3272b1ed75f6ce4eb47d556b23588",
+    "patchedDriverSha256": "56f3c73776e991c4f79ef6f58b453a13227ad5799b8ee5cf4ebf6ab76a9c78c0",
+    "exportSymbols": 3692,
+    "rawAndPatchedMapsMatchRespectiveBaselines": true,
+    "nativeConsumers": 62,
+    "providers": 50,
+    "guestNidsResolved": 3186,
+    "historicalSerializerCacheIdentity": true,
+    "privateImportedFixtureReplayPerformed": false
+  },
+  "seventhSpirv": {
+    "sha256": "c31d0736a122dafcf6b1b410a71ed7789638f56b32c2d16bea8f23bb5b79bc8c",
+    "bytes": 12152,
+    "bindingLayoutSha256": "d0bb54f913221eb21088d4d5303e8211149b6e5a59a3913b2093a16ba1646381"
+  },
+  "metalSourcePreflight": {
+    "receiptSha256": "af6709d9da78da21dc7f572742b1884dd84fc07a70451f168f720e5c162cf961",
+    "inputs": 126,
+    "artifacts": 10,
+    "commands": 5,
+    "device": "Apple M3 Pro",
+    "mslVersion": "2.4",
+    "fastMathEnabled": false,
+    "variants": [
+      {
+        "argumentBuffers": false,
+        "bytes": 6586,
+        "sha256": "0ce7dfc675e6657bfeb84bb776887a5e4296ea311f37362cc40460f08474114e",
+        "sourceLibraryCreated": true
+      },
+      {
+        "argumentBuffers": true,
+        "bytes": 6857,
+        "sha256": "eb90edce56a674a9798724f438e6f250c35ffa11ca629566b68e02abe6b94dcc",
+        "sourceLibraryCreated": true
+      }
+    ],
+    "entryPoint": "main0",
+    "pipelineCreated": false,
+    "gpuWorkSubmitted": false,
+    "iphoneosCompilationQualified": false
+  },
+  "nativeWindowsGameComparison": "pending",
+  "fullProductionRebuild": false,
+  "deviceExecuted": false,
+  "gameRenderingQualified": false,
+  "playable": false,
+  "githubActions": false,
+  "sourceIntegration": {
+    "canonicalSourceIntegrated": true,
+    "activePatch": "0004-no-vintrp-exec-aware-input-liveness.patch",
+    "patchSha256": "6809054ed17af643eef1b718ea221c7adcd688baa579b535279b88ad7d03b855",
+    "fullProductionRebuildPerformed": false,
+    "priorFullBuildBelongsToEarlierSnapshot": true
+  }
+}

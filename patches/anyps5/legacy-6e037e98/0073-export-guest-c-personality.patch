@@ -1,0 +1,230 @@
+diff --git a/core/libs/prx/libc/CMakeLists.txt b/core/libs/prx/libc/CMakeLists.txt
+--- a/core/libs/prx/libc/CMakeLists.txt
++++ b/core/libs/prx/libc/CMakeLists.txt
+@@ -258,6 +258,16 @@
+         set_tests_properties(guest_wcsrtombs_s PROPERTIES ENVIRONMENT_MODIFICATION
+             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
+     endif()
++    add_test_executable(exception_personality_tests ${LIBS_INCLUDE_DIR}/tests/ExceptionPersonality.cpp)
++    target_include_directories(exception_personality_tests PRIVATE ${LIBS_INCLUDE_DIR})
++    target_link_libraries(exception_personality_tests PRIVATE libc)
++    configure_windows_unwind(exception_personality_tests)
++    add_test(NAME exception_personality COMMAND exception_personality_tests)
++    set_tests_properties(exception_personality PROPERTIES TIMEOUT 20)
++    if(WIN32)
++        set_tests_properties(exception_personality PROPERTIES ENVIRONMENT_MODIFICATION
++            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
++    endif()
+     if(UNIX)
+         add_test_executable(exception_runtime_tests ${LIBS_INCLUDE_DIR}/tests/ExceptionRuntime.cpp)
+         target_include_directories(exception_runtime_tests PRIVATE ${LIBS_INCLUDE_DIR})
+diff --git a/core/libs/prx/libc/include/exceptions/Unwind.hpp b/core/libs/prx/libc/include/exceptions/Unwind.hpp
+--- a/core/libs/prx/libc/include/exceptions/Unwind.hpp
++++ b/core/libs/prx/libc/include/exceptions/Unwind.hpp
+@@ -99,6 +99,7 @@
+ 
+ extern "C" {
+     _Unwind_Reason_Code APS5_VABI __gxx_personality_v0_nid_postfix(int, _Unwind_Action, std::uint64_t, _Unwind_Exception*, _Unwind_Context*);
++    _Unwind_Reason_Code APS5_VABI __gcc_personality_v0_nid_postfix(int, _Unwind_Action, std::uint64_t, _Unwind_Exception*, _Unwind_Context*);
+     _Unwind_Reason_Code APS5_VABI _Unwind_RaiseException_nid_postfix(_Unwind_Exception*);
+     [[noreturn]] void APS5_VABI _Unwind_Resume_nid_postfix(_Unwind_Exception*);
+     _Unwind_Reason_Code APS5_VABI _Unwind_Resume_or_Rethrow_nid_postfix(_Unwind_Exception*);
+diff --git a/core/libs/prx/libc/src/exception/Unwind.cpp b/core/libs/prx/libc/src/exception/Unwind.cpp
+--- a/core/libs/prx/libc/src/exception/Unwind.cpp
++++ b/core/libs/prx/libc/src/exception/Unwind.cpp
+@@ -25,8 +25,8 @@
+ #endif
+     if (personality == reinterpret_cast<Word>(__gxx_personality_v0_nid_postfix) || personality == reinterpret_cast<Word>(__gxx_personality_v0))
+         return __gxx_personality_v0_nid_postfix(1, actions, exception->exception_class, exception, context);
+-    if (personality == reinterpret_cast<Word>(__gcc_personality_v0))
+-        return __gcc_personality_v0(1, actions, exception->exception_class, exception, context);
++    if (personality == reinterpret_cast<Word>(__gcc_personality_v0_nid_postfix) || personality == reinterpret_cast<Word>(__gcc_personality_v0))
++        return __gcc_personality_v0_nid_postfix(1, actions, exception->exception_class, exception, context);
+     return (actions & _UA_SEARCH_PHASE) ? _URC_FATAL_PHASE1_ERROR : _URC_FATAL_PHASE2_ERROR;
+ }
+ struct Lookup { Word pc; const Byte* fde {}; Word text {}; Word data {}; };
+diff --git a/core/libs/prx/libc/src/exception/Personality.cpp b/core/libs/prx/libc/src/exception/Personality.cpp
+--- a/core/libs/prx/libc/src/exception/Personality.cpp
++++ b/core/libs/prx/libc/src/exception/Personality.cpp
+@@ -78,7 +78,7 @@
+     return __gxx_personality_v0_nid_postfix(version, actions, exceptionClass, exception, context);
+ }
+ 
+-extern "C" _Unwind_Reason_Code __gcc_personality_v0(
++extern "C" _Unwind_Reason_Code APS5_VABI __gcc_personality_v0_nid_postfix(
+     int version, _Unwind_Action actions, std::uint64_t,
+     _Unwind_Exception* exception, _Unwind_Context* context
+ ) {
+@@ -107,3 +107,10 @@
+     }
+     return _URC_CONTINUE_UNWIND;
+ }
++
++extern "C" _Unwind_Reason_Code __gcc_personality_v0(
++    int version, _Unwind_Action actions, std::uint64_t exceptionClass,
++    _Unwind_Exception* exception, _Unwind_Context* context
++) {
++    return __gcc_personality_v0_nid_postfix(version, actions, exceptionClass, exception, context);
++}
+diff --git a/core/libs/tests/ExceptionPersonality.cpp b/core/libs/tests/ExceptionPersonality.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/libs/tests/ExceptionPersonality.cpp
+@@ -0,0 +1,157 @@
++#include "prx/libc/include/exceptions/Unwind.hpp"
++#include <array>
++#include <cstdio>
++#include <cstdlib>
++#ifdef _WIN32
++#include <windows.h>
++#endif
++
++namespace LibcUnwind {
++_Unwind_Reason_Code CallPersonality(Word personality, _Unwind_Action actions, _Unwind_Exception* exception, _Unwind_Context* context);
++}
++
++extern "C" _Unwind_Reason_Code __gcc_personality_v0(int, _Unwind_Action, std::uint64_t, _Unwind_Exception*, _Unwind_Context*);
++
++static void Require(bool value) { if (!value) std::abort(); }
++
++static constexpr unsigned char cleanupTable[] = {0xff, 0xff, 0x01, 0x04, 0x10, 0x20, 0x40, 0x00};
++static constexpr unsigned char noLandingTable[] = {0xff, 0xff, 0x01, 0x04, 0x10, 0x20, 0x00, 0x00};
++static constexpr std::uintptr_t region = 0x10000;
++
++struct Frame {
++    _Unwind_Context context {};
++    _Unwind_Exception exception {};
++
++    Frame(const unsigned char* table, std::uintptr_t resume, bool signalFrame = false) {
++        for (unsigned i = 0; i < 17; ++i) context.registers[i] = 0xa000 + i;
++        context.region = region;
++        context.lsda = reinterpret_cast<std::uintptr_t>(table);
++        context.registers[16] = region + resume;
++        context.signalFrame = signalFrame;
++        exception.exception_class = 0x434c45414e555000;
++    }
++};
++
++static _Unwind_Reason_Code Direct(Frame& frame, _Unwind_Action actions, int version = 1) {
++    return __gcc_personality_v0_nid_postfix(version, actions, frame.exception.exception_class, &frame.exception, &frame.context);
++}
++
++static _Unwind_Reason_Code Routed(Frame& frame, _Unwind_Action actions, std::uintptr_t personality) {
++    return LibcUnwind::CallPersonality(personality, actions, &frame.exception, &frame.context);
++}
++
++static void RequireInstalled(Frame& frame) {
++    Require(frame.context.registers[0] == reinterpret_cast<std::uintptr_t>(&frame.exception));
++    Require(frame.context.registers[1] == 0);
++    Require(frame.context.registers[16] == region + 0x40);
++    for (unsigned i = 2; i < 16; ++i) Require(frame.context.registers[i] == 0xa000 + i);
++}
++
++static void CheckRoute(std::uintptr_t personality) {
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(Routed(frame, _UA_CLEANUP_PHASE, personality) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(Routed(frame, _UA_CLEANUP_PHASE | _UA_FORCE_UNWIND, personality) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(Routed(frame, _UA_SEARCH_PHASE, personality) == _URC_CONTINUE_UNWIND);
++        Require(frame.context.registers[0] == 0xa000 && frame.context.registers[16] == region + 0x18);
++    }
++}
++
++int main(int argc, char** argv) {
++#ifndef _WIN32
++    (void)argc;
++    (void)argv;
++#endif
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    CheckRoute(reinterpret_cast<std::uintptr_t>(__gcc_personality_v0_nid_postfix));
++    CheckRoute(reinterpret_cast<std::uintptr_t>(__gcc_personality_v0));
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(__gcc_personality_v0(1, _UA_CLEANUP_PHASE, frame.exception.exception_class, &frame.exception, &frame.context) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    for (std::uintptr_t resume : {0x10, 0x31}) {
++        Frame frame(cleanupTable, resume);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_CONTINUE_UNWIND);
++        Require(frame.context.registers[0] == 0xa000 && frame.context.registers[16] == region + resume);
++    }
++    {
++        Frame frame(cleanupTable, 0x30);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    {
++        Frame frame(cleanupTable, 0x10, true);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_INSTALL_CONTEXT);
++        RequireInstalled(frame);
++    }
++    {
++        Frame frame(cleanupTable, 0x30, true);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_CONTINUE_UNWIND);
++    }
++    for (const unsigned char* table : {noLandingTable, static_cast<const unsigned char*>(nullptr)}) {
++        Frame frame(table, 0x18);
++        Require(Direct(frame, _UA_CLEANUP_PHASE) == _URC_CONTINUE_UNWIND);
++        Require(frame.context.registers[0] == 0xa000 && frame.context.registers[16] == region + 0x18);
++    }
++    {
++        Frame frame(cleanupTable, 0x18);
++        Require(Direct(frame, _UA_SEARCH_PHASE) == _URC_CONTINUE_UNWIND);
++        Require(Direct(frame, _UA_CLEANUP_PHASE, 2) == _URC_FATAL_PHASE1_ERROR);
++    }
++    {
++        std::array<unsigned char, 16> unknown {};
++        Frame frame(cleanupTable, 0x18);
++        Require(Routed(frame, _UA_SEARCH_PHASE, reinterpret_cast<std::uintptr_t>(unknown.data())) == _URC_FATAL_PHASE1_ERROR);
++        Require(Routed(frame, _UA_CLEANUP_PHASE, reinterpret_cast<std::uintptr_t>(unknown.data())) == _URC_FATAL_PHASE2_ERROR);
++    }
++#ifdef _WIN32
++    const HMODULE module = GetModuleHandleA("libc.prx");
++    Require(module != nullptr);
++    for (const char* name : {"__gcc_personality_v0_nid_postfix", "__gcc_personality_v0"}) {
++        const auto personality = reinterpret_cast<std::uintptr_t>(GetProcAddress(module, name));
++        Require(personality != 0);
++        CheckRoute(personality);
++        struct Thunk { unsigned char code[6]; std::uintptr_t target; } thunk {{0xff, 0x25, 0, 0, 0, 0}, personality};
++        const auto displacement = static_cast<std::int32_t>(offsetof(Thunk, target) - 6);
++        std::memcpy(thunk.code + 2, &displacement, sizeof(displacement));
++        CheckRoute(reinterpret_cast<std::uintptr_t>(&thunk));
++    }
++    if (argc == 2) {
++        const HMODULE patched = LoadLibraryA(argv[1]);
++        Require(patched != nullptr);
++        using GuestPersonality = _Unwind_Reason_Code (APS5_VABI *)(int, _Unwind_Action, std::uint64_t, _Unwind_Exception*, _Unwind_Context*);
++        const auto personality = reinterpret_cast<GuestPersonality>(GetProcAddress(patched, "FW2QeoYK7-c"));
++        if (personality == nullptr) {
++            FreeLibrary(patched);
++            std::fputs("NID-patched guest C personality export missing\n", stderr);
++            return 37;
++        }
++        Frame frame(cleanupTable, 0x18);
++        const auto result = personality(1, _UA_CLEANUP_PHASE, frame.exception.exception_class, &frame.exception, &frame.context);
++        if (result != _URC_INSTALL_CONTEXT) {
++            FreeLibrary(patched);
++            std::fprintf(stderr, "NID-patched guest C personality cleanup failed: %d\n", result);
++            return 38;
++        }
++        RequireInstalled(frame);
++        Require(personality(1, _UA_SEARCH_PHASE, frame.exception.exception_class, &frame.exception, &frame.context) == _URC_CONTINUE_UNWIND);
++        Require(FreeLibrary(patched) != 0);
++        std::puts("NID-patched guest C personality export: SysV ABI and cleanup passed");
++    }
++#endif
++    std::puts("Guest C personality: cleanup, dispatch, host ABI, Windows import thunks, boundaries and registers passed");
++    return 0;
++}

@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "scope": "Native Windows reference only; no iPad gameplay acceptance",
+  "qualification_sha256": "2573174ffc5d8854b10577043ef34dbfc37a2d7b2de36ed78271610281fac3d0",
+  "status": "native_windows_prerequisites_passed_game_failed_shader_validation",
+  "title_id": "PPSA03647",
+  "upstream": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "archive_sha256": "a76aec3e4d79ece6c02986241c01cd29e2eb8042e9226722ffc318e7f304e4af",
+  "manifest_sha256": "2bc6b6613fd2e7676983484cca5c23becdb1627bb28e8494c88994fe815879fd",
+  "launch_script_sha256": "b14d7662108d139d914cf33cc2e84643994368b50b8686eb1a53b215ea23f6d1",
+  "native_cpu_tests_passed": 4,
+  "native_avx_deliveries": 553,
+  "avx_vectors_each_mode": 64,
+  "avx_errors": 0,
+  "native_cpu_internal_skips": [],
+  "physical_gpu": "AMD Radeon 780M Graphics",
+  "physical_gpu_readbacks": [
+    "bda_8bit_readback",
+    "bc1_sample_readback"
+  ],
+  "native_windows_profile_identical_to_ipad_constants": true,
+  "game_started": true,
+  "game_seconds": 93.5820318,
+  "game_exit_hex": "0xc0000409",
+  "first_fatal": "ShaderRecompiler::Recompile fixed-function interpolation: unmodified center I/J and complete P1/P2 on proven entry/discard path required (pc=56)",
+  "swapchain_extent": [
+    837,
+    471
+  ],
+  "swapchain_requested_images": 3,
+  "swapchain_actual_images": 3,
+  "gpu_presentation_frame_rate_not_qualified": true,
+  "save_memory_initialization": {
+    "get_missing": "0x809f0012",
+    "setup_bytes": 33554432,
+    "setup_result": "0x00000000",
+    "get_after_setup": "0x00000000"
+  },
+  "foreground_observation": "Game was not foreground at checks20s and80s; no PNG captured. This does not prove it was never visible/foreground.",
+  "visual_gameplay": "unverified",
+  "device_acceptance": false,
+  "github_actions": false,
+  "iPad_actions": false,
+  "returned_game_assets": false,
+  "security_network_config_changes": false,
+  "own_game_tree_stopped": true,
+  "own_prerequisite_trees_stopped": true,
+  "own_parent_process_stopped": true,
+  "created_utc": "2026-10-09T13:53:47.829872+00:00",
+  "shader_diagnostic_complete": false,
+  "shader_diagnostic_limit": "The existing libc exception logger truncated the serialized request at 1023 characters; no missing bytes were reconstructed.",
+  "returned_log_digests": {
+    "game.stderr.log": {
+      "sha256": "fff8def0baf2e873efb8ff14c5fc9d435980540f013a4807a21b0826dbd7fd83",
+      "bytes": 9769
+    },
+    "game.stdout.log": {
+      "sha256": "fc235a3986c3760d8f97d8210d6bb1da02ecba574aae0c4a69490e0f7061f245",
+      "bytes": 18006
+    },
+    "physical-gpu.stdout.log": {
+      "sha256": "0a55be41f0246233d22dd863fea13beb31789fdec0ef769d13020524d1929fe2",
+      "bytes": 3283
+    },
+    "report.json": {
+      "sha256": "9054d7b7aa69143a08c97ac3ce0b136de13e1630a9b305b6bc55d7bd4019599b",
+      "bytes": 21852
+    }
+  }
+}

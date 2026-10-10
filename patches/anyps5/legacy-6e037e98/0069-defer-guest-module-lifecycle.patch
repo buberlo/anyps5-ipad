@@ -1,0 +1,755 @@
+diff --git a/core/relinker/CMakeLists.txt b/core/relinker/CMakeLists.txt
+--- a/core/relinker/CMakeLists.txt
++++ b/core/relinker/CMakeLists.txt
+@@ -16,6 +16,7 @@
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/linux/LinuxGuestModuleWriter.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/windows/WindowsGuestStartup.cpp
++        ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/windows/WindowsGuestLifecycleBuilder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/relinker/src/guest/GuestImageReader.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/relinker/src/guest/GuestModuleBuilder.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/windows/WindowsPePatcher.cpp
+@@ -86,6 +87,8 @@
+ )
+ 
+ if(WIN32)
++    add_test_executable(guest_lifecycle_wrapper_tests EXCLUDE_FROM_ALL
++        ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/tests/WindowsGuestLifecycleTests.cpp)
+     add_test_executable(windows_dependency_diagnostics_tests EXCLUDE_FROM_ALL
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/tests/WindowsDependencyDiagnosticsTests.cpp
+         ${CMAKE_CURRENT_SOURCE_DIR}/elfpatcher/src/windows/WindowsDependencyStubBuilder.cpp
+@@ -255,6 +258,8 @@
+         add_test(NAME guest_lifecycle_ownership COMMAND ${Python3_EXECUTABLE}
+             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_lifecycle_ownership.py
+             $<TARGET_FILE:relinker> $<TARGET_FILE:guest_lifecycle_replacement_fixture>)
++        add_test(NAME guest_deferred_lifecycle COMMAND ${Python3_EXECUTABLE}
++            ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_deferred_lifecycle.py $<TARGET_FILE:relinker>)
+         add_test(NAME guest_absolute_symbols COMMAND ${Python3_EXECUTABLE}
+             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_guest_absolute_symbols.py $<TARGET_FILE:relinker>)
+         add_test(NAME windows_import_modules COMMAND ${Python3_EXECUTABLE}
+diff --git a/core/relinker/cli/include/Cli.hpp b/core/relinker/cli/include/Cli.hpp
+--- a/core/relinker/cli/include/Cli.hpp
++++ b/core/relinker/cli/include/Cli.hpp
+@@ -22,6 +22,7 @@
+     std::string outputPath;
+     std::string runPath = "$ORIGIN/libs";
+     std::set<std::string> excludedSceModules;
++    std::set<std::string> deferredGuestLifecycles;
+ };
+ 
+ Args ParseArgs(int argc, char* argv[]);
+diff --git a/core/relinker/cli/src/CliArgs.cpp b/core/relinker/cli/src/CliArgs.cpp
+--- a/core/relinker/cli/src/CliArgs.cpp
++++ b/core/relinker/cli/src/CliArgs.cpp
+@@ -19,6 +19,14 @@
+             if (i + 1 >= argc)
+                 throw std::runtime_error("--exclude-sce-module requires a file name");
+             args.excludedSceModules.insert(argv[++i]);
++        } else if (arg == "--defer-guest-lifecycle") {
++            if (i + 1 >= argc) throw std::runtime_error("--defer-guest-lifecycle requires a file name");
++            const std::string name = argv[++i];
++            if (name.empty() || name == "." || name == ".." || name.starts_with("-") ||
++                name.find_first_of("/\\:$*?\r\n") != std::string::npos)
++                throw std::runtime_error("--defer-guest-lifecycle requires an exact file name without a path");
++            if (!args.deferredGuestLifecycles.insert(name).second)
++                throw std::runtime_error("Duplicate deferred guest lifecycle: " + name);
+         } else if (arg == "--to-intel") {
+             args.toIntel = true;
+         } else if (arg.rfind("unused-filter=", 0) == 0) {
+@@ -56,6 +64,10 @@
+ 
+     if (args.skipSceModule && !args.excludedSceModules.empty())
+         throw std::runtime_error("--exclude-sce-module conflicts with --skip-sce-module");
++    if (!args.deferredGuestLifecycles.empty() && (!args.toWindows || args.skipSceModule))
++        throw std::runtime_error("--defer-guest-lifecycle requires --windows and guest module processing");
++    for (const auto& name : args.deferredGuestLifecycles)
++        if (args.excludedSceModules.contains(name)) throw std::runtime_error("Guest module cannot be excluded and deferred: " + name);
+ 
+     if (args.windowsDiagnostics && !args.toWindows)
+         throw std::runtime_error("--windows-diagnostics requires --windows");
+@@ -65,7 +77,7 @@
+ 
+     if (args.inputPath.empty() || args.outputPath.empty())
+         throw std::runtime_error(
+-            "Usage: relinker [--windows] [--windows-diagnostics] [--windows-gui] [--skip-syscall-check] [--skip-sce-module] [--exclude-sce-module <file>]... [--to-intel] [unused-filter=0|1|2] [--registry] [--rpath <path>] [--lazy-binding] [--autorun] <input.elf> <output.elf>\n"
++            "Usage: relinker [--windows] [--windows-diagnostics] [--windows-gui] [--skip-syscall-check] [--skip-sce-module] [--exclude-sce-module <file>]... [--defer-guest-lifecycle <file>]... [--to-intel] [unused-filter=0|1|2] [--registry] [--rpath <path>] [--lazy-binding] [--autorun] <input.elf> <output.elf>\n"
+             "Example: relinker input.elf output.elf"
+         );
+ 
+diff --git a/core/relinker/domain/include/domain/GuestRuntime.hpp b/core/relinker/domain/include/domain/GuestRuntime.hpp
+--- a/core/relinker/domain/include/domain/GuestRuntime.hpp
++++ b/core/relinker/domain/include/domain/GuestRuntime.hpp
+@@ -22,6 +22,9 @@
+     std::vector<std::uint32_t> FiniArrayRvas;
+     std::uint32_t InitRva = 0;
+     std::uint32_t FiniRva = 0;
++    std::uint32_t StartRva = 0;
++    std::uint32_t StopRva = 0;
++    bool DeferredLifecycle = false;
+     bool UsePlatformTlsResolver = true;
+     std::vector<std::string> Names;
+ };
+diff --git a/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestLifecycleBuilder.hpp b/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestLifecycleBuilder.hpp
+new file mode 100644
+--- /dev/null
++++ b/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestLifecycleBuilder.hpp
+@@ -0,0 +1,19 @@
++#ifndef ELFPATCHER_WINDOWSGUESTLIFECYCLEBUILDER_HPP
++#define ELFPATCHER_WINDOWSGUESTLIFECYCLEBUILDER_HPP
++
++#include <domain/GuestRuntime.hpp>
++#include <elfpatcher/windows/WindowsPeFormat.hpp>
++
++namespace Elfpatcher::Windows {
++
++inline constexpr char GuestStartExport[] = "__anyps5_guest_start_v1";
++inline constexpr char GuestStopExport[] = "__anyps5_guest_stop_v1";
++
++// Both exports use the guest SysV ABI: uint64_t(size_t args, const void* argp).
++// High 32 bits are wrapper status, low 32 bits the exact module callback result.
++// This separates guard EBUSY from a module that itself returns that same value.
++// State is shared by all loader references to this image.
++void BuildGuestLifecycle(Domain::GuestRuntime& runtime, std::vector<PeSection>& sections, std::uint32_t& nextRva);
++
++}
++#endif
+diff --git a/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestStartup.hpp b/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestStartup.hpp
+--- a/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestStartup.hpp
++++ b/core/relinker/elfpatcher/include/elfpatcher/windows/WindowsGuestStartup.hpp
+@@ -9,7 +9,7 @@
+ class WindowsGuestStartup {
+ public:
+     void WriteImport(WindowsStubEmitter& code, const PeImport& import, std::uint32_t handles) const;
+-    void Initialize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, std::uint32_t handles) const;
++    std::vector<std::size_t> Initialize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, std::uint32_t handles) const;
+     void Finalize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, std::uint32_t handles, std::uint32_t finished) const;
+     std::uint32_t EmitTlsResolver(WindowsStubEmitter& code) const;
+ private:
+diff --git a/core/relinker/elfpatcher/src/windows/WindowsEntryStubBuilder.cpp b/core/relinker/elfpatcher/src/windows/WindowsEntryStubBuilder.cpp
+--- a/core/relinker/elfpatcher/src/windows/WindowsEntryStubBuilder.cpp
++++ b/core/relinker/elfpatcher/src/windows/WindowsEntryStubBuilder.cpp
+@@ -139,6 +139,8 @@
+             (import.Library.empty() ? std::string{} : " from " + import.Library) + "\n");
+     const auto argumentError = errors.size();
+     errors.push_back("FAIL: cannot prepare command-line arguments\n");
++    const auto lifecycleError = errors.size();
++    errors.push_back("FAIL: guest module initializer returned an error\n");
+     std::vector<std::uint32_t> errorRvas;
+     for (const auto& error : errors)
+         errorRvas.push_back(addString(error));
+@@ -368,7 +370,7 @@
+         guestStartup.WriteImport(code, imports[index], handles);
+     }
+ 
+-    guestStartup.Initialize(code, guestModules, handles);
++    const auto lifecycleFailures = guestStartup.Initialize(code, guestModules, handles);
+     writeString(enteringElf);
+     code.Rip({0x48, 0x8d, 0x0d}, shellLibrary);
+     code.Emit({0x31, 0xd2, 0x41, 0xb8, 0, 8, 0, 0});
+@@ -440,6 +442,11 @@
+         raise(0xc0000139u);
+     }
+ 
++    if (!lifecycleFailures.empty()) {
++        for (const auto branch : lifecycleFailures) code.PatchBranch(branch, code.GetRva());
++        fail(lifecycleError, 0xc0000142u);
++    }
++
+     const auto functionEnd = code.GetRva();
+     code.PatchBranch(exitCallback, functionEnd);
+     code.Emit({0x48, 0x83, 0xec, 0x28});
+diff --git a/core/relinker/elfpatcher/src/windows/WindowsGuestLifecycleBuilder.cpp b/core/relinker/elfpatcher/src/windows/WindowsGuestLifecycleBuilder.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/relinker/elfpatcher/src/windows/WindowsGuestLifecycleBuilder.cpp
+@@ -0,0 +1,119 @@
++#include <elfpatcher/windows/WindowsGuestLifecycleBuilder.hpp>
++#include <elfpatcher/windows/WindowsStubEmitter.hpp>
++
++namespace Elfpatcher::Windows {
++
++void BuildGuestLifecycle(Domain::GuestRuntime& runtime, std::vector<PeSection>& sections, std::uint32_t& nextRva) {
++    constexpr std::uint64_t HostPage = 0x4000;
++    const auto alignHostPage = [](const std::uint64_t value) {
++        return CheckedRva((static_cast<std::uint64_t>(CheckedRva(value)) + HostPage - 1) & ~(HostPage - 1));
++    };
++    // 0=unstarted, 1=starting, 2=started, 3=stopping, 4=stopped,
++    // 5=failed start, 6=failed stop. Finalization cannot be rolled back: failed
++    // stop is terminal, retains the image and original error, and never retries
++    // callbacks that may already have destroyed guest state.
++    // iPad protects 16 KiB host pages. Keep mutable state, executable wrappers,
++    // and following read-only PE metadata on distinct complete host pages.
++    const auto alignedState = alignHostPage(nextRva);
++    if (alignedState != nextRva) {
++        // Preserve the writer's contiguous section invariant and the previous
++        // section's protection while completing its last host page.
++        sections.push_back({".glpad", nextRva, sections.back().Characteristics,
++            std::vector<std::uint8_t>(alignedState - nextRva)});
++    }
++    nextRva = alignedState;
++    const auto state = nextRva;
++    sections.push_back({".gstate", nextRva, SectionRead | SectionWrite | 0x40u, std::vector<std::uint8_t>(HostPage)});
++    nextRva = alignHostPage(nextRva + HostPage);
++    WindowsStubEmitter code(nextRva);
++    const auto finish = [&] { code.Emit({0x41, 0x5d, 0x41, 0x5c, 0x5b, 0xc3}); };
++    const auto publish = [&](const std::uint32_t value) {
++        code.Emit({0xb9}); code.U32(value);
++        code.Rip({0x89, 0x0d}, state);
++    };
++    const auto arrayCall = [&](const std::uint32_t slot) {
++        code.Rip({0x48, 0x8b, 0x05}, slot);
++        code.Emit({0x48, 0x85, 0xc0});
++        const auto skip = code.Branch({0x0f, 0x84});
++        code.Emit({0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2, 0xff, 0xd0});
++        code.PatchBranch(skip, code.GetRva());
++    };
++    const auto lifecycleCall = [&](const std::uint32_t rva) {
++        if (rva == 0) { code.Emit({0x31, 0xdb}); return; }
++        code.Emit({0x4c, 0x89, 0xe7, 0x4c, 0x89, 0xee, 0x31, 0xd2});
++        code.Rip({0xe8}, rva);
++        // Only explicit deferred Sony modules opt into the int-return module
++        // start/stop contract. Keep the previous eager ELF lifecycle policy,
++        // whose DT_INIT/DT_FINI functions may have a void return type.
++        if (runtime.DeferredLifecycle) code.Emit({0x89, 0xc3});
++        else code.Emit({0x31, 0xdb});
++    };
++    const auto emit = [&](const bool starting) {
++        const auto entry = code.GetRva();
++        // Three saved registers keep the SysV call stack aligned to 16 bytes.
++        code.Emit({0x53, 0x41, 0x54, 0x41, 0x55, 0x49, 0x89, 0xfc, 0x49, 0x89, 0xf5, 0xb8});
++        code.U32(starting ? 0 : 2);
++        code.Emit({0xb9}); code.U32(starting ? 1 : 3);
++        code.Rip({0xf0, 0x0f, 0xb1, 0x0d}, state);
++        const auto notOwned = code.Branch({0x0f, 0x85});
++        if (starting) {
++            lifecycleCall(runtime.InitRva);
++            code.Emit({0x85, 0xdb});
++            const auto failed = code.Branch({0x0f, 0x85});
++            for (const auto slot : runtime.InitArrayRvas) arrayCall(slot);
++            publish(2);
++            code.Emit({0x31, 0xc0}); finish();
++            code.PatchBranch(failed, code.GetRva());
++            code.Rip({0x89, 0x1d}, state + 4);
++            publish(5);
++            code.Emit({0x89, 0xd8}); finish();
++        } else {
++            for (auto slot = runtime.FiniArrayRvas.rbegin(); slot != runtime.FiniArrayRvas.rend(); ++slot) arrayCall(*slot);
++            lifecycleCall(runtime.FiniRva);
++            code.Rip({0x89, 0x1d}, state + 8);
++            code.Emit({0x85, 0xdb});
++            const auto failed = code.Branch({0x0f, 0x85});
++            publish(4);
++            code.Emit({0x89, 0xd8}); finish();
++            code.PatchBranch(failed, code.GetRva());
++            publish(6);
++            code.Emit({0x89, 0xd8}); finish();
++        }
++        code.PatchBranch(notOwned, code.GetRva());
++        std::vector<std::size_t> zeroBranches;
++        std::vector<std::size_t> storedBranches;
++        for (const auto value : (starting ? std::vector<unsigned>{2} : std::vector<unsigned>{0, 5})) {
++            code.Emit({0x83, 0xf8, static_cast<std::uint8_t>(value)});
++            zeroBranches.push_back(code.Branch({0x0f, 0x84}));
++        }
++        code.Emit({0x83, 0xf8, static_cast<std::uint8_t>(starting ? 5 : 4)});
++        storedBranches.push_back(code.Branch({0x0f, 0x84}));
++        if (!starting) {
++            code.Emit({0x83, 0xf8, 6});
++            storedBranches.push_back(code.Branch({0x0f, 0x84}));
++        }
++        if (starting) {
++            code.Emit({0x83, 0xf8, 6});
++            const auto failedStop = code.Branch({0x0f, 0x84});
++            code.Emit({0x83, 0xf8, 4});
++            const auto active = code.Branch({0x0f, 0x85});
++            code.PatchBranch(failedStop, code.GetRva());
++            code.Emit({0x48, 0xb8}); code.U64(std::uint64_t{0x80020016u} << 32); finish(); // Wrapper EINVAL: completed lifecycle cannot restart.
++            code.PatchBranch(active, code.GetRva());
++        }
++        code.Emit({0x48, 0xb8}); code.U64(std::uint64_t{0x80020010u} << 32); finish(); // Wrapper EBUSY: never wait recursively.
++        for (const auto branch : zeroBranches) code.PatchBranch(branch, code.GetRva());
++        code.Emit({0x31, 0xc0}); finish();
++        for (const auto branch : storedBranches) code.PatchBranch(branch, code.GetRva());
++        code.Rip({0x8b, 0x05}, state + (starting ? 4 : 8)); finish();
++        return entry;
++    };
++    runtime.StartRva = emit(true);
++    runtime.StopRva = emit(false);
++    auto bytes = code.TakeBytes();
++    bytes.resize(alignHostPage(bytes.size()));
++    sections.push_back({".glife", nextRva, SectionRead | SectionExecute | 0x20u, std::move(bytes)});
++    nextRva = alignHostPage(nextRva + sections.back().Data.size());
++}
++
++}
+diff --git a/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp b/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
+--- a/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
++++ b/core/relinker/elfpatcher/src/windows/WindowsGuestModuleWriter.cpp
+@@ -5,6 +5,7 @@
+ #include <elfpatcher/windows/WindowsPeWriter.hpp>
+ #include <elfpatcher/windows/WindowsRelocationBuilder.hpp>
+ #include <elfpatcher/windows/WindowsTrampolineBuilder.hpp>
++#include <elfpatcher/windows/WindowsGuestLifecycleBuilder.hpp>
+ #include <io/BufferUtils.hpp>
+ #include <algorithm>
+ #include <map>
+@@ -126,6 +127,17 @@
+         nextRva = AlignRva(nextRva + tlsExports.Data.size());
+         sections.push_back(std::move(tlsExports));
+     }
++    if (exports.contains(GuestStartExport) || exports.contains(GuestStopExport))
++        throw Domain::RelinkerException("Guest export collides with reserved lifecycle interface");
++    if (guest.RequiresGuestLifecycle()) {
++        for (const auto slot : guest.InitArray) runtime.InitArrayRvas.push_back(image.GetRva(slot, 8));
++        for (const auto slot : guest.FiniArray) runtime.FiniArrayRvas.push_back(image.GetRva(slot, 8));
++        runtime.InitRva = guest.Init == 0 ? 0 : image.GetRva(guest.Init);
++        runtime.FiniRva = guest.Fini == 0 ? 0 : image.GetRva(guest.Fini);
++        BuildGuestLifecycle(runtime, sections, nextRva);
++        exports.emplace(GuestStartExport, runtime.StartRva);
++        exports.emplace(GuestStopExport, runtime.StopRva);
++    }
+     if (exports.size() > 65535) throw Domain::RelinkerException("Too many guest PE exports");
+     PeSection exportSection{".edata", nextRva, SectionRead | 0x40u, std::vector<std::uint8_t>(40)};
+     auto& data = exportSection.Data;
+@@ -170,12 +182,6 @@
+     }
+     const auto entry = nextRva;
+     sections.push_back({".dllmain", entry, SectionRead | SectionExecute | 0x20u, {0xb8, 1, 0, 0, 0, 0xc3}});
+-    if (guest.RequiresGuestLifecycle()) {
+-        for (const auto slot : guest.InitArray) runtime.InitArrayRvas.push_back(image.GetRva(slot, 8));
+-        for (const auto slot : guest.FiniArray) runtime.FiniArrayRvas.push_back(image.GetRva(slot, 8));
+-        runtime.InitRva = guest.Init == 0 ? 0 : image.GetRva(guest.Init);
+-        runtime.FiniRva = guest.Fini == 0 ? 0 : image.GetRva(guest.Fini);
+-    }
+     auto result = WindowsPeWriter().Write(sections, entry, directories);
+     const auto characteristics = Io::ReadU16(result, 0x80 + 22);
+     Io::WriteU16(result, 0x80 + 22, static_cast<std::uint16_t>((characteristics | 0x2000) & ~1u));
+diff --git a/core/relinker/elfpatcher/src/windows/WindowsGuestStartup.cpp b/core/relinker/elfpatcher/src/windows/WindowsGuestStartup.cpp
+--- a/core/relinker/elfpatcher/src/windows/WindowsGuestStartup.cpp
++++ b/core/relinker/elfpatcher/src/windows/WindowsGuestStartup.cpp
+@@ -27,12 +27,16 @@
+     } else code.Emit({0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2, 0xff, 0xd0});
+ }
+ 
+-void WindowsGuestStartup::Initialize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, const std::uint32_t handles) const {
++std::vector<std::size_t> WindowsGuestStartup::Initialize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, const std::uint32_t handles) const {
++    std::vector<std::size_t> failures;
+     for (std::size_t index = 0; index < modules.size(); ++index) {
++        if (modules[index].DeferredLifecycle || modules[index].StartRva == 0) continue;
+         const auto handle = CheckedRva(handles + index * 8);
+-        callLifecycle(code, handle, modules[index].InitRva);
+-        for (const auto slot : modules[index].InitArrayRvas) callLifecycle(code, handle, slot, true);
++        callLifecycle(code, handle, modules[index].StartRva);
++        code.Emit({0x48, 0x85, 0xc0});
++        failures.push_back(code.Branch({0x0f, 0x85}));
+     }
++    return failures;
+ }
+ 
+ void WindowsGuestStartup::Finalize(WindowsStubEmitter& code, const std::vector<Domain::GuestRuntime>& modules, const std::uint32_t handles, const std::uint32_t finished) const {
+@@ -43,8 +47,9 @@
+     for (std::size_t index = modules.size(); index > 0; --index) {
+         const auto handle = CheckedRva(handles + (index - 1) * 8);
+         const auto& module = modules[index - 1];
+-        for (auto slot = module.FiniArrayRvas.rbegin(); slot != module.FiniArrayRvas.rend(); ++slot) callLifecycle(code, handle, *slot, true);
+-        callLifecycle(code, handle, module.FiniRva);
++        // Deferred modules that started through the kernel API share this guard;
++        // unstarted or explicitly stopped modules do not run finalizers again.
++        callLifecycle(code, handle, module.StopRva);
+     }
+     code.PatchBranch(skip, code.GetRva());
+ }
+diff --git a/core/relinker/elfpatcher/tests/WindowsGuestLifecycleTests.cpp b/core/relinker/elfpatcher/tests/WindowsGuestLifecycleTests.cpp
+new file mode 100644
+--- /dev/null
++++ b/core/relinker/elfpatcher/tests/WindowsGuestLifecycleTests.cpp
+@@ -0,0 +1,84 @@
++#include <windows.h>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++
++using Lifecycle = std::uint64_t (__attribute__((sysv_abi)) *)(std::size_t, const void*);
++using Callback = int (__attribute__((sysv_abi)) *)();
++static HANDLE entered, released;
++static bool blocking;
++static void Require(bool value, const char* message) {
++    if (!value) { std::fprintf(stderr, "Guest lifecycle wrapper: %s\n", message); std::exit(1); }
++}
++static int __attribute__((sysv_abi)) CallbackBody() {
++    if (blocking) {
++        SetEvent(entered);
++        Require(WaitForSingleObject(released, 5000) == WAIT_OBJECT_0, "callback release timed out");
++    }
++    return 0;
++}
++struct Payload { std::uint32_t size = 16, version = 0x200; Callback callback = CallbackBody; };
++static_assert(sizeof(Payload) == 16);
++struct Counters { std::uint32_t init, initArray, finiArray, fini; std::uint64_t args, pointer; };
++constexpr std::size_t Args = (std::size_t{1} << 32) + 52;
++constexpr std::uint64_t Busy = std::uint64_t{0x80020010u} << 32;
++constexpr std::uint64_t Invalid = std::uint64_t{0x80020016u} << 32;
++struct Task { Lifecycle function; Payload* payload; std::uint64_t result = 1; };
++static DWORD WINAPI Invoke(LPVOID value) {
++    auto& task = *static_cast<Task*>(value);
++    task.result = task.function(Args, task.payload);
++    return 0;
++}
++int main(int argc, char** argv) {
++    Require(argc == 3, "expected DLL path and scenario");
++    const auto module = LoadLibraryA(argv[1]);
++    Require(module != nullptr, "failed to map synthetic converted DLL");
++    const auto start = reinterpret_cast<Lifecycle>(GetProcAddress(module, "__anyps5_guest_start_v1"));
++    const auto stop = reinterpret_cast<Lifecycle>(GetProcAddress(module, "__anyps5_guest_stop_v1"));
++    Require(start && stop, "reserved versioned exports missing");
++    auto& c = *reinterpret_cast<Counters*>(reinterpret_cast<std::uint8_t*>(module) + 0x12860);
++    Require(c.init == 0 && c.initArray == 0 && c.finiArray == 0 && c.fini == 0, "mapping eagerly ran deferred lifecycle");
++    Require(stop(0, nullptr) == 0 && c.fini == 0, "unstarted stop ran callbacks");
++    Payload payload;
++    if (std::strcmp(argv[2], "failed-start") == 0 || std::strcmp(argv[2], "guest-error-busy") == 0) {
++        const std::uint64_t error = std::strcmp(argv[2], "guest-error-busy") == 0 ? 0x80020010u : 0x81234567u;
++        Require(start(Args, &payload) == error && start(0, nullptr) == error, "failed start result was lost or retried");
++        Require(c.init == 1 && c.initArray == 0, "failed start repeated or ran init arrays");
++        Require(stop(0, nullptr) == 0 && c.fini == 0 && c.finiArray == 0, "failed start was finalized as successful");
++    } else {
++        const bool concurrent = std::strcmp(argv[2], "concurrent") == 0;
++        if (concurrent) {
++            entered = CreateEventA(nullptr, TRUE, FALSE, nullptr);
++            released = CreateEventA(nullptr, TRUE, FALSE, nullptr);
++            Require(entered && released, "event creation failed");
++            blocking = true;
++            Task task{start, &payload};
++            const auto thread = CreateThread(nullptr, 0, Invoke, &task, 0, nullptr);
++            Require(thread && WaitForSingleObject(entered, 5000) == WAIT_OBJECT_0, "start callback did not begin");
++            Require(start(0, nullptr) == Busy && stop(0, nullptr) == Busy, "active start did not refuse reentry");
++            SetEvent(released);
++            Require(WaitForSingleObject(thread, 5000) == WAIT_OBJECT_0 && task.result == 0, "start worker failed");
++            CloseHandle(thread);
++        } else Require(start(Args, &payload) == 0, "valid start failed");
++        Require(c.init == 1 && c.initArray == 1 && c.args == Args && c.pointer == reinterpret_cast<std::uintptr_t>(&payload), "64-bit arguments/payload or initializer order lost");
++        Require(start(0, nullptr) == 0 && c.init == 1, "successful start was repeated");
++        if (concurrent) {
++            ResetEvent(entered); ResetEvent(released);
++            Task task{stop, &payload};
++            const auto thread = CreateThread(nullptr, 0, Invoke, &task, 0, nullptr);
++            Require(thread && WaitForSingleObject(entered, 5000) == WAIT_OBJECT_0, "stop callback did not begin");
++            Require(start(0, nullptr) == Busy && stop(0, nullptr) == Busy, "active stop did not refuse reentry");
++            SetEvent(released);
++            Require(WaitForSingleObject(thread, 5000) == WAIT_OBJECT_0 && task.result == 0, "stop worker failed");
++            CloseHandle(thread); CloseHandle(entered); CloseHandle(released);
++        } else {
++            const std::uint64_t expected = std::strcmp(argv[2], "failed-stop") == 0 ? 0x82345678u : 0;
++            Require(stop(Args, &payload) == expected && stop(0, nullptr) == expected, "stop result lost or callbacks retried");
++        }
++        Require(c.fini == 1 && c.finiArray == 1, "finalizers did not run exactly once");
++        Require(start(Args, &payload) == Invalid, "terminal stop allowed restart");
++    }
++    Require(FreeLibrary(module), "synthetic DLL did not unload");
++    std::puts("Guest lifecycle wrapper contract passed");
++}
+diff --git a/core/relinker/main.cpp b/core/relinker/main.cpp
+--- a/core/relinker/main.cpp
++++ b/core/relinker/main.cpp
+@@ -82,6 +82,7 @@
+         std::cout << "System: " << (args.toWindows ? "Windows" : "Linux") << "; unused-filter=" << args.unusedFilterLevel << "\n";
+         std::cout << "sce_module/sce_modules/prx processing: " << (args.skipSceModule ? "disabled (--skip-sce-module)" : "enabled") << '\n';
+         for (const auto& name : args.excludedSceModules) std::cout << "Guest module excluded: " << name << '\n';
++        for (const auto& name : args.deferredGuestLifecycles) std::cout << "Guest lifecycle deferred: " << name << '\n';
+         auto result = pipeline->Relink(sourceBytes);
+         for (const auto& patch : result.Patches) {
+             if (patch.Offset > sourceBytes.size() || patch.Bytes.size() > sourceBytes.size() - patch.Offset)
+@@ -91,7 +92,7 @@
+ 
+         std::vector<Relinker::GuestArtifact> guestArtifacts;
+         if (!args.skipSceModule) {
+-            guestArtifacts = Relinker::GuestModuleBuilder().Build(args.inputPath, absPath, result.DynamicSection, args.toWindows, args.toIntel, *syscallScanner, args.lazyBinding, args.runPath, args.excludedSceModules);
++            guestArtifacts = Relinker::GuestModuleBuilder().Build(args.inputPath, absPath, result.DynamicSection, args.toWindows, args.toIntel, *syscallScanner, args.lazyBinding, args.runPath, args.excludedSceModules, args.deferredGuestLifecycles);
+         }
+ 
+         if (args.writeRegistry) {
+diff --git a/core/relinker/relinker/include/relinker/guest/GuestImage.hpp b/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
+--- a/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
++++ b/core/relinker/relinker/include/relinker/guest/GuestImage.hpp
+@@ -69,7 +69,7 @@
+ 
+ class GuestModuleBuilder {
+ public:
+-    std::vector<GuestArtifact> Build(const std::filesystem::path& inputPath, const std::filesystem::path& outputPath, Domain::SysVDynamicSection& dynamic, bool windows, bool toIntel, ISyscallScanner& syscallScanner, bool lazyBinding, const std::string& runPath, const std::set<std::string>& excludedModules) const;
++    std::vector<GuestArtifact> Build(const std::filesystem::path& inputPath, const std::filesystem::path& outputPath, Domain::SysVDynamicSection& dynamic, bool windows, bool toIntel, ISyscallScanner& syscallScanner, bool lazyBinding, const std::string& runPath, const std::set<std::string>& excludedModules, const std::set<std::string>& deferredLifecycles = {}) const;
+ };
+ 
+ }
+diff --git a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
+--- a/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
++++ b/core/relinker/relinker/src/guest/GuestModuleBuilder.cpp
+@@ -14,7 +14,7 @@
+ 
+ namespace Relinker {
+ 
+-std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path& inputPath, const std::filesystem::path& outputPath, Domain::SysVDynamicSection& dynamic, const bool windows, const bool toIntel, ISyscallScanner& syscallScanner, const bool lazyBinding, const std::string& runPath, const std::set<std::string>& excludedModules) const {
++std::vector<GuestArtifact> GuestModuleBuilder::Build(const std::filesystem::path& inputPath, const std::filesystem::path& outputPath, Domain::SysVDynamicSection& dynamic, const bool windows, const bool toIntel, ISyscallScanner& syscallScanner, const bool lazyBinding, const std::string& runPath, const std::set<std::string>& excludedModules, const std::set<std::string>& deferredLifecycles) const {
+     const auto root = std::filesystem::absolute(inputPath).parent_path();
+     const auto singular = root / "sce_module";
+     const auto plural = root / "sce_modules";
+@@ -81,6 +81,16 @@
+     }
+     if (!unmatchedExclusions.empty()) throw Domain::RelinkerException("Excluded guest module file not found: " + *unmatchedExclusions.begin());
+     std::sort(paths.begin(), paths.end());
++    std::set<std::size_t> deferred;
++    for (const auto& name : deferredLifecycles) {
++        if (!windows || name.empty() || name.find_first_of("/\\:$*?\r\n") != std::string::npos || name == inputPath.filename().string())
++            throw Domain::RelinkerException("Invalid deferred guest lifecycle: " + name);
++        std::vector<std::size_t> matches;
++        for (std::size_t index = 0; index < paths.size(); ++index)
++            if (paths[index].filename().string() == name) matches.push_back(index);
++        if (matches.size() != 1) throw Domain::RelinkerException("Deferred guest lifecycle must name one discovered module: " + name);
++        deferred.insert(matches.front());
++    }
+     if (paths.empty()) return {};
+     if (lazyBinding) throw Domain::RelinkerException("Guest modules require eager binding; --lazy-binding is incompatible");
+     std::vector<GuestImage> images;
+@@ -214,6 +224,19 @@
+             } else if (windows && (symbol.Info & 15) == 6) throw Domain::RelinkerException("Windows guest TLS import requires a guest TLS export: " + symbol.Name);
+         }
+     }
++    // Main linkage does not prove lifecycle ownership: a linked Unity module
++    // may receive its real start arguments later through LoadStartModule.
++    // Deferral is an explicit per-module policy; discovery, binding and all
++    // image validation remain unchanged.
++    for (const auto index : deferred) {
++        if (!images[index].RequiresGuestLifecycle()) throw Domain::RelinkerException("Deferred guest module has no guest-owned lifecycle: " + images[index].SourcePath.filename().string());
++    }
++    for (std::size_t index = 0; index < images.size(); ++index) {
++        if (deferred.contains(index)) continue;
++        for (const auto dependency : dependencies[index]) {
++            if (deferred.contains(dependency)) throw Domain::RelinkerException("Eager guest lifecycle depends on deferred module: " + images[dependency].SourcePath.filename().string());
++        }
++    }
+     if (!windows) {
+         for (auto& image : images) {
+             for (std::size_t index = 1; index < image.Symbols.size(); ++index) {
+@@ -276,6 +299,7 @@
+         for (const auto& source : paths) if (std::filesystem::exists(target) && std::filesystem::equivalent(source, target)) throw Domain::RelinkerException("Guest output would overwrite an input module: " + target.string());
+         if (std::filesystem::exists(target) && std::filesystem::equivalent(inputPath, target)) throw Domain::RelinkerException("Guest output would overwrite the input executable");
+         Domain::GuestRuntime runtime;
++        runtime.DeferredLifecycle = deferred.contains(index);
+         runtime.UsePlatformTlsResolver = image.UsePlatformTlsResolver;
+         runtime.Path = relativeDirectory + "/" + image.OutputName;
+         runtime.Names = {image.SourcePath.filename().string(), image.Soname};
+diff --git a/core/relinker/relinker/tests/test_guest_deferred_lifecycle.py b/core/relinker/relinker/tests/test_guest_deferred_lifecycle.py
+new file mode 100644
+--- /dev/null
++++ b/core/relinker/relinker/tests/test_guest_deferred_lifecycle.py
+@@ -0,0 +1,121 @@
++"""Validate explicit deferral and run emitted wrappers on synthetic PE fixtures."""
++import argparse
++from pathlib import Path
++import shlex
++import struct
++import subprocess
++import tempfile
++
++from test_guest_lifecycle_ownership import consumer, guest, no_import_executable, set_dynamic_value, windows_lifecycle_exports, windows_lifecycle_targets
++from test_guest_intel_trampolines import pe_sections
++
++
++def increment(address, target):
++    return b'\xff\x05' + struct.pack('<i', target - (address + 6))
++
++
++def require_one(address, target):
++    return b'\x83\x3d' + struct.pack('<i', target - (address + 7)) + b'\x01\x74\x02\x0f\x0b'
++
++
++def fixture(mode='normal'):
++    image = guest()
++    # No external imports: only validated internal array relocations remain.
++    set_dynamic_value(image, 8, 48)
++    struct.pack_into('<QQq', image, 0x2700, 0x2800, 8, 0x1030)
++    struct.pack_into('<QQq', image, 0x2718, 0x2808, 8, 0x1050)
++    set_dynamic_value(image, 12, 0x1100)
++    set_dynamic_value(image, 13, 0x1180)
++    for address, target in ((0x1030, 0x2864), (0x1050, 0x2868)):
++        code = require_one(address, 0x2860 if target == 0x2864 else 0x2864)
++        code += increment(address + len(code), target) + b'\xc3'
++        image[address:address + len(code)] = code
++    for address, target, failed in ((0x1100, 0x2860, mode in ('failed-start', 'guest-error-busy')), (0x1180, 0x286c, mode == 'failed-stop')):
++        code = bytearray(require_one(address, 0x2868) if target == 0x286c else b'')
++        code += increment(address + len(code), target)
++        if failed:
++            result = 0x80020010 if mode == 'guest-error-busy' else (0x81234567 if target == 0x2860 else 0x82345678)
++            code += b'\xb8' + struct.pack('<I', result) + b'\xc3'
++        else:
++            if target == 0x2860:
++                code += b'\x48\x89\x3d' + struct.pack('<i', 0x2870 - (address + len(code) + 7))
++                code += b'\x48\x89\x35' + struct.pack('<i', 0x2878 - (address + len(code) + 7))
++            # Same unconditional payload read as the failing Unity module.
++            # A zero-argument eager start faults; a real payload calls its callback.
++            code += b'\x48\x83\xec\x08\xff\x56\x08\x48\x83\xc4\x08\x31\xc0\xc3'
++        image[address:address + len(code)] = code
++    return image
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('relinker', type=Path)
++    parser.add_argument('--windows-runner')
++    parser.add_argument('--fixture-runner', type=Path)
++    parser.add_argument('--work-directory', type=Path)
++    args = parser.parse_args()
++    counts = {'converted': 0, 'rejected': 0, 'executed': 0}
++    context = tempfile.TemporaryDirectory(prefix='anyps5-deferred-lifecycle-')
++    work = args.work_directory or Path(context.name)
++    work.mkdir(parents=True, exist_ok=True)
++
++    def convert(label, options, module=None, extra=None, error=None):
++        case = work / label
++        directory = case / 'sce_module'
++        directory.mkdir(parents=True, exist_ok=True)
++        (directory / 'plugin.prx').write_bytes(module or fixture())
++        if extra:
++            for name, data in extra.items():
++                path = case / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(data)
++        source = case / 'input.elf'; source.write_bytes(no_import_executable('plugin.prx'))
++        output = case / 'output.exe'
++        run = subprocess.run([str(args.relinker.resolve()), '--skip-syscall-check', *options, str(source), str(output)], capture_output=True, text=True, timeout=30)
++        if error:
++            assert run.returncode != 0 and error in run.stderr, (label, run.stdout, run.stderr)
++            assert not output.exists(), label
++            counts['rejected'] += 1
++            return None
++        assert run.returncode == 0, (label, run.stdout, run.stderr)
++        counts['converted'] += 1
++        artifact = case / 'app0/sce_module/plugin.prx.guest.prx'
++        image = artifact.read_bytes()
++        exports = windows_lifecycle_exports(image)
++        sections = pe_sections(image)
++        state = next(section for section in sections if section[0] == b'.gstate')
++        life = next(section for section in sections if section[0] == b'.glife')
++        assert state[1] % 0x4000 == life[1] % 0x4000 == 0 and state[2] == 0x4000
++        assert life[1] >= state[1] + state[2] and life[2] % 0x4000 == 0
++        assert all(section[1] >= life[1] + life[2] for section in sections if section[1] > life[1]), label
++        targets = windows_lifecycle_targets(output.read_bytes())
++        assert '__anyps5_guest_start_v1' in exports and '__anyps5_guest_stop_v1' in exports
++        assert targets.count(exports['__anyps5_guest_start_v1']) == (0 if '--defer-guest-lifecycle' in options else 1), (label, targets)
++        assert targets.count(exports['__anyps5_guest_stop_v1']) == 2, (label, targets)
++        return artifact
++
++    options = ['--windows', '--defer-guest-lifecycle', 'plugin.prx']
++    for mode in ('normal', 'failed-start', 'failed-stop', 'concurrent', 'guest-error-busy'):
++        artifact = convert(mode, options, fixture(mode))
++        if args.windows_runner:
++            assert args.fixture_runner, 'Windows execution requires compiled fixture runner'
++            run = subprocess.run([*shlex.split(args.windows_runner), str(args.fixture_runner.resolve()), 'Z:' + str(artifact.resolve()).replace('/', '\\'), mode], capture_output=True, text=True, timeout=45)
++            assert run.returncode == 0 and 'contract passed' in run.stdout, (mode, run.returncode, run.stdout, run.stderr)
++            counts['executed'] += 1
++    convert('default-eager', ['--windows'])
++    for label, option, error in (
++        ('unknown', ['--windows', '--defer-guest-lifecycle', 'absent.prx'], 'one discovered module'),
++        ('path', ['--windows', '--defer-guest-lifecycle', '../plugin.prx'], 'exact file name'),
++        ('main', ['--windows', '--defer-guest-lifecycle', 'input.elf'], 'Invalid deferred guest'),
++        ('duplicate', options + ['--defer-guest-lifecycle', 'plugin.prx'], 'Duplicate deferred'),
++        ('non-windows', ['--defer-guest-lifecycle', 'plugin.prx'], 'requires --windows'),
++        ('skipped', options + ['--skip-sce-module'], 'guest module processing'),
++        ('excluded', options + ['--exclude-sce-module', 'plugin.prx'], 'excluded and deferred')):
++        convert(label, option, error=error)
++    convert('ambiguous', options, extra={'Media/Plugins/plugin.prx': fixture()}, error='one discovered module')
++    # An eager constructor provider cannot be left depending on an unstarted
++    # deferred module, even when it was found only through discovery.
++    convert('eager-dependent', options, extra={'sce_module/consumer.prx': consumer('plugin.prx')}, error='Eager guest lifecycle depends on deferred')
++    print(counts)
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py b/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
+--- a/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
++++ b/core/relinker/relinker/tests/test_guest_lifecycle_ownership.py
+@@ -171,6 +171,26 @@
+         rb'\x48\x8b\x05.{4}\xb9(.{4})\x48\x01\xc8', code, re.S)]
+ 
+ 
++def windows_lifecycle_exports(image):
++    sections = pe_sections(image)
++    def at(rva):
++        return next(section[3] + rva - section[1] for section in sections
++                    if section[1] <= rva < section[1] + section[2])
++    pe, = struct.unpack_from('<I', image, 0x3c)
++    directory, = struct.unpack_from('<I', image, pe + 24 + 112)
++    base = at(directory)
++    count, functions, names, ordinals = struct.unpack_from('<IIII', image, base + 24)
++    exports = {}
++    for index in range(count):
++        name_rva, = struct.unpack_from('<I', image, at(names) + index * 4)
++        name_at = at(name_rva)
++        name = image[name_at:image.index(0, name_at)].decode()
++        ordinal, = struct.unpack_from('<H', image, at(ordinals) + index * 2)
++        value, = struct.unpack_from('<I', image, at(functions) + ordinal * 4)
++        exports[name] = value
++    return exports
++
++
+ def main():
+     if len(sys.argv) > 1 and sys.argv[1] in ('--load', '--load-placeholder', '--load-initialized-export'):
+         import ctypes
+@@ -268,7 +288,9 @@
+                                             no_import_executable('libc.prx'), initialized_export_consumer(allocation))
+                 image = converted.read_bytes()
+                 if windows:
+-                    assert windows_lifecycle_targets(output.read_bytes()).count(0x11100) == (1 if args.expect_allocation_failure else 2)
++                    targets = windows_lifecycle_targets(output.read_bytes())
++                    start = windows_lifecycle_exports(image)['__anyps5_guest_start_v1']
++                    assert targets.count(start) == (1 if args.expect_allocation_failure else 2)
+                 else:
+                     assert lifecycle_tags(image) == (set() if args.expect_allocation_failure else {12, 13, 25, 26, 27, 28})
+                     assert needed_libraries(image) == ['libc.prx']
+@@ -322,7 +344,8 @@
+                     if replacement:
+                         assert replacement in needed
+                 else:
+-                    assert windows_lifecycle_targets(output.read_bytes()).count(0x11010) == 2
++                    start = windows_lifecycle_exports(image)['__anyps5_guest_start_v1']
++                    assert windows_lifecycle_targets(output.read_bytes()).count(start) == 2
+                 if fixture and replacement and replacement != 'libc.prx':
+                     libraries = case / 'libs'
+                     libraries.mkdir(exist_ok=True)
+@@ -355,10 +378,12 @@
+                 output, converted = convert(case, windows, original, no_import_executable('libc.prx'))
+                 if windows:
+                     targets = windows_lifecycle_targets(output.read_bytes())
+-                    assert targets.count(0x11010) == int(retained), (label, targets)
+-                    assert targets.count(0x12800) == int(retained), (label, targets)
+-                    assert targets.count(0x11070) == 2 * int(retained), (label, targets)
+-                    assert targets.count(0x12808) == 2 * int(retained), (label, targets)
++                    exports = windows_lifecycle_exports(converted.read_bytes())
++                    if retained:
++                        assert targets.count(exports['__anyps5_guest_start_v1']) == 1, (label, targets)
++                        assert targets.count(exports['__anyps5_guest_stop_v1']) == 2, (label, targets)
++                    else:
++                        assert '__anyps5_guest_start_v1' not in exports and not targets, (label, targets)
+                 else:
+                     image = converted.read_bytes()
+                     assert lifecycle_tags(image) == ({12, 13, 25, 26, 27, 28} if retained else set()), label
+diff --git a/core/relinker/relinker/tests/test_guest_optional_notes.py b/core/relinker/relinker/tests/test_guest_optional_notes.py
+--- a/core/relinker/relinker/tests/test_guest_optional_notes.py
++++ b/core/relinker/relinker/tests/test_guest_optional_notes.py
+@@ -7,7 +7,7 @@
+ 
+ from test_guest_intel_trampolines import main_fixture
+ from test_guest_module_directories import module_with_symbol
+-from test_guest_lifecycle_ownership import lifecycle_tags, windows_lifecycle_targets
++from test_guest_lifecycle_ownership import lifecycle_tags, windows_lifecycle_targets, windows_lifecycle_exports
+ from test_guest_symbol_names import imported_symbols, module_symbols
+ 
+ 
+@@ -73,7 +73,8 @@
+             assert data.startswith(b'MZ' if windows else b'\x7fELF'), name
+             if windows:
+                 targets = windows_lifecycle_targets(output.read_bytes())
+-                assert set(targets) == {0x10000, 0x10010}, (name, targets)
++                exports = windows_lifecycle_exports(data)
++                assert set(targets) == {exports['__anyps5_guest_start_v1'], exports['__anyps5_guest_stop_v1']}, (name, targets)
+                 assert b'shared\0' in data and b'Record\0' in data, name
+                 return targets
+             assert module_symbols(data) == ['shared#guest', 'Record'], name

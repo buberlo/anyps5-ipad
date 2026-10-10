@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "date": "2026-10-10",
+  "status": "fresh_combined_main_package_prepared_not_device_executed",
+  "titleId": "PPSA03647",
+  "version": "01.000.000",
+  "upstreamPin": "d70b89989473ba1f6ae13e44e079e67f1f8a44b0",
+  "patchHashesSha256": {
+    "0001-ipad-runtime-compatibility.patch": "3d7ab29f13efb669f99736baf1594caf456720e5d79d244ea615f05f9ed61acc",
+    "0002-bounded-exception-logging.patch": "19824fccb822111fda3cd5887d3cd855cbd02cc5c3e14d49995a043eaf3766cc",
+    "0003-valid-image-descriptor-policy.patch": "149cdd10bfe66bb49515463a228540a1100dbcfb5305838368f4e5ae83207eb0",
+    "0004-no-vintrp-exec-aware-input-liveness.patch": "e2cb8569c5a52c4e37a93c7aa88479391917210e632240fd9aa947832ab82075",
+    "0062-bounded-legacy-audioout-ingress-trace.patch": "8cefd47a21db418f921090179c7904751262f3bf2f3a597fcc0bd422e05f9370",
+    "0065-audioout-frame-pacing.patch": "d119e02b7edec8ffeba6edc035fea3fca504e7e39a84b4c7fc360f227947bd95"
+  },
+  "packageManifestSha256": "4f6ce02236b25699c94ad3aa76c033627b9be3b4b96b2e341f3f8560cd8346dc",
+  "preparationReceiptSha256": "3eebd35d01c6c49f75185172278fa4998b5e17597949ce0937e3811fa7900aac",
+  "hleArchiveSha256": "7e875a91bce89dda0302fe149d77b13b93568a3324bd0078fba4e90859a35747",
+  "runtimeQualificationReceiptSha256": "7aceb441ec940784ce288b2da84dabe4c652b15336747fb55d819d0a846cda20",
+  "exportSealingReceiptSha256": "deab868cdec4458fe597d1a5398cfb01833cc18ee110264a1dae558f7fa151ae",
+  "packageFileCount": 170,
+  "selectedElfCount": 12,
+  "guestNidCount": 3186,
+  "explicitHleDependencyCount": 46,
+  "actualHleLibraries": 47,
+  "allPackageFileHashesVerified": true,
+  "original127DumpFilesUnchanged": true,
+  "dependencyAuditPassed": true,
+  "hostToolTestsPassed": 37,
+  "selectedHostRuntimeTargetsPassed": 42,
+  "additionalHostRuntimeTargetsPassed": 10,
+  "hostRuntimePositiveCases": 53,
+  "deferredGuestLifecycleModules": [
+    "Il2CppUserAssemblies.prx",
+    "PSNCommon.prx",
+    "PSNCore.prx",
+    "SaveData.prx"
+  ],
+  "toolHashesSha256": {
+    "relinker": "c12566d7e178016158cba5f75f9942fee384a8be1cfa5e07775adef327f19927",
+    "nidPatcher": "5142f1419f0c4a84252e5f430a4eeacf119597fe66e0180ca76970b439ab21ee",
+    "preparer": "9616655cde03c976fafea407621c2405e6110a5eb7e82faaed49dfd751a81288"
+  },
+  "deviceImported": false,
+  "nativeWindowsGameRunWithThisPackageVerified": false,
+  "deviceExecuted": false,
+  "renderingQualified": false,
+  "audioQualified": false,
+  "gameplayQualified": false,
+  "performanceQualified": false,
+  "githubActions": false,
+  "privateArtifactsPublished": false
+}

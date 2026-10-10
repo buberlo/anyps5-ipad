@@ -1,0 +1,319 @@
+{
+  "schema": 1,
+  "titleId": "PPSA03647",
+  "contentVersion": "01.000.000",
+  "recordedUtc": "2026-10-09T09:31:46.001826+00:00",
+  "status": "device_save_memory_ready_json_allocator_fatal_repair_host_qualified",
+  "source": {
+    "projectCommit": "ef477fe81ee8cd6ab11678c0373ce0fae24626de",
+    "anyps5Commit": "6e037e9899efb7439913a6e1151b901a92c9c9c8",
+    "patchHashes": {
+      "0066-register-hmd-host-contract.patch": "6c92ce2bd909c84c2bacc9006963a9b276628723d5e96165f97ea89cf054debb",
+      "0067-ignore-inert-producer-notes.patch": "5ac2abd47f584de3a14304933f7afc16b841b6645dc24f6230927cd66ea357c3",
+      "0068-add-audio3d-object-and-flush-contracts.patch": "34d83e6e54dcd149d118f639a44c4d98d920795b20c5b4122f9f59852faec07f"
+    }
+  },
+  "preparation": {
+    "selectedELFs": 12,
+    "convertedGuestModules": 11,
+    "originalFiles": 127,
+    "originalInputsUnchanged": true,
+    "explicitHLERoots": 46,
+    "distributionHLELibraries": 47,
+    "compilerRuntimeDLLs": 3,
+    "uniqueGuestNids": 3186,
+    "missingLibraries": [],
+    "unresolvedNativeImports": [],
+    "unresolvedGuestNids": [],
+    "dependencyAuditPassed": true,
+    "privateManifestSha256": "9cb4cac1a0a8c3e626208eb92e850c46d44e33d4bad12001ee0fa694ec923a1f",
+    "hleArchiveSha256": "bce9323e8f34482c7fdfb2c3be6335e2a6d78396cd6a6c7242ab5aab8312d8fa",
+    "containsPublicGameAssets": false
+  },
+  "validation": {
+    "nativeHostToolsTestsPassed": 33,
+    "windowsHostContractsPassed": 28,
+    "windowsHostRuntime": "local Wine",
+    "windowsHostArena": {
+      "APS5_GUEST_ARENA_LAZY": "1",
+      "APS5_GUEST_ARENA_BASE": "0x7400000000",
+      "APS5_GUEST_ARENA_SIZE": "0x100000000",
+      "APS5_GUEST_ARENA_CHUNK": "0x10000000"
+    },
+    "audio3dNativeSanitizedContractsPassed": 3,
+    "audio3dNegativeControlsRejected": 3
+  },
+  "limits": {
+    "audio3dObjectRenderingSupported": false,
+    "ipadImported": true,
+    "ipadStartupVerified": false,
+    "ipadRenderingVerified": false,
+    "offlineCourseCompleted": false,
+    "audibleOutputAccepted": false,
+    "saveLoadAccepted": false,
+    "performanceAccepted": false,
+    "githubActionsUsed": false
+  },
+  "deviceImport": {
+    "nativeBuild": 54,
+    "verifiedPackageFiles": 169,
+    "solitaireFullDirectoryFilesVerifiedUnchanged": 303,
+    "globalAndExistingLibraryEntriesPreserved": true,
+    "nativeAppReinstalled": false,
+    "sharedLeaseUsed": true
+  },
+  "deviceFirstLaunch": {
+    "nativeBuild": 54,
+    "freshProcess": true,
+    "jitEnabled": true,
+    "jitPoolReady": true,
+    "builtInHelperDetached": true,
+    "guestExitCode": "0xc0000005",
+    "failedStage": "guest SaveData module initializer",
+    "gameWindowObserved": false,
+    "swapchainObserved": false,
+    "nativeProcessContinuityIsGameSuccess": false,
+    "ownProcessesStopped": true,
+    "leaseReleased": true,
+    "globalAndExistingLibraryFieldsUnchanged": true,
+    "solitaireManifestUnchanged": true,
+    "logSha256": "e5ee59a155cfb2e127d828c9e4e292c5f878c79fd6d8415e2105cd1af78f5bd9",
+    "receiptSha256": "fe301e05f431c26c60dc933825d38ee4f5c188be9560e455c9a3a2d2ce0c70cf"
+  },
+  "hostStartupComparison": {
+    "runtime": "Wine 11 on macOS/Rosetta with isolated prefix",
+    "sameGameExeSha256": "48e32f2edc2c761a4ef3e1cfbb2413508ca474dad879e98503af84386af1d251",
+    "sameModuleNullReadReproduced": true,
+    "boundedSeconds": 60,
+    "dedicatedPrefixStopped": true,
+    "gpuComparison": false,
+    "logSha256": "2d3a0b85d4dd5b192d95fa62b24f0fdd440a52656ebeb24b757fa803029e438a"
+  },
+  "lifecycleRepairPreparation": {
+    "status": "imported_bounded_device_initialization_observed",
+    "patchHashes": {
+      "0069-defer-guest-module-lifecycle.patch": "9ea9240806bb1957a1efe8cc077b563d04a2206abf0cb430421a76443a68d337",
+      "0070-forward-kernel-module-lifecycle-arguments.patch": "53e112d08e0d23f13c5f3bc686c50604235a8da70fcebebdc46e0fe45cbcdc64"
+    },
+    "privateManifestSha256": "94ded7d184d58dba90462c34a45d856156640f85263461f5ffc447fc0f98a842",
+    "hleArchiveSha256": "670fef34f0faf6615b580bfc36fa8fa0854fa344876c846c47b7c6aa25cbdeeb",
+    "relinkerSha256": "e2b32ed2bdd6812b2c43db93b96e1cbe61b4a3d9865072318d6edf82a5d14425",
+    "nativeHostToolsTestsPassed": 34,
+    "windowsHostContractsPassed": 29,
+    "emittedWindowsWrapperScenariosPassed": 5,
+    "retainedLibcConstructorContractPassed": true,
+    "deferredModules": [
+      "Il2CppUserAssemblies.prx",
+      "PSNCommon.prx",
+      "PSNCore.prx",
+      "SaveData.prx"
+    ],
+    "originalInputsUnchanged": true,
+    "dependencyAuditPassed": true,
+    "allMissingDependenciesEmpty": true,
+    "packageFiles": 169,
+    "deviceGameplayVerified": false
+  },
+  "deviceLifecycleReplacementImport": {
+    "nativeBuild": 54,
+    "verifiedPackageFiles": 169,
+    "sameLibraryEntryPreserved": true,
+    "libraryEntryCount": 3,
+    "atomicPublishPrimitive": "AFC_RENAME_PATH_same_directory",
+    "solitaireFullDirectoryFilesVerifiedUnchanged": 303,
+    "oldMiniGolfFullDirectoryFilesVerifiedUnchanged": 169,
+    "globalSettingsPreserved": true,
+    "nativeAppReinstalled": false,
+    "gameLaunched": false,
+    "receiptSha256": "144058875db1166ec5320dfea6c92982b708aea8bb3308c0244305ce6144608a"
+  },
+  "deviceLifecycleRetry": {
+    "nativeBuild": 54,
+    "manifestSha256": "94ded7d184d58dba90462c34a45d856156640f85263461f5ffc447fc0f98a842",
+    "receiptSha256": "9b35f30e0567fe17f0d83a163027c6ca91cc8f921180a1316f25cfd3b1fd7cd6",
+    "logSha256": "d1097037a7a9972cf0ca69aebd177545933bcd91a8845f12325889a2dbcf9600",
+    "freshProcess": true,
+    "jitEnabled": true,
+    "observedSeconds": 121,
+    "swapchainExtent": "768x432",
+    "swapchainImages": 3,
+    "screenshots": [
+      {
+        "path": "screen-15.png",
+        "sha256": "a31aee4a5f3b9ddc6a6013339f1414b728b016938324965aff0421071880d6c4",
+        "requiresRootVisibleContentReview": false
+      },
+      {
+        "path": "screen-60.png",
+        "sha256": "a06fb10c0a496d4d7036c3ced7337278ffc8c9cf2c775fbca075fc09305c6653",
+        "requiresRootVisibleContentReview": false
+      },
+      {
+        "path": "screen-120.png",
+        "sha256": "c955d24b9de429bfcbde44cc118d17648b3a4b7e67ba7dc77f591854f24d4ad0",
+        "requiresRootVisibleContentReview": false
+      }
+    ],
+    "reviewedVisibleState": "Madeira_startup_overlay_no_game_picture",
+    "reportedGuestExit": false,
+    "mainProcessContinuityIsGameSuccess": false,
+    "peakNativeFootprintMiB": 1770,
+    "touchInputIssued": false,
+    "ownProcessCleanupSucceeded": true,
+    "leaseReleased": true,
+    "globalAndExistingLibraryFieldsUnchanged": true,
+    "solitaireManifestUnchanged": true,
+    "solitaireFullDirectoryReverifiedInThisLaunchPhase": false,
+    "gameplayAccepted": false,
+    "performanceAccepted": false,
+    "saveMemoryRequestBytes": 33554432,
+    "saveMemoryResult": "0x809f0000"
+  },
+  "saveMemoryRepair": {
+    "status": "device_setup_and_readiness_qualified_json_virtual_allocator_blocker",
+    "patchSha256": "5ae7c35ab928396be3910065edde5986e0f280dd94e009e41fff93821498feb3",
+    "nativeCapBytes": 33554432,
+    "nativeSanitizedChecksPassed": 5,
+    "negativeControlsRejected": 2,
+    "macTimestampCompatibilityCopyUsed": true,
+    "productionTimestampCodeChanged": false,
+    "windowsHLEQualified": true,
+    "deviceSaveLoadAccepted": false,
+    "hleArchiveSha256": "75a3a027c8803382339270d3bcac3c54faeb351917fc8079c53449d8304c643a",
+    "provenanceSha256": "a22d320af38a79d45b84c12015ea42fe0f06562729e6691104ed0be2c5f2b165",
+    "sourceDiffSha256": "33006cf4745381379f133e53caee56c36f16285c570d6d0d7e71fa3bb6f2416d",
+    "windowsHostTargetsPassed": 33,
+    "windowsSaveMemoryCases": {
+      "guest_kernel_module_lifecycle": {
+        "status": "passed"
+      },
+      "savedata_memory_growth": {
+        "status": "passed"
+      },
+      "savedata_memory_growth_read_failure": {
+        "status": "passed"
+      }
+    },
+    "windowsCasesSkipped": [],
+    "privateManifestSha256": "986cf6eaf41618e08dfaabe681ae9eb7c775838a3971494a40ae83c7db497392",
+    "preparationReceiptSha256": "ff7c1c3e9d15e6569e6ef9ef7bef7c77878e6dcf55a4f683b29899aef57e64b5",
+    "packageFiles": 169,
+    "originalInputsUnchanged": true,
+    "previousPackagesUnchanged": true,
+    "dependencyAuditPassed": true,
+    "missingLibraries": [],
+    "unresolvedGuestNids": [],
+    "deviceImported": true
+  },
+  "deviceLifecycleFirstCorrectedLaunch": {
+    "nativeBuild": 54,
+    "logSha256": "7dee196bbc4a13e55c9fda0152d77601345dbe35ccd08c693209a635e35ed28b",
+    "collectorEndedAfterTransientFileServiceError": true,
+    "guestExitInferredFromCollectorError": false,
+    "saveMemoryRequestBytes": 33554432,
+    "saveMemoryResult": "0x809f0000"
+  },
+  "deviceSaveMemoryReplacementImport": {
+    "nativeBuild": 54,
+    "verifiedPackageFiles": 169,
+    "sameLibraryEntryPreserved": true,
+    "libraryEntryCount": 3,
+    "atomicPublishPrimitive": "AFC_RENAME_PATH_same_directory",
+    "solitaireFullDirectoryFilesVerifiedUnchanged": 303,
+    "firstMiniGolfFullDirectoryFilesVerifiedUnchanged": 169,
+    "previousLifecycleMiniGolfFullDirectoryFilesVerifiedUnchanged": 170,
+    "globalSettingsPreserved": true,
+    "nativeAppReinstalled": false,
+    "gameLaunched": false,
+    "receiptSha256": "21619a231a5bd7d85b7bdb38969b40e1f2d193a94f14bfa4b5b39a226330725f"
+  },
+  "deviceSaveMemoryRetry": {
+    "nativeBuild": 54,
+    "manifestSha256": "986cf6eaf41618e08dfaabe681ae9eb7c775838a3971494a40ae83c7db497392",
+    "receiptSha256": "c5fc6dcd9dbd8a4ebc519c56f32abe8c6a5552ac9e0675d2b186fb99d4683d3d",
+    "logSha256": "ffa886946094f169f80742016f31cf1f67923d018bf20d6bd061993f15dd76f6",
+    "freshProcess": true,
+    "jitEnabled": true,
+    "observedSeconds": 121,
+    "swapchainExtent": "768x432",
+    "swapchainImages": 3,
+    "saveMemorySetupBytes": 33554432,
+    "saveMemorySetupResult": "0x00000000",
+    "saveMemoryReadinessResult": "0x00000000",
+    "screenshots": [
+      {
+        "path": "screen-15.png",
+        "sha256": "bc28c47ad314680814218fa799cf51d3176b2938b30dff47be58fc53fe69ce64",
+        "requiresRootVisibleContentReview": false
+      },
+      {
+        "path": "screen-60.png",
+        "sha256": "cb088a10f1899d6248b1d80f161ed524aa3d2d22a8dd6d062eb7abb42363c868",
+        "requiresRootVisibleContentReview": false
+      },
+      {
+        "path": "screen-120.png",
+        "sha256": "860621d1bf744cd717d399ad35b84c5d460d393706e9e5b47cdb761b2cac84a8",
+        "requiresRootVisibleContentReview": false
+      }
+    ],
+    "reviewedVisibleState": "Madeira_startup_overlay_no_game_picture",
+    "fatalMessage": "sce::Json::MemAllocator virtual ABI is not implemented; use AllocParamRtti",
+    "fatalAbortReported": true,
+    "guestExitReportObserved": false,
+    "ownProcessCleanupSucceeded": true,
+    "leaseReleased": true,
+    "globalAndExistingLibraryFieldsUnchanged": true,
+    "solitaireManifestUnchanged": true,
+    "solitaireFullDirectoryReverifiedInThisLaunchPhase": false,
+    "gameplayAccepted": false,
+    "performanceAccepted": false
+  },
+  "jsonAllocatorRepair": {
+    "status": "implemented_host_qualified_device_retry_pending",
+    "patchSHA256": "5ff0836b0182b2b464beb18bda29189da9890e3861338daaa926be230b5664ee",
+    "actualFiveSlotGuestTableRecovered": true,
+    "originalInitParameterClassLayoutRecovered": false,
+    "HLEParameterWriteBytes": 24,
+    "explicitSettersSelectDistinctKinds": true,
+    "creatingReleaseObjectAndContextPreserved": true,
+    "guestCallbacksOutsidePolicyMutex": true,
+    "callerOwnsAllocatorAndCodeLifetime": true,
+    "baseNotificationSDKBehaviorQualified": false,
+    "baseDeletingDestructorOwnershipQualified": false,
+    "nativeSanitizedSuitesPassed": 3,
+    "negativeControlsRejected": 3,
+    "windowsHostTargetsPassed": 34,
+    "windowsCasesSkipped": [],
+    "hleArchiveSHA256": "3a0d172817447d74914d8150695f6ac961351117019027e3e6578b9acd536362",
+    "provenanceSHA256": "850a244fa7fed418847abdc8e3558ca1cc42cb0520ee525d4ec76a3c9b4cd922",
+    "sourceDiffSHA256": "570b6cdf1bc972bb66e4a508ea5121904a00c0b9889ef500d4e6ef2ef5ac805d",
+    "staticGuestEvidenceReceiptSHA256": "2bba95276bbc2b053ba1b2845afda93002d4ef44b36b0c793ed0c44de839e555",
+    "nativeRepairReceiptSHA256": "7fb9b8fd7a123e90e748a613a376d8a4576d3d085a2bf4b1d41c9217bedaafef",
+    "deviceExecuted": false,
+    "gameplayAccepted": false,
+    "privateManifestSHA256": "1b5e65a616ac98208a0b46221bc3a59a2a607bc3b741039f3749e104d34b54ea",
+    "preparationReceiptSHA256": "3bf9b3eff6449919e5b5530e8fa86e8b084da416c88c3add8ef33f1222e19e96",
+    "packageFiles": 169,
+    "packageBytes": 1363208190,
+    "dependencyAuditPassed": true,
+    "missingLibraries": [],
+    "unresolvedGuestNids": [],
+    "originalInputsAndPreviousPackagesUnchanged": true,
+    "onlyRuntimeProviderChanged": "libSceJson2",
+    "gameExeUnchanged": true,
+    "deviceImported": false
+  },
+  "reaGuestInvestigation": {
+    "status": "caller_navigation_confirmed_indirect_method_not_discovered",
+    "firstCallerQuerySeconds": 46.30407279200001,
+    "automaticGuestCallingConventionCorrect": false,
+    "originalELFRelocationAuditUsed": true,
+    "inputBytesUnchanged": true,
+    "guestExecutedByInvestigation": false,
+    "sessionCloseSucceeded": true,
+    "liveREAWorkersAfterClose": 0,
+    "privateRawEvidencePublished": false,
+    "receiptSHA256": "c6868e9b6627759122166fb2e0184c122d3ff346d5a160e0bd7f96d9b96cba2f"
+  }
+}

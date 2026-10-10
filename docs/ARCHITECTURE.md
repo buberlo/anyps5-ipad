@@ -106,7 +106,7 @@ not optional on that ICD, and stock AnyPS5 does neither:
 - If the device advertises `VK_KHR_portability_subset`, `vkCreateDevice`
   fails unless that extension is enabled.
 
-`patches/anyps5/0002-vulkan-portability.patch` does both, only when the
+`patches/anyps5/legacy-6e037e98/0002-vulkan-portability.patch` does both, only when the
 extension is advertised, so a full ICD is unchanged. The capability tool
 prints `stock-anyps5-device-count` and `portability-device-count` so a later
 Mac or iPad run can see the gap directly. If stock `vkCreateInstance`

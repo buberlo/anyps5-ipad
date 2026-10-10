@@ -4,6 +4,14 @@ The gitlink names the official `FEX-2610` commit
 `14c92681f4d62cf84d901460e0358de09c8847a7`. Apply this series in order with
 `scripts/apply-patches.sh --only fex`.
 
+Rechecked on 2026-10-09 through GitHub's API and live Git refs: the latest
+official monthly release and official `main` both still name this commit.
+The annotated release tag is peeled before comparing source revisions.
+`scripts/check-upstream-heads.py --json` now checks both the monthly release
+and `FEX-main`, so post-release changes cannot be missed by checking tags alone.
+The Madeira `ios-port-2607` fork baseline is also unchanged; its other `ios-port`
+branch is older and diverges from that baseline, so it is not a CPU update.
+
 `0000-ios-port-2610.patch` reconciles the Madeira iOS fork
 `3bec2ac498bf78156ab47c0c194b0e8cb2849756` with the complete monthly release.
 It retains dual RW/RX JIT mappings, the iOS arena/allocator hooks, TEB/TSD
